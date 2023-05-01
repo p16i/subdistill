@@ -115,7 +115,7 @@ def extract_activation_context(
 @click.option("--layer", type=str)
 @click.option("--output-dir", type=str)
 @click.option("--seed", default=1)
-@click.option("--selected-bases", default="pca,prca")
+@click.option("--selected-bases", default="pca,prca,prca-abs,prca-recon")
 def main(model, layer, output_dir, seed, selected_bases):
     arguments = locals()
 

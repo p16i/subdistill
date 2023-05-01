@@ -2,7 +2,11 @@ import os
 import typing
 import numpy as np
 import numpy.typing as npt
+
+import torch
 from abc import ABC
+
+from . import learners
 
 
 BASES = dict()
@@ -123,21 +127,43 @@ class PRCA(Basis):
         return eigvecs, mean, eigvals
 
 
-@register_basis("prca-abs")
-class PRCAAbs(Basis):
+class PRCAVariant(Basis):
+    artifact_keys = ["eigvecs", "mean"]
+    mode: str
+    
     def fit(
-        self, activation: np.ndarray, context: np.ndarray
+        self, activation: np.ndarray, context: np.ndarray, **kwargs
     ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        raise NotImplementedError()
-        # return super().fit(activation, context)
+        """_summary_ Summary
 
+        Args:
+            activation (np.ndarray): _description_
+            context (np.ndarray): _description_
+
+        Returns:
+            typing.Tuple[np.ndarray, np.ndarray, np.ndarray]: _description_
+        """
+        n, d = activation.shape
+
+        if self.centering:
+            mean = np.mean(activation, axis=0)
+        else:
+            mean = np.zeros(d)
+
+        activation = activation - mean
+
+        learner = learners.PRCAGreedyLeaner(mode=self.mode)
+
+        U = learner.fit(activation, context, **kwargs)
+
+        self.artifact = dict(zip(self.artifact_keys, (U, mean))
+
+        return U, mean, None
+
+@register_basis("prca-abs")
+class PRCAAbs(PRCAVariant):
+    mode = "abs"
 
 @register_basis("prca-recon")
 class PRCARelRecon(Basis):
-    artifact_keys = ["eigvecs", "mean", "eigvals"]
-
-    def fit(
-        self, activation: np.ndarray, context: np.ndarray
-    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        raise NotImplementedError()
-        # return super().fit(activation, context)
+    mode = "recon"
