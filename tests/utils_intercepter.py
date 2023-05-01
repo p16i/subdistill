@@ -31,7 +31,7 @@ def _overriden_resnet18_forward_impl(self, x):
 
 
 @pytest.mark.parametrize("slug", ("cifar10-resnet18", "cifar100-resnet18"))
-@pytest.mark.parametrize("layer", ("layer1", "layer2"))
+@pytest.mark.parametrize("layer", ("layer1", "layer2", "layer3", "layer4"))
 @pytest.mark.slow()
 def test_resnet_layer_interception(slug, layer):
     print(f"Testing on {DEVICE}")
