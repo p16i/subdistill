@@ -13,7 +13,7 @@ def get_model(slug: str):
         dataset_set = slug.split("-")[0]
         num_classes = 10 if dataset_set == "cifar10" else 100
 
-        model = torchvision.models.resnet18(pretrained=False)
+        model = torchvision.models.resnet18(weights=None)
 
         # why we use this? (ask Florian?)
         model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)

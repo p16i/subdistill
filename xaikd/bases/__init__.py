@@ -1,12 +1,30 @@
+import os
 import typing
 import numpy as np
 import numpy.typing as npt
 from abc import ABC
 
 
+BASES = dict()
+
+
+def register_basis(name):
+    """Decorator to register a data modality provider."""
+
+    def wrapped(cls):
+        """Wrapped function to register a data modality provider with name `name`"""
+        BASES[name] = cls
+
+        return cls
+
+    return wrapped
+
+
 class Basis(ABC):
-    def __init__(self, centering: bool = True):
+    def __init__(self, alias, centering: bool = True):
         self.centering = centering
+        self.alias = alias
+        self.artifact: dict
 
     def fit(
         self, activation: np.ndarray, context: np.ndarray
@@ -14,14 +32,31 @@ class Basis(ABC):
         pass
 
     def __str__(self) -> str:
-        prefix = type(self).__name__.lower()
+        prefix = self.alias
 
         suffix = "centered" if self.centering else "uncentered"
 
         return "-".join([prefix, suffix])
 
+    def save(self, output_dir: str):
+        if hasattr(self, "artifact") is None:
+            raise ValueError("Artifact is NONE! Please fit first.")
+        output_dir = f"{output_dir}/{self}"
 
+        os.makedirs(output_dir, exist_ok=True)
+
+        for k, v in self.artifact.items():
+            np.save(f"{output_dir}/{k}", v)
+
+
+def get_basis(name, **kwargs) -> Basis:
+    return BASES[name](alias=name, **kwargs)
+
+
+@register_basis("pca")
 class PCA(Basis):
+    artifact_keys = ["eigvecs", "mean", "eigvals"]
+
     def fit(self, activation: np.ndarray, context: np.ndarray):
         """_summary_
 
@@ -45,10 +80,15 @@ class PCA(Basis):
         eigvals = eigvals[index]
         eigvecs = eigvecs[:, index]
 
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, mean, eigvals)))
+
         return eigvecs, mean, eigvals
 
 
+@register_basis("prca")
 class PRCA(Basis):
+    artifact_keys = ["eigvecs", "mean", "eigvals"]
+
     def fit(
         self, activation: np.ndarray, context: np.ndarray
     ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -78,18 +118,26 @@ class PRCA(Basis):
         eigvals = eigvals[index]
         eigvecs = eigvecs[:, index]
 
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, mean, eigvals)))
+
         return eigvecs, mean, eigvals
 
 
+@register_basis("prca-abs")
 class PRCAAbs(Basis):
     def fit(
         self, activation: np.ndarray, context: np.ndarray
     ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return super().fit(activation, context)
+        raise NotImplementedError()
+        # return super().fit(activation, context)
 
 
+@register_basis("prca-recon")
 class PRCARelRecon(Basis):
+    artifact_keys = ["eigvecs", "mean", "eigvals"]
+
     def fit(
         self, activation: np.ndarray, context: np.ndarray
     ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        return super().fit(activation, context)
+        raise NotImplementedError()
+        # return super().fit(activation, context)

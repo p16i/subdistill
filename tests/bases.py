@@ -21,7 +21,7 @@ def test_pca(centering):
     else:
         expected_cov = (activation).T @ (activation) / n
 
-    pca = bases.PCA(centering=centering)
+    pca = bases.get_basis("pca", centering=centering)
 
     eigvecs, mean, eigvals = pca.fit(activation, None)
 
@@ -64,7 +64,7 @@ def test_prca(centering):
     else:
         expected_cov = ((activation.T @ context) + context.T @ activation) / n
 
-    prca = bases.PRCA(centering=centering)
+    prca = bases.get_basis("prca", centering=centering)
 
     eigvecs, mean, eigvals = prca.fit(activation, context)
 
