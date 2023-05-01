@@ -1,0 +1,14 @@
+on: push
+name: Unit Tests
+jobs:
+  Unittesting:
+    name: GitHub Action for unittesting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - run: curl -sSL https://install.python-poetry.org | python3 -
+      - run: poetry install
+      - run: poetry run pytest -m "not slow and not gpu" tests/*
