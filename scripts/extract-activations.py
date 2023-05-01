@@ -148,7 +148,7 @@ def main(model, layer, output_dir, seed, selected_bases):
 
         basis = bases.get_basis(basis_name)
 
-        basis.fit(arr_act, arr_ctx)
+        basis.fit(arr_act, arr_ctx, device=device)
 
         basis.save(output_dir)
 
