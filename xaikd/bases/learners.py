@@ -116,7 +116,9 @@ class PRCAGreedyLeaner:
         assert len(activation_projected.shape) == len(context_projected.shape) == 1
 
         relevance_original = (activation * context).sum(dim=1)
-        relevance_projected = (activation_projected * context_projected).sum(dim=1)
+        relevance_projected = activation_projected * context_projected
+        assert relevance_original.shape == relevance_projected
+
         obj = (relevance_original - relevance_projected) ** 2
 
         assert len(obj.shape) == 1 and obj.shape[0] == activation.shape[0]
