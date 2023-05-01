@@ -1,4 +1,4 @@
-# XAI Meet Knowledge Distillation 
+# XAI $\times$ Knowledge Distillation
 
 
 
