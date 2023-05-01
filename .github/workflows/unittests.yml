@@ -2,7 +2,7 @@ on: push
 name: Unit Tests
 jobs:
   Unittesting:
-    name: GitHub Action for unittesting
+    name: unittesting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@master
