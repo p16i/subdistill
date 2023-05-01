@@ -14,11 +14,12 @@ class PRCAGreedyLeaner:
         else:
             raise ValueError(f"No mode=`{mode}` available!")
 
+        self.mode = mode
+
     def fit(
         self,
         activation: np.array,
         context: np.array,
-        num_components_learned=None,
         epochs=2000,
         seed=1,
         eps=1e-5,
@@ -43,15 +44,7 @@ class PRCAGreedyLeaner:
 
         I = torch.eye(d).to(device)
 
-        total = num_components_learned if num_components_learned is not None else d
-
-        for k in tqdm(range(d), total=total):
-            if num_components_learned is not None and k >= num_components_learned:
-                print(
-                    f"We already learned enough components ({num_components_learned})"
-                )
-
-                break
+        for k in tqdm(range(d), total=d, desc=f"[mode={self.mode}]"):
             UUt = U @ U.T
 
             # take a random vector
@@ -92,19 +85,11 @@ class PRCAGreedyLeaner:
 
             U[:, k] = v.detach()
 
-        if num_components_learned is None:
-            np.testing.assert_allclose(
-                (U.T @ U).detach().cpu().numpy(), np.eye(self.nd), atol=1e-5
-            )
-        else:
-            Us = U[:, :num_components_learned]
-            np.testing.assert_allclose(
-                (Us.T @ Us).detach().cpu().numpy(),
-                np.eye(num_components_learned),
-                atol=1e-5,
-            )
+        np.testing.assert_allclose(
+            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=1e-5
+        )
 
-        return U.numpy()
+        return U.detach().cpu().numpy()
 
     @staticmethod
     def _obj_abs(
