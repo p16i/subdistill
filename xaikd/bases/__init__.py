@@ -61,7 +61,7 @@ def get_basis(name, **kwargs) -> Basis:
 class PCA(Basis):
     artifact_keys = ["eigvecs", "mean", "eigvals"]
 
-    def fit(self, activation: np.ndarray, context: np.ndarray):
+    def fit(self, activation: np.ndarray, context: np.ndarray, **kwargs):
         """_summary_
 
         Args:
@@ -94,7 +94,7 @@ class PRCA(Basis):
     artifact_keys = ["eigvecs", "mean", "eigvals"]
 
     def fit(
-        self, activation: np.ndarray, context: np.ndarray
+        self, activation: np.ndarray, context: np.ndarray, **kwargs
     ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """_summary_ Summary
 
