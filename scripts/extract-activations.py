@@ -74,7 +74,7 @@ def extract_activation_context(
                 x, y = batch
                 x = x.to(device)
 
-                output, attribution = attributor.forward(
+                _ = attributor.forward(
                     x,
                     lambda output: output
                     * F.one_hot(y, num_classes=dataset.num_classes).to(device),
@@ -99,7 +99,6 @@ def extract_activation_context(
                 arr_act.append(selected_act)
                 arr_ctx.append(selected_ctx)
 
-                break
     finally:
         hook.remove()
 
@@ -119,6 +118,8 @@ def extract_activation_context(
 @click.option("--selected-bases", default="pca,prca")
 def main(model, layer, output_dir, seed, selected_bases):
     arguments = locals()
+
+    device = utils.get_device()
 
     slugs = model.split("-")
 
