@@ -167,5 +167,5 @@ class PRCAAbs(PRCAVariant):
 
 
 @register_basis("prca-recon")
-class PRCARelRecon(Basis):
+class PRCARelRecon(PRCAVariant):
     mode = "recon"
