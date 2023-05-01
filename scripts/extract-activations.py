@@ -56,7 +56,7 @@ def extract_activation_context(
     model, layer, dataset, seed=1, device="cpu"
 ) -> typing.Tuple[np.array, np.array]:
     dataset = datasets.get_constant(dataset)
-    data_loader = dataset.loader(train_split=True, batch_size=10)
+    data_loader = dataset.loader(train_split=True)
 
     np.random.seed(seed)
 
@@ -121,12 +121,13 @@ def main(model, layer, output_dir, seed, selected_bases):
 
     device = utils.get_device()
 
+    click.echo(f"Device: {device}")
+
     slugs = model.split("-")
 
     dataset = slugs[0]
 
     start_time = datetime.now()
-    device = "cpu"
 
     torch.manual_seed(seed)
 
