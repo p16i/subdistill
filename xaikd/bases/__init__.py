@@ -130,7 +130,7 @@ class PRCA(Basis):
 class PRCAVariant(Basis):
     artifact_keys = ["eigvecs", "mean"]
     mode: str
-    
+
     def fit(
         self, activation: np.ndarray, context: np.ndarray, **kwargs
     ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -156,13 +156,15 @@ class PRCAVariant(Basis):
 
         U = learner.fit(activation, context, **kwargs)
 
-        self.artifact = dict(zip(self.artifact_keys, (U, mean))
+        self.artifact = dict(zip(self.artifact_keys, (U, mean)))
 
         return U, mean, None
+
 
 @register_basis("prca-abs")
 class PRCAAbs(PRCAVariant):
     mode = "abs"
+
 
 @register_basis("prca-recon")
 class PRCARelRecon(Basis):
