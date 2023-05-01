@@ -117,7 +117,7 @@ class PRCAGreedyLeaner:
 
         relevance_original = (activation * context).sum(dim=1)
         relevance_projected = activation_projected * context_projected
-        assert relevance_original.shape == relevance_projected
+        assert relevance_original.shape == relevance_projected.shape
 
         obj = (relevance_original - relevance_projected) ** 2
 
