@@ -26,7 +26,8 @@ class PRCAGreedyLeaner:
         mode="abs",
     ) -> np.array:
         assert activation.shape == context.shape
-        n, d = activation.shape[1]
+
+        _, d = activation.shape
 
         # todo: normalization
 
