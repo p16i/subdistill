@@ -134,7 +134,7 @@ def main(model, layer, output_dir, seed, selected_bases):
     output_dir = Path(output_dir) / model / layer
     os.makedirs(output_dir, exist_ok=True)
 
-    model = models.get_model(slug=model)
+    model = models.get_model(slug=model).to(device)
 
     # todo: how big are these array?
     arr_act, arr_ctx = extract_activation_context(
