@@ -23,13 +23,10 @@ class PRCAGreedyLeaner:
         seed=1,
         eps=1e-5,
         device="cpu",
-        mode="abs",
     ) -> np.array:
         assert activation.shape == context.shape
 
         _, d = activation.shape
-
-        # todo: normalization
 
         activation = activation / (
             (np.mean(activation**2) ** (1 / 2)) * (d ** (1 / 4))
