@@ -141,9 +141,6 @@ def main(model, layer, output_dir, seed, selected_bases):
         model=model, layer=layer, dataset=dataset, device=device, seed=seed
     )
 
-    np.save(f"{output_dir}/act", arr_act)
-    np.save(f"{output_dir}/ctx", arr_ctx)
-
     for basis_name in selected_bases.split(","):
         click.echo(f"Learning {basis_name}")
 
