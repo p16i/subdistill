@@ -19,7 +19,7 @@ from xaikd import bases
 
 
 def subsample_tensors(
-    act: np.array, ctx: np.array, num_locations=10
+    act: np.array, ctx: np.array, num_locations=20
 ) -> typing.Tuple[np.array, np.array]:
     assert len(act.shape) == 4
 
@@ -140,6 +140,9 @@ def main(model, layer, output_dir, seed, selected_bases):
     arr_act, arr_ctx = extract_activation_context(
         model=model, layer=layer, dataset=dataset, device=device, seed=seed
     )
+
+    np.save(f"{output_dir}/act", arr_act)
+    np.save(f"{output_dir}/ctx", arr_ctx)
 
     for basis_name in selected_bases.split(","):
         click.echo(f"Learning {basis_name}")
