@@ -119,6 +119,8 @@ def extract_activation_context(
 def main(model, layer, output_dir, seed, selected_bases):
     arguments = locals()
 
+    # todo: check compatability between model and layer
+
     device = utils.get_device()
 
     click.echo(f"Device: {device}")
@@ -152,6 +154,7 @@ def main(model, layer, output_dir, seed, selected_bases):
 
     time_took = datetime.now() - start_time
 
+    utils.dump_json(f"{output_dir}/meta.json", arguments)
     click.echo(f"Output: {output_dir}")
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
 
