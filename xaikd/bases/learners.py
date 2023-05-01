@@ -44,7 +44,7 @@ class PRCAGreedyLeaner:
 
         I = torch.eye(d).to(device)
 
-        for k in tqdm(range(d), total=d, desc=f"[mode={self.mode}]"):
+        for k in tqdm(range(d), total=d, desc=f"[mode={self.mode},device={device}]"):
             UUt = U @ U.T
 
             # take a random vector
