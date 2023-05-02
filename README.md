@@ -6,16 +6,40 @@ Installing all deps `peotry install`.
 
 Activative env `peotry shell` or run commands via `peotry run ....`
 
+## Available Models
+- `cifar10-resnet-p1`
+- `cifar100-resnet-p1`
 
-## Coding Plan
+
+## Coding
+
+### Sprint 5
 - [x] bases implementation (via ABC?)
 - [x] activation subtractions (via Zennits); 
   - we need to define layers to investigate
-- [] setup cluster ml-server
-- [] implement other bases
-- [] Run Experiments for Invidiual Layers
+- [x] setup cluster ml-server
+- [x] implement PRCA-variants bases
+    - [x] PRCA abs, recon
+    - [x] add tests for learner
+- [x] use `<dataset>-<arch>-<variant>` for model
+- [x] Implement experiments for Invidiual Layers
+    - [x] projection in each basis class
+    - [x] layer dimension
+    - [x] need to check how long does it takes for each run?
+    - [x] random basis
+- [x] make `act_mean` save in the root!
+- [] run `extract` and `accuracy` scripts (CIFAR100, 4 layers)
+- [] verify accuracies via jupyter notebook
+- [] two-classes analysis (focus on CIFAR100)
+   
 - [] grafting vs layerwise
 
-### Sprint 2
+
+**Remarks**
+- `prca-abs` is very sensitive to `eps`.
+- `prca-recon` is very slow. Why?
+
+### Sprint 6
 - [] implementing baseline for TPAMI, Interpolative, ...
 - [] ...
+
