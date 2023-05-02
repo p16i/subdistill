@@ -20,12 +20,10 @@ def compute_acc(
 ) -> float:
     data_loader = dataset.loader(train_split=False)
 
-    metric = torchmetrics.Accuracy(
-        task="multiclass", num_classes=dataset.num_classes
-    ).to(device)
+    metric = torchmetrics.Accuracy(task="multiclass", num_classes=dataset.num_classes)
 
     for x, y in data_loader:
-        logits = model(x.to(device))
+        logits = model(x.to(device)).cpu()
 
         metric.update(logits, y)
 
