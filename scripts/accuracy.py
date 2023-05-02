@@ -33,30 +33,6 @@ def compute_acc(
 
     return float(metric.cpu().detach().numpy())
 
-
-def attach_projected_fh(model: nn.Module, layer: str, basis_name, k):
-    module = getattr(model, layer)[-1]
-
-    U, mu = get_basis(layer, basis_name, k)
-
-    UUT = torch.from_numpy(U @ U.T).float().to("cuda")
-
-    UUT = UUT.unsqueeze(2).unsqueeze(3)
-
-    mu = torch.from_numpy(mu).float().to("cuda").reshape((1, -1, 1, 1))
-
-    def fh(mod, input, output):
-        assert isinstance(output, torch.Tensor)
-
-        projected = F.conv2d(output - mu, UUT)
-
-        return projected + mu
-
-    hook = module.register_forward_hook(fh)
-
-    return hook
-
-
 @click.command()
 @click.option("--model", type=str)
 @click.option("--layer", type=str)
@@ -75,7 +51,8 @@ def main(model, layer, basis_names, artifact_dir):
 
     dataset = datasets.get_constant(dataset_name)
 
-    click.echo(f"Load artifacts from `{artifact_dir}`")
+    click.echo(f"Loading artifacts from `{artifact_dir}`")
+    click.echo(f"Device: {device")
 
     assert layer == "layer1"
     # how to get this number?
