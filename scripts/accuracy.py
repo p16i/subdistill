@@ -47,7 +47,7 @@ def main(model_name, layer, basis_names, artifact_dir):
 
     model = models.get_model(model_name).to(device)
 
-    dataset_name, arch = model_name.split("-")
+    dataset_name, arch, variant = model_name.split("-")
 
     dataset = datasets.get_constant(dataset_name)
 
