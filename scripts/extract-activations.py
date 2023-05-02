@@ -113,12 +113,12 @@ def extract_activation_context(
 
 
 @click.command()
-@click.option("--model", type=str)
+@click.option("--model-name", type=str)
 @click.option("--layer", type=str)
 @click.option("--output-dir", type=str)
 @click.option("--seed", default=1)
 @click.option("--selected-bases", default=",".join(constants.BASIS_NAMES))
-def main(model, layer, output_dir, seed, selected_bases):
+def main(model_name, layer, output_dir, seed, selected_bases):
     arguments = locals()
 
     # todo: check compatability between model and layer
@@ -127,21 +127,20 @@ def main(model, layer, output_dir, seed, selected_bases):
 
     click.echo(f"Device: {device}")
 
-    slugs = model.split("-")
+    dataset, arch, variant = model_name.split("-")
 
-    dataset = slugs[0]
 
     start_time = datetime.now()
 
     torch.manual_seed(seed)
 
-    output_dir = Path(output_dir) / model / layer
+    output_dir = Path(output_dir) / model_name / layer
     os.makedirs(output_dir, exist_ok=True)
 
-    model = models.get_model(slug=model).to(device)
+    model_name = models.get_model(slug=model_name).to(device)
 
     arr_act, arr_ctx = extract_activation_context(
-        model=model, layer=layer, dataset=dataset, device=device, seed=seed
+        model=model_name, layer=layer, dataset=dataset, device=device, seed=seed
     )
 
     for basis_name in selected_bases.split(","):

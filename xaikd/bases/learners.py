@@ -22,7 +22,7 @@ class PRCAGreedyLeaner:
         self,
         activation: npt.NDArray,
         context: npt.NDArray,
-        epochs=2000,
+        epochs=1000,
         seed=1,
         eps=1e-5,
         device="cpu",

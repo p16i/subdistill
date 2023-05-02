@@ -11,9 +11,10 @@ def get_model(slug: str):
     # should we return transformations?
     # todo: add return type
     # todo: better organizing these if-else structures
-    if slug in ["cifar10-resnet18", "cifar100-resnet18"]:
-        dataset_set = slug.split("-")[0]
-        num_classes = 10 if dataset_set == "cifar10" else 100
+    if slug in ["cifar10-resnet18-p1", "cifar100-resnet18-p1"]:
+        dataset, arch, variant = slug.split("-")
+
+        num_classes = 10 if dataset == "cifar10" else 100
 
         model = torchvision.models.resnet18(weights=None)
 
@@ -26,9 +27,11 @@ def get_model(slug: str):
 
         model.num_classes = num_classes
 
-        if dataset_set == "cifar10":
+        assert variant == "p1", "We only have one variant for now!"
+
+        if dataset == "cifar10":
             url = "https://tubcloud.tu-berlin.de/s/Ymy9WjzizxraqJy/download/resnet18-cifar10.pth"
-        elif dataset_set == "cifar100":
+        elif dataset == "cifar100":
             url = "https://tubcloud.tu-berlin.de/s/xZ29d76Sz29M9Qa/download/resnet18-cifar100.pth"
         else:
             raise ValueError(f"No checkpoint for `{slug}`")
