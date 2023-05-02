@@ -8,4 +8,4 @@
 
 nvidia-smi
 
-poetry run "$@"
+poetry run python "$@"
