@@ -97,8 +97,7 @@ class Basis(ABC):
         U = self.artifact["eigvecs"][:, :k]
         mu = self.artifact["mean"]
 
-
-        assert U.shape[1] == mu.shape[0]
+        assert U.shape == (mu.shape[0], k)
 
         UUT = U @ U.T
 
