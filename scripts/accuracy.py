@@ -9,6 +9,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
+from torch.utils.data import DataLoader
 
 from xaikd import utils, bases, models
 
@@ -18,11 +19,9 @@ from xaikd.constants import datasets
 
 @torch.no_grad()
 def compute_acc(
-    model: nn.Module, dataset: datasets.DatasetConfiguration, device: str
+    model: nn.Module, data_loader: DataLoader, num_classes: int, device: str
 ) -> float:
-    data_loader = dataset.loader(train_split=False)
-
-    metric = torchmetrics.Accuracy(task="multiclass", num_classes=dataset.num_classes)
+    metric = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
 
     for x, y in data_loader:
         logits = model(x.to(device)).cpu()
@@ -64,7 +63,11 @@ def main(model_name, layer, basis_names, artifact_dir):
     # todo: this has to be part of arch
     module: nn.Module = getattr(model, layer)[-1]
 
-    original_accuracy = compute_acc(model, dataset, device)
+    data_loader = dataset.loader(train_split=False)
+
+    original_accuracy = compute_acc(
+        model, data_loader, num_classes=dataset.num_classes, device=device
+    )
 
     for basis_name in tqdm(
         basis_names.split(","), desc=f"[model={model_name},device={device}]"
@@ -73,20 +76,22 @@ def main(model_name, layer, basis_names, artifact_dir):
 
         basis.load(artifact_dir, device=device)
 
-        arr_accs = []
-        for k in range(dims):
+        accuracies = []
+        for k in tqdm(range(dims), desc=f"[basis={basis_name}"):
             try:
                 hook = module.register_forward_hook(
                     basis.construct_fh_rank_k_projection(k)
                 )
-                acc = compute_acc(model, dataset, device)
-                arr_accs.append(acc)
+                acc = compute_acc(
+                    model, data_loader, num_classes=dataset.num_classes, device=device
+                )
+                accuracies.append(acc)
             finally:
                 hook.remove()
 
         utils.dump_json(
             f"{artifact_dir}/{basis}/accuracy.json",
-            dict(accuracies=acc, dims=dims, original_accuracy=original_accuracy),
+            dict(accuracies=accuracies, dims=dims, original_accuracy=original_accuracy),
         )
 
     time_took = datetime.now() - start_time
