@@ -82,7 +82,7 @@ def main(model, layer, basis_names, artifact_dir):
     # todo: this has to be part of arch
     module: nn.Module = getattr(model_obj, layer)[-1]
 
-    original_accuracy = compute_acc(model, dataset, device)
+    original_accuracy = compute_acc(model_obj, dataset, device)
 
     for basis_name in tqdm(
         basis_names.split(","), desc=f"[model={model},device={device}]"
@@ -97,7 +97,7 @@ def main(model, layer, basis_names, artifact_dir):
                 hook = module.register_forward_hook(
                     basis.construct_fh_rank_k_projection(k)
                 )
-                acc = compute_acc(model, dataset, device)
+                acc = compute_acc(model_obj, dataset, device)
                 arr_accs.append(acc)
             finally:
                 hook.remove()
