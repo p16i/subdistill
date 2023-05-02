@@ -49,7 +49,7 @@ def subsample_tensors(
     arr_act = np.vstack(arr_act)
     arr_ctx = np.vstack(arr_ctx)
 
-    assert arr_act.shape == (bs * num_locations, nc)
+    assert arr_act.shape == (bs * np.min([num_locations, total_spatial_locations]), nc)
 
     return arr_act, arr_ctx
 
@@ -129,7 +129,6 @@ def main(model_name, layer, output_dir, seed, selected_bases):
 
     dataset, arch, variant = model_name.split("-")
 
-
     start_time = datetime.now()
 
     torch.manual_seed(seed)
@@ -143,7 +142,7 @@ def main(model_name, layer, output_dir, seed, selected_bases):
         model=model_name, layer=layer, dataset=dataset, device=device, seed=seed
     )
 
-    for basis_name in selected_bases.split(","):
+    for basis_ame in selected_bases.split(","):
         click.echo(f"Learning {basis_name}")
 
         basis = bases.get_basis(basis_name)
