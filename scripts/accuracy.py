@@ -80,7 +80,8 @@ def main(model_name, layer, basis_names, artifact_dir):
     arr_ks = list(range(0, dims, 2))
 
     for basis_name in tqdm(
-        basis_names.split(","), desc=f"[model={model_name},device={device}]"
+        ["random1-centered"] + basis_names.split(","),
+        desc=f"[model={model_name},device={device}]",
     ):
         basis = bases.get_basis(basis_name)
 
