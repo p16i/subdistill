@@ -39,7 +39,9 @@ def compute_acc(
 @click.option("--model-name", type=str)
 @click.option("--layer", type=str)
 @click.option("--artifact-dir", type=str)
-@click.option("--basis-names", default=",".join(constants.BASIS_NAMES))
+@click.option(
+    "--basis-names", default=",".join(["random1--centered"] + constants.BASIS_NAMES)
+)
 def main(model_name, layer, basis_names, artifact_dir):
     arguments = locals()
 
@@ -80,7 +82,7 @@ def main(model_name, layer, basis_names, artifact_dir):
     arr_ks = list(range(0, dims, 2))
 
     for basis_name in tqdm(
-        ["random1--centered"] + basis_names.split(","),
+        basis_names.split(","),
         desc=f"[model={model_name},device={device}]",
     ):
         basis = bases.get_basis(basis_name)

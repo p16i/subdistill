@@ -142,12 +142,15 @@ def main(model_name, layer, output_dir, seed, selected_bases):
         model=model_name, layer=layer, dataset=dataset, device=device, seed=seed
     )
 
+    mean_act = np.mean(arr_act, axis=0)
+    np.save(f"{output_dir}/act_mean", mean_act)
+
     for basis_name in selected_bases.split(","):
         click.echo(f"Learning {basis_name}")
 
         basis = bases.get_basis(basis_name)
 
-        basis.fit(arr_act, arr_ctx, device=device)
+        basis.fit(arr_act, arr_ctx, mean=mean_act, device=device)
 
         basis.save(output_dir)
 

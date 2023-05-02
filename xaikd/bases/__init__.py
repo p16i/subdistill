@@ -3,12 +3,13 @@ import typing
 import numpy as np
 import numpy.typing as npt
 
+from pathlib import Path
+
 from scipy.stats import ortho_group
 
 
 import torch
 from torch.nn import functional as F
-from torch.utils import hooks
 from abc import ABC
 
 from . import learners
@@ -31,6 +32,7 @@ def register_basis(name):
 
 class Basis(ABC):
     artifact_keys: list
+    mean: torch.Tensor
 
     def __init__(self, alias, centering: bool = True, **kwargs):
         self.centering = centering
@@ -40,8 +42,12 @@ class Basis(ABC):
         self.kwargs = kwargs
 
     def fit(
-        self, activation: np.ndarray, context: np.ndarray
-    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        self,
+        activation: npt.NDArray,
+        context: typing.Union[npt.NDArray, None],
+        mean: typing.Union[npt.NDArray, None],
+        device: str,
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         pass
 
     def __str__(self) -> str:
@@ -61,7 +67,7 @@ class Basis(ABC):
         for k, v in self.artifact.items():
             np.save(f"{output_dir}/{k}", v)
 
-    def load(self, artifact_dir: str, device="cpu"):
+    def load(self, artifact_dir: Path, device="cpu"):
         """_summary_
 
         Remark: although, artifacts are saved as `numpy.NDArray`, here, for convenience,
@@ -74,13 +80,23 @@ class Basis(ABC):
             device (str, optional): _description_. Defaults to "cpu".
         """
         artifact = dict()
-        for k in self.artifact_keys:
-            mat = torch.from_numpy(np.load(f"{artifact_dir}/{self}/{k}.npy")).float()
+
+        slug = f"{self}"
+
+        for item in self.artifact_keys:
+            mat = torch.from_numpy(np.load(artifact_dir / slug / f"{item}.npy")).float()
             mat = mat.to(device)
 
-            artifact[k] = mat
+            artifact[item] = mat
 
         setattr(self, "artifact", artifact)
+
+        mean = np.load(artifact_dir / "act_mean.npy")
+
+        if not self.centering:
+            mean = np.zeros_like(mean)
+
+        self.mean = torch.from_numpy(mean).float().to(device)
 
     def construct_fh_rank_k_projection(self, k: int) -> typing.Callable:
         """_summary_
@@ -94,7 +110,10 @@ class Basis(ABC):
             _type_: _description_
         """
         U = self.artifact["eigvecs"][:, :k]
-        mu = self.artifact["mean"]
+        mu = self.mean
+
+        if not self.centering:
+            assert torch.allclose(mu, torch.zeros_like(mu))
 
         assert U.shape == (mu.shape[0], k)
 
@@ -128,21 +147,21 @@ def get_basis(name, **kwargs) -> Basis:
 
 @register_basis("pca")
 class PCA(Basis):
-    artifact_keys = ["eigvecs", "mean", "eigvals"]
+    artifact_keys = ["eigvecs", "eigvals"]
 
-    def fit(self, activation: np.ndarray, context: np.ndarray, **kwargs):
+    def fit(
+        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+    ):
         """_summary_
 
         Args:
-            activation (np.ndarray): _description_
-            context (np.ndarray): We do NOT use this here!
+            activation (npt.NDArray): _description_
+            context (npt.NDArray): We do NOT use this here!
         """
 
         n, d = activation.shape
 
-        if self.centering:
-            mean = np.mean(activation, axis=0)
-        else:
+        if not self.centering:
             mean = np.zeros(d)
 
         activation = activation - mean
@@ -155,30 +174,28 @@ class PCA(Basis):
 
         self.artifact = dict(zip(self.artifact_keys, (eigvecs, mean, eigvals)))
 
-        return eigvecs, mean, eigvals
+        return eigvecs, eigvals
 
 
 @register_basis("prca")
 class PRCA(Basis):
-    artifact_keys = ["eigvecs", "mean", "eigvals"]
+    artifact_keys = ["eigvecs", "eigvals"]
 
     def fit(
-        self, activation: np.ndarray, context: np.ndarray, **kwargs
-    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
         Args:
-            activation (np.ndarray): _description_
-            context (np.ndarray): _description_
+            activation (npt.NDArray): _description_
+            context (npt.NDArray): _description_
 
         Returns:
-            typing.Tuple[np.ndarray, np.ndarray, np.ndarray]: _description_
+            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
         """
         n, d = activation.shape
 
-        if self.centering:
-            mean = np.mean(activation, axis=0)
-        else:
+        if not self.centering:
             mean = np.zeros(d)
 
         activation = activation - mean
@@ -193,7 +210,7 @@ class PRCA(Basis):
 
         self.artifact = dict(zip(self.artifact_keys, (eigvecs, mean, eigvals)))
 
-        return eigvecs, mean, eigvals
+        return eigvecs, eigvals
 
 
 @register_basis("random")
@@ -211,15 +228,12 @@ class Random(Basis):
             device (str, optional): _description_. Defaults to "cpu".
         """
 
-        if self.centering:
-            slug = "pca--centered"
-        else:
-            slug = "pca--uncentered"
-
-        mean = torch.from_numpy(np.load(f"{artifact_dir}/{slug}/mean.npy")).float()
+        mean = np.load(Path(artifact_dir) / "act_mean.npy")
 
         if not self.centering:
-            assert torch.allclose(mean, torch.tensor(0))
+            mean = np.zeros_like(mean)
+
+        mean = torch.from_numpy(mean).float()
 
         mean = mean.to(device)
 
@@ -233,30 +247,30 @@ class Random(Basis):
         mat = torch.from_numpy(mat).float()
         mat = mat.to(device)
 
-        setattr(self, "artifact", dict(mean=mean, eigvecs=mat))
+        setattr(self, "artifact", dict(eigvecs=mat))
+
+        self.mean = mean
 
 
 class PRCAVariant(Basis):
-    artifact_keys = ["eigvecs", "mean"]
+    artifact_keys = ["eigvecs"]
     mode: str
 
     def fit(
-        self, activation: np.ndarray, context: np.ndarray, **kwargs
-    ) -> typing.Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
         Args:
-            activation (np.ndarray): _description_
-            context (np.ndarray): _description_
+            activation (npt.NDArray): _description_
+            context (npt.NDArray): _description_
 
         Returns:
-            typing.Tuple[np.ndarray, np.ndarray, np.ndarray]: _description_
+            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
         """
-        n, d = activation.shape
+        _, d = activation.shape
 
-        if self.centering:
-            mean = np.mean(activation, axis=0)
-        else:
+        if not self.centering:
             mean = np.zeros(d)
 
         activation = activation - mean
@@ -267,7 +281,7 @@ class PRCAVariant(Basis):
 
         self.artifact = dict(zip(self.artifact_keys, (U, mean)))
 
-        return U, mean, None
+        return U, None
 
 
 @register_basis("prca-abs")
