@@ -69,7 +69,7 @@ def main(model_name, layer, basis_names, artifact_dir):
     # todo: this has to be part of arch
     module: nn.Module = getattr(model, layer)[-1]
 
-    data_loader = dataset.loader(train_split=False)
+    data_loader = dataset.loader(train_split=False, batch_size=128)
 
     original_accuracy = compute_acc(
         model, data_loader, num_classes=dataset.num_classes, device=device
