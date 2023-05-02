@@ -219,10 +219,9 @@ class Random(Basis):
         mean = torch.from_numpy(np.load(f"{artifact_dir}/{slug}/mean.npy")).float()
 
         if not self.centering:
-            assert torch.allclose(mean, torch.tensor(0)
+            assert torch.allclose(mean, torch.tensor(0))
 
         mean = mean.to(device)
-
 
         d = mean.shape[0]
 

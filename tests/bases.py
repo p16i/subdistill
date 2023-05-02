@@ -85,3 +85,12 @@ def test_prca(centering):
         assert f"{prca}" == "prca--centered"
     else:
         assert f"{prca}" == "prca--uncentered"
+
+
+@pytest.mark.parametrize("slug", ["centered", "uncentered"])
+@pytest.mark.parametrize("seed", [1, 10])
+def test_get_random_basis(slug, seed):
+    basis = bases.get_basis(f"random{seed}--{slug}")
+
+    assert hasattr(basis, "kwargs")
+    assert basis.kwargs["seed"] == seed
