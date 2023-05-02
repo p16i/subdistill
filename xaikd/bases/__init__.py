@@ -3,6 +3,9 @@ import typing
 import numpy as np
 import numpy.typing as npt
 
+from scipy.stats import ortho_group
+
+
 import torch
 from torch.nn import functional as F
 from torch.utils import hooks
@@ -29,10 +32,12 @@ def register_basis(name):
 class Basis(ABC):
     artifact_keys: list
 
-    def __init__(self, alias, centering: bool = True):
+    def __init__(self, alias, centering: bool = True, **kwargs):
         self.centering = centering
         self.alias = alias
         self.artifact: dict
+
+        self.kwargs = kwargs
 
     def fit(
         self, activation: np.ndarray, context: np.ndarray
@@ -77,12 +82,6 @@ class Basis(ABC):
 
         setattr(self, "artifact", artifact)
 
-    def project(self, x: torch.Tensor):
-        assert len(x.shape) == 4
-
-    def recond(self, x: torch.Tensor):
-        assert len(x.shape) == 4
-
     def construct_fh_rank_k_projection(self, k: int) -> typing.Callable:
         """_summary_
 
@@ -117,12 +116,14 @@ class Basis(ABC):
 
 def get_basis(name, **kwargs) -> Basis:
     name, centering_slug = name.split("--")
-
-    assert centering_slug in ["uncentered", "centered"], f"Value `{centering_slug}`"
-
     centering = True if centering_slug == "centered" else False
 
-    return BASES[name](alias=name, centering=centering, **kwargs)
+    if "random" in name:
+        seed = int(name.replace("random", ""))
+        return BASES["random"](alias=name, centering=centering, seed=seed, **kwargs)
+    else:
+        assert centering_slug in ["uncentered", "centered"], f"Value `{centering_slug}`"
+        return BASES[name](alias=name, centering=centering, **kwargs)
 
 
 @register_basis("pca")
@@ -193,6 +194,47 @@ class PRCA(Basis):
         self.artifact = dict(zip(self.artifact_keys, (eigvecs, mean, eigvals)))
 
         return eigvecs, mean, eigvals
+
+
+@register_basis("random")
+class Random(Basis):
+    def load(self, artifact_dir: str, device="cpu"):
+        """_summary_
+
+        Remark: although, artifacts are saved as `numpy.NDArray`, here, for convenience,
+        we directly load artifacts as `torch.Tensor`.
+
+
+
+        Args:
+            artifact_dir (str): _description_
+            device (str, optional): _description_. Defaults to "cpu".
+        """
+
+        if self.centering:
+            slug = "pca--centered"
+        else:
+            slug = "pca--uncentered"
+
+        mean = torch.from_numpy(np.load(f"{artifact_dir}/{slug}/mean.npy")).float()
+
+        if not self.centering:
+            assert torch.allclose(mean, torch.tensor(0)
+
+        mean = mean.to(device)
+
+
+        d = mean.shape[0]
+
+        seed = self.kwargs["seed"]
+
+        np.random.seed(seed)
+
+        mat = ortho_group.rvs(d)
+        mat = torch.from_numpy(mat).float()
+        mat = mat.to(device)
+
+        setattr(self, "artifact", dict(mean=mean, eigvecs=mat))
 
 
 class PRCAVariant(Basis):
