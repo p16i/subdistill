@@ -4,6 +4,8 @@ import torchvision
 
 from torch import nn
 
+from . import resnet
+
 
 def get_model(slug: str):
     # should we return transformations?
@@ -39,3 +41,10 @@ def get_model(slug: str):
     model.eval()
 
     return model
+
+
+def get_layer_dimensions(arch: str, layer: str) -> int:
+    if arch == "resnet18":
+        return resnet.ARCH_LAYER_DIMENSIONS["resnet18"][layer]
+    else:
+        raise NotImplementedError()

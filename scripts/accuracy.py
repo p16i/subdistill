@@ -47,18 +47,24 @@ def main(model_name, layer, basis_names, artifact_dir):
 
     model = models.get_model(model_name).to(device)
 
-    dataset_name = model_name.split("-")[0]
+    dataset_name, arch = model_name.split("-")
 
     dataset = datasets.get_constant(dataset_name)
 
     artifact_dir = Path(artifact_dir) / model_name / layer
 
+    dims = models.get_layer_dimensions(arch, layer)
+
     click.echo(f"Loading artifacts from `{artifact_dir}`")
     click.echo(f"Device: {device}")
-
-    assert layer == "layer1"
-    # how to get this number?
-    dims = 64
+    click.echo(
+        " | ".join(
+            [
+                f"Model: {model_name}",
+                f"Layer: {layer} (dims={dims})",
+            ]
+        )
+    )
 
     # todo: this has to be part of arch
     module: nn.Module = getattr(model, layer)[-1]
@@ -77,7 +83,7 @@ def main(model_name, layer, basis_names, artifact_dir):
         basis.load(artifact_dir, device=device)
 
         accuracies = []
-        for k in tqdm(range(dims), desc=f"[basis={basis_name}"):
+        for k in tqdm(range(dims), desc=f"[basis={basis_name}]"):
             try:
                 hook = module.register_forward_hook(
                     basis.construct_fh_rank_k_projection(k)
