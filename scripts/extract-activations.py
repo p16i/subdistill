@@ -15,6 +15,7 @@ from torch.nn import functional as F
 from zennit.attribution import Gradient
 
 from xaikd import models, utils, attributors
+from xaikd import constants
 from xaikd.constants import datasets
 from xaikd import bases
 
@@ -116,7 +117,7 @@ def extract_activation_context(
 @click.option("--layer", type=str)
 @click.option("--output-dir", type=str)
 @click.option("--seed", default=1)
-@click.option("--selected-bases", default="pca,prca,prca-abs,prca-recon")
+@click.option("--selected-bases", default=",".join(constants.BASIS_NAMES))
 def main(model, layer, output_dir, seed, selected_bases):
     arguments = locals()
 
@@ -139,7 +140,6 @@ def main(model, layer, output_dir, seed, selected_bases):
 
     model = models.get_model(slug=model).to(device)
 
-    # todo: how big are these array?
     arr_act, arr_ctx = extract_activation_context(
         model=model, layer=layer, dataset=dataset, device=device, seed=seed
     )

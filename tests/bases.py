@@ -21,7 +21,9 @@ def test_pca(centering):
     else:
         expected_cov = (activation).T @ (activation) / n
 
-    pca = bases.get_basis("pca", centering=centering)
+    suffix = "centered" if centering else "uncentered"
+
+    pca = bases.get_basis(f"pca--{suffix}")
 
     eigvecs, mean, eigvals = pca.fit(activation, None)
 
@@ -35,9 +37,9 @@ def test_pca(centering):
     assert (eigvals[:-1] < eigvals[1:]).sum() == 0
 
     if centering:
-        assert f"{pca}" == "pca-centered"
+        assert f"{pca}" == "pca--centered"
     else:
-        assert f"{pca}" == "pca-uncentered"
+        assert f"{pca}" == "pca--uncentered"
 
 
 @pytest.mark.parametrize("centering", [False, True])
@@ -64,7 +66,9 @@ def test_prca(centering):
     else:
         expected_cov = ((activation.T @ context) + context.T @ activation) / n
 
-    prca = bases.get_basis("prca", centering=centering)
+    suffix = "centered" if centering else "uncentered"
+
+    prca = bases.get_basis(f"prca--{suffix}")
 
     eigvecs, mean, eigvals = prca.fit(activation, context)
 
@@ -78,6 +82,6 @@ def test_prca(centering):
     assert (eigvals[:-1] < eigvals[1:]).sum() == 0
 
     if centering:
-        assert f"{prca}" == "prca-centered"
+        assert f"{prca}" == "prca--centered"
     else:
-        assert f"{prca}" == "prca-uncentered"
+        assert f"{prca}" == "prca--uncentered"

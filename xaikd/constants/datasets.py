@@ -47,7 +47,7 @@ class DatasetConfiguration:
         )
 
 
-def get_constant(name) -> DatasetConfiguration:
+def get_constant(name: str) -> DatasetConfiguration:
     return DATASETS[name]()
 
 

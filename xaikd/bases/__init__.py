@@ -4,6 +4,8 @@ import numpy as np
 import numpy.typing as npt
 
 import torch
+from torch.nn import functional as F
+from torch.utils import hooks
 from abc import ABC
 
 from . import learners
@@ -25,6 +27,8 @@ def register_basis(name):
 
 
 class Basis(ABC):
+    artifact_keys: list
+
     def __init__(self, alias, centering: bool = True):
         self.centering = centering
         self.alias = alias
@@ -40,7 +44,7 @@ class Basis(ABC):
 
         suffix = "centered" if self.centering else "uncentered"
 
-        return "-".join([prefix, suffix])
+        return "--".join([prefix, suffix])
 
     def save(self, output_dir: str):
         if hasattr(self, "artifact") is None:
@@ -52,9 +56,71 @@ class Basis(ABC):
         for k, v in self.artifact.items():
             np.save(f"{output_dir}/{k}", v)
 
+    def load(self, artifact_dir: str, device="cpu"):
+        """_summary_
+
+        Remark: although, artifacts are saved as `numpy.NDArray`, here, for convenience,
+        we directly load artifacts as `torch.Tensor`.
+
+
+
+        Args:
+            artifact_dir (str): _description_
+            device (str, optional): _description_. Defaults to "cpu".
+        """
+        artifact = dict()
+        for k in self.artifact_keys:
+            mat = torch.from_numpy(np.load(f"{artifact_dir}/{self}/{k}.npy")).float()
+            mat = mat.to(device)
+
+            artifact[k] = mat
+
+        setattr(self, "artifact", artifact)
+
+    def project(self, x: torch.Tensor):
+        assert len(x.shape) == 4
+
+    def recond(self, x: torch.Tensor):
+        assert len(x.shape) == 4
+
+    def construct_fh_rank_k_projection(self, k: int) -> typing.Callable:
+        """_summary_
+
+        Assumption: this generates a hook for 4d tensors!
+
+        Args:
+            k (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        U = self.artifact["eigvecs"]
+        mu = self.artifact["mean"]
+
+        UUT = U @ U.T
+
+        UUT = UUT.unsqueeze(2).unsqueeze(3)
+
+        mu = mu.reshape((1, -1, 1, 1))
+
+        def fh(mod, input, output):
+            assert isinstance(output, torch.Tensor)
+
+            projected = F.conv2d(output - mu, UUT)
+
+            return projected + mu
+
+        return fh
+
 
 def get_basis(name, **kwargs) -> Basis:
-    return BASES[name](alias=name, **kwargs)
+    name, centering_slug = name.split("--")
+
+    assert centering_slug in ["uncentered", "centered"], f"Value `{centering_slug}`"
+
+    centering = True if centering_slug == "centered" else False
+
+    return BASES[name](alias=name, centering=centering, **kwargs)
 
 
 @register_basis("pca")
