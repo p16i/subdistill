@@ -33,6 +33,7 @@ def compute_acc(
 
     return float(metric.cpu().detach().numpy())
 
+
 @click.command()
 @click.option("--model", type=str)
 @click.option("--layer", type=str)
@@ -52,7 +53,7 @@ def main(model, layer, basis_names, artifact_dir):
     dataset = datasets.get_constant(dataset_name)
 
     click.echo(f"Loading artifacts from `{artifact_dir}`")
-    click.echo(f"Device: {device")
+    click.echo(f"Device: {device}")
 
     assert layer == "layer1"
     # how to get this number?
