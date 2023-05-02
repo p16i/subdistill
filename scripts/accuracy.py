@@ -75,6 +75,8 @@ def main(model_name, layer, basis_names, artifact_dir):
         model, data_loader, num_classes=dataset.num_classes, device=device
     )
 
+    arr_ks = list(range(0, dims, 2))
+
     for basis_name in tqdm(
         basis_names.split(","), desc=f"[model={model_name},device={device}]"
     ):
@@ -83,7 +85,7 @@ def main(model_name, layer, basis_names, artifact_dir):
         basis.load(artifact_dir, device=device)
 
         accuracies = []
-        for k in tqdm(range(dims), desc=f"[basis={basis_name}]"):
+        for k in tqdm(arr_ks, desc=f"[basis={basis_name}]"):
             try:
                 hook = module.register_forward_hook(
                     basis.construct_fh_rank_k_projection(k)
@@ -97,7 +99,12 @@ def main(model_name, layer, basis_names, artifact_dir):
 
         utils.dump_json(
             f"{artifact_dir}/{basis}/accuracy.json",
-            dict(accuracies=accuracies, dims=dims, original_accuracy=original_accuracy),
+            dict(
+                accuracies=accuracies,
+                arr_ks=arr_ks,
+                dims=dims,
+                original_accuracy=original_accuracy,
+            ),
         )
 
     time_took = datetime.now() - start_time
