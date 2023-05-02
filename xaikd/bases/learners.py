@@ -1,6 +1,8 @@
 import torch
 
 import numpy as np
+import numpy.typing as npt
+
 
 from tqdm import tqdm
 
@@ -18,13 +20,13 @@ class PRCAGreedyLeaner:
 
     def fit(
         self,
-        activation: np.array,
-        context: np.array,
+        activation: npt.NDArray,
+        context: npt.NDArray,
         epochs=2000,
         seed=1,
         eps=1e-5,
         device="cpu",
-    ) -> np.array:
+    ) -> npt.NDArray:
         assert activation.shape == context.shape
 
         _, d = activation.shape
