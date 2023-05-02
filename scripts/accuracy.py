@@ -1,5 +1,8 @@
 import click
 
+import os
+
+import numpy as np
 from tqdm import tqdm
 import torchmetrics
 
@@ -75,7 +78,7 @@ def main(model_name, layer, basis_names, artifact_dir):
         model, data_loader, num_classes=dataset.num_classes, device=device
     )
 
-    arr_ks = list(range(0, dims, 2))
+    arr_ks = np.linspace(0, dims, 20)
 
     for basis_name in tqdm(
         basis_names.split(","), desc=f"[model={model_name},device={device}]"
@@ -96,6 +99,8 @@ def main(model_name, layer, basis_names, artifact_dir):
                 accuracies.append(acc)
             finally:
                 hook.remove()
+
+        os.makedirs(f"{artifact_dir}/{basis}", exist_ok=True)
 
         utils.dump_json(
             f"{artifact_dir}/{basis}/accuracy.json",
