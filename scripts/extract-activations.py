@@ -142,7 +142,7 @@ def main(model_name, layer, output_dir, seed, selected_bases):
         model=model_name, layer=layer, dataset=dataset, device=device, seed=seed
     )
 
-    for basis_ame in selected_bases.split(","):
+    for basis_name in selected_bases.split(","):
         click.echo(f"Learning {basis_name}")
 
         basis = bases.get_basis(basis_name)
