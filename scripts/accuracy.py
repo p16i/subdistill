@@ -79,7 +79,7 @@ def main(model_name, layer, basis_names, artifact_dir):
         model, data_loader, num_classes=dataset.num_classes, device=device
     )
 
-    arr_ks = list(range(0, dims, 2))
+    arr_ks = list(range(0, dims + 1, 2))
 
     for basis_name in tqdm(
         basis_names.split(","),
