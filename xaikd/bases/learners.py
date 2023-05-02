@@ -24,7 +24,7 @@ class PRCAGreedyLeaner:
         context: npt.NDArray,
         epochs=1000,
         seed=1,
-        eps=1e-5,
+        eps=1e-3,
         device="cpu",
     ) -> npt.NDArray:
         assert activation.shape == context.shape
