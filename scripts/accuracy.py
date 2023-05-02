@@ -5,6 +5,8 @@ import torchmetrics
 
 from datetime import datetime
 
+from pathlib import Path
+
 import torch
 from torch import nn
 
@@ -33,22 +35,24 @@ def compute_acc(
 
 
 @click.command()
-@click.option("--model", type=str)
+@click.option("--model-name", type=str)
 @click.option("--layer", type=str)
 @click.option("--artifact-dir", type=str)
 @click.option("--basis-names", default=",".join(constants.BASIS_NAMES))
-def main(model, layer, basis_names, artifact_dir):
+def main(model_name, layer, basis_names, artifact_dir):
     arguments = locals()
 
     start_time = datetime.now()
 
     device = utils.get_device()
 
-    model_obj = models.get_model(model).to(device)
+    model = models.get_model(model_name).to(device)
 
-    dataset_name = model.split("-")[0]
+    dataset_name = model_name.split("-")[0]
 
     dataset = datasets.get_constant(dataset_name)
+
+    artifact_dir = Path(artifact_dir) / model_name / layer
 
     click.echo(f"Loading artifacts from `{artifact_dir}`")
     click.echo(f"Device: {device}")
@@ -58,12 +62,12 @@ def main(model, layer, basis_names, artifact_dir):
     dims = 64
 
     # todo: this has to be part of arch
-    module: nn.Module = getattr(model_obj, layer)[-1]
+    module: nn.Module = getattr(model, layer)[-1]
 
-    original_accuracy = compute_acc(model_obj, dataset, device)
+    original_accuracy = compute_acc(model, dataset, device)
 
     for basis_name in tqdm(
-        basis_names.split(","), desc=f"[model={model},device={device}]"
+        basis_names.split(","), desc=f"[model={model_name},device={device}]"
     ):
         basis = bases.get_basis(basis_name)
 
@@ -75,7 +79,7 @@ def main(model, layer, basis_names, artifact_dir):
                 hook = module.register_forward_hook(
                     basis.construct_fh_rank_k_projection(k)
                 )
-                acc = compute_acc(model_obj, dataset, device)
+                acc = compute_acc(model, dataset, device)
                 arr_accs.append(acc)
             finally:
                 hook.remove()
