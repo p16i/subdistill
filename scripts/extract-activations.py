@@ -1,5 +1,6 @@
 import typing
 import numpy as np
+import numpy.typing as npt
 import os
 import click
 
@@ -19,8 +20,8 @@ from xaikd import bases
 
 
 def subsample_tensors(
-    act: np.array, ctx: np.array, num_locations=20
-) -> typing.Tuple[np.array, np.array]:
+    act: npt.NDArray, ctx: npt.NDArray, num_locations=20
+) -> typing.Tuple[npt.NDArray, npt.NDArray]:
     assert len(act.shape) == 4
 
     bs, nc, h, w = act.shape
@@ -54,7 +55,7 @@ def subsample_tensors(
 
 def extract_activation_context(
     model, layer, dataset, seed=1, device="cpu"
-) -> typing.Tuple[np.array, np.array]:
+) -> typing.Tuple[npt.NDArray, npt.NDArray]:
     dataset = datasets.get_constant(dataset)
     data_loader = dataset.loader(train_split=True)
 
