@@ -160,7 +160,7 @@ def main(
         )
 
         dims = models.get_layer_dimensions(model, layer)
-        arr_ks = list(range(0, dims + 1, 2))
+        arr_ks = list(range(1, dims + 1, 2))
 
         for basis_name in constants.BASIS_NAMES:
             basis = bases.get_basis(basis_name)
