@@ -42,6 +42,10 @@ def extract_activation_and_bases(
     mean_act = np.mean(arr_act, axis=0)
     np.save(output_dir / "act_mean", mean_act)
 
+    # todo: remove this when debug finish
+    np.save(output_dir / "arr_act", arr_act)
+    np.save(output_dir / "arr_ctx", arr_ctx)
+
     for basis_name in basis_names:
         click.echo(f"Learning {basis_name}")
 
