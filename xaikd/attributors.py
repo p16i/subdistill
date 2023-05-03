@@ -60,8 +60,9 @@ class LogOddEvidence(LogitModifier):
         self.classes = classes
         self.dataset = dataset
 
-    def __call__(self, logits: torch.Tensor) -> torch.Tensor:
+    def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor:
         output = torch.zeros_like(logits)
+        # todo: this that assinging with targets has no effect
         output[:, self.classes[0]] = logits[:, self.classes[0]]
         output[:, self.classes[1]] = -logits[:, self.classes[1]]
 

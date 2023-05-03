@@ -7,9 +7,7 @@ from torch import nn
 from . import resnet
 
 
-def get_model(name: str):
-    # should we return transformations?
-    # todo: add return type
+def get_model(name: str) -> nn.Module:
     # todo: better organizing these if-else structures
     if name in ["cifar10-resnet18-p1", "cifar100-resnet18-p1"]:
         dataset, arch, variant = name.split("-")

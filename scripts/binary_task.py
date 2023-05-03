@@ -21,19 +21,17 @@ from xaikd.utils import click_types
 
 def extract_activation_and_bases(
     model: nn.Module,
-    dataset: datasets.DatasetConfiguration,
+    dataset: datasets.TwoclassesDataset,
     output_dir: Path,
     basis_names: typing.List[str],
     layer: str,
     device: str,
 ):
-    logit_modifier = attributors.OneClassEvidence(dataset)
-
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=model,
         layer=layer,
         dataset=dataset,
-        logit_modifier=logit_modifier,
+        logit_modifier=attributors.LogOddEvidence(dataset.selected_classes, dataset),
         device=device,
     )
 

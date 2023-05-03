@@ -132,8 +132,8 @@ class Basis(ABC):
             return projected + mu
 
         return fh
+
     def __str__(self) -> str:
-        
         return getattr(self, "__name")
 
 
@@ -171,18 +171,17 @@ class PCA(Basis):
 
         n, d = activation.shape
 
-        if not self.centering:
-            mean = np.zeros(d)
+        if self.centering:
+            activation = activation - mean
 
-        activation = activation - mean
         eigvals, eigvecs = np.linalg.eigh(activation.T @ activation / n)
 
-        index = np.arange(d)[::-1]
+        indices = np.argsort(eigvals)[::-1]
 
-        eigvals = eigvals[index]
-        eigvecs = eigvecs[:, index]
+        eigvals = eigvals[indices]
+        eigvecs = eigvecs[:, indices]
 
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, mean, eigvals)))
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, eigvals)))
 
         return eigvecs, eigvals
 
@@ -205,20 +204,19 @@ class PRCA(Basis):
         """
         n, d = activation.shape
 
-        if not self.centering:
-            mean = np.zeros(d)
+        if self.centering:
+            activation = activation - mean
 
-        activation = activation - mean
         eigvals, eigvecs = np.linalg.eigh(
             ((activation.T @ context + context.T @ activation)) / n
         )
 
-        index = np.arange(d)[::-1]
+        indices = np.argsort(eigvals)[::-1]
 
-        eigvals = eigvals[index]
-        eigvecs = eigvecs[:, index]
+        eigvals = eigvals[indices]
+        eigvecs = eigvecs[:, indices]
 
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, mean, eigvals)))
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, eigvals)))
 
         return eigvecs, eigvals
 
@@ -240,10 +238,10 @@ class Random(Basis):
 
         mean = np.load(Path(artifact_dir) / "act_mean.npy")
 
-        if not self.centering:
-            mean = np.zeros_like(mean)
-
-        mean = torch.from_numpy(mean).float()
+        if self.centering:
+            mean = torch.from_numpy(mean).float()
+        else:
+            mean = torch.zeros_like(mean)
 
         mean = mean.to(device)
 
