@@ -64,21 +64,21 @@ def test_logit_modifier_oneclass():
 
     all_classes = set(range(dataset.num_classes))
     class1 = 1
-    class2 = 8
 
     torch.manual_seed(1)
 
-    inp = torch.rand((2, dataset.num_classes))
+    logits = torch.rand((2, dataset.num_classes))
 
     logits_mod_single = attributors.OneClassEvidence(dataset)(
-        inp, torch.tensor([class1] * 2)
+        logits, torch.tensor([class1] * 2)
     )
 
-    assert (logits_mod_single[:, class1] == inp[:, class1]).all()
+    assert (logits_mod_single[:, class1] == logits[:, class1]).all()
     assert (logits_mod_single[:, list(all_classes.difference([class1]))] == 0).all()
 
 
-def test_logit_modifier_logood():
+@pytest.mark.parametrize("target", ("abc", None))
+def test_logit_modifier_logodd(target):
     dataset: datasets.TwoclassesDataset = datasets.construct("cifar10-1vs8")
 
     all_classes = set(range(dataset.num_classes))
@@ -86,12 +86,14 @@ def test_logit_modifier_logood():
 
     torch.manual_seed(1)
 
-    inp = torch.rand((2, dataset.num_classes))
+    logits = torch.rand((2, dataset.num_classes))
 
-    logits_mod_logood = attributors.LogOddEvidence([class1, class2], dataset)(inp)
+    logits_mod_logood = attributors.LogOddEvidence([class1, class2], dataset)(
+        logits, target
+    )
 
-    assert (logits_mod_logood[:, class1] == inp[:, class1]).all()
-    assert (logits_mod_logood[:, class2] == -inp[:, class2]).all()
+    assert (logits_mod_logood[:, class1] == logits[:, class1]).all()
+    assert (logits_mod_logood[:, class2] == -logits[:, class2]).all()
     assert (
         logits_mod_logood[:, list(all_classes.difference([class1, class2]))] == 0
     ).all()
