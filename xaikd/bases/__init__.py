@@ -57,15 +57,16 @@ class Basis(ABC):
 
         return "--".join([prefix, suffix])
 
-    def save(self, output_dir: str):
+    def save(self, output_dir: Path):
         if hasattr(self, "artifact") is None:
             raise ValueError("Artifact is NONE! Please fit first.")
-        output_dir = f"{output_dir}/{self}"
+
+        output_dir = output_dir / f"{self}"
 
         os.makedirs(output_dir, exist_ok=True)
 
         for k, v in self.artifact.items():
-            np.save(f"{output_dir}/{k}", v)
+            np.save(output_dir / f"{k}", v)
 
     def load(self, artifact_dir: Path, device="cpu"):
         """_summary_
@@ -131,18 +132,27 @@ class Basis(ABC):
             return projected + mu
 
         return fh
+    def __str__(self) -> str:
+        
+        return getattr(self, "__name")
 
 
-def get_basis(name, **kwargs) -> Basis:
-    name, centering_slug = name.split("--")
+def get_basis(slug, **kwargs) -> Basis:
+    name_slug, centering_slug = slug.split("--")
     centering = True if centering_slug == "centered" else False
 
-    if "random" in name:
-        seed = int(name.replace("random", ""))
-        return BASES["random"](alias=name, centering=centering, seed=seed, **kwargs)
+    if "random" in name_slug:
+        seed = int(name_slug.replace("random", ""))
+        basis = BASES["random"](
+            alias=name_slug, centering=centering, seed=seed, **kwargs
+        )
     else:
         assert centering_slug in ["uncentered", "centered"], f"Value `{centering_slug}`"
-        return BASES[name](alias=name, centering=centering, **kwargs)
+        basis = BASES[name_slug](alias=name_slug, centering=centering, **kwargs)
+
+    setattr(basis, "__name", slug)
+
+    return basis
 
 
 @register_basis("pca")

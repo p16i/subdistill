@@ -1,5 +1,12 @@
+import typing
+import numpy.typing as npt
+
 import json
 import torch
+import numpy as np
+
+from pathlib import Path
+
 
 from . import interceptor
 
@@ -11,11 +18,56 @@ def get_device() -> str:
         return "cpu"
 
 
-def dump_json(dest: str, data: dict):
+def _string_serializer(item):
+    # return f"{item}"
+    if isinstance(item, object):
+        if hasattr(item, "__name"):
+            return getattr(item, "__name")
+        else:
+            return f"{item}"
+    else:
+        return item
+
+
+def dump_json_with_string_serializer(dest: Path, data: dict):
     with open(dest, "w") as fh:
-        json.dump(
-            data,
-            fh,
-            indent=4,
-            sort_keys=True,
-        )
+        json.dump(data, fh, indent=4, sort_keys=True, default=_string_serializer)
+
+
+def dump_json(dest: Path, data: dict):
+    with open(dest, "w") as fh:
+        json.dump(data, fh, indent=4, sort_keys=True)
+
+
+def subsample_tensors(
+    act: npt.NDArray, ctx: npt.NDArray, num_locations=20
+) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+    assert len(act.shape) == 4
+
+    bs, nc, h, w = act.shape
+
+    total_spatial_locations = w * h
+    arr_act = []
+    arr_ctx = []
+
+    for ix in range(bs):
+        _a = act[ix]
+        _c = ctx[ix]
+
+        assert _a.shape == (nc, h, w)
+
+        selected = np.random.permutation(total_spatial_locations)[:num_locations]
+        flattened_act = _a.reshape((nc, -1))
+        flattened_ctx = _c.reshape((nc, -1))
+        selected_act = flattened_act[:, selected]
+        selected_ctx = flattened_ctx[:, selected]
+
+        arr_act.append(selected_act.T)
+        arr_ctx.append(selected_ctx.T)
+
+    arr_act = np.vstack(arr_act)
+    arr_ctx = np.vstack(arr_ctx)
+
+    assert arr_act.shape == (bs * np.min([num_locations, total_spatial_locations]), nc)
+
+    return arr_act, arr_ctx

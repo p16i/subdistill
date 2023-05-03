@@ -166,3 +166,4 @@ cython_debug/
 tmp
 datasets
 artifacts
+logs
