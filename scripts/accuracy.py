@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader
 from xaikd import utils, bases, models
 
 from xaikd import constants
-from xaikd.constants import datasets
+from xaikd import datasets
 
 
 @torch.no_grad()
@@ -43,6 +43,7 @@ def compute_acc(
     "--basis-names", default=",".join(["random1--centered"] + constants.BASIS_NAMES)
 )
 def main(model_name, layer, basis_names, artifact_dir):
+    raise NotImplemented("need refactoring")
     arguments = locals()
 
     start_time = datetime.now()
@@ -53,7 +54,7 @@ def main(model_name, layer, basis_names, artifact_dir):
 
     dataset_name, arch, variant = model_name.split("-")
 
-    dataset = datasets.get_constant(dataset_name)
+    dataset = datasets.construct(dataset_name)
 
     artifact_dir = Path(artifact_dir) / model_name / layer
 
