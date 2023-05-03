@@ -1,0 +1,4 @@
+#!/bin/bash
+
+
+peotry run python "$@"
