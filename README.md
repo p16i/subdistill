@@ -34,6 +34,7 @@ Activative env `peotry shell` or run commands via `peotry run ....`
   - [x] implement ModelType and DatasetType; check pass_ctx that works with this.
   - [] verify auroc calculation
   - [] run hard pairs
+  - [] refactor colab notebook and compare results!
    
 - [] grafting vs layerwise
 
