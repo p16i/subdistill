@@ -1,7 +1,9 @@
 import typing
 
+import numpy as np
+
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 
 from torchvision import transforms
 
@@ -46,9 +48,66 @@ class DatasetConfiguration:
             batch_size=batch_size,
         )
 
+    def __str__(self) -> str:
+        return getattr(self, "__name")
 
-def get_constant(name: str) -> DatasetConfiguration:
-    return DATASETS[name]()
+
+def construct(name: str) -> DatasetConfiguration:
+    slugs = name.split("-")
+
+    assert len(slugs) in [1, 2]
+
+    dataset = None
+
+    if len(slugs) == 2:
+        base, variant = slugs
+        selected_classes = np.array(variant.split("vs")).astype(int)
+        assert len(selected_classes) == 2
+
+        base_dataset = construct(base)
+        assert np.logical_and(
+            selected_classes >= 0, selected_classes < base_dataset.num_classes
+        ).all()
+
+        dataset = TwoclassesDataset(base_dataset, selected_classes.tolist())
+    else:
+        dataset = DATASETS[name]()
+
+    setattr(dataset, "__name", name)
+
+    return dataset
+
+
+class TwoclassesDataset(DatasetConfiguration):
+    def __init__(self, base: DatasetConfiguration, selected_classes: typing.List[int]):
+        self.base = base
+        self.selected_classes = selected_classes
+
+        # remark: this might be a bit confusing
+        self.num_classes = base.num_classes
+
+        self.input_normalization = self.base.input_normalization
+        self.transformation = self.base.transformation
+
+    def loader(self, batch_size=64, num_workers=2, train_split=False):
+        ds = self.base.dataclass(
+            root=self.base.root,
+            train=train_split,
+            transform=self.transformation,
+            download=True,
+        )
+
+        selected_data_indices = np.argwhere(
+            np.isin(ds.targets, self.selected_classes)
+        ).reshape(-1)
+
+        subset = Subset(ds, list(selected_data_indices))
+
+        return DataLoader(
+            subset,
+            num_workers=num_workers,
+            batch_size=batch_size,
+        )
 
 
 @register_dataset("cifar10")

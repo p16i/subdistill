@@ -1,0 +1,10 @@
+cifar100-35vs98
+cifar100-46vs98
+cifar100-55vs72
+cifar100-11vs35
+cifar100-11vs46
+cifar100-24vs72
+cifar100-33vs35
+cifar100-27vs84
+cifar100-65vs67
+cifar100-49vs81

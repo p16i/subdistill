@@ -1,115 +1,17 @@
-import typing
 import numpy as np
-import numpy.typing as npt
 import os
 import click
 
 from datetime import datetime
 from pathlib import Path
 
-from tqdm import tqdm
-
 
 import torch
-from torch.nn import functional as F
-from zennit.attribution import Gradient
 
 from xaikd import models, utils, attributors
 from xaikd import constants
-from xaikd.constants import datasets
+from xaikd import datasets
 from xaikd import bases
-
-
-def subsample_tensors(
-    act: npt.NDArray, ctx: npt.NDArray, num_locations=20
-) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-    assert len(act.shape) == 4
-
-    bs, nc, h, w = act.shape
-
-    total_spatial_locations = w * h
-    arr_act = []
-    arr_ctx = []
-
-    for ix in range(bs):
-        _a = act[ix]
-        _c = ctx[ix]
-
-        assert _a.shape == (nc, h, w)
-
-        selected = np.random.permutation(total_spatial_locations)[:num_locations]
-        flattened_act = _a.reshape((nc, -1))
-        flattened_ctx = _c.reshape((nc, -1))
-        selected_act = flattened_act[:, selected]
-        selected_ctx = flattened_ctx[:, selected]
-
-        arr_act.append(selected_act.T)
-        arr_ctx.append(selected_ctx.T)
-
-    arr_act = np.vstack(arr_act)
-    arr_ctx = np.vstack(arr_ctx)
-
-    assert arr_act.shape == (bs * np.min([num_locations, total_spatial_locations]), nc)
-
-    return arr_act, arr_ctx
-
-
-def extract_activation_context(
-    model, layer, dataset, seed=1, device="cpu"
-) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-    dataset = datasets.get_constant(dataset)
-    data_loader = dataset.loader(train_split=True)
-
-    np.random.seed(seed)
-
-    arr_act = []
-    arr_ctx = []
-
-    try:
-        module, hook = utils.interceptor.attach_hook_intercept_output(model, layer)
-
-        attributor: Gradient
-        with attributors.make_attributor_for(
-            model, dataset.input_normalization
-        ) as attributor:
-            for batch in tqdm(data_loader):
-                x, y = batch
-                x = x.to(device)
-
-                _ = attributor.forward(
-                    x,
-                    lambda output: output
-                    * F.one_hot(y, num_classes=dataset.num_classes).to(device),
-                )
-
-                act = utils.interceptor.get_output(module)
-                rel = act.grad
-
-                output_dimensions = act.shape[1:]
-
-                # todo: check this with Gregoire again!
-                ctx = torch.where(act.abs() > 0, rel / act, 0)
-
-                assert torch.allclose(act * ctx, rel)
-
-                assert ctx.shape == act.shape
-
-                act = act.detach().cpu().numpy()
-                ctx = ctx.detach().cpu().numpy()
-
-                selected_act, selected_ctx = subsample_tensors(act, ctx)
-                arr_act.append(selected_act)
-                arr_ctx.append(selected_ctx)
-
-    finally:
-        hook.remove()
-
-    print(f"{layer}: output-dims={output_dimensions}")
-
-    arr_act = np.vstack(arr_act)
-    arr_ctx = np.vstack(arr_ctx)
-
-    return arr_act, arr_ctx
 
 
 @click.command()
@@ -119,6 +21,7 @@ def extract_activation_context(
 @click.option("--seed", default=1)
 @click.option("--selected-bases", default=",".join(constants.BASIS_NAMES))
 def main(model_name, layer, output_dir, seed, selected_bases):
+    raise NotImplemented("need refactoring")
     arguments = locals()
 
     # todo: check compatability between model and layer
@@ -127,7 +30,9 @@ def main(model_name, layer, output_dir, seed, selected_bases):
 
     click.echo(f"Device: {device}")
 
-    dataset, arch, variant = model_name.split("-")
+    dataset_name, arch, variant = model_name.split("-")
+
+    dataset = datasets.construct(dataset_name)
 
     start_time = datetime.now()
 
@@ -136,10 +41,17 @@ def main(model_name, layer, output_dir, seed, selected_bases):
     output_dir = Path(output_dir) / model_name / layer
     os.makedirs(output_dir, exist_ok=True)
 
-    model_name = models.get_model(slug=model_name).to(device)
+    model = models.get_model(name=model_name).to(device)
 
-    arr_act, arr_ctx = extract_activation_context(
-        model=model_name, layer=layer, dataset=dataset, device=device, seed=seed
+    logit_modifier = attributors.OneClassEvidence(dataset)
+
+    arr_act, arr_ctx = attributors.extract_activation_context(
+        model=model,
+        layer=layer,
+        dataset=dataset,
+        logit_modifier=logit_modifier,
+        device=device,
+        seed=seed,
     )
 
     mean_act = np.mean(arr_act, axis=0)

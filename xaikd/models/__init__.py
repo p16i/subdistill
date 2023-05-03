@@ -7,12 +7,12 @@ from torch import nn
 from . import resnet
 
 
-def get_model(slug: str):
+def get_model(name: str):
     # should we return transformations?
     # todo: add return type
     # todo: better organizing these if-else structures
-    if slug in ["cifar10-resnet18-p1", "cifar100-resnet18-p1"]:
-        dataset, arch, variant = slug.split("-")
+    if name in ["cifar10-resnet18-p1", "cifar100-resnet18-p1"]:
+        dataset, arch, variant = name.split("-")
 
         num_classes = 10 if dataset == "cifar10" else 100
 
@@ -34,20 +34,21 @@ def get_model(slug: str):
         elif dataset == "cifar100":
             url = "https://tubcloud.tu-berlin.de/s/xZ29d76Sz29M9Qa/download/resnet18-cifar100.pth"
         else:
-            raise ValueError(f"No checkpoint for `{slug}`")
+            raise ValueError(f"No checkpoint for `{name}`")
 
         model.load_state_dict(torch.hub.load_state_dict_from_url(url))
 
+        setattr(model, "__layer_dimension", resnet.ARCH_LAYER_DIMENSIONS["resnet18"])
+
     else:
-        raise ValueError(f"Unfortunately, we do NOT have a `{slug}` model")
+        raise ValueError(f"Unfortunately, we do NOT have a `{name}` model")
 
     model.eval()
+
+    setattr(model, "__name", name)
 
     return model
 
 
-def get_layer_dimensions(arch: str, layer: str) -> int:
-    if arch == "resnet18":
-        return resnet.ARCH_LAYER_DIMENSIONS["resnet18"][layer]
-    else:
-        raise NotImplementedError()
+def get_layer_dimensions(model: nn.Module, layer: str) -> int:
+    return getattr(model, "__layer_dimension")[layer]
