@@ -179,8 +179,11 @@ def main(
                 arr_ks=arr_ks,
             )
 
+            basis_output_dir = layer_output_dir / f"{basis}"
+            os.makedirs(basis_output_dir, exist_ok=True)
+
             utils.dump_json(
-                layer_output_dir / f"{basis}" / "stats.json",
+                basis_output_dir / "stats.json",
                 dict(
                     arr_auroc=arr_auroc,
                     arr_ks=arr_ks,
