@@ -158,9 +158,13 @@ def main(
         )
 
         dims = models.get_layer_dimensions(model, layer)
-        arr_ks = list(range(0, dims + 2, 2))
+        arr_ks = list(range(0, dims + 2, 4))
 
-        for basis_name in constants.BASIS_NAMES:
+        for basis_name in constants.BASIS_NAMES + [
+            "random1--centered",
+            "random2--centered",
+            "random3--centered",
+        ]:
             basis = bases.get_basis(basis_name)
 
             basis.load(layer_output_dir, device=device)
