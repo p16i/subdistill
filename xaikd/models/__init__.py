@@ -6,6 +6,7 @@ from torch import nn
 
 from . import resnet
 from torchvision.models.resnet import ResNet18_Weights
+from torchvision import models
 
 MODEL_GENERATORS = dict()
 
@@ -42,18 +43,24 @@ def get_model(name: str) -> nn.Module:
 
         model.load_state_dict(torch.hub.load_state_dict_from_url(url))
 
-    elif name == "random-resnet18-s1":
-        torch.manual_seed(1)
-        print("Using Random `resnet18` Model")
-        model = torchvision.models.resnet18()
-
     elif name == "imagenet-resnet18-tv":
         model = MODEL_GENERATORS["imagenet-resnet18"]()
+    elif "imagenet-resnet18-random" in name:
+        # use regex to parse the number
+        seed = int(name.split("-")[-1].replace("random", ""))
+        print(f"Using Random `resnet18(seed={seed})` Model")
+        torch.manual_seed(seed)
+        model = torchvision.models.resnet18()
+    elif name == "imagenet-vgg16-tv":
+        model = models.vgg16(weights=models.vgg.VGG16_Weights.IMAGENET1K_V1)
     else:
         raise ValueError(f"Unfortunately, we do NOT have a `{name}` model")
 
     setattr(model, "__name", name)
-    setattr(model, "__layer_dimension", resnet.ARCH_LAYER_DIMENSIONS[arch])
+
+    if "resnet" in name:
+        # we do this for now!
+        setattr(model, "__layer_dimension", resnet.ARCH_LAYER_DIMENSIONS[arch])
 
     model.eval()
 
