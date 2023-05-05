@@ -1,3 +1,4 @@
+import os
 import pytest
 
 from xaikd import datasets
@@ -24,7 +25,8 @@ def test_construct_subclasses_dataset():
 
 
 @pytest.mark.parametrize(
-    "name", ["cifar10-1999vs99", "cifar100-123vs999", "cifar100-2vs999", "cifar100-2999"]
+    "name",
+    ["cifar10-1999vs99", "cifar100-123vs999", "cifar100-2vs999", "cifar100-2999"],
 )
 def test_bad_construct_subclasses_dataset(name):
     with pytest.raises(AssertionError):

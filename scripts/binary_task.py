@@ -21,7 +21,7 @@ from xaikd.utils import click_types
 
 def extract_activation_and_bases(
     model: nn.Module,
-    dataset: datasets.TwoclassesDataset,
+    dataset: datasets.TwoClassesDataset,
     output_dir: Path,
     basis_names: typing.List[str],
     layer: str,
@@ -116,7 +116,7 @@ def estimate_auroc_for_basis(
 @click.option("--seed", default=1, type=int)
 def main(
     model: nn.Module,
-    dataset: datasets.TwoclassesDataset,
+    dataset: datasets.TwoClassesDataset,
     layers: str,
     output_dir: Path,
     seed: int,

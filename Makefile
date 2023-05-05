@@ -1,6 +1,9 @@
 test:
 	pytest tests/*
 
+test-data-dir:
+	ASSERT_DATADIR=1 pytest tests/datasets_datadir.py
+
 test-fast:
 	pytest -m "not slow" tests/*
 
