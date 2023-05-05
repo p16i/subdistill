@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import os
 
 import typing
 
@@ -22,6 +23,10 @@ from torchvision.models import ResNet18_Weights
 DATASETS = dict()
 
 DATADIR = Path("./datasets")
+TORCHVISION_DATASET_DOWNLOAD = int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0"))
+
+if TORCHVISION_DATASET_DOWNLOAD:
+    print(f"[warning!] TORCHVISION_DATASET_DOWNLOAD={TORCHVISION_DATASET_DOWNLOAD}")
 
 
 def register_dataset(name):
@@ -71,6 +76,7 @@ def construct(name: str) -> DatasetConfiguration:
         assert len(selected_classes) == 2
 
         base_dataset = construct(base)
+        # todo: perhaps, move this logic to TwoClassesDataset
         assert np.logical_and(
             selected_classes >= 0, selected_classes < base_dataset.num_classes
         ).all()
@@ -134,7 +140,7 @@ class CIFAR10(DatasetConfiguration):
             root=self.root,
             train=train_split,
             transform=self.transformation,
-            download=False,
+            download=TORCHVISION_DATASET_DOWNLOAD,
         )
 
 
@@ -161,7 +167,7 @@ class ImageNet(DatasetConfiguration):
             (0.22803, 0.22145, 0.216989),
         )
 
-        self.transformation = ResNet18_Weights.IMAGENET1K_V1.transforms
+        self.transformation = ResNet18_Weights.IMAGENET1K_V1.transforms()
 
         self.dataclass = tvd.ImageNet
         self.root = DATADIR / "imagenet"

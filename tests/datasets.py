@@ -5,17 +5,17 @@ from xaikd import datasets
 import numpy as np
 
 
-def test_construct_dataset():
-    const_dataset = datasets.construct("cifar10")
+@pytest.mark.parametrize("name", ["cifar10", "cifar100", "imagenet"])
+def test_construct_dataset(name):
+    dataset = datasets.construct(name)
 
-    assert hasattr(const_dataset, "num_classes")
-    assert hasattr(const_dataset, "transformation")
+    assert hasattr(dataset, "num_classes")
+    assert hasattr(dataset, "transformation")
 
 
-def test_construct_subclasses_dataset():
-    class1 = 10
-    class2 = 99
-    name = f"cifar100-{class1}vs{class2}"
+@pytest.mark.parametrize("name", ["cifar100-10vs99"])
+def test_construct_subclasses_dataset(name):
+    class1, class2 = np.array(name.split("-")[1].split("vs")).astype(int)
 
     dataset = datasets.construct(name)
 

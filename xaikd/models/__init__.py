@@ -42,6 +42,11 @@ def get_model(name: str) -> nn.Module:
 
         model.load_state_dict(torch.hub.load_state_dict_from_url(url))
 
+    elif name == "random-resnet18-s1":
+        torch.manual_seed(1)
+        print("Using Random `resnet18` Model")
+        model = torchvision.models.resnet18()
+
     elif name == "imagenet-resnet18-tv":
         model = MODEL_GENERATORS["imagenet-resnet18"]()
     else:
