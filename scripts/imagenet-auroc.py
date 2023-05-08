@@ -67,6 +67,8 @@ def compute_auroc(
 
             auroc.update(logodd, binary_targets)
 
+    click.echo(f"We have used {count} images in AUROC!")
+
     auroc = auroc.compute()
 
     return float(np.max([auroc, 1 - auroc])), float(auroc), count
