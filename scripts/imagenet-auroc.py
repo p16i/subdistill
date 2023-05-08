@@ -83,7 +83,7 @@ def compute_auroc(
     "--other-classes",
     type=str,
     required=True,
-    default="323,324,325,326,388,555,732,999",
+    default="322,323,324,325,326,388,555,732,999",
 )
 @click.option("--output-dir", default=Path("./tmp"), type=click_types.Path())
 @click.option("--skip-accuracy", is_flag=True, default=False)
@@ -111,6 +111,7 @@ def main(
     for class2 in other_classes.split(","):
         class2 = int(class2)
         if main_class == class2:
+            click.echo(f"Skip {main_class}vs{class2}!")
             continue
 
         transform = ResNet18_Weights.IMAGENET1K_V1.transforms()
