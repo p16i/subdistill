@@ -53,6 +53,11 @@ def get_model(name: str) -> nn.Module:
         model = torchvision.models.resnet18()
     elif name == "imagenet-vgg16-tv":
         model = models.vgg16(weights=models.vgg.VGG16_Weights.IMAGENET1K_V1)
+    elif "imagenet-vgg16-random" in name:
+        seed = int(name.split("-")[-1].replace("random", ""))
+        print(f"Using Random `vgg16(seed={seed})` Model")
+        torch.manual_seed(seed)
+        model = models.vgg16()
     else:
         raise ValueError(f"Unfortunately, we do NOT have a `{name}` model")
 
