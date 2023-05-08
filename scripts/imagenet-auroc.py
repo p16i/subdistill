@@ -23,6 +23,8 @@ from torch.utils.data import DataLoader, Subset, Dataset
 from torchvision.datasets import ImageNet
 from torchvision.models.resnet import ResNet18_Weights
 
+import pandas as pd
+
 
 @torch.no_grad()
 def compute_accuracy(
@@ -76,50 +78,66 @@ def compute_auroc(
 
 @click.command()
 @click.option("--model", type=click_types.Model(), required=True)
-@click.option("--classes", type=str, required=True)
+@click.option(
+    "--class-pairs",
+    type=str,
+    required=True,
+    default="322vs323,322vs324,322vs325,322vs326,322vs388,322vs555,322vs732,322vs999",
+)
 @click.option("--output-dir", default=Path("./tmp"), type=click_types.Path())
 @click.option("--skip-accuracy", is_flag=True, default=False)
-def main(model: nn.Module, classes, output_dir: Path, skip_accuracy: bool):
-    arguments = locals()
+def main(model: nn.Module, class_pairs, output_dir: Path, skip_accuracy: bool):
     start_time = datetime.now()
 
     device = utils.get_device()
 
     model = model.to(device)
 
-    c1, c2 = np.array(classes.split("vs")).astype(int)
+    model_name = getattr(model, "__name")
 
-    transform = ResNet18_Weights.IMAGENET1K_V1.transforms()
-    ds = ImageNet(root="./datasets/imagenet", split="val", transform=transform)
-
-    if not skip_accuracy:
-        accuracy = compute_accuracy(model, ds, device=device, num_classes=1000)
-        click.echo(f"Accuracy(full dataset): {accuracy:.4f}")
-
-    selected: typing.List[int] = (
-        np.argwhere(np.isin(ds.targets, [c1, c2])).reshape(-1).tolist()
-    )
-    print(f"We have {len(selected)} selected images")
-
-    auroc_corrected, auroc, count = compute_auroc(
-        model=model,
-        dataset=Subset(ds, indices=selected),
-        device=device,
-        class_pair=(c1, c2),
-    )
-
-    click.echo(
-        f"ImageNet({classes}): auroc={auroc_corrected:.4f} (before corrected: {auroc:.4f})"
-    )
-
-    output_dir = output_dir / getattr(model, "__name")
     os.makedirs(output_dir, exist_ok=True)
 
     click.echo(f"Output: {output_dir}")
 
-    utils.dump_json_with_string_serializer(
-        output_dir / f"auroc-{classes}.json",
-        dict(model=model, count=count, auroc_corrreted=auroc_corrected, auroc=auroc),
+    arr_results = []
+
+    for classes in class_pairs.split(","):
+        c1, c2 = np.array(classes.split("vs")).astype(int)
+
+        transform = ResNet18_Weights.IMAGENET1K_V1.transforms()
+        ds = ImageNet(root="./datasets/imagenet", split="val", transform=transform)
+
+        if not skip_accuracy:
+            accuracy = compute_accuracy(model, ds, device=device, num_classes=1000)
+            click.echo(f"Accuracy(full dataset): {accuracy:.4f}")
+
+        selected: typing.List[int] = (
+            np.argwhere(np.isin(ds.targets, [c1, c2])).reshape(-1).tolist()
+        )
+        print(f"We have {len(selected)} selected images")
+
+        auroc_corrected, auroc, count = compute_auroc(
+            model=model,
+            dataset=Subset(ds, indices=selected),
+            device=device,
+            class_pair=(c1, c2),
+        )
+
+        click.echo(
+            f"ImageNet({classes}): auroc={auroc_corrected:.4f} (before corrected: {auroc:.4f})"
+        )
+
+        arr_results.append(
+            dict(
+                model=model_name,
+                count=count,
+                auroc_corrreted=auroc_corrected,
+                auroc=auroc,
+            ),
+        )
+
+    pd.DataFrame(arr_results).to_csv(
+        output_dir / f"auroc-{model_name}.csv", index=False
     )
 
     time_took = datetime.now() - start_time
