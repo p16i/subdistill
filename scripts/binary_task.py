@@ -144,8 +144,8 @@ def main(
 
     val_dataloader = dataset.loader(train_split=False)
 
-    click.echo(f"Basis Names: {basis_names}")
-    click.echo(f" Centering Mode: {basis_mode}")
+    click.echo(f"Basis Centering Mode: {basis_mode}")
+    click.echo(f"with bases: {basis_names}")
 
     logodd_mod = attributors.LogOddEvidence(dataset.selected_classes, dataset)
 
