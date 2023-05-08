@@ -114,7 +114,7 @@ def estimate_auroc_for_basis(
 @click.option(
     "--layers",
     type=click_types.List(),
-    default=["layer1", "layer2", "layer3", "layer4"],
+    default="layer1,layer2,layer3,layer4",
 )
 @click.option("--output-dir", default=Path("./tmp"), type=click_types.Path())
 @click.option(
@@ -123,7 +123,7 @@ def estimate_auroc_for_basis(
 @click.option(
     "--basis-names",
     type=click_types.List(),
-    default=["pca", "prca", "prca-abs", "random1", "random2", "random3"],
+    default="pca,prca,prca-abs,random1,random2,random3",
 )
 @click.option("--seed", default=1, type=int)
 def main(
@@ -163,11 +163,17 @@ def main(
         # remark: should we set seed globally or every layer?
         np.random.seed(seed)
 
+        basis_names_with_mode = list(map(lambda s: f"{s}--{basis_mode}", basis_names))
+
+        non_random_bases = list(
+            filter(lambda s: not "random" in s, basis_names_with_mode)
+        )
+
         extract_activation_and_bases(
             model=model,
             dataset=dataset,
             output_dir=layer_output_dir,
-            basis_names=constants.BASIS_NAMES,
+            basis_names=non_random_bases,
             layer=layer,
             device=device,
         )
@@ -175,9 +181,7 @@ def main(
         dims = models.get_layer_dimensions(model, layer)
         arr_ks = list(range(0, dims + 2, 4))
 
-        for basis_name in basis_names:
-            basis_name = f"{basis_name}--{basis_mode}"
-
+        for basis_name in basis_names_with_mode:
             basis = bases.get_basis(basis_name)
 
             basis.load(layer_output_dir, device=device)
