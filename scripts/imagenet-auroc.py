@@ -76,7 +76,8 @@ def compute_auroc(
 @click.option("--model", type=click_types.Model(), required=True)
 @click.option("--classes", type=str, required=True)
 @click.option("--output-dir", default=Path("./tmp"), type=click_types.Path())
-def main(model: nn.Module, classes, output_dir: Path):
+@click.option("--skip-accuracy", is_flag=True, default=False)
+def main(model: nn.Module, classes, output_dir: Path, skip_accuracy: bool):
     arguments = locals()
     start_time = datetime.now()
 
@@ -89,8 +90,9 @@ def main(model: nn.Module, classes, output_dir: Path):
     transform = ResNet18_Weights.IMAGENET1K_V1.transforms()
     ds = ImageNet(root="./datasets/imagenet", split="val", transform=transform)
 
-    accuracy = compute_accuracy(model, ds, device=device, num_classes=1000)
-    click.echo(f"Accuracy(full dataset): {accuracy:.4f}")
+    if not skip_accuracy:
+        accuracy = compute_accuracy(model, ds, device=device, num_classes=1000)
+        click.echo(f"Accuracy(full dataset): {accuracy:.4f}")
 
     selected: typing.List[int] = (
         np.argwhere(np.isin(ds.targets, [c1, c2])).reshape(-1).tolist()
