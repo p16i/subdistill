@@ -78,15 +78,22 @@ def compute_auroc(
 
 @click.command()
 @click.option("--model", type=click_types.Model(), required=True)
+@click.option("--main-class", type=int, required=True, default=322)
 @click.option(
-    "--class-pairs",
+    "--other-classes",
     type=str,
     required=True,
-    default="322vs323,322vs324,322vs325,322vs326,322vs388,322vs555,322vs732,322vs999",
+    default="323,324,325,326,388,555,732,999",
 )
 @click.option("--output-dir", default=Path("./tmp"), type=click_types.Path())
 @click.option("--skip-accuracy", is_flag=True, default=False)
-def main(model: nn.Module, class_pairs, output_dir: Path, skip_accuracy: bool):
+def main(
+    model: nn.Module,
+    main_class: int,
+    other_classes: str,
+    output_dir: Path,
+    skip_accuracy: bool,
+):
     start_time = datetime.now()
 
     device = utils.get_device()
@@ -101,8 +108,10 @@ def main(model: nn.Module, class_pairs, output_dir: Path, skip_accuracy: bool):
 
     arr_results = []
 
-    for classes in class_pairs.split(","):
-        c1, c2 = np.array(classes.split("vs")).astype(int)
+    for class2 in other_classes.split(","):
+        class2 = int(class2)
+        if main_class == class2:
+            continue
 
         transform = ResNet18_Weights.IMAGENET1K_V1.transforms()
         ds = ImageNet(root="./datasets/imagenet", split="val", transform=transform)
@@ -112,7 +121,7 @@ def main(model: nn.Module, class_pairs, output_dir: Path, skip_accuracy: bool):
             click.echo(f"Accuracy(full dataset): {accuracy:.4f}")
 
         selected: typing.List[int] = (
-            np.argwhere(np.isin(ds.targets, [c1, c2])).reshape(-1).tolist()
+            np.argwhere(np.isin(ds.targets, [main_class, class2])).reshape(-1).tolist()
         )
         print(f"We have {len(selected)} selected images")
 
@@ -120,24 +129,25 @@ def main(model: nn.Module, class_pairs, output_dir: Path, skip_accuracy: bool):
             model=model,
             dataset=Subset(ds, indices=selected),
             device=device,
-            class_pair=(c1, c2),
+            class_pair=(main_class, class2),
         )
 
         click.echo(
-            f"ImageNet({classes}): auroc={auroc_corrected:.4f} (before corrected: {auroc:.4f})"
+            f"ImageNet({main_class}vs{class2}): auroc={auroc_corrected:.4f} (before corrected: {auroc:.4f})"
         )
 
         arr_results.append(
             dict(
                 model=model_name,
                 count=count,
+                classes=f"{main_class}vs{class2}",
                 auroc_corrreted=auroc_corrected,
                 auroc=auroc,
             ),
         )
 
     pd.DataFrame(arr_results).to_csv(
-        output_dir / f"auroc-{model_name}.csv", index=False
+        output_dir / f"auroc-{model_name}-{main_class}.csv", index=False
     )
 
     time_took = datetime.now() - start_time
