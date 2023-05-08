@@ -18,3 +18,8 @@ class DatasetConfiguration(click.ParamType):
 class Path(click.ParamType):
     def convert(self, value, param, ctx):
         return pathlib.Path(value)
+
+
+class List(click.ParamType):
+    def convert(self, value, param, ctx):
+        return value.split(",")

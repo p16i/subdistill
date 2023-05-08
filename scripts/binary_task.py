@@ -111,26 +111,41 @@ def estimate_auroc_for_basis(
 @click.command()
 @click.option("--model", type=click_types.Model(), required=True)
 @click.option("--dataset", type=click_types.DatasetConfiguration(), required=True)
-@click.option("--layers", default=",".join(["layer1", "layer2", "layer3", "layer4"]))
+@click.option(
+    "--layers",
+    type=click_types.List(),
+    default=["layer1", "layer2", "layer3", "layer4"],
+)
 @click.option("--output-dir", default=Path("./tmp"), type=click_types.Path())
+@click.option(
+    "--basis-mode", default="centered", type=click.Choice(["centered", "uncentered"])
+)
+@click.option(
+    "--basis-names",
+    type=click_types.List(),
+    default=["pca", "prca", "prca-abs", "random1", "random2", "random3"],
+)
 @click.option("--seed", default=1, type=int)
 def main(
     model: nn.Module,
     dataset: datasets.TwoClassesDataset,
-    layers: str,
+    layers: typing.List[str],
     output_dir: Path,
     seed: int,
+    basis_mode: str,
+    basis_names: typing.List[str],
 ):
     arguments = locals()
     start_time = datetime.now()
 
     device = utils.get_device()
 
-    layers: typing.List[str] = layers.split(",")
-
     model = model.to(device)
 
     val_dataloader = dataset.loader(train_split=False)
+
+    click.echo(f"Basis Names: {basis_names}")
+    click.echo(f" Centering Mode: {basis_mode}")
 
     logodd_mod = attributors.LogOddEvidence(dataset.selected_classes, dataset)
 
@@ -160,11 +175,9 @@ def main(
         dims = models.get_layer_dimensions(model, layer)
         arr_ks = list(range(0, dims + 2, 4))
 
-        for basis_name in constants.BASIS_NAMES + [
-            "random1--centered",
-            "random2--centered",
-            "random3--centered",
-        ]:
+        for basis_name in basis_names:
+            basis_name = f"{basis_name}--{basis_mode}"
+
             basis = bases.get_basis(basis_name)
 
             basis.load(layer_output_dir, device=device)
