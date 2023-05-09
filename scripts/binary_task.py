@@ -126,7 +126,7 @@ def estimate_auroc_for_basis(
     default="pca,prca,prca-abs,random1,random2,random3",
 )
 @click.option("--seed", default=1, type=int)
-@click.option("--num-training-samples", default=None)
+@click.option("--num-training-samples", default=None, type=int)
 def main(
     model: nn.Module,
     dataset: str,
