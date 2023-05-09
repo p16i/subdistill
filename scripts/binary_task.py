@@ -126,6 +126,7 @@ def estimate_auroc_for_basis(
     default="pca,prca,prca-abs,random1,random2,random3",
 )
 @click.option("--seed", default=1, type=int)
+@click.option("--num-training-samples", default=None)
 def main(
     model: nn.Module,
     dataset: datasets.TwoClassesDataset,
@@ -134,6 +135,7 @@ def main(
     seed: int,
     basis_mode: str,
     basis_names: typing.List[str],
+    num_training_samples: typing.Union[None, int],
 ):
     arguments = locals()
     start_time = datetime.now()
@@ -151,13 +153,16 @@ def main(
 
     original_auroc = estimate_auroc(model, val_dataloader, logodd_mod, device)
 
+    dataset_slug = getattr(dataset, "__name")
+    if num_training_samples is not None:
+        dataset_slug = f"{dataset_slug}--n{num_training_samples}"
+
+    output_dir = Path(output_dir) / dataset_slug / getattr(model, "__name")
+
+    click.echo(f"Output: {output_dir}")
+
     for layer in layers:
-        layer_output_dir = (
-            Path(output_dir)
-            / getattr(dataset, "__name")
-            / getattr(model, "__name")
-            / layer
-        )
+        layer_output_dir = output_dir / layer
         os.makedirs(layer_output_dir, exist_ok=True)
 
         # remark: should we set seed globally or every layer?
