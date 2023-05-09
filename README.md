@@ -30,13 +30,29 @@ Activative env `peotry shell` or run commands via `peotry run ....`
 - [x] make `act_mean` save in the root!
 - [x] run `extract` and `accuracy` scripts (CIFAR100, 4 layers)
 - [x] verify accuracies via jupyter notebook
-- [] two-classes analysis (focus on CIFAR100)
+- [x] two-classes analysis (focus on CIFAR100)
   - [x] implement ModelType and DatasetType; check pass_ctx that works with this.
-  - [] verify auroc calculation
-  - [] run hard pairs
-  - [] refactor colab notebook and compare results!
+  - [x] run hard pairs
+  - [x] refactor colab notebook and compare results!
+  - [x] verify auroc calculation
+  - [x] run with random bases
+- [] two-class with imagenet (monarch vs ...)
+    - [x] ringlet (322) vs {monarch (323), notebook (681)}: https://github.com/p16i/concept-xai/blob/dev/cxai/config/imagenet-label-mapping.csv#L324
+    - [x] where imagenet are in the cluster!; it is at `/home/space/datasets`
+        - actually, for torchvision, it is at `/home/space/datasets/imagenet_torchvision/data`
+        - [] check with Lorenz how to use imagenet on the cluster
+    - [x] cross-check dev run cifar100-35vs98
+      ```
+      diff ./tmp/dev/cifar100-35vs98/cifar100-resnet18-p1/layer2/pca--centered/stats.json ./artifacts/2023-05-S5/experiment-binary-task/cifar100-35vs98/cifar100-resnet18-p1/layer2/pca--centered/stats.json 
+      ```
+    - [] why auroc is very high? 
+      - [] confusion mat for butterfly classes
+    - [] cross-check everything again before running experiments!
+
    
 - [] grafting vs layerwise
+  - remark: don't fotget shuffle and frozen parameters.
+  - [] baseline: train from stach; hinston disllation
 
 
 **Remarks**
