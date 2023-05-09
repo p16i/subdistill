@@ -140,12 +140,17 @@ class TwoClassesDataset(DatasetConfiguration):
     def loader(self, batch_size=64, num_workers=2, train_split=False):
         ds = self.create_dataset(train_split=train_split)
 
+        labels = ds.targets
+
         if train_split and self.num_train_samples is not None:
-            pass
-            selected_data_indices = None
+            selected_data_indices = selected_subset_samples_for_classes(
+                np.array(labels),
+                self.selected_classes,
+                samples_per_class=self.num_train_samples,
+            )
         else:
             selected_data_indices = np.argwhere(
-                np.isin(ds.targets, self.selected_classes)
+                np.isin(labels, self.selected_classes)
             ).reshape(-1)
 
         subset = Subset(ds, list(selected_data_indices))

@@ -1,8 +1,12 @@
+from contextlib import nullcontext
+
 import os
 import pytest
 
 from xaikd import datasets
 import numpy as np
+
+from torchvision.datasets import CIFAR10
 
 
 @pytest.mark.parametrize("name", ["cifar10", "cifar100", "imagenet"])
@@ -66,3 +70,43 @@ def test_selected_subset_samples_for_classes_adversarial():
         throw_exception = True
 
     assert throw_exception
+
+
+@pytest.mark.parametrize("train_split", [True, False])
+def test_subset_with_without_num_samples(train_split):
+    selected_classes = [0, 2]
+    num_train_samples = 7
+
+    dataset = datasets.construct("cifar100")
+
+    subset_full = datasets.TwoClassesDataset(dataset, selected_classes=selected_classes)
+
+    subset_small = datasets.TwoClassesDataset(
+        dataset, selected_classes=selected_classes, num_train_samples=7
+    )
+
+    def count_in_loader(dl: datasets.DataLoader):
+        count = 0
+
+        for _, y in dl:
+            count += len(y)
+
+        return count
+
+    expected = np.isin(
+        dataset.create_dataset(train_split=train_split).targets, selected_classes
+    ).sum()
+
+    with nullcontext():
+        assert count_in_loader(subset_full.loader(train_split=train_split)) == expected
+
+    with nullcontext():
+        if train_split:
+            assert count_in_loader(
+                subset_small.loader(train_split=train_split)
+            ) == num_train_samples * len(selected_classes)
+        else:
+            assert (
+                count_in_loader(subset_small.loader(train_split=train_split))
+                == expected
+            )
