@@ -21,7 +21,7 @@ from xaikd.utils import click_types
 
 def extract_activation_and_bases(
     model: nn.Module,
-    dataset: datasets.TwoclassesDataset,
+    dataset: datasets.TwoClassesDataset,
     output_dir: Path,
     basis_names: typing.List[str],
     layer: str,
@@ -111,26 +111,41 @@ def estimate_auroc_for_basis(
 @click.command()
 @click.option("--model", type=click_types.Model(), required=True)
 @click.option("--dataset", type=click_types.DatasetConfiguration(), required=True)
-@click.option("--layers", default=",".join(["layer1", "layer2", "layer3", "layer4"]))
+@click.option(
+    "--layers",
+    type=click_types.List(),
+    default="layer1,layer2,layer3,layer4",
+)
 @click.option("--output-dir", default=Path("./tmp"), type=click_types.Path())
+@click.option(
+    "--basis-mode", default="centered", type=click.Choice(["centered", "uncentered"])
+)
+@click.option(
+    "--basis-names",
+    type=click_types.List(),
+    default="pca,prca,prca-abs,random1,random2,random3",
+)
 @click.option("--seed", default=1, type=int)
 def main(
     model: nn.Module,
-    dataset: datasets.TwoclassesDataset,
-    layers: str,
+    dataset: datasets.TwoClassesDataset,
+    layers: typing.List[str],
     output_dir: Path,
     seed: int,
+    basis_mode: str,
+    basis_names: typing.List[str],
 ):
     arguments = locals()
     start_time = datetime.now()
 
     device = utils.get_device()
 
-    layers: typing.List[str] = layers.split(",")
-
     model = model.to(device)
 
     val_dataloader = dataset.loader(train_split=False)
+
+    click.echo(f"Basis Centering Mode: {basis_mode}")
+    click.echo(f"with bases: {basis_names}")
 
     logodd_mod = attributors.LogOddEvidence(dataset.selected_classes, dataset)
 
@@ -148,11 +163,17 @@ def main(
         # remark: should we set seed globally or every layer?
         np.random.seed(seed)
 
+        basis_names_with_mode = list(map(lambda s: f"{s}--{basis_mode}", basis_names))
+
+        non_random_bases = list(
+            filter(lambda s: not "random" in s, basis_names_with_mode)
+        )
+
         extract_activation_and_bases(
             model=model,
             dataset=dataset,
             output_dir=layer_output_dir,
-            basis_names=constants.BASIS_NAMES,
+            basis_names=non_random_bases,
             layer=layer,
             device=device,
         )
@@ -160,11 +181,7 @@ def main(
         dims = models.get_layer_dimensions(model, layer)
         arr_ks = list(range(0, dims + 2, 4))
 
-        for basis_name in constants.BASIS_NAMES + [
-            "random1--centered",
-            "random2--centered",
-            "random3--centered",
-        ]:
+        for basis_name in basis_names_with_mode:
             basis = bases.get_basis(basis_name)
 
             basis.load(layer_output_dir, device=device)

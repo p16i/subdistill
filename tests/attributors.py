@@ -14,13 +14,9 @@ NUMBER_OF_SPATIAL_LOCATIONS = 8
 
 
 class CIFAR100VerySmall(datasets.CIFAR100):
+
     def loader(self, batch_size=64, num_workers=2, train_split=False):
-        ds = self.dataclass(
-            root=self.root,
-            train=train_split,
-            transform=self.transformation,
-            download=True,
-        )
+        ds = self.create_dataset(train_split=train_split)
 
         np.random.seed(1)
 
@@ -79,7 +75,7 @@ def test_logit_modifier_oneclass():
 
 @pytest.mark.parametrize("target", ("abc", None))
 def test_logit_modifier_logodd(target):
-    dataset: datasets.TwoclassesDataset = datasets.construct("cifar10-1vs8")
+    dataset: datasets.TwoClassesDataset = datasets.construct("cifar10-1vs8")
 
     all_classes = set(range(dataset.num_classes))
     class1, class2 = dataset.selected_classes

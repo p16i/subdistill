@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torchvision import models
+from torchvision import models, transforms
 
 from zennit.torchvision import ResNetCanonizer
 from zennit.composites import EpsilonGammaBox
@@ -20,9 +20,14 @@ from xaikd import utils
 from xaikd import datasets
 
 
-def make_attributor_for(model: nn.Module, input_transform: typing.Callable) -> Gradient:
+def make_attributor_for(
+    model: nn.Module,
+    input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]],
+) -> Gradient:
     # remark this only works for cifar10 and cifar100 for now
     assert type(model) == models.resnet.ResNet
+
+    input_transform = transforms.Normalize(*input_statistics)
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
@@ -51,11 +56,11 @@ class OneClassEvidence(LogitModifier):
 
 class LogOddEvidence(LogitModifier):
     def __init__(
-        self, classes: typing.List[int], dataset: datasets.TwoclassesDataset
+        self, classes: typing.List[int], dataset: datasets.TwoClassesDataset
     ) -> None:
         assert len(classes) == 2
 
-        assert isinstance(dataset, datasets.TwoclassesDataset)
+        assert isinstance(dataset, datasets.TwoClassesDataset)
 
         self.classes = classes
         self.dataset = dataset
@@ -85,7 +90,7 @@ def extract_activation_context(
     try:
         module, hook = utils.interceptor.attach_hook_intercept_output(model, layer)
 
-        with make_attributor_for(model, dataset.input_normalization) as attributor:
+        with make_attributor_for(model, dataset.input_statistics) as attributor:
             for batch in tqdm(data_loader):
                 x, y = batch
                 x = x.to(device)

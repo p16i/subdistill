@@ -1,0 +1,159 @@
+import os
+import typing
+import numpy as np
+import click
+
+from torch import nn
+from tqdm import tqdm
+
+from pathlib import Path
+
+from datetime import datetime
+
+import torchmetrics
+
+from xaikd import datasets, utils
+from xaikd.utils import click_types
+
+import torch
+from torchmetrics.classification import BinaryAUROC
+
+from torch.utils.data import DataLoader, Subset, Dataset
+
+from torchvision.datasets import ImageNet
+from torchvision.models.resnet import ResNet18_Weights
+
+import pandas as pd
+
+
+@torch.no_grad()
+def compute_accuracy(
+    model: nn.Module,
+    dataset: Dataset,
+    device: str,
+    num_classes: int,
+    num_workers=4,
+    batch_size=256,
+) -> float:
+    dl = DataLoader(dataset, num_workers=num_workers, batch_size=batch_size)
+
+    acc = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
+    for x, y in tqdm(dl):
+        x = x.to(device)
+
+        logits = model(x).detach().cpu()
+
+        acc.update(logits, y)
+
+    return float(acc.compute())
+
+
+def compute_auroc(
+    model: nn.Module, dataset: Dataset, class_pair: typing.Tuple[int, int], device: str
+) -> typing.Tuple[float, float, int]:
+    val_loader = DataLoader(dataset, batch_size=128, num_workers=2)
+
+    click.echo(f"We have {len(val_loader)} items in the dataloader for AUROC!")
+
+    c1, c2 = class_pair
+
+    auroc = BinaryAUROC()
+    with torch.no_grad():
+        count = 0
+        for x, y in tqdm(val_loader):
+            logits = model(x.to(device)).detach().cpu()
+
+            logodd = logits[:, c1] - logits[:, c2]
+            count += y.shape[0]
+            binary_targets = torch.where(y == c1, 0, 1)
+
+            auroc.update(logodd, binary_targets)
+
+    click.echo(f"We have used {count} images in AUROC!")
+
+    auroc = auroc.compute()
+
+    return float(np.max([auroc, 1 - auroc])), float(auroc), count
+
+
+@click.command()
+@click.option("--model", type=click_types.Model(), required=True)
+@click.option("--main-class", type=int, required=True, default=322)
+@click.option(
+    "--other-classes",
+    type=str,
+    required=True,
+    default="322,323,324,325,326,388,555,732,999",
+)
+@click.option("--output-dir", default=Path("./tmp"), type=click_types.Path())
+@click.option("--skip-accuracy", is_flag=True, default=False)
+def main(
+    model: nn.Module,
+    main_class: int,
+    other_classes: str,
+    output_dir: Path,
+    skip_accuracy: bool,
+):
+    start_time = datetime.now()
+
+    device = utils.get_device()
+
+    model = model.to(device)
+
+    model_name = getattr(model, "__name")
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    click.echo(f"Output: {output_dir}")
+
+    arr_results = []
+
+    for class2 in other_classes.split(","):
+        class2 = int(class2)
+        if main_class == class2:
+            click.echo(f"Skip {main_class}vs{class2}!")
+            continue
+
+        transform = ResNet18_Weights.IMAGENET1K_V1.transforms()
+        ds = ImageNet(root="./datasets/imagenet", split="val", transform=transform)
+
+        if not skip_accuracy:
+            accuracy = compute_accuracy(model, ds, device=device, num_classes=1000)
+            click.echo(f"Accuracy(full dataset): {accuracy:.4f}")
+
+        selected: typing.List[int] = (
+            np.argwhere(np.isin(ds.targets, [main_class, class2])).reshape(-1).tolist()
+        )
+        print(f"We have {len(selected)} selected images")
+
+        auroc_corrected, auroc, count = compute_auroc(
+            model=model,
+            dataset=Subset(ds, indices=selected),
+            device=device,
+            class_pair=(main_class, class2),
+        )
+
+        click.echo(
+            f"ImageNet({main_class}vs{class2}): auroc={auroc_corrected:.4f} (before corrected: {auroc:.4f})"
+        )
+
+        arr_results.append(
+            dict(
+                model=model_name,
+                count=count,
+                classes=f"{main_class}vs{class2}",
+                auroc_corrreted=auroc_corrected,
+                auroc=auroc,
+            ),
+        )
+
+    pd.DataFrame(arr_results).to_csv(
+        output_dir / f"auroc-{model_name}-{main_class}.csv", index=False
+    )
+
+    time_took = datetime.now() - start_time
+    click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
+
+
+if __name__ == "__main__":
+    main()

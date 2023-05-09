@@ -11,4 +11,4 @@ jobs:
           python-version: 3.9
       - run: curl -sSL https://install.python-poetry.org | python3 -
       - run: poetry install
-      - run: poetry run pytest -m "not slow and not gpu" tests/*
+      - run: TORCHVISION_DATASET_DOWNLOAD=1 poetry run pytest -m "not slow and not gpu" tests/*

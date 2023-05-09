@@ -236,11 +236,9 @@ class Random(Basis):
             device (str, optional): _description_. Defaults to "cpu".
         """
 
-        mean = np.load(Path(artifact_dir) / "act_mean.npy")
+        mean = torch.from_numpy(np.load(Path(artifact_dir) / "act_mean.npy")).float()
 
-        if self.centering:
-            mean = torch.from_numpy(mean).float()
-        else:
+        if not self.centering:
             mean = torch.zeros_like(mean)
 
         mean = mean.to(device)

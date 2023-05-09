@@ -1,9 +1,14 @@
+from abc import ABC, abstractmethod
+import os
+
 import typing
+
+from pathlib import Path
 
 import numpy as np
 
 from torch import nn
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, Subset, Dataset
 
 from torchvision import transforms
 
@@ -12,8 +17,16 @@ from dataclasses import dataclass
 
 from torchvision import datasets as tvd
 
+from torchvision.models import ResNet18_Weights
+
 
 DATASETS = dict()
+
+DATADIR = Path("./datasets")
+TORCHVISION_DATASET_DOWNLOAD = int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0"))
+
+if TORCHVISION_DATASET_DOWNLOAD:
+    print(f"[warning!] TORCHVISION_DATASET_DOWNLOAD={TORCHVISION_DATASET_DOWNLOAD}")
 
 
 def register_dataset(name):
@@ -29,21 +42,19 @@ def register_dataset(name):
 
 
 @dataclass
-class DatasetConfiguration:
+class DatasetConfiguration(ABC):
     num_classes: int
-    input_normalization: typing.Callable
+    input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]]
     transformation: typing.Callable
     dataclass: typing.Callable
-    root: str = "./datasets"
+
+    @abstractmethod
+    def create_dataset(slef, train_split=False) -> Dataset:
+        pass
 
     def loader(self, batch_size=64, num_workers=2, train_split=False):
         return DataLoader(
-            self.dataclass(
-                root=self.root,
-                train=train_split,
-                transform=self.transformation,
-                download=True,
-            ),
+            self.create_dataset(train_split=train_split),
             num_workers=num_workers,
             batch_size=batch_size,
         )
@@ -65,11 +76,12 @@ def construct(name: str) -> DatasetConfiguration:
         assert len(selected_classes) == 2
 
         base_dataset = construct(base)
+        # todo: perhaps, move this logic to TwoClassesDataset
         assert np.logical_and(
             selected_classes >= 0, selected_classes < base_dataset.num_classes
         ).all()
 
-        dataset = TwoclassesDataset(base_dataset, selected_classes.tolist())
+        dataset = TwoClassesDataset(base_dataset, selected_classes.tolist())
     else:
         dataset = DATASETS[name]()
 
@@ -78,7 +90,7 @@ def construct(name: str) -> DatasetConfiguration:
     return dataset
 
 
-class TwoclassesDataset(DatasetConfiguration):
+class TwoClassesDataset(DatasetConfiguration):
     def __init__(self, base: DatasetConfiguration, selected_classes: typing.List[int]):
         self.base = base
         self.selected_classes = selected_classes
@@ -86,16 +98,14 @@ class TwoclassesDataset(DatasetConfiguration):
         # remark: this might be a bit confusing
         self.num_classes = base.num_classes
 
-        self.input_normalization = self.base.input_normalization
+        self.input_statistics = self.base.input_statistics
         self.transformation = self.base.transformation
 
+    def create_dataset(self, train_split=False) -> Dataset:
+        return self.base.create_dataset(train_split=train_split)
+
     def loader(self, batch_size=64, num_workers=2, train_split=False):
-        ds = self.base.dataclass(
-            root=self.base.root,
-            train=train_split,
-            transform=self.transformation,
-            download=True,
-        )
+        ds = self.create_dataset(train_split=train_split)
 
         selected_data_indices = np.argwhere(
             np.isin(ds.targets, self.selected_classes)
@@ -115,18 +125,23 @@ class TwoclassesDataset(DatasetConfiguration):
 class CIFAR10(DatasetConfiguration):
     def __init__(self):
         self.num_classes = 10
-        self.input_normalization = transforms.Normalize(
-            [0.4914, 0.4822, 0.4465], [0.2023, 0.1994, 0.2010]
-        )
+        self.input_statistics = ((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 
         self.transformation = transforms.Compose(
-            [
-                transforms.ToTensor(),
-                self.input_normalization,
-            ]
+            [transforms.ToTensor(), transforms.Normalize(*self.input_statistics)]
         )
 
         self.dataclass = tvd.CIFAR10
+
+        self.root = DATADIR / "cifar10"
+
+    def create_dataset(self, train_split=False) -> Dataset:
+        return self.dataclass(
+            root=self.root,
+            train=train_split,
+            transform=self.transformation,
+            download=TORCHVISION_DATASET_DOWNLOAD,
+        )
 
 
 @register_dataset("cifar100")
@@ -138,3 +153,28 @@ class CIFAR100(CIFAR10):
         self.num_classes = 100
         # remark: transformation (Normalization) of CIFAR100 should be different from CIFAR10
         self.dataclass = tvd.CIFAR100
+        self.root = DATADIR / "cifar100"
+
+
+@register_dataset("imagenet")
+@dataclass(init=False)
+class ImageNet(DatasetConfiguration):
+    def __init__(self):
+        self.num_classes = 1000
+        # Ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L91
+        self.input_statistics = (
+            (0.43216, 0.394666, 0.37645),
+            (0.22803, 0.22145, 0.216989),
+        )
+
+        self.transformation = ResNet18_Weights.IMAGENET1K_V1.transforms()
+
+        self.dataclass = tvd.ImageNet
+        self.root = DATADIR / "imagenet"
+
+    def create_dataset(self, train_split=False) -> Dataset:
+        return self.dataclass(
+            root=self.root,
+            split="train" if train_split else "val",
+            transform=self.transformation,
+        )
