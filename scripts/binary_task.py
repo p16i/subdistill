@@ -110,7 +110,7 @@ def estimate_auroc_for_basis(
 
 @click.command()
 @click.option("--model", type=click_types.Model(), required=True)
-@click.option("--dataset", type=click_types.DatasetConfiguration(), required=True)
+@click.option("--dataset", type=str, required=True)
 @click.option(
     "--layers",
     type=click_types.List(),
@@ -129,7 +129,7 @@ def estimate_auroc_for_basis(
 @click.option("--num-training-samples", default=None)
 def main(
     model: nn.Module,
-    dataset: datasets.TwoClassesDataset,
+    dataset: str,
     layers: typing.List[str],
     output_dir: Path,
     seed: int,
@@ -143,6 +143,10 @@ def main(
     device = utils.get_device()
 
     model = model.to(device)
+
+    dataset: datasets.TwoClassesDataset = datasets.construct(
+        dataset, num_training_samples=num_training_samples
+    )
 
     val_dataloader = dataset.loader(train_split=False)
 
