@@ -40,16 +40,34 @@ Activative env `peotry shell` or run commands via `peotry run ....`
     - [x] ringlet (322) vs {monarch (323), notebook (681)}: https://github.com/p16i/concept-xai/blob/dev/cxai/config/imagenet-label-mapping.csv#L324
     - [x] where imagenet are in the cluster!; it is at `/home/space/datasets`
         - actually, for torchvision, it is at `/home/space/datasets/imagenet_torchvision/data`
-        - [] check with Lorenz how to use imagenet on the cluster
+        - [] ~~check with Lorenz how to use imagenet on the cluster~~
     - [x] cross-check dev run cifar100-35vs98
       ```
       diff ./tmp/dev/cifar100-35vs98/cifar100-resnet18-p1/layer2/pca--centered/stats.json ./artifacts/2023-05-S5/experiment-binary-task/cifar100-35vs98/cifar100-resnet18-p1/layer2/pca--centered/stats.json 
       ```
     - [] why auroc is very high? 
-      - [] confusion mat for butterfly classes
-    - [] cross-check everything again before running experiments!
+      - [] ~~confusion mat for butterfly classes~~
+    - [x] cross-check everything again before running experiments!
+    - Experiment 1: Binary Task from `cifar100` and `imagenet`
 
-   
+      **Conclusion**
+        - `prca-abs` shows promising trends, especially layer3.
+          - for early layer, not much different; perhaps, generic features?
+        - there is a klink in the accuracy plot. Why?
+        - `prca` (perhaps `prca-abs` as well) is sensitive to the way we compute `logodd`; order matter; see`imagenet-324vs325` vs `imagenet-325vs324`
+    - Experiment 2: influence of number training samples used.
+
+      
+
+      **Hypothesis:** incorporting relevance allows us to find a meaningful subspace with much less data.
+
+      **Conclusion:**
+
+      - ...
+
+      *Coding* (`branch=s5-binary-task-few-short`)
+      - generalize subset dataset, output dir `imagenet-2vs5--n20`;
+  - 
 - [] grafting vs layerwise
   - remark: don't fotget shuffle and frozen parameters.
   - [] baseline: train from stach; hinston disllation
