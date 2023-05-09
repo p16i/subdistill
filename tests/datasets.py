@@ -31,3 +31,38 @@ def test_construct_subclasses_dataset(name):
 def test_bad_construct_subclasses_dataset(name):
     with pytest.raises(AssertionError):
         _ = datasets.construct(name)
+
+
+@pytest.mark.parametrize(
+    "classes,num_samples",
+    [
+        ([0, 2], 3),
+        ([0, 1], 2),
+    ],
+)
+def test_selected_subset_samples_for_classes(classes, num_samples):
+    labels = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2])
+
+    counts = np.bincount(labels)
+
+    indices = datasets.selected_subset_samples_for_classes(labels, classes, num_samples)
+
+    selected_labels = labels[indices]
+
+    assert np.isin(selected_labels, classes).all()
+
+    for cix in classes:
+        expected = np.min([counts[cix], num_samples])
+        assert (selected_labels == cix).sum() == expected
+
+
+def test_selected_subset_samples_for_classes_adversarial():
+    labels = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2])
+
+    throw_exception = False
+    try:
+        indices = datasets.selected_subset_samples_for_classes(labels, [0, 10], 2)
+    except:
+        throw_exception = True
+
+    assert throw_exception

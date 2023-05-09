@@ -6,6 +6,7 @@ import typing
 from pathlib import Path
 
 import numpy as np
+import numpy.typing as npt
 
 from torch import nn
 from torch.utils.data import DataLoader, Subset, Dataset
@@ -39,6 +40,31 @@ def register_dataset(name):
         return cls
 
     return wrapped
+
+
+def selected_subset_samples_for_classes(
+    labels: npt.NDArray,
+    classes: typing.List[int],
+    samples_per_class: int,
+    verbose=False,
+) -> npt.NDArray:
+    selected = []
+
+    assert set(classes).intersection(labels.tolist()) == set(classes)
+
+    for cix in classes:
+        indices = np.argwhere(labels == cix).reshape(-1)
+
+        if indices.shape[0] < samples_per_class and verbose:
+            print(
+                f"[warning]: Class {cix} only has {indices.shape[0]} samples but we want {samples_per_class} samples!"
+            )
+
+        permuted_indices = np.random.permutation(indices)
+
+        selected.extend(permuted_indices[:samples_per_class].tolist())
+
+    return np.array(selected)
 
 
 @dataclass
@@ -91,7 +117,12 @@ def construct(name: str) -> DatasetConfiguration:
 
 
 class TwoClassesDataset(DatasetConfiguration):
-    def __init__(self, base: DatasetConfiguration, selected_classes: typing.List[int]):
+    def __init__(
+        self,
+        base: DatasetConfiguration,
+        selected_classes: typing.List[int],
+        num_train_samples: typing.Union[None, int] = None,
+    ):
         self.base = base
         self.selected_classes = selected_classes
 
@@ -101,15 +132,21 @@ class TwoClassesDataset(DatasetConfiguration):
         self.input_statistics = self.base.input_statistics
         self.transformation = self.base.transformation
 
+        self.num_train_samples = num_train_samples
+
     def create_dataset(self, train_split=False) -> Dataset:
         return self.base.create_dataset(train_split=train_split)
 
     def loader(self, batch_size=64, num_workers=2, train_split=False):
         ds = self.create_dataset(train_split=train_split)
 
-        selected_data_indices = np.argwhere(
-            np.isin(ds.targets, self.selected_classes)
-        ).reshape(-1)
+        if train_split and self.num_train_samples is not None:
+            pass
+            selected_data_indices = None
+        else:
+            selected_data_indices = np.argwhere(
+                np.isin(ds.targets, self.selected_classes)
+            ).reshape(-1)
 
         subset = Subset(ds, list(selected_data_indices))
 
