@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import re
 import os
 
 import typing
@@ -40,6 +41,24 @@ def register_dataset(name):
         return cls
 
     return wrapped
+
+
+def _parse_dataset_name(
+    name: str,
+) -> typing.Tuple[str, typing.Union[None, str]]:
+    # possible names:
+    # cifar100, cifar100-5vs90
+
+    slugs = name.split("-")
+
+    variant = None
+
+    if len(slugs) == 2:
+        variant = slugs[-1]
+
+    dataset_name = slugs[0]
+
+    return dataset_name, variant
 
 
 def selected_subset_samples_for_classes(
@@ -89,27 +108,25 @@ class DatasetConfiguration(ABC):
         return getattr(self, "__name")
 
 
-def construct(name: str) -> DatasetConfiguration:
-    slugs = name.split("-")
+def construct(name: str, num_training_samples=None) -> DatasetConfiguration:
+    dataset_name, variant = _parse_dataset_name(name)
 
-    assert len(slugs) in [1, 2]
+    dataset_cls = DATASETS[dataset_name]
 
-    dataset = None
-
-    if len(slugs) == 2:
-        base, variant = slugs
-        selected_classes = np.array(variant.split("vs")).astype(int)
-        assert len(selected_classes) == 2
-
-        base_dataset = construct(base)
-        # todo: perhaps, move this logic to TwoClassesDataset
-        assert np.logical_and(
-            selected_classes >= 0, selected_classes < base_dataset.num_classes
-        ).all()
-
-        dataset = TwoClassesDataset(base_dataset, selected_classes.tolist())
+    if variant is not None:
+        # 55vs33
+        match = re.match(r"(\d+)vs(\d+)", variant)
+        if match:
+            selected_classes = [int(match.group(1)), int(match.group(2))]
+            dataset = TwoClassesDataset(
+                dataset_cls(), selected_classes, num_train_samples=num_training_samples
+            )
+        else:
+            raise ValueError(f"{dataset_name} has no variant `{variant}`")
     else:
-        dataset = DATASETS[name]()
+        if num_training_samples is not None:
+            print(f"[warning: num_training_samples has NO effect on {name}")
+        dataset = dataset_cls()
 
     setattr(dataset, "__name", name)
 
@@ -123,6 +140,11 @@ class TwoClassesDataset(DatasetConfiguration):
         selected_classes: typing.List[int],
         num_train_samples: typing.Union[None, int] = None,
     ):
+        assert np.logical_and(
+            np.array(selected_classes) >= 0,
+            np.array(selected_classes) < base.num_classes,
+        ).all()
+
         self.base = base
         self.selected_classes = selected_classes
 
