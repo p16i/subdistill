@@ -72,7 +72,7 @@ class PRCAGreedyLeaner:
                 with torch.no_grad():
                     ov = v
 
-                    # update v
+                    # update v with gradient `ascent`.
                     v = v + v.grad
                     v = (I - UUt) @ v
                     v = v / torch.linalg.norm(v)
@@ -125,4 +125,5 @@ class PRCAGreedyLeaner:
 
         assert len(obj.shape) == 1 and obj.shape[0] == activation.shape[0]
 
-        return obj.mean()
+        # convert the problem into maximization problem.
+        return -obj.mean()
