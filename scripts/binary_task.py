@@ -123,7 +123,7 @@ def estimate_auroc_for_basis(
 @click.option(
     "--basis-names",
     type=click_types.List(),
-    default="pca,prca,prca-abs,random1,random2,random3",
+    default="pca,prca,prca-abs,prca-recon,random1,random2,random3",
 )
 @click.option("--seed", default=1, type=int)
 @click.option("--num-training-samples", default=None, type=int)
@@ -188,7 +188,7 @@ def main(
         )
 
         dims = models.get_layer_dimensions(model, layer)
-        arr_ks = list(range(0, dims + 2, 4))
+        arr_ks = [0, 1, 2, 3] + list(range(4, dims + 2, 4))
 
         for basis_name in basis_names_with_mode:
             basis = bases.get_basis(basis_name)
