@@ -66,7 +66,7 @@ Activative env `peotry shell` or run commands via `peotry run ....`
       - ...
 
       *Coding* (`branch=s5-binary-task-few-short`)
-      - generalize subset dataset, output dir `imagenet-2vs5--n20`;
+      - generalize subset dataset, output dir `imagenet-2vs5--n20`; e
   - 
 - [] grafting vs layerwise
   - remark: don't fotget shuffle and frozen parameters.
