@@ -36,7 +36,7 @@ Activative env `peotry shell` or run commands via `peotry run ....`
   - [x] refactor colab notebook and compare results!
   - [x] verify auroc calculation
   - [x] run with random bases
-- [] two-class with imagenet (monarch vs ...)
+- [x] two-class with imagenet (monarch vs ...)
     - [x] ringlet (322) vs {monarch (323), notebook (681)}: https://github.com/p16i/concept-xai/blob/dev/cxai/config/imagenet-label-mapping.csv#L324
     - [x] where imagenet are in the cluster!; it is at `/home/space/datasets`
         - actually, for torchvision, it is at `/home/space/datasets/imagenet_torchvision/data`
@@ -57,20 +57,31 @@ Activative env `peotry shell` or run commands via `peotry run ....`
         - `prca` (perhaps `prca-abs` as well) is sensitive to the way we compute `logodd`; order matter; see`imagenet-324vs325` vs `imagenet-325vs324`
     - Experiment 2: influence of number training samples used.
 
-      
 
       **Hypothesis:** incorporting relevance allows us to find a meaningful subspace with much less data.
 
       **Conclusion:**
 
-      - ...
+      - The current results do NOT seem to indicate that. 
+      - (Ali's comment) what is the intuition that incorporating attribution signal could help reduce sample complexity.
 
       *Coding* (`branch=s5-binary-task-few-short`)
-      - generalize subset dataset, output dir `imagenet-2vs5--n20`; e
-  - 
+      - [x] generalize subset dataset, output dir `imagenet-2vs5--n20`;
+#### Sprint 5.2
+- [] comparison between `prca-recon` and others (`branch: fix-prca-recon`)
+  - [x] bug fix  
+  - [x] sweeping also 0,1,2,3 + range(4, ...)
+  - [x] add `prca-recon` in the list!
+  
+  Experiment: cifar100, imagenet
+
+  Conclusion: it seems that `prca-recon` behaves quite similar to `prca-abs`.
+
 - [] grafting vs layerwise
   - remark: don't fotget shuffle and frozen parameters.
   - [] baseline: train from stach; hinston disllation
+
+- [] toy problem on merged dataset (5h?)
 
 
 **Remarks**
