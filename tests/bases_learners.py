@@ -24,7 +24,7 @@ def test_obj(mode):
     if mode == "abs":
         expected = torch.abs(rel_projected)
     elif mode == "recon":
-        expected = (rel_projected - rel_original) ** 2
+        expected = -((rel_projected - rel_original) ** 2)
 
     actual = learner.obj_func(act, ctx, u)
 
