@@ -61,6 +61,7 @@ def main(
         basis_dir=Path(basis_dir)
         / getattr(dataset, "__name")
         / getattr(model, "__name"),
+        seed=seed,
         device=device,
     )
 
