@@ -13,6 +13,7 @@ from torch.nn import functional as F
 from abc import ABC
 
 from . import learners
+from xaikd import utils
 
 
 BASES = dict()
@@ -132,6 +133,15 @@ class Basis(ABC):
             return projected + mu
 
         return fh
+
+    def contruct_rank_d_decoder(self, k: int) -> torch.nn.Module:
+        U = self.artifact["eigvecs"][:, :k]
+
+        decoder = torch.nn.Conv2d(k, U.shape[0], kernel_size=1)
+        decoder.weight = torch.nn.Parameter(U.unsqueeze(2).unsqueeze(3))
+        decoder.bias = torch.nn.Parameter(self.mean.reshape((1, -1, 1, 1)))
+
+        return decoder
 
     def __str__(self) -> str:
         return getattr(self, "__name")
