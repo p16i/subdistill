@@ -134,12 +134,24 @@ class Basis(ABC):
 
         return fh
 
+    def construct_projection_on_rank_k(self, k: int) -> typing.Callable:
+        U: torch.Tensor = self.artifact["eigvecs"][:, :k]
+        U = U.T
+        U = U.unsqueeze(2).unsqueeze(3)
+
+        def fh(x):
+            projected = F.conv2d(x - self.mean, U)
+
+        return fh
+
     def contruct_rank_d_decoder(self, k: int) -> torch.nn.Module:
         U = self.artifact["eigvecs"][:, :k]
 
         decoder = torch.nn.Conv2d(k, U.shape[0], kernel_size=1)
         decoder.weight = torch.nn.Parameter(U.unsqueeze(2).unsqueeze(3))
         decoder.bias = torch.nn.Parameter(self.mean)
+
+        utils.deactivate_requires_grad(decoder)
 
         return decoder
 
