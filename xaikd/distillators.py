@@ -259,6 +259,8 @@ class FromScratch(Grafting):
         student = copy.deepcopy(self.teacher)
         student.to(device)
 
+        utils.deactivate_requires_grad(student)
+
         ref_auroc = metrics.estimate_auroc(
             student,
             self.dataset.loader(train_split=False),
@@ -269,15 +271,14 @@ class FromScratch(Grafting):
 
         arr_distill_info = self.setup()
 
-        arr_approxers = []
         for info in arr_distill_info:
-            approxer = self.on_training_layer_start(self.student, info, device=device)
+            approxer = self.on_training_layer_start(student, info, device=device)
 
         count_total_params, count_trainable_params = utils.count_params_in_model(
             student
         )
 
-        assert count_total_params > 0
+        assert count_trainable_params > 0
 
         # Optimizers specified in the torch.optim package
         optimizer = torch.optim.SGD(student.parameters(), lr=0.0001)
@@ -325,8 +326,16 @@ class FromScratch(Grafting):
         distil_info: LayerDistillInfo,
         device: str,
     ):
+        if distil_info.layer_name == "layer4":
+            adapter = torch.nn.Conv2d(
+                distil_info.num_output_channels,
+                int(distil_info.num_output_channels * (1 / self.compression_rate)),
+                kernel_size=1,
+            )
+        else:
+            adapter = torch.nn.Identity()
         approx_mod = ApproximationModule(
-            adapter=torch.nn.Identity(),
+            adapter=adapter,
             num_input_channels=distil_info.num_input_channels,
             num_output_channels=distil_info.num_output_channels,
             output_spatial_dims=distil_info.output_spatial_dims,
