@@ -57,13 +57,22 @@ def main(
 
     dataset: datasets.TwoClassesDataset = datasets.construct(dataset)
 
-    distillator = distillators.Grafting(
-        teacher=model,
-        dataset=dataset,
-        basis_dir=basis_dir,
-        compression_rate=compression_rate,
-        device=device,
-    )
+    if approach == "grafting":
+        distillator = distillators.Grafting(
+            teacher=model,
+            dataset=dataset,
+            basis_dir=basis_dir,
+            compression_rate=compression_rate,
+            device=device,
+        )
+    elif approach == "scratch":
+        distillator = distillators.FromScratch(
+            teacher=model,
+            dataset=dataset,
+            basis_dir=basis_dir,
+            compression_rate=compression_rate,
+            device=device,
+        )
 
     results = distillator.distill(
         epochs=epochs,
