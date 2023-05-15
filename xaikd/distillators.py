@@ -158,7 +158,7 @@ class Grafting:
             )
 
             # Optimizers specified in the torch.optim package
-            optimizer = torch.optim.SGD(student.parameters(), lr=0.0001)
+            optimizer = torch.optim.SGD(approxer.parameters(), lr=0.001)
 
             for epoch in range(epochs_per_layer):
                 for x, y in self.dataset.loader(train_split=True):
