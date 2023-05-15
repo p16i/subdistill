@@ -143,7 +143,7 @@ class Basis(ABC):
         mean = mean.to(device)
 
         def fh(x):
-            projected = F.conv2d(x - mean, U)
+            return F.conv2d(x - mean, U)
 
         return fh
 
