@@ -58,6 +58,7 @@ class LogOddEvidence(LogitModifier):
     def __init__(
         self, classes: typing.List[int], dataset: datasets.TwoClassesDataset
     ) -> None:
+        # todo: perhaps, we only need `dataset` and extract classes from there.
         assert len(classes) == 2
 
         assert isinstance(dataset, datasets.TwoClassesDataset)
