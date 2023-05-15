@@ -4,6 +4,7 @@ import typing
 
 from dataclasses import dataclass
 import pytorch_lightning as pl
+import numpy as np
 
 
 import torch
@@ -69,7 +70,7 @@ class ApproximationModule(nn.Module):
         return x
 
     def remove_adapter(self):
-        self.adapter = nn.Identity
+        self.adapter = nn.Identity()
 
 
 class TrainerWithBinaryCrossEnt(pl.LightningModule):
@@ -136,10 +137,6 @@ class Grafting:
 
         assert total_teacher_trainable_params == 0
 
-        logit_modifier = attributors.LogOddEvidence(
-            dataset=self.dataset, classes=self.dataset.selected_classes
-        )
-
         torch.manual_seed(seed)
         for distill_info in tqdm(arr_distill_info):
             approxer = self.on_training_layer_start(
@@ -167,14 +164,7 @@ class Grafting:
                 for x, y in self.dataset.loader(train_split=True):
                     logits = student(x.to(device))
 
-                    # remove: here, the modifier doesn't collapse the feature dim
-                    logodd = logit_modifier(logits).sum(dim=1)
-
-                    binary_y = torch.where(
-                        y == self.dataset.selected_classes[0], 0, 1
-                    ).float()
-
-                    loss = F.binary_cross_entropy(logodd, binary_y.to(device))
+                    loss = F.cross_entropy(logits, y.to(device))
 
                     loss.backward()
 
@@ -191,6 +181,8 @@ class Grafting:
                     ),
                     self.device,
                 )
+
+                auroc = np.max([auroc, 1 - auroc])
 
                 print(
                     f"[Layer: {distill_info.layer_name}: Epoch {epoch:2d}] auroc={auroc:4f}"
