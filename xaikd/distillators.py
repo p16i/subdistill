@@ -373,8 +373,13 @@ class Layerwise:
                     # backword
                 global_epoch_ix += 1
 
+                decoder = basis.contruct_rank_d_decoder(
+                    distill_info.num_output_channels
+                )
+                decoder.to(device)
+
                 auroc = metrics.estimate_auroc(
-                    nn.Sequential(student_head, adapter, teacher_classifier),
+                    nn.Sequential(student_head, decoder, teacher_classifier),
                     self.dataset.loader(train_split=False),
                     attributors.LogOddEvidence(
                         self.dataset.selected_classes, self.dataset
