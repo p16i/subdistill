@@ -138,7 +138,9 @@ class Basis(ABC):
         U: torch.Tensor = self.artifact["eigvecs"][:, :k]
         U = U.T
         U = U.unsqueeze(2).unsqueeze(3).to(device)
-        mean = self.mean.to(device)
+        mean = self.mean
+        mean = mean.reshape((1, -1, 1, 1))
+        mean = mean.to(device)
 
         def fh(x):
             projected = F.conv2d(x - mean, U)
