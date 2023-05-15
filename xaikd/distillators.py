@@ -162,7 +162,7 @@ class Grafting:
 
             tbar = tqdm(total=epochs_per_layer)
             for epoch in range(epochs_per_layer):
-                for x, y in self.dataset.loader(train_split=True):
+                for x, y in self.dataset.loader(train_split=True, shuffle=True):
                     logits = student(x.to(device))
 
                     loss = F.cross_entropy(logits, y.to(device))
