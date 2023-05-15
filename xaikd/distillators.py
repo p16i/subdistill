@@ -134,6 +134,10 @@ class Grafting:
 
         assert total_teacher_trainable_params == 0
 
+        logit_modifier = attributors.LogOddEvidence(
+            dataset=self.dataset, classes=self.dataset.selected_classes
+        )
+
         for distill_info in tqdm(arr_distill_info):
             approxer = self.on_training_layer_start(
                 student, distill_info, basis_name, basis_dir, device
@@ -158,7 +162,16 @@ class Grafting:
 
             for epoch in range(epochs_per_layer):
                 for x, y in self.dataset.loader(train_split=True):
-                    loss = F.binary_cross_entropy(student(x.to(device)), y.to(device))
+                    logits = student(x.to(device))
+
+                    # remove: here, the modifier doesn't collapse the feature dim
+                    logodd = logit_modifier(logits).sum(dim=1)
+
+                    binary_y = torch.where(
+                        y == self.dataset.selected_classes[0], 0, 1
+                    ).float()
+
+                    loss = F.binary_cross_entropy(logodd, binary_y.to(device))
 
                     loss.backward()
 
@@ -185,7 +198,7 @@ class Grafting:
                         auroc=auroc,
                         global_epoch=global_epoch_ix,
                         layer_epoch=epoch,
-                        layer=layer,
+                        layer=distill_info.layer_name,
                     )
                 )
             if distill_info != "layer4":
