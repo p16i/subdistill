@@ -24,7 +24,7 @@ from xaikd import datasets, utils, distillators
 @click.option("--compression-rate", type=float, default=0.25, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--epochs", type=int, default=40, required=True)
-@click.option("--lor", type=float, default=0.001, required=True)
+@click.option("--lr", type=float, default=0.001, required=True)
 def main(
     model,
     dataset,
