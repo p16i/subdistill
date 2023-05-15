@@ -19,6 +19,17 @@ from xaikd import utils
 BASES = dict()
 
 
+class Projector(torch.nn.Module):
+    def __init__(self, U: torch.Tensor, mean: torch.Tensor, device: str) -> None:
+        super().__init__()
+
+        self.U = U.unsqueeze(2).unsqueeze(3).to(device)
+        self.mean = mean.reshape((1, -1, 1, 1)).to(device)
+
+    def forward(self, x):
+        return F.conv2d(x - self.mean, self.U)
+
+
 def register_basis(name):
     """Decorator to register a data modality provider."""
 
@@ -137,15 +148,8 @@ class Basis(ABC):
     def construct_projection_on_rank_k(self, k: int, device: str) -> typing.Callable:
         U: torch.Tensor = self.artifact["eigvecs"][:, :k]
         U = U.T
-        U = U.unsqueeze(2).unsqueeze(3).to(device)
-        mean = self.mean
-        mean = mean.reshape((1, -1, 1, 1))
-        mean = mean.to(device)
 
-        def fh(x):
-            return F.conv2d(x - mean, U)
-
-        return fh
+        return Projector(U, self.mean, device)
 
     def contruct_rank_d_decoder(self, k: int) -> torch.nn.Module:
         U = self.artifact["eigvecs"][:, :k]
