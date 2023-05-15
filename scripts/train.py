@@ -51,6 +51,8 @@ def main(epochs, lr):
 
     dataset: datasets.TwoClassesDataset = datasets.construct("cifar100-35vs98")
 
+    torch.manual_seed(1)
+
     model = Lenet5(3, num_classes=100)
     model.to(device)
 
@@ -74,7 +76,7 @@ def main(epochs, lr):
             device,
         )
 
-        auroc = np.max([auroc, 1-auroc])
+        auroc = np.max([auroc, 1 - auroc])
 
         tbar.update(1)
 
