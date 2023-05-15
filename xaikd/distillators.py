@@ -147,7 +147,7 @@ class Grafting:
                 student
             )
 
-            print(f"Distill Information: {distill_info}")
+            print(distill_info)
             print(
                 f"> total_params: {count_total_params} (trainable {count_trainable_params})"
             )
@@ -187,10 +187,6 @@ class Grafting:
 
                 tbar.update(1)
                 tbar.set_description(f"[AUROC={auroc:.4f}]")
-
-                print(
-                    f"[Layer: {distill_info.layer_name}: Epoch {epoch:2d}] auroc={auroc:4f}"
-                )
 
                 arr_metrics.append(
                     dict(
