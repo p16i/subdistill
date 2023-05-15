@@ -105,6 +105,7 @@ class Grafting:
             attributors.LogOddEvidence(self.dataset.selected_classes, self.dataset),
             self.device,
         )
+        ref_auroc = np.max([ref_auroc, 1 - ref_auroc])
 
         arr_distill_info = self.setup()
 
@@ -172,9 +173,7 @@ class Grafting:
                 auroc = np.max([auroc, 1 - auroc])
 
                 tbar.update(1)
-                tbar.set_description(
-                    f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})]"
-                )
+                tbar.set_description(f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})]")
 
                 arr_metrics.append(
                     dict(
