@@ -110,7 +110,9 @@ class Grafting:
 
         self.device = device
 
-    def distill(self, epochs: int, basis_name: str, basis_dir: Path, device: str):
+    def distill(
+        self, epochs: int, basis_name: str, basis_dir: Path, device: str, seed=1
+    ):
         utils.deactivate_requires_grad(self.teacher)
 
         # todo: deep copy should not change any
@@ -138,6 +140,7 @@ class Grafting:
             dataset=self.dataset, classes=self.dataset.selected_classes
         )
 
+        torch.manual_seed(seed)
         for distill_info in tqdm(arr_distill_info):
             approxer = self.on_training_layer_start(
                 student, distill_info, basis_name, basis_dir, device
