@@ -38,9 +38,17 @@ def main(
     arguments = locals()
     start_time = datetime.now()
 
-    slug = "--".join([approach, basis_name, f"comp{compression_rate}", f"seed{seed}"])
+    slug = "--".join(
+        [
+            getattr(model, "__name"),
+            approach,
+            basis_name,
+            f"comp{compression_rate}",
+            f"seed{seed}",
+        ]
+    )
 
-    output_dir = Path(output_dir) / dataset / slug
+    output_dir = Path(output_dir) / dataset
 
     os.makedirs(output_dir, exist_ok=True)
     click.echo(f"Output: {output_dir}")
