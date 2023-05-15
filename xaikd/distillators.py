@@ -135,7 +135,7 @@ class Grafting:
         assert total_teacher_trainable_params == 0
 
         for distill_info in tqdm(arr_distill_info):
-            self.on_training_layer_start(
+            approxer = self.on_training_layer_start(
                 student, distill_info, basis_name, basis_dir, device
             )
 
@@ -152,7 +152,6 @@ class Grafting:
                 count_trainable_params > 0
                 and count_trainable_params < total_teacher_params
             )
-            continue
 
             # Optimizers specified in the torch.optim package
             optimizer = torch.optim.SGD(student.parameters(), lr=0.001)
@@ -177,6 +176,10 @@ class Grafting:
                     self.device,
                 )
 
+                print(
+                    f"[Layer: {distill_info.layer_name}: Epoch {epoch:2d}] auroc={auroc:4f}"
+                )
+
                 arr_metrics.append(
                     dict(
                         auroc=auroc,
@@ -185,7 +188,9 @@ class Grafting:
                         layer=layer,
                     )
                 )
-            # todo: call remove adapter unless layer == last (layer4)
+            if distill_info != "layer4":
+                approxer.remove_adapter()
+
         return arr_metrics
 
     def setup(self) -> typing.List[LayerDistillInfo]:
