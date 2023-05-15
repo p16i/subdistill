@@ -157,6 +157,7 @@ class Grafting:
             tbar = tqdm(total=epochs_per_layer)
             for epoch in range(epochs_per_layer):
                 for x, y in self.dataset.loader(train_split=True, shuffle=True):
+                    optimizer.zero_grad()
                     logits = student(x.to(device))
 
                     ybins = torch.where(y == self.dataset.selected_classes[0], 0, 1)
@@ -356,6 +357,7 @@ class Layerwise:
             )
             for epoch in range(epochs_per_layer):
                 for x, _ in self.dataset.loader(train_split=True, shuffle=True):
+                    optimizer.zero_grad()
                     x = x.to(device)
 
                     with torch.no_grad():
@@ -508,6 +510,7 @@ class FromScratch(Grafting):
         tbar = tqdm(total=epochs)
         for epoch in range(epochs):
             for x, y in self.dataset.loader(train_split=True, shuffle=True):
+                optimizer.zero_grad()
                 logits = student(x.to(device))
 
                 ybins = torch.where(y == self.dataset.selected_classes[0], 0, 1)
