@@ -1,5 +1,6 @@
 import click
 from datetime import datetime
+import numpy as np
 
 import torch
 from torch import nn
@@ -72,6 +73,8 @@ def main(epochs, lr):
             attributors.LogOddEvidence(dataset.selected_classes, dataset),
             device,
         )
+
+        auroc = np.max([auroc, 1-auroc])
 
         tbar.update(1)
 
