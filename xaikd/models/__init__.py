@@ -69,6 +69,9 @@ def get_model(name: str) -> nn.Module:
 
     model.eval()
 
+    # todo: disable grad
+    # perhaps, check whether disable grad improve inference speed?
+
     return model
 
 

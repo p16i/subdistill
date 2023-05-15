@@ -34,6 +34,7 @@ class LayerDistillInfo:
 class ApproximationModule(nn.Module):
     def __init__(
         self,
+        adapter: typing.Callable,
         num_input_channels: int,
         num_output_channels: int,
         output_spatial_dims: typing.Tuple[int, int],
@@ -53,6 +54,9 @@ class ApproximationModule(nn.Module):
             num_output_channels, num_output_channels, kernel_size=1, padding="valid"
         )
 
+        # conv1x1
+        self.adapter = adapter
+
     def forward(self, x):
         x = self.conv1(x)
         x = self.act1(x)
@@ -60,7 +64,12 @@ class ApproximationModule(nn.Module):
 
         x = self.conv2(x)
 
+        x = self.adapter(x)
+
         return x
+
+    def remove_adapter(self):
+        self.adapter = nn.Identity
 
 
 class TrainerWithBinaryCrossEnt(pl.LightningModule):
@@ -101,9 +110,7 @@ class Grafting:
 
         self.device = device
 
-        # todo: add tensorboard logger
-
-    def distill(self, epochs: int, device: str):
+    def distill(self, epochs: int, basis_name: str, basis_dir: Path, device: str):
         utils.deactivate_requires_grad(self.teacher)
 
         # todo: deep copy should not change any
@@ -128,7 +135,9 @@ class Grafting:
         assert total_teacher_trainable_params == 0
 
         for distill_info in tqdm(arr_distill_info):
-            self.on_training_layer_start(student, distill_info)
+            self.on_training_layer_start(
+                student, distill_info, basis_name, basis_dir, device
+            )
 
             count_total_params, count_trainable_params = utils.count_params_in_model(
                 student
@@ -176,7 +185,7 @@ class Grafting:
                         layer=layer,
                     )
                 )
-
+            # todo: call remove adapter unless layer == last (layer4)
         return arr_metrics
 
     def setup(self) -> typing.List[LayerDistillInfo]:
@@ -209,18 +218,31 @@ class Grafting:
         ]
 
     def on_training_layer_start(
-        self, student: nn.Module, distil_info: LayerDistillInfo
+        self,
+        student: nn.Module,
+        distil_info: LayerDistillInfo,
+        basis_name: str,
+        basis_dir: Path,
+        device: str,
     ):
         utils.deactivate_requires_grad(student)
 
-        # todo: we need to add adapter here
+        basis = bases.get_basis(basis_name)
+
+        basis.load(artifact_dir=basis_dir, device=device)
 
         approx_mod = ApproximationModule(
+            adapter=basis.contruct_rank_d_decoder(distil_info.num_output_channels),
             num_input_channels=distil_info.num_input_channels,
             num_output_channels=distil_info.num_output_channels,
             output_spatial_dims=distil_info.output_spatial_dims,
         )
 
-        # need to set the last convolution with the weight of PRCA
+        approx_mod.to(device)
 
         setattr(student, distil_info.layer_name, approx_mod)
+
+        return approx_mod
+
+    def on_training_layer_end(self, approxer: ApproximationModule):
+        approxer.remove_adapter()
