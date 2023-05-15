@@ -46,7 +46,14 @@ def main(
         device=device,
     )
 
-    distillator.distill(30, device=device)
+    distillator.distill(
+        epochs=10,
+        basis_name=basis_name,
+        basis_dir=Path(basis_dir)
+        / getattr(dataset, "__name")
+        / getattr(model, "__name"),
+        device=device,
+    )
 
     # pass
 
