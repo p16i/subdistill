@@ -229,7 +229,7 @@ class Grafting:
 
         basis = bases.get_basis(basis_name)
 
-        basis.load(artifact_dir=basis_dir, device=device)
+        basis.load(artifact_dir=basis_dir / distil_info.layer_name, device=device)
 
         approx_mod = ApproximationModule(
             adapter=basis.contruct_rank_d_decoder(distil_info.num_output_channels),
