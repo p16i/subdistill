@@ -135,13 +135,15 @@ class Grafting:
             )
 
             print(f"Distill Information: {distill_info}")
-            print(f"> total_params: {count_total_params} (trainable {count_trainable_params})")
+            print(
+                f"> total_params: {count_total_params} (trainable {count_trainable_params})"
+            )
 
             assert (
                 count_trainable_params > 0
                 and count_trainable_params < total_teacher_params
             )
-            break
+            continue
 
             # Optimizers specified in the torch.optim package
             optimizer = torch.optim.SGD(student.parameters(), lr=0.001)
