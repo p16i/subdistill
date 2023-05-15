@@ -287,6 +287,8 @@ class Layerwise:
     ):
         utils.deactivate_requires_grad(self.teacher)
 
+        self.teacher.to(device)
+
         # todo: deep copy should not change any
         student = copy.deepcopy(self.teacher)
         student.to(device)
