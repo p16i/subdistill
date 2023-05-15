@@ -350,7 +350,7 @@ class Layerwise:
             tbar = tqdm(total=epochs_per_layer)
 
             adapter = basis.construct_projection_on_rank_k(
-                distill_info.num_output_channels
+                distill_info.num_output_channels, device=device
             )
             for epoch in range(epochs_per_layer):
                 for x, _ in self.dataset.loader(train_split=True, shuffle=True):
@@ -372,11 +372,7 @@ class Layerwise:
                 global_epoch_ix += 1
 
                 auroc = metrics.estimate_auroc(
-                    nn.Sequential(
-                        student_head,
-                        adapter,
-                        teacher_classifier
-                    ),
+                    nn.Sequential(student_head, adapter, teacher_classifier),
                     self.dataset.loader(train_split=False),
                     attributors.LogOddEvidence(
                         self.dataset.selected_classes, self.dataset
