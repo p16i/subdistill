@@ -1,3 +1,8 @@
+import typing
+
+import torch
+from torch import nn
+
 ARCH_LAYER_DIMENSIONS = dict(
     dict(
         resnet18=dict(
@@ -8,3 +13,21 @@ ARCH_LAYER_DIMENSIONS = dict(
         )
     )
 )
+
+
+def split_resnet_18_at(
+    model: nn.Module, layer: str
+) -> typing.Tuple[nn.Module, nn.Module]:
+    layer_ix = int(layer[-1])
+
+    layers = [model.layer1, model.layer2, model.layer3, model.layer4]
+
+    head = nn.Sequential(
+        model.conv1, model.bn1, model.relu, model.maxpool, *layers[:layer_ix]
+    )
+
+    classifier = nn.Sequential(
+        *layers[layer_ix:], model.avgpool, nn.Flatten(start_dim=1), model.fc
+    )
+
+    return head, classifier

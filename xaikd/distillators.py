@@ -158,7 +158,10 @@ class Grafting:
                 for x, y in self.dataset.loader(train_split=True, shuffle=True):
                     logits = student(x.to(device))
 
-                    loss = F.cross_entropy(logits, y.to(device))
+                    ybins = torch.where(y == self.dataset.selected_classes[0], 0, 1)
+                    loss = F.cross_entropy(
+                        logits[:, self.dataset.selected_classes], ybins.to(device)
+                    )
 
                     loss.backward()
 
@@ -302,7 +305,10 @@ class FromScratch(Grafting):
             for x, y in self.dataset.loader(train_split=True, shuffle=True):
                 logits = student(x.to(device))
 
-                loss = F.cross_entropy(logits, y.to(device))
+                ybins = torch.where(y == self.dataset.selected_classes[0], 0, 1)
+                loss = F.cross_entropy(
+                    logits[:, self.dataset.selected_classes], ybins.to(device)
+                )
 
                 loss.backward()
 
