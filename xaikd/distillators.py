@@ -91,7 +91,13 @@ class Grafting:
         self.device = device
 
     def distill(
-        self, epochs: int, basis_name: str, basis_dir: Path, device: str, seed=1
+        self,
+        epochs: int,
+        basis_name: str,
+        basis_dir: Path,
+        device: str,
+        lr: float,
+        seed=1,
     ):
         utils.deactivate_requires_grad(self.teacher)
 
@@ -145,7 +151,7 @@ class Grafting:
             )
 
             # Optimizers specified in the torch.optim package
-            optimizer = torch.optim.SGD(approxer.parameters(), lr=0.0001)
+            optimizer = torch.optim.SGD(approxer.parameters(), lr=lr)
 
             tbar = tqdm(total=epochs_per_layer)
             for epoch in range(epochs_per_layer):
@@ -251,7 +257,13 @@ class Grafting:
 
 class FromScratch(Grafting):
     def distill(
-        self, epochs: int, basis_name: str, basis_dir: Path, device: str, seed=1
+        self,
+        epochs: int,
+        basis_name: str,
+        basis_dir: Path,
+        device: str,
+        lr: float,
+        seed=1,
     ):
         utils.deactivate_requires_grad(self.teacher)
 
@@ -281,7 +293,7 @@ class FromScratch(Grafting):
         assert count_trainable_params > 0
 
         # Optimizers specified in the torch.optim package
-        optimizer = torch.optim.SGD(student.parameters(), lr=0.0001)
+        optimizer = torch.optim.SGD(student.parameters(), lr=lr)
 
         arr_metrics = []
 
