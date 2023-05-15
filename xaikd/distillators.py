@@ -95,16 +95,16 @@ class Grafting:
     ):
         utils.deactivate_requires_grad(self.teacher)
 
-        teacher_auroc = metrics.estimate_auroc(
-            self.teacher,
+        # todo: deep copy should not change any
+        student = copy.deepcopy(self.teacher)
+        student.to(device)
+
+        ref_auroc = metrics.estimate_auroc(
+            student,
             self.dataset.loader(train_split=False),
             attributors.LogOddEvidence(self.dataset.selected_classes, self.dataset),
             self.device,
         )
-
-        # todo: deep copy should not change any
-        student = copy.deepcopy(self.teacher)
-        student.to(device)
 
         arr_distill_info = self.setup()
 
@@ -173,7 +173,7 @@ class Grafting:
 
                 tbar.update(1)
                 tbar.set_description(
-                    f"[AUROC={auroc:.4f} (teacher: {teacher_auroc:.4f})]"
+                    f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})]"
                 )
 
                 arr_metrics.append(
@@ -182,7 +182,7 @@ class Grafting:
                         global_epoch=global_epoch_ix,
                         layer_epoch=epoch,
                         auroc=auroc,
-                        teacher_auroc=teacher_auroc,
+                        teacher_auroc=ref_auroc,
                     )
                 )
             if distill_info != "layer4":
