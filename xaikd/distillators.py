@@ -356,6 +356,7 @@ class Layerwise:
             )
             for epoch in range(epochs_per_layer):
                 for x, _ in self.dataset.loader(train_split=True, shuffle=True):
+                    optimizer.zero_grad()
                     x = x.to(device)
 
                     with torch.no_grad():
