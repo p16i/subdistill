@@ -50,7 +50,7 @@ def main(epochs, lr):
 
     dataset: datasets.TwoClassesDataset = datasets.construct("cifar100-35vs98")
 
-    model = Lenet5(3, num_classes=10)
+    model = Lenet5(3, num_classes=100)
     model.to(device)
 
     tbar = tqdm(total=epochs)
