@@ -15,7 +15,7 @@ ARCH_LAYER_DIMENSIONS = dict(
 )
 
 
-def spit_resnet_18_at(
+def split_resnet_18_at(
     model: nn.Module, layer: str
 ) -> typing.Tuple[nn.Module, nn.Module]:
     layer_ix = int(layer[-1])

@@ -22,7 +22,7 @@ def test_get_models(slug):
 def test_split_model(slug, layer):
     model = models.get_model(slug)
 
-    head, classifier = models.resnet.spit_resnet_18_at(model, layer)
+    head, classifier = models.resnet.split_resnet_18_at(model, layer)
 
     if "imagenet" in slug:
         input = torch.randn(10, 3, 224, 224)
