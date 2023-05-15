@@ -198,7 +198,7 @@ class Grafting:
                         auroc=auroc,
                         global_epoch=global_epoch_ix,
                         layer_epoch=epoch,
-                        layer=layer,
+                        layer=distill_info.layer_name,
                     )
                 )
             if distill_info != "layer4":
