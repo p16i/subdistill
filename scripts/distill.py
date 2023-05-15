@@ -21,8 +21,17 @@ from xaikd import datasets, utils, distillators
 @click.option("--output-dir", type=str, required=True)
 @click.option("--compression-rate", type=float, default=0.25, required=True)
 @click.option("--seed", type=int, default=1)
+@click.option("--epochs", type=int, default=40, required=True)
 def main(
-    model, dataset, approach, basis_name, basis_dir, output_dir, compression_rate, seed
+    model,
+    dataset,
+    approach,
+    basis_name,
+    basis_dir,
+    output_dir,
+    compression_rate,
+    seed,
+    epochs,
 ):
     arguments = locals()
     start_time = datetime.now()
@@ -47,22 +56,13 @@ def main(
     )
 
     distillator.distill(
-        epochs=8,
+        epochs=epochs,
         basis_name=basis_name,
         basis_dir=Path(basis_dir)
         / getattr(dataset, "__name")
         / getattr(model, "__name"),
         device=device,
     )
-
-    # pass
-
-    # load basis
-
-    # inistiate: ligthing module
-    # approximation approach (model, dataset)
-
-    # train
 
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
