@@ -164,9 +164,12 @@ class Grafting:
                 for x, y in self.dataset.loader(train_split=True):
                     logits = student(x.to(device))
 
+                    # remove: here, the modifier doesn't collapse the feature dim
                     logodd = logit_modifier(logits).sum(dim=1)
 
-                    binary_y = torch.where(y == self.dataset.selected_classes[0], 0, 1)
+                    binary_y = torch.where(
+                        y == self.dataset.selected_classes[0], 0, 1
+                    ).float()
 
                     loss = F.binary_cross_entropy(logodd, binary_y.to(device))
 
