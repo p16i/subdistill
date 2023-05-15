@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 
 from xaikd.utils import click_types
-from xaikd import datasets, utils
+from xaikd import datasets, utils, distillators
 
 
 @click.command()
@@ -36,8 +36,17 @@ def main(
 
     device = utils.get_device()
 
-    model = model.to(device)
     dataset: datasets.TwoClassesDataset = datasets.construct(dataset)
+
+    distillator = distillators.Grafting(
+        teacher=model,
+        dataset=dataset,
+        basis_dir=basis_dir,
+        compression_rate=compression_rate,
+        device=device,
+    )
+
+    distillator.distill(30, device=device)
 
     # pass
 
