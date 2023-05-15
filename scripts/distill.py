@@ -1,5 +1,7 @@
 import click
 import os
+import pandas as pd
+
 from datetime import datetime
 
 from pathlib import Path
@@ -36,9 +38,17 @@ def main(
     arguments = locals()
     start_time = datetime.now()
 
-    slug = "--".join([approach, basis_name, f"comp{compression_rate}", f"seed{seed}"])
+    slug = "--".join(
+        [
+            getattr(model, "__name"),
+            approach,
+            basis_name,
+            f"comp{compression_rate}",
+            f"seed{seed}",
+        ]
+    )
 
-    output_dir = Path(output_dir) / dataset / slug
+    output_dir = Path(output_dir) / dataset
 
     os.makedirs(output_dir, exist_ok=True)
     click.echo(f"Output: {output_dir}")
@@ -55,7 +65,7 @@ def main(
         device=device,
     )
 
-    distillator.distill(
+    results = distillator.distill(
         epochs=epochs,
         basis_name=basis_name,
         basis_dir=Path(basis_dir)
@@ -64,6 +74,13 @@ def main(
         seed=seed,
         device=device,
     )
+
+    df = pd.DataFrame(results)
+
+    filename = output_dir / f"{slug}.csv"
+    print(f"> check output at: {filename}")
+
+    df.to_csv(filename, index=False)
 
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")

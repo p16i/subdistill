@@ -73,27 +73,6 @@ class ApproximationModule(nn.Module):
         self.adapter = nn.Identity()
 
 
-class TrainerWithBinaryCrossEnt(pl.LightningModule):
-    def __init__(self, model):
-        super().__init__()
-
-        self.model = model
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.SGD(
-            self.parameters(), lr=1e-2, momentum=0.9, weight_decay=5e-4
-        )
-
-        return [optimizer]
-
-    def training_step(self, train_batch, batch_idx):
-        x, y = train_batch
-
-        loss = F.binary_cross_entropy(self.model(x), y)
-
-        return loss
-
-
 class Grafting:
     def __init__(
         self,
@@ -115,6 +94,13 @@ class Grafting:
         self, epochs: int, basis_name: str, basis_dir: Path, device: str, seed=1
     ):
         utils.deactivate_requires_grad(self.teacher)
+
+        teacher_auroc = metrics.estimate_auroc(
+            self.teacher,
+            self.dataset.loader(train_split=False),
+            attributors.LogOddEvidence(self.dataset.selected_classes, self.dataset),
+            self.device,
+        )
 
         # todo: deep copy should not change any
         student = copy.deepcopy(self.teacher)
@@ -147,7 +133,7 @@ class Grafting:
                 student
             )
 
-            print(f"Distill Information: {distill_info}")
+            print(distill_info)
             print(
                 f"> total_params: {count_total_params} (trainable {count_trainable_params})"
             )
@@ -158,10 +144,11 @@ class Grafting:
             )
 
             # Optimizers specified in the torch.optim package
-            optimizer = torch.optim.SGD(approxer.parameters(), lr=0.001)
+            optimizer = torch.optim.SGD(approxer.parameters(), lr=0.0001)
 
+            tbar = tqdm(total=epochs_per_layer)
             for epoch in range(epochs_per_layer):
-                for x, y in self.dataset.loader(train_split=True):
+                for x, y in self.dataset.loader(train_split=True, shuffle=True):
                     logits = student(x.to(device))
 
                     loss = F.cross_entropy(logits, y.to(device))
@@ -184,16 +171,18 @@ class Grafting:
 
                 auroc = np.max([auroc, 1 - auroc])
 
-                print(
-                    f"[Layer: {distill_info.layer_name}: Epoch {epoch:2d}] auroc={auroc:4f}"
+                tbar.update(1)
+                tbar.set_description(
+                    f"[AUROC={auroc:.4f} (teacher: {teacher_auroc:.4f})]"
                 )
 
                 arr_metrics.append(
                     dict(
-                        auroc=auroc,
+                        layer=distill_info.layer_name,
                         global_epoch=global_epoch_ix,
                         layer_epoch=epoch,
-                        layer=distill_info.layer_name,
+                        auroc=auroc,
+                        teacher_auroc=teacher_auroc,
                     )
                 )
             if distill_info != "layer4":
