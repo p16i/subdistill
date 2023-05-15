@@ -1,5 +1,7 @@
 import click
 import os
+import pandas as pd
+
 from datetime import datetime
 
 from pathlib import Path
@@ -55,7 +57,7 @@ def main(
         device=device,
     )
 
-    distillator.distill(
+    results = distillator.distill(
         epochs=epochs,
         basis_name=basis_name,
         basis_dir=Path(basis_dir)
@@ -64,6 +66,13 @@ def main(
         seed=seed,
         device=device,
     )
+
+    df = pd.DataFrame(results)
+
+    filename = output_dir / slug / ".csv"
+    print(f"> check output at: {filename}")
+
+    df.to_csv(filename, index=False)
 
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
