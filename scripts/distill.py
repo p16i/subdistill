@@ -67,6 +67,14 @@ def main(
             compression_rate=compression_rate,
             device=device,
         )
+    elif approach == "layerwise":
+        distillator = distillators.Layerwise(
+            teacher=model,
+            dataset=dataset,
+            basis_dir=basis_dir,
+            compression_rate=compression_rate,
+            device=device,
+        )
     elif approach == "scratch":
         distillator = distillators.FromScratch(
             teacher=model,
