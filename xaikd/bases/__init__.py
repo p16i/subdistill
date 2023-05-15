@@ -151,11 +151,6 @@ class Basis(ABC):
 
         return Projector(U, self.mean, device)
 
-        def fh(x):
-            return F.conv2d(x - mean, U)
-
-        return fh
-
     def contruct_rank_d_decoder(self, k: int) -> torch.nn.Module:
         U = self.artifact["eigvecs"][:, :k]
 
