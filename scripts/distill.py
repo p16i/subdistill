@@ -47,7 +47,7 @@ def main(
     )
 
     distillator.distill(
-        epochs=10,
+        epochs=8,
         basis_name=basis_name,
         basis_dir=Path(basis_dir)
         / getattr(dataset, "__name")
