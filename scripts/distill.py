@@ -77,7 +77,7 @@ def main(
 
     df = pd.DataFrame(results)
 
-    filename = output_dir / slug / ".csv"
+    filename = output_dir / f"{slug}.csv"
     print(f"> check output at: {filename}")
 
     df.to_csv(filename, index=False)
