@@ -160,6 +160,7 @@ class Grafting:
             # Optimizers specified in the torch.optim package
             optimizer = torch.optim.SGD(approxer.parameters(), lr=0.001)
 
+            tbar = tqdm(total=epochs_per_layer)
             for epoch in range(epochs_per_layer):
                 for x, y in self.dataset.loader(train_split=True):
                     logits = student(x.to(device))
@@ -183,6 +184,9 @@ class Grafting:
                 )
 
                 auroc = np.max([auroc, 1 - auroc])
+
+                tbar.update(1)
+                tbar.set_description(f"[AUROC={auroc:.4f}]")
 
                 print(
                     f"[Layer: {distill_info.layer_name}: Epoch {epoch:2d}] auroc={auroc:4f}"
