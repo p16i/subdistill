@@ -50,8 +50,8 @@ def main(
         epochs=10,
         basis_name=basis_name,
         basis_dir=Path(basis_dir)
-        / getattr(model, "__name")
-        / getattr(dataset, "__name"),
+        / getattr(dataset, "__name")
+        / getattr(model, "__name"),
         device=device,
     )
 
