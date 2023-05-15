@@ -24,6 +24,7 @@ from xaikd import datasets, utils, distillators
 @click.option("--compression-rate", type=float, default=0.25, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--epochs", type=int, default=40, required=True)
+@click.option("--lr", type=float, default=0.001, required=True)
 def main(
     model,
     dataset,
@@ -34,6 +35,7 @@ def main(
     compression_rate,
     seed,
     epochs,
+    lr,
 ):
     arguments = locals()
     start_time = datetime.now()
@@ -57,13 +59,22 @@ def main(
 
     dataset: datasets.TwoClassesDataset = datasets.construct(dataset)
 
-    distillator = distillators.Grafting(
-        teacher=model,
-        dataset=dataset,
-        basis_dir=basis_dir,
-        compression_rate=compression_rate,
-        device=device,
-    )
+    if approach == "grafting":
+        distillator = distillators.Grafting(
+            teacher=model,
+            dataset=dataset,
+            basis_dir=basis_dir,
+            compression_rate=compression_rate,
+            device=device,
+        )
+    elif approach == "scratch":
+        distillator = distillators.FromScratch(
+            teacher=model,
+            dataset=dataset,
+            basis_dir=basis_dir,
+            compression_rate=compression_rate,
+            device=device,
+        )
 
     results = distillator.distill(
         epochs=epochs,
@@ -73,6 +84,7 @@ def main(
         / getattr(model, "__name"),
         seed=seed,
         device=device,
+        lr=lr,
     )
 
     df = pd.DataFrame(results)
