@@ -198,7 +198,7 @@ class Grafting:
                 )
 
                 auroc = np.max([auroc, 1 - auroc])
-                log_value("auroc", epoch)
+                log_value("auroc", auroc, epoch)
 
                 tbar.update(1)
                 tbar.set_description(
