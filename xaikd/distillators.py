@@ -502,6 +502,15 @@ class FromScratch(Grafting):
 
         assert count_trainable_params > 0
 
+        print("-----------")
+        for param in student.children():
+            print(param)
+            _1, _2 = utils.count_params_in_model(param)
+            print(
+                f"> total_params: {_1} (trainable {_2})"
+            )
+        print("-----------")
+
         # Optimizers specified in the torch.optim package
         optimizer = torch.optim.SGD(student.parameters(), lr=lr)
 
@@ -532,7 +541,9 @@ class FromScratch(Grafting):
             auroc = np.max([auroc, 1 - auroc])
 
             tbar.update(1)
-            tbar.set_description(f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})]")
+            tbar.set_description(
+                f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})| loss={float(loss.cpu().detach()):.4e}]"
+            )
 
             arr_metrics.append(
                 dict(
