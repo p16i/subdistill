@@ -53,7 +53,7 @@ class ApproximationModule(nn.Module):
         self.act1 = nn.ReLU()
         self.pool1 = nn.AdaptiveAvgPool2d(output_spatial_dims)
         self.conv2 = nn.Conv2d(
-            num_output_channels, num_output_channels, kernel_size=1, padding="valid"
+            num_output_channels, num_output_channels, kernel_size=3, padding="valid"
         )
 
         # conv1x1
@@ -506,9 +506,7 @@ class FromScratch(Grafting):
         for param in student.children():
             print(param)
             _1, _2 = utils.count_params_in_model(param)
-            print(
-                f"> total_params: {_1} (trainable {_2})"
-            )
+            print(f"> total_params: {_1} (trainable {_2})")
         print("-----------")
 
         # Optimizers specified in the torch.optim package
