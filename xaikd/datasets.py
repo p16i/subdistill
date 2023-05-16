@@ -97,11 +97,12 @@ class DatasetConfiguration(ABC):
     def create_dataset(slef, train_split=False) -> Dataset:
         pass
 
-    def loader(self, batch_size=64, num_workers=2, train_split=False):
+    def loader(self, batch_size=64, num_workers=2, train_split=False, shuffle=False):
         return DataLoader(
             self.create_dataset(train_split=train_split),
             num_workers=num_workers,
             batch_size=batch_size,
+            shuffle=shuffle,
         )
 
     def __str__(self) -> str:
@@ -159,7 +160,7 @@ class TwoClassesDataset(DatasetConfiguration):
     def create_dataset(self, train_split=False) -> Dataset:
         return self.base.create_dataset(train_split=train_split)
 
-    def loader(self, batch_size=64, num_workers=2, train_split=False):
+    def loader(self, batch_size=64, num_workers=2, train_split=False, shuffle=False):
         ds = self.create_dataset(train_split=train_split)
 
         labels = ds.targets
@@ -178,9 +179,7 @@ class TwoClassesDataset(DatasetConfiguration):
         subset = Subset(ds, list(selected_data_indices))
 
         return DataLoader(
-            subset,
-            num_workers=num_workers,
-            batch_size=batch_size,
+            subset, num_workers=num_workers, batch_size=batch_size, shuffle=shuffle
         )
 
 

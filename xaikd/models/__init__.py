@@ -69,6 +69,9 @@ def get_model(name: str) -> nn.Module:
 
     model.eval()
 
+    # todo: disable grad
+    # perhaps, check whether disable grad improve inference speed?
+
     return model
 
 
@@ -93,5 +96,5 @@ def _resnet18_cifar(num_classes: int) -> nn.Module:
 
 
 @register_model("imagenet-resnet18")
-def _resnet18_cifar() -> nn.Module:
+def _resnet18_imagenet() -> nn.Module:
     return torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)

@@ -71,3 +71,23 @@ def subsample_tensors(
     assert arr_act.shape == (bs * np.min([num_locations, total_spatial_locations]), nc)
 
     return arr_act, arr_ctx
+
+
+def count_params_in_model(model: torch.nn.Module) -> typing.Tuple[int, int]:
+    # ref: https://stackoverflow.com/a/49201237
+
+    total, trainable = 0, 0
+    for param in model.parameters():
+        n = param.numel()
+        total += n
+
+        if param.requires_grad:
+            trainable += n
+
+    return total, trainable
+
+
+def deactivate_requires_grad(model: torch.nn.Module):
+    # remark: https://github.com/lightly-ai/lightly/blob/master/lightly/models/utils.py#L166
+    for param in model.parameters():
+        param.requires_grad = False
