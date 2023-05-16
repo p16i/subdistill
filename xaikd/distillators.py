@@ -532,7 +532,9 @@ class FromScratch(Grafting):
             auroc = np.max([auroc, 1 - auroc])
 
             tbar.update(1)
-            tbar.set_description(f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})]")
+            tbar.set_description(
+                f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})| loss={float(loss.cpu().detach()):.4e}]"
+            )
 
             arr_metrics.append(
                 dict(
