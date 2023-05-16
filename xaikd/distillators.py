@@ -163,7 +163,7 @@ class Grafting:
 
                 if _c > 0:
                     print(param)
-                    print("  > trainable param: {_c}")
+                    print(f"  > trainable param: {_c}")
 
             step = 0
             tbar = tqdm(total=epochs_per_layer)
@@ -356,7 +356,7 @@ class Layerwise:
 
                 if _c > 0:
                     print(param)
-                    print("  > trainable param: {_c}")
+                    print(f"  > trainable param: {_c}")
 
             assert (
                 count_trainable_params > 0
