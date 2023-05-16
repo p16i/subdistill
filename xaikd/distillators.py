@@ -389,6 +389,9 @@ class Layerwise:
             projector = basis.construct_projection_on_rank_k(
                 distill_info.num_output_channels, device=device
             )
+            decoder = basis.contruct_rank_d_decoder(distill_info.num_output_channels)
+            decoder.to(device)
+
             for epoch in range(epochs_per_layer):
                 for x, _ in self.dataset.loader(train_split=True, shuffle=True):
                     optimizer.zero_grad()
@@ -413,15 +416,8 @@ class Layerwise:
                     # backword
                 global_epoch_ix += 1
 
-                decoder = basis.contruct_rank_d_decoder(
-                    distill_info.num_output_channels
-                )
-                decoder.to(device)
-
-                approxer.adapter = decoder
-
                 auroc = metrics.estimate_auroc(
-                    nn.Sequential(student_head, teacher_classifier),
+                    nn.Sequential(student_head, decoder, teacher_classifier),
                     self.dataset.loader(train_split=False),
                     attributors.LogOddEvidence(
                         self.dataset.selected_classes, self.dataset
@@ -446,6 +442,8 @@ class Layerwise:
                         teacher_auroc=ref_auroc,
                     )
                 )
+
+            approxer.adapter = decoder
             # if distill_info != "layer4":
             #     approxer.remove_adapter()
 
