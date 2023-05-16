@@ -53,7 +53,7 @@ class ApproximationModule(nn.Module):
         self.act1 = nn.ReLU()
         self.pool1 = nn.AdaptiveAvgPool2d(output_spatial_dims)
         self.conv2 = nn.Conv2d(
-            num_output_channels, num_output_channels, kernel_size=3, padding="valid"
+            num_output_channels, num_output_channels, kernel_size=3, padding="same"
         )
 
         # conv1x1
