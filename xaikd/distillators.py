@@ -2,6 +2,10 @@ import copy
 import os
 import typing
 
+
+from tensorboard_logger import log_value
+
+
 from dataclasses import dataclass
 import pytorch_lightning as pl
 import numpy as np
@@ -515,6 +519,7 @@ class FromScratch(Grafting):
         arr_metrics = []
 
         tbar = tqdm(total=epochs)
+        steps = 1
         for epoch in range(epochs):
             for x, y in self.dataset.loader(train_split=True, shuffle=True):
                 optimizer.zero_grad()
@@ -528,6 +533,9 @@ class FromScratch(Grafting):
                 loss.backward()
 
                 optimizer.step()
+                steps += 1
+                log_value("loss", loss, steps)
+                log_value("epoch", epoch, steps)
 
             auroc = metrics.estimate_auroc(
                 student,
@@ -537,6 +545,8 @@ class FromScratch(Grafting):
             )
 
             auroc = np.max([auroc, 1 - auroc])
+
+            log_value("auroc", auroc, epoch)
 
             tbar.update(1)
             tbar.set_description(
