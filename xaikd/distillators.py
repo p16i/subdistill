@@ -159,12 +159,15 @@ class Grafting:
             # Optimizers specified in the torch.optim package
             optimizer = torch.optim.SGD(approxer.parameters(), lr=lr)
 
+            print("-------------------")
             for param in student.children():
                 _, _c = utils.count_params_in_model(param)
 
                 if _c > 0:
-                    print(param)
-                    print(f"  > trainable param: {_c}")
+                    for p in param.children():
+                        _, _c = utils.count_params_in_model(p)
+                        print(f"> {p} (trainable param: {_c})")
+            print("-------------------")
 
             tbar = tqdm(total=epochs_per_layer)
             for epoch in range(epochs_per_layer):
@@ -355,12 +358,15 @@ class Layerwise:
                 f"> total_params: {count_total_params} (trainable {count_trainable_params})"
             )
 
+            print("-------------------")
             for param in student.children():
                 _, _c = utils.count_params_in_model(param)
 
                 if _c > 0:
-                    print(param)
-                    print(f"  > trainable param: {_c}")
+                    for p in param.children():
+                        _, _c = utils.count_params_in_model(p)
+                        print(f"> {p} (trainable param: {_c})")
+            print("-------------------")
 
             assert (
                 count_trainable_params > 0
@@ -380,7 +386,7 @@ class Layerwise:
 
             tbar = tqdm(total=epochs_per_layer)
 
-            adapter = basis.construct_projection_on_rank_k(
+            projector = basis.construct_projection_on_rank_k(
                 distill_info.num_output_channels, device=device
             )
             for epoch in range(epochs_per_layer):
@@ -390,7 +396,7 @@ class Layerwise:
 
                     with torch.no_grad():
                         target = teacher_head(x)
-                        target = adapter(target)
+                        target = projector(target)
 
                     actual = student_head(x)
 
@@ -412,8 +418,10 @@ class Layerwise:
                 )
                 decoder.to(device)
 
+                approxer.adapter = decoder
+
                 auroc = metrics.estimate_auroc(
-                    nn.Sequential(student_head, decoder, teacher_classifier),
+                    nn.Sequential(student_head, teacher_classifier),
                     self.dataset.loader(train_split=False),
                     attributors.LogOddEvidence(
                         self.dataset.selected_classes, self.dataset
@@ -454,19 +462,19 @@ class Layerwise:
             ),
             LayerDistillInfo(
                 layer_name="layer2",
-                num_input_channels=int(64 * self.compression_rate),
+                num_input_channels=64,
                 num_output_channels=int(128 * self.compression_rate),
                 output_spatial_dims=(16, 16),
             ),
             LayerDistillInfo(
                 layer_name="layer3",
-                num_input_channels=int(128 * self.compression_rate),
+                num_input_channels=128,
                 num_output_channels=int(256 * self.compression_rate),
                 output_spatial_dims=(8, 8),
             ),
             LayerDistillInfo(
                 layer_name="layer4",
-                num_input_channels=int(256 * self.compression_rate),
+                num_input_channels=256,
                 num_output_channels=int(512 * self.compression_rate),
                 output_spatial_dims=(4, 4),
             ),
