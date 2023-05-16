@@ -159,12 +159,15 @@ class Grafting:
             # Optimizers specified in the torch.optim package
             optimizer = torch.optim.SGD(approxer.parameters(), lr=lr)
 
+            print("-------------------")
             for param in student.children():
                 _, _c = utils.count_params_in_model(param)
 
                 if _c > 0:
-                    print(param)
-                    print(f"  > trainable param: {_c}")
+                    for p in param.children():
+                        _, _c = utils.count_params_in_model(p)
+                        print(f"> {p} (trainable param: {_c})")
+            print("-------------------")
 
             tbar = tqdm(total=epochs_per_layer)
             for epoch in range(epochs_per_layer):
@@ -355,12 +358,15 @@ class Layerwise:
                 f"> total_params: {count_total_params} (trainable {count_trainable_params})"
             )
 
+            print("-------------------")
             for param in student.children():
                 _, _c = utils.count_params_in_model(param)
 
                 if _c > 0:
-                    print(param)
-                    print(f"  > trainable param: {_c}")
+                    for p in param.children():
+                        _, _c = utils.count_params_in_model(p)
+                        print(f"> {p} (trainable param: {_c})")
+            print("-------------------")
 
             assert (
                 count_trainable_params > 0
