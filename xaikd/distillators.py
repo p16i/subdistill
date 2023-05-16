@@ -2,6 +2,10 @@ import copy
 import os
 import typing
 
+
+from tensorboard_logger import log_value
+
+
 from dataclasses import dataclass
 import pytorch_lightning as pl
 import numpy as np
@@ -154,6 +158,14 @@ class Grafting:
             # Optimizers specified in the torch.optim package
             optimizer = torch.optim.SGD(approxer.parameters(), lr=lr)
 
+            for param in student.children():
+                _, _c = utils.count_params_in_model(param)
+
+                if _c > 0:
+                    print(param)
+                    print(f"  > trainable param: {_c}")
+
+            step = 0
             tbar = tqdm(total=epochs_per_layer)
             for epoch in range(epochs_per_layer):
                 for x, y in self.dataset.loader(train_split=True, shuffle=True):
@@ -169,6 +181,10 @@ class Grafting:
 
                     optimizer.step()
 
+                    log_value("loss", loss, step)
+                    log_value("epoch", epoch, step)
+                    step += 1
+
                     # backword
                 global_epoch_ix += 1
 
@@ -182,9 +198,12 @@ class Grafting:
                 )
 
                 auroc = np.max([auroc, 1 - auroc])
+                log_value("auroc", epoch)
 
                 tbar.update(1)
-                tbar.set_description(f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})]")
+                tbar.set_description(
+                    f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})| loss={float(loss.cpu().detach()):.4e}]"
+                )
 
                 arr_metrics.append(
                     dict(
@@ -334,6 +353,13 @@ class Layerwise:
                 f"> total_params: {count_total_params} (trainable {count_trainable_params})"
             )
 
+            for param in student.children():
+                _, _c = utils.count_params_in_model(param)
+
+                if _c > 0:
+                    print(param)
+                    print(f"  > trainable param: {_c}")
+
             assert (
                 count_trainable_params > 0
                 and count_trainable_params < total_teacher_params
@@ -355,6 +381,8 @@ class Layerwise:
             adapter = basis.construct_projection_on_rank_k(
                 distill_info.num_output_channels, device=device
             )
+
+            step = 0
             for epoch in range(epochs_per_layer):
                 for x, _ in self.dataset.loader(train_split=True, shuffle=True):
                     optimizer.zero_grad()
@@ -371,6 +399,10 @@ class Layerwise:
                     loss.backward()
 
                     optimizer.step()
+
+                    log_value("loss", loss, step)
+                    log_value("epoch", epoch, step)
+                    step += 1
 
                     # backword
                 global_epoch_ix += 1
@@ -390,9 +422,12 @@ class Layerwise:
                 )
 
                 auroc = np.max([auroc, 1 - auroc])
+                log_value("auroc", auroc, epoch)
 
                 tbar.update(1)
-                tbar.set_description(f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})]")
+                tbar.set_description(
+                    f"[AUROC={auroc:.4f} (teacher: {ref_auroc:.4f})| loss={float(loss.cpu().detach()):.4e}]"
+                )
 
                 arr_metrics.append(
                     dict(
@@ -515,6 +550,7 @@ class FromScratch(Grafting):
         arr_metrics = []
 
         tbar = tqdm(total=epochs)
+        steps = 1
         for epoch in range(epochs):
             for x, y in self.dataset.loader(train_split=True, shuffle=True):
                 optimizer.zero_grad()
@@ -528,6 +564,9 @@ class FromScratch(Grafting):
                 loss.backward()
 
                 optimizer.step()
+                steps += 1
+                log_value("loss", loss, steps)
+                log_value("epoch", epoch, steps)
 
             auroc = metrics.estimate_auroc(
                 student,
@@ -537,6 +576,8 @@ class FromScratch(Grafting):
             )
 
             auroc = np.max([auroc, 1 - auroc])
+
+            log_value("auroc", auroc, epoch)
 
             tbar.update(1)
             tbar.set_description(

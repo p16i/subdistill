@@ -9,6 +9,8 @@ from pathlib import Path
 from xaikd.utils import click_types
 from xaikd import datasets, utils, distillators
 
+from tensorboard_logger import configure
+
 
 @click.command()
 @click.option("--model", type=click_types.Model(), required=True)
@@ -54,6 +56,9 @@ def main(
 
     os.makedirs(output_dir, exist_ok=True)
     click.echo(f"Output: {output_dir}")
+
+    os.makedirs(output_dir / "log", exist_ok=True)
+    configure(output_dir / "log" / slug, flush_secs=5)
 
     device = utils.get_device()
 
