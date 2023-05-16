@@ -148,7 +148,7 @@ def main(
         dataset, num_training_samples=num_training_samples
     )
 
-    val_dataloader = dataset.loader(train_split=False)
+    val_dataloader = dataset.loader(train_split=False, batch_size=1)
 
     click.echo(f"Basis Centering Mode: {basis_mode}")
     click.echo(f"with bases: {basis_names}")
