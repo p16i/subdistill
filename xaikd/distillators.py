@@ -386,7 +386,7 @@ class Layerwise:
 
             tbar = tqdm(total=epochs_per_layer)
 
-            adapter = basis.construct_projection_on_rank_k(
+            projector = basis.construct_projection_on_rank_k(
                 distill_info.num_output_channels, device=device
             )
             for epoch in range(epochs_per_layer):
@@ -396,7 +396,7 @@ class Layerwise:
 
                     with torch.no_grad():
                         target = teacher_head(x)
-                        target = adapter(target)
+                        target = projector(target)
 
                     actual = student_head(x)
 
@@ -418,8 +418,10 @@ class Layerwise:
                 )
                 decoder.to(device)
 
+                approxer.adapter = decoder
+
                 auroc = metrics.estimate_auroc(
-                    nn.Sequential(student_head, decoder, teacher_classifier),
+                    nn.Sequential(student_head, teacher_classifier),
                     self.dataset.loader(train_split=False),
                     attributors.LogOddEvidence(
                         self.dataset.selected_classes, self.dataset
@@ -460,19 +462,19 @@ class Layerwise:
             ),
             LayerDistillInfo(
                 layer_name="layer2",
-                num_input_channels=int(64 * self.compression_rate),
+                num_input_channels=64,
                 num_output_channels=int(128 * self.compression_rate),
                 output_spatial_dims=(16, 16),
             ),
             LayerDistillInfo(
                 layer_name="layer3",
-                num_input_channels=int(128 * self.compression_rate),
+                num_input_channels=128,
                 num_output_channels=int(256 * self.compression_rate),
                 output_spatial_dims=(8, 8),
             ),
             LayerDistillInfo(
                 layer_name="layer4",
-                num_input_channels=int(256 * self.compression_rate),
+                num_input_channels=256,
                 num_output_channels=int(512 * self.compression_rate),
                 output_spatial_dims=(4, 4),
             ),
