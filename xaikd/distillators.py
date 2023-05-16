@@ -136,6 +136,7 @@ class Grafting:
         assert total_teacher_trainable_params == 0
 
         torch.manual_seed(seed)
+        step = 0
         for distill_info in tqdm(arr_distill_info):
             approxer = self.on_training_layer_start(
                 student, distill_info, basis_name, basis_dir, device
@@ -165,7 +166,6 @@ class Grafting:
                     print(param)
                     print(f"  > trainable param: {_c}")
 
-            step = 0
             tbar = tqdm(total=epochs_per_layer)
             for epoch in range(epochs_per_layer):
                 for x, y in self.dataset.loader(train_split=True, shuffle=True):
@@ -198,7 +198,7 @@ class Grafting:
                 )
 
                 auroc = np.max([auroc, 1 - auroc])
-                log_value("auroc", epoch)
+                log_value("auroc", auroc, global_epoch_ix)
 
                 tbar.update(1)
                 tbar.set_description(
@@ -339,6 +339,8 @@ class Layerwise:
         assert total_teacher_trainable_params == 0
 
         torch.manual_seed(seed)
+
+        step = 0
         for distill_info in tqdm(arr_distill_info):
             approxer, basis = self.on_training_layer_start(
                 student, distill_info, basis_name, basis_dir, device
@@ -381,8 +383,6 @@ class Layerwise:
             adapter = basis.construct_projection_on_rank_k(
                 distill_info.num_output_channels, device=device
             )
-
-            step = 0
             for epoch in range(epochs_per_layer):
                 for x, _ in self.dataset.loader(train_split=True, shuffle=True):
                     optimizer.zero_grad()
@@ -422,7 +422,7 @@ class Layerwise:
                 )
 
                 auroc = np.max([auroc, 1 - auroc])
-                log_value("auroc", auroc, epoch)
+                log_value("auroc", auroc, global_epoch_ix)
 
                 tbar.update(1)
                 tbar.set_description(
