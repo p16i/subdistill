@@ -22,10 +22,9 @@ def extract_activation_context(
     model: nn.Module,
     module: nn.Module,
     dataset: data.Dataset,
+    device: str,
     selected_classes: typing.Tuple[int, int],
     total_classes=data.NUM_CLASSES,
-    output_dir="./tmp",
-    seed=1,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
     assert len(selected_classes) == 2
 
@@ -39,7 +38,7 @@ def extract_activation_context(
     arr_act = []
     arr_ctx = []
 
-    np.random.seed(seed)
+    np.random.seed(dataset.seed)
 
     print(f"Extracting activation from {module}")
 
@@ -59,7 +58,7 @@ def extract_activation_context(
                 ).all(), f"{selected_classes} :: {y}"
 
                 output, attribution = attributor(
-                    x, lambda output: output_modifier(output, y)
+                    x.to(device), lambda output: output_modifier(output, y)
                 )
 
                 act = getattr(module, "__output")

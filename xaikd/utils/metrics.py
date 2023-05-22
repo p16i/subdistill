@@ -23,7 +23,7 @@ def auroc(
 
     metric = BinaryAUROC()
     for x, y in dataloader:
-        logits = model(x.to(device))
+        logits = model(x.to(device)).cpu()
 
         logodd = logits[:, c1] - logits[:, c2]
 

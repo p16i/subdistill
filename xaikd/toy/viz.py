@@ -134,7 +134,7 @@ def subdataset_decision_boundary(
     _, val_loader = data.build_loaders(dataset)
 
     for x, y in val_loader:
-        logits = model(x).numpy()
+        logits = model(x.to(device)).cpu().numpy()
         arr_logits.append(logits)
         arr_targets.extend(y.numpy().tolist())
 
@@ -163,7 +163,11 @@ def subdataset_decision_boundary(
         gix = group // 2
         plt.subplot(2, ncols, gix + 1)
 
-        _X = torch.tensor(data.preprend_z(X, gix=gix, eps=dataset.eps)).float().to(device)
+        _X = (
+            torch.tensor(data.preprend_z(X, gix=gix, eps=dataset.eps))
+            .float()
+            .to(device)
+        )
         c1, c2 = group, group + 1
 
         _, subset_val_dl = data.build_subset_loaders(dataset, (c1, c2))
@@ -266,7 +270,7 @@ def decision_boundary_with_basis(
                     device=device,
                 )
             )
-            logits = model(_X).cpu()
+            logits = model(_X.to(device)).cpu()
 
             _, subset_val_dl = data.build_subset_loaders(
                 dataset, selected_classes=classes

@@ -22,11 +22,13 @@ from xaikd.utils import metrics
 # from xaikd.toy.model import ModelWrapper, construct_mlp
 
 BASIS_NAMES = [
-    "random1--centered",
     "pca--centered",
     "prca-recon--centered",
     "prca-abs--centered",
     "prca--centered",
+    "random1--centered",
+    "random2--centered",
+    "random3--centered",
 ]
 
 
@@ -96,7 +98,6 @@ def extract_activation_and_bases(
     classes: typing.Tuple[int, int],
     basis_names: typing.List[str],
     device: str,
-    seed: int,
     output_dir: Path,
 ) -> int:
     arr_act, arr_ctx = toy.attribution.extract_activation_context(
@@ -104,8 +105,7 @@ def extract_activation_and_bases(
         module=module,
         dataset=dataset,
         selected_classes=classes,
-        output_dir=output_dir,
-        seed=seed,
+        device=device,
     )
 
     print("arr_act.shape", arr_act.shape)
@@ -165,6 +165,8 @@ def main(model, seed, eps, output_dir, epochs):
 
     trainer.fit(toy.model.ModelWrapper(model), train_loader)
 
+    model = model.to(device)
+
     with torch.no_grad():
         acc = metrics.accuracy(
             model, val_loader, num_classes=toy.data.NUM_CLASSES, device=device
@@ -209,7 +211,6 @@ def main(model, seed, eps, output_dir, epochs):
                 classes=classes,
                 basis_names=BASIS_NAMES,
                 device=device,
-                seed=seed,
                 output_dir=layer_output_dir,
             )
 
