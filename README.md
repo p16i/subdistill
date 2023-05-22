@@ -77,18 +77,49 @@ Activative env `peotry shell` or run commands via `peotry run ....`
 
   Conclusion: it seems that `prca-recon` behaves quite similar to `prca-abs`.
 
-- [] grafting vs layerwise
+- [x] grafting vs layerwise
   - remark: don't fotget shuffle and frozen parameters.
-  - [] baseline: train from stach; hinston disllation
+  - [x] baseline: train from stach; hinston disllation
+  - **Remark:** This needs to be revisit.
 
-- [] toy problem on merged dataset (5h?)
-
+- `prca-recon` is very slow. Why? 
+  - well,  it is slow because we forgot to neglect the sign in the objective
 
 **Remarks**
 - `prca-abs` is very sensitive to `eps`.
-- `prca-recon` is very slow. Why?
 
 ### Sprint 6
-- [] implementing baseline for TPAMI, Interpolative, ...
-- [] ...
+- [x] bug fixed on AUROC quantity
+- [x] rerun imagenet class
+  - [x] compare results
+- [] toy problem on merged dataset (5h?)
+  - [x] prototype in jupyter
+  - [x] Parameters
+        - dataset generation:
+          - `eps` controls hardness
+          - `seed`
+          - `sample_per_dataset`
+        - model (2-Layer MLP): model size
+  - [x] write code to rerun with multiple seeds and architecture?
+    - [x] each run need take parameterized by `seed` and `eps`, 
+        - we have an inter loop in the script to run all `models`, `layers`
+        - artifact
+          - dataset
+          - curves at different `k`
+          - (jupyter) decision boundary of teacher
+          - (juypter) decision boundary at `k={1, 2, 3, 4, 5}`
+    - (next step): rerun five seeds on cluster
+  - [x] check results on cluster:
+    - eps: `1.0`: `mlp64,128,256,512`
+    - model: `mlp64`; eps: `0.5,0.1`
+  - [] check result `uncentered` (`mlp64`, `eps=0.1`)
+  - [] add regularizer to prca-recon
 
+- [] refactor
+  - the way we construct loader
+  - projector in basis
+- [] rerun some experiment again!
+
+
+### Backlog
+- [] implementing baseline for TPAMI, Interpolative, ...

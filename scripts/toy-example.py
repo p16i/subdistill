@@ -19,16 +19,14 @@ import pytorch_lightning as pl
 from xaikd import utils, toy, bases
 from xaikd.utils import metrics
 
-# from xaikd.toy.model import ModelWrapper, construct_mlp
-
 BASIS_NAMES = [
-    "pca--centered",
-    "prca-recon--centered",
-    "prca-abs--centered",
-    "prca--centered",
-    "random1--centered",
-    "random2--centered",
-    "random3--centered",
+    "pca",
+    "prca-recon",
+    "prca-abs",
+    "prca",
+    "random1",
+    "random2",
+    "random3",
 ]
 
 
@@ -134,7 +132,10 @@ def extract_activation_and_bases(
 @click.option("--output-dir", default="./tmp", type=str)
 @click.option("--seed", default=1, type=int)
 @click.option("--epochs", default=20, type=int)
-def main(model, seed, eps, output_dir, epochs):
+@click.option(
+    "--mode", default="centered", type=click.Choice(["centered", "uncentered"])
+)
+def main(model, seed, eps, output_dir, epochs, mode):
     arguments = locals()
     start_time = datetime.now()
 
@@ -190,6 +191,8 @@ def main(model, seed, eps, output_dir, epochs):
             artifact_dir=model_output_dir,
         )
 
+    basis_names = list(map(lambda s: f"{s}--{mode}", BASIS_NAMES))
+
     for classes in [(0, 1), (2, 3), (4, 5)]:
         cls_slug = f"subdataset--{classes[0]}vs{classes[1]}"
 
@@ -209,14 +212,14 @@ def main(model, seed, eps, output_dir, epochs):
                 module=module,
                 dataset=dataset,
                 classes=classes,
-                basis_names=BASIS_NAMES,
+                basis_names=basis_names,
                 device=device,
                 output_dir=layer_output_dir,
             )
 
             arr_ks = list(range(0, layer_dims, 1))
 
-            for basis_name in BASIS_NAMES:
+            for basis_name in basis_names:
                 print("Basis:", basis_name)
                 basis = bases.get_basis(basis_name)
 
@@ -250,8 +253,6 @@ def main(model, seed, eps, output_dir, epochs):
                         device=device,
                         output_dir=basis_output_dir,
                     )
-
-                # vis decision boundary
 
     utils.dump_json(output_dir / "meta.json", arguments)
 
