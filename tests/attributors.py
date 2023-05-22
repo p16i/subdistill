@@ -14,7 +14,6 @@ NUMBER_OF_SPATIAL_LOCATIONS = 8
 
 
 class CIFAR100VerySmall(datasets.CIFAR100):
-
     def loader(self, batch_size=64, num_workers=2, train_split=False):
         ds = self.create_dataset(train_split=train_split)
 
@@ -84,9 +83,7 @@ def test_logit_modifier_logodd(target):
 
     logits = torch.rand((2, dataset.num_classes))
 
-    logits_mod_logood = attributors.LogOddEvidence([class1, class2], dataset)(
-        logits, target
-    )
+    logits_mod_logood = attributors.LogOddEvidence((class1, class2))(logits, target)
 
     assert (logits_mod_logood[:, class1] == logits[:, class1]).all()
     assert (logits_mod_logood[:, class2] == -logits[:, class2]).all()

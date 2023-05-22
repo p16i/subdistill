@@ -46,7 +46,7 @@ def test_resnet_layer_interception(slug, layer):
     expected_logit, layers_output = model2(dummy_input)
 
     try:
-        module, hook = interceptor.attach_hook_intercept_output(model1, layer)
+        module, hook = interceptor.attach_hook_intercept_layer_output(model1, layer)
 
         logits = model1(dummy_input)
         output = getattr(module, "__output")

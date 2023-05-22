@@ -56,15 +56,13 @@ class OneClassEvidence(LogitModifier):
 
 class LogOddEvidence(LogitModifier):
     def __init__(
-        self, classes: typing.List[int], dataset: datasets.TwoClassesDataset
+        self,
+        classes: typing.Tuple[int, int],
     ) -> None:
         # todo: perhaps, we only need `dataset` and extract classes from there.
         assert len(classes) == 2
 
-        assert isinstance(dataset, datasets.TwoClassesDataset)
-
         self.classes = classes
-        self.dataset = dataset
 
     def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor:
         output = torch.zeros_like(logits)
@@ -89,7 +87,9 @@ def extract_activation_context(
     arr_ctx = []
 
     try:
-        module, hook = utils.interceptor.attach_hook_intercept_output(model, layer)
+        module, hook = utils.interceptor.attach_hook_intercept_layer_output(
+            model, layer
+        )
 
         with make_attributor_for(model, dataset.input_statistics) as attributor:
             for batch in tqdm(data_loader):

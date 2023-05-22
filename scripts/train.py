@@ -69,7 +69,7 @@ def main(epochs, lr):
             loss.backward()
             optimizer.step()
 
-        auroc = metrics.estimate_auroc(
+        auroc = metrics.auroc(
             model,
             dataset.loader(train_split=False),
             attributors.LogOddEvidence(dataset.selected_classes, dataset),

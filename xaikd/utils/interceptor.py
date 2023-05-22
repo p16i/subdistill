@@ -9,7 +9,7 @@ from torch.utils import hooks
 ATTRIBUTE_INTERCEPTED_OUTPUT = "__output"
 
 
-def attach_hook_intercept_output(
+def attach_hook_intercept_layer_output(
     model: nn.Module, layer: str
 ) -> typing.Tuple[nn.Module, hooks.RemovableHandle]:
     # remark: this has to be done per architecture
@@ -18,6 +18,12 @@ def attach_hook_intercept_output(
 
     module = getattr(model, layer)[-1]
 
+    return attach_hook_intercept_module(module)
+
+
+def attach_hook_intercept_module(
+    module: nn.Module,
+) -> typing.Tuple[nn.Module, hooks.RemovableHandle]:
     def fh(mod, input, output):
         assert isinstance(output, torch.Tensor)
 
