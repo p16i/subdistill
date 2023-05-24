@@ -177,6 +177,14 @@ def get_basis(slug, **kwargs) -> Basis:
         )
     else:
         assert centering_slug in ["uncentered", "centered"], f"Value `{centering_slug}`"
+
+        if "prca-reconreg" in name_slug:
+            beta = float(name_slug.split("reg")[-1])
+
+            name_slug = "prca-reconreg"
+
+            kwargs["beta"] = beta
+
         basis = BASES[name_slug](alias=name_slug, centering=centering, **kwargs)
 
     setattr(basis, "__name", slug)
@@ -327,3 +335,40 @@ class PRCAAbs(PRCAVariant):
 @register_basis("prca-recon")
 class PRCARelRecon(PRCAVariant):
     mode = "recon"
+
+
+@register_basis("prca-reconreg")
+class PRCARelReconRegt (PRCAVariant):
+    mode = "recon"
+
+    def __init__(self, alias, centering: bool = True, beta=0, **kwargs):
+        super().__init__(alias, centering, **kwargs)
+
+        self.beta = beta
+
+    def fit(
+        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+        """_summary_ Summary
+
+        Args:
+            activation (npt.NDArray): _description_
+            context (npt.NDArray): _description_
+
+        Returns:
+            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
+        """
+        _, d = activation.shape
+
+        if not self.centering:
+            mean = np.zeros(d)
+
+        activation = activation - mean
+
+        learner = learners.PRCAGreedyLeaner(mode=self.mode)
+
+        U = learner.fit(activation, context, **kwargs, beta=self.beta)
+
+        self.artifact = dict(zip(self.artifact_keys, (U, mean)))
+
+        return U, None
