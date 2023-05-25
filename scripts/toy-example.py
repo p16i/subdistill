@@ -146,6 +146,7 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
 
     output_dir = Path(output_dir) / dataset_slug(eps, seed)
     os.makedirs(output_dir, exist_ok=True)
+
     click.echo(f"Output dir: {output_dir}")
 
     # Step 1: Data preparation (generate if needed; otherwise load only)
@@ -186,13 +187,16 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
     os.makedirs(model_output_dir, exist_ok=True)
 
     with torch.no_grad():
-        toy.viz.subdataset_decision_boundary(
+        stats_auroc = toy.viz.subdataset_decision_boundary(
             model=model,
             dataset=dataset,
             acc=acc,
             device=device,
             artifact_dir=model_output_dir,
         )
+
+    arguments["aurocs"] = stats_auroc
+    utils.dump_json(model_output_dir / "meta.json", arguments)
 
     basis_names = list(map(lambda s: f"{s}--{mode}", basis_names.split(",")))
 
@@ -256,8 +260,6 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
                         device=device,
                         output_dir=basis_output_dir,
                     )
-
-    utils.dump_json(output_dir / "meta.json", arguments)
 
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")

@@ -159,6 +159,8 @@ def subdataset_decision_boundary(
     # this is seed for x3; not of the dataset
     np.random.seed(dataset.seed)
 
+    stats_aurocs = dict()
+
     for group in range(0, 6, 2):
         gix = group // 2
         plt.subplot(2, ncols, gix + 1)
@@ -180,6 +182,8 @@ def subdataset_decision_boundary(
         )
 
         auroc = np.max([auroc, 1 - auroc])
+
+        stats_aurocs["{c1}vs{c2}"] = auroc
 
         logits = model(_X).cpu()
 
@@ -219,6 +223,8 @@ def subdataset_decision_boundary(
         plt.xlabel(f"$f_{c1} - f_{c2}$")
     plt.savefig(artifact_dir / "decision_boundary.png")
     plt.close()
+
+    return stats_aurocs
 
 
 def decision_boundary_with_basis(
