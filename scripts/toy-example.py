@@ -127,6 +127,7 @@ def extract_activation_and_bases(
     default=",".join(
         [
             "pca",
+            "prca-recon",
             "prca-abs",
             "prca",
             "random1",
