@@ -183,7 +183,7 @@ def subdataset_decision_boundary(
 
         auroc = np.max([auroc, 1 - auroc])
 
-        stats_aurocs["{c1}vs{c2}"] = auroc
+        stats_aurocs[f"{c1}vs{c2}"] = auroc
 
         logits = model(_X).cpu()
 
