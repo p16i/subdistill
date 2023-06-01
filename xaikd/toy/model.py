@@ -7,6 +7,9 @@ from torch import nn
 from torch.nn import functional as F
 import pytorch_lightning as pl
 
+import torchmetrics
+
+
 from collections import OrderedDict
 
 from xaikd import bases
@@ -41,12 +44,18 @@ class ModelWrapper(pl.LightningModule):
 
         self.model = model
 
+        num_classes = self.model[-1].bias.shape[-1]
+
+        self.valid_acc = torchmetrics.Accuracy(
+            task="multiclass", num_classes=num_classes
+        )
+
     def forward(self, x):
         embedding = self.model(x)
         return embedding
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-4)
         return optimizer
 
     def training_step(self, train_batch, batch_idx):
@@ -56,7 +65,21 @@ class ModelWrapper(pl.LightningModule):
 
         loss = F.cross_entropy(logits, y)
 
+        self.log("train_loss", loss)
+
         return loss
+
+    def validation_step(self, val_batch, batch_idx):
+        x, y = val_batch
+
+        logits = self.model(x)
+
+        self.valid_acc.update(logits, y)
+
+    def on_validation_epoch_end(self):
+        acc = self.valid_acc.compute()
+        self.log("valid_acc_epoch", self.valid_acc.compute())
+        self.valid_acc.reset()
 
 
 def train(

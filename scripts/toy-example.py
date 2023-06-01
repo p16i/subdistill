@@ -120,7 +120,7 @@ def extract_activation_and_bases(
 @click.option("--model", default="mlp64", type=str)
 @click.option("--output-dir", default="./tmp", type=str)
 @click.option("--seed", default=1, type=int)
-@click.option("--epochs", default=20, type=int)
+@click.option("--epochs", default=200, type=int)
 @click.option(
     "--basis-names",
     type=str,
@@ -169,7 +169,7 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
         default_root_dir=output_dir,
     )
 
-    trainer.fit(toy.model.ModelWrapper(model), train_loader)
+    trainer.fit(toy.model.ModelWrapper(model), train_loader, val_loader)
 
     model = model.to(device)
 
@@ -225,7 +225,7 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
                 output_dir=layer_output_dir,
             )
 
-            arr_ks = list(range(0, layer_dims+1, 1))
+            arr_ks = list(range(0, layer_dims + 1, 1))
 
             for basis_name in basis_names:
                 print("Basis:", basis_name)
