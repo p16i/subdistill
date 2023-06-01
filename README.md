@@ -112,14 +112,23 @@ Activative env `peotry shell` or run commands via `peotry run ....`
   - [x] check results on cluster:
     - eps: `1.0`: `mlp64,128,256,512`
     - model: `mlp64`; eps: `0.5,0.1`
-  - [] check result `uncentered` (`mlp64`, `eps=0.1`)
+  - [x] check result `uncentered` (`mlp64`, `eps=0.1`)
   - [] add regularizer to prca-recon
+    - [x] trial run: with `eps0.1`; `dir=...`
+    - [ ] check w/ seeds (`job: 243545_1`)
 
+### Sprint 7 (2023/06/01)
+- refactor
+  - [] prca-abs,recon,reg with the same fit but adding assersion
+- experiment: beta
+  - 
+- new toy dataset: mixture of gaussian
+  - 
+
+
+### Backlog
 - [] refactor
   - the way we construct loader
   - projector in basis
 - [] rerun some experiment again!
-
-
-### Backlog
 - [] implementing baseline for TPAMI, Interpolative, ...
