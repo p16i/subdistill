@@ -120,7 +120,7 @@ def extract_activation_and_bases(
 @click.option("--model", default="mlp64", type=str)
 @click.option("--output-dir", default="./tmp", type=str)
 @click.option("--seed", default=1, type=int)
-@click.option("--epochs", default=200, type=int)
+@click.option("--epochs", default=100, type=int)
 @click.option(
     "--basis-names",
     type=str,
