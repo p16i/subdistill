@@ -225,7 +225,7 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
                 output_dir=layer_output_dir,
             )
 
-            arr_ks = list(range(0, layer_dims, 1))
+            arr_ks = list(range(0, layer_dims+1, 1))
 
             for basis_name in basis_names:
                 print("Basis:", basis_name)
