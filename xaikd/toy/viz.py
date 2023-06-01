@@ -22,7 +22,7 @@ def dataset(artifact_dir: Path):
 
     slug = os.path.basename(artifact_dir)
 
-    ncols = 5
+    ncols = 2 + data.NUM_CLASSES // 2
 
     vmin, vmax = np.min(X_train[:, :2]), np.max(X_train[:, :2])
     vmin -= 0.5
@@ -40,12 +40,10 @@ def dataset(artifact_dir: Path):
     plt.xlim([vmin, vmax])
     plt.ylim([vmin, vmax])
 
-    markers = ["s", "o", "x"]
-
     plt.axhline(0, ls="--", color="k", lw=1)
     plt.axvline(0, ls="--", color="k", lw=1)
 
-    for group in range(0, 6, 2):
+    for group in range(0, data.NUM_CLASSES, 2):
         pos = y_train == group
         neg = y_train == (group + 1)
 
@@ -53,21 +51,19 @@ def dataset(artifact_dir: Path):
             X_train[pos, 0],
             X_train[pos, 1],
             label=f"Group {group}: Pos",
-            marker=markers[group // 2],
             alpha=0.1,
         )
         plt.scatter(
             X_train[neg, 0],
             X_train[neg, 1],
             label=f"Group {group}: Neg",
-            marker=markers[group // 2],
             alpha=0.1,
         )
 
     plt.xlabel("$x_1$ (standardized)")
     plt.ylabel("$x_2$ (standardized)")
 
-    for group in range(0, 6, 2):
+    for group in range(0, data.NUM_CLASSES, 2):
         plt.subplot(1, ncols, group // 2 + 2)
         plt.axhline(0, ls="--", color="k", lw=1)
         plt.axvline(0, ls="--", color="k", lw=1)
@@ -84,14 +80,12 @@ def dataset(artifact_dir: Path):
             X_train[pos, 0],
             X_train[pos, 1],
             label=f"Class {c1}",
-            marker=markers[group // 2],
             alpha=0.1,
         )
         plt.scatter(
             X_train[neg, 0],
             X_train[neg, 1],
             label=f"Class {c2}",
-            marker=markers[group // 2],
             alpha=0.1,
         )
         plt.legend()
@@ -150,7 +144,7 @@ def subdataset_decision_boundary(
 
     X = np.stack([xv.reshape(-1), yv.reshape(-1)]).T
 
-    ncols = 3
+    ncols = data.NUM_CLASSES // 2
 
     plt.figure(figsize=(ncols * 4, 3 * 2))
 
@@ -161,7 +155,7 @@ def subdataset_decision_boundary(
 
     stats_aurocs = dict()
 
-    for group in range(0, 6, 2):
+    for group in range(0, data.NUM_CLASSES, 2):
         gix = group // 2
         plt.subplot(2, ncols, gix + 1)
 

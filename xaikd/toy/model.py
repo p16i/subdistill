@@ -13,6 +13,7 @@ import torchmetrics
 from collections import OrderedDict
 
 from xaikd import bases
+from xaikd.toy import data
 
 
 def construct_mlp(name: str) -> nn.Module:
@@ -28,7 +29,7 @@ def construct_mlp(name: str) -> nn.Module:
                 ("act1", nn.ReLU()),
                 ("lin2", nn.Linear(D, D // 2)),
                 ("act2", nn.ReLU()),
-                ("lin3", nn.Linear(D // 2, 6)),
+                ("lin3", nn.Linear(D // 2, data.NUM_CLASSES)),
             ]
         )
     )

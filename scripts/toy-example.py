@@ -201,7 +201,8 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
 
     basis_names = list(map(lambda s: f"{s}--{mode}", basis_names.split(",")))
 
-    for classes in [(0, 1), (2, 3), (4, 5)]:
+    for c in range(0, toy.data.NUM_CLASSES, 2):
+        classes = (c, c + 1)
         cls_slug = f"subdataset--{classes[0]}vs{classes[1]}"
 
         for layer in ["act1", "act2"]:

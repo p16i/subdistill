@@ -16,7 +16,7 @@ from dataclasses import dataclass
 MEAN_GROUP = [1, 0, -1]
 TEST_SPLIT_RATIO = 0.2
 SAMPLES_PER_BLOB = 2000
-NUM_CLASSES = 6
+NUM_CLASSES = 10
 
 
 @dataclass
@@ -37,7 +37,7 @@ def preprend_z(x: npt.NDArray, gix: int, eps: float) -> npt.NDArray:
 
 
 def construct_dataset(
-    eps: float, seed: int, samples_per_blob=SAMPLES_PER_BLOB, nblobs=6
+    eps: float, seed: int, samples_per_blob=SAMPLES_PER_BLOB, nblobs=NUM_CLASSES
 ):
     # These toy datasets are generated with similar parameters used in
     # https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html
