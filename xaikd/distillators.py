@@ -110,7 +110,7 @@ class Grafting:
         student = copy.deepcopy(self.teacher)
         student.to(device)
 
-        ref_auroc = metrics.estimate_auroc(
+        ref_auroc = metrics.auroc(
             student,
             self.dataset.loader(train_split=False),
             attributors.LogOddEvidence(self.dataset.selected_classes, self.dataset),
@@ -191,7 +191,7 @@ class Grafting:
                     # backword
                 global_epoch_ix += 1
 
-                auroc = metrics.estimate_auroc(
+                auroc = metrics.auroc(
                     student,
                     self.dataset.loader(train_split=False),
                     attributors.LogOddEvidence(
@@ -316,7 +316,7 @@ class Layerwise:
         student = copy.deepcopy(self.teacher)
         student.to(device)
 
-        ref_auroc = metrics.estimate_auroc(
+        ref_auroc = metrics.auroc(
             student,
             self.dataset.loader(train_split=False),
             attributors.LogOddEvidence(self.dataset.selected_classes, self.dataset),
@@ -416,7 +416,7 @@ class Layerwise:
                     # backword
                 global_epoch_ix += 1
 
-                auroc = metrics.estimate_auroc(
+                auroc = metrics.auroc(
                     nn.Sequential(student_head, decoder, teacher_classifier),
                     self.dataset.loader(train_split=False),
                     attributors.LogOddEvidence(
@@ -524,7 +524,7 @@ class FromScratch(Grafting):
 
         utils.deactivate_requires_grad(student)
 
-        ref_auroc = metrics.estimate_auroc(
+        ref_auroc = metrics.auroc(
             student,
             self.dataset.loader(train_split=False),
             attributors.LogOddEvidence(self.dataset.selected_classes, self.dataset),
@@ -574,7 +574,7 @@ class FromScratch(Grafting):
                 log_value("loss", loss, steps)
                 log_value("epoch", epoch, steps)
 
-            auroc = metrics.estimate_auroc(
+            auroc = metrics.auroc(
                 student,
                 self.dataset.loader(train_split=False),
                 attributors.LogOddEvidence(self.dataset.selected_classes, self.dataset),

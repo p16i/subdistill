@@ -84,6 +84,7 @@ def estimate_auroc_for_basis(
     device: str,
     arr_ks: typing.List[int],
 ) -> typing.List[float]:
+    raise NotImplementedError("obsolte; use from utils. metric")
     # todo: this has to be attract in the model/arch logic!
     module: nn.Module = getattr(model, layer)[-1]
 
@@ -147,7 +148,7 @@ def main(
     dataset: datasets.TwoClassesDataset = datasets.construct(
         dataset, num_training_samples=num_training_samples
     )
-
+    # remark: we need to use `batch_size=1` due to rounding issue.
     val_dataloader = dataset.loader(train_split=False, batch_size=1)
 
     click.echo(f"Basis Centering Mode: {basis_mode}")
