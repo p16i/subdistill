@@ -320,7 +320,7 @@ class PRCAVariant(Basis):
 
         learner = learners.PRCAGreedyLeaner(mode=self.mode)
 
-        U = learner.fit(activation, context, **kwargs)
+        U = learner.fit(activation, context, **kwargs, beta=self.beta)
 
         self.artifact = dict(zip(self.artifact_keys, (U, mean)))
 
@@ -330,45 +330,20 @@ class PRCAVariant(Basis):
 @register_basis("prca-abs")
 class PRCAAbs(PRCAVariant):
     mode = "abs"
+    beta = 0.0
 
 
 @register_basis("prca-recon")
 class PRCARelRecon(PRCAVariant):
     mode = "recon"
+    beta = 0.0
 
 
 @register_basis("prca-reconreg")
-class PRCARelReconRegt (PRCAVariant):
+class PRCARelReconReg (PRCAVariant):
     mode = "recon"
 
-    def __init__(self, alias, centering: bool = True, beta=0, **kwargs):
-        super().__init__(alias, centering, **kwargs)
-
+    def __init__(self,  beta=0.0, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.beta = beta
 
-    def fit(
-        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
-        """_summary_ Summary
-
-        Args:
-            activation (npt.NDArray): _description_
-            context (npt.NDArray): _description_
-
-        Returns:
-            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
-        """
-        _, d = activation.shape
-
-        if not self.centering:
-            mean = np.zeros(d)
-
-        activation = activation - mean
-
-        learner = learners.PRCAGreedyLeaner(mode=self.mode)
-
-        U = learner.fit(activation, context, **kwargs, beta=self.beta)
-
-        self.artifact = dict(zip(self.artifact_keys, (U, mean)))
-
-        return U, None

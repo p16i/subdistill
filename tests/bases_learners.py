@@ -6,8 +6,8 @@ import numpy as np
 from xaikd.bases import learners
 
 
-@pytest.mark.parametrize("mode", ["abs", "recon"])
-def test_obj(mode):
+@pytest.mark.parametrize("name", ["abs", "recon", "reconreg0.1"])
+def test_obj(name):
     act = torch.tensor([[5, 1], [-2, 3]]).float()
     ctx = torch.tensor([[1, -1], [1, 1]]).float()
 
@@ -19,14 +19,23 @@ def test_obj(mode):
     rel_original = (act * ctx).sum(axis=1)
     rel_projected = act_projected * ctx_projected
 
+
+    if name == "abs":
+        mode, beta = name, 0.0
+        expected = torch.abs(rel_projected)
+
+    elif name == "recon":
+        mode, beta = name, 0.0
+        expected = -((rel_projected - rel_original) ** 2)
+    elif "reconreg" in name:
+        mode = "recon"
+        beta = float(name.replace("reconreg", ""))
+        expected = -((rel_projected - rel_original) ** 2)
+        expected += beta * (act_projected).abs()
+
     learner = learners.PRCAGreedyLeaner(mode=mode)
 
-    if mode == "abs":
-        expected = torch.abs(rel_projected)
-    elif mode == "recon":
-        expected = -((rel_projected - rel_original) ** 2)
-
-    actual = learner.obj_func(act, ctx, u)
+    actual = learner.obj_func(act, ctx, u, beta)
 
     assert actual == expected.mean()
 
