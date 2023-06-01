@@ -97,21 +97,21 @@ def dataset(artifact_dir: Path):
         plt.legend()
         plt.yticks([])
 
-    plt.subplot(1, ncols, 5)
+    # plt.subplot(1, ncols, 5)
 
-    for group in range(0, 6, 2):
-        _x = X_train[np.isin(y_train, [group, group + 1]), :]
-        plt.scatter([group // 2] * _x.shape[0], _x[:, 2], alpha=0.5, marker=".")
-        plt.scatter([group // 2], [_x[:, 2].mean()], marker="x", color="k")
+    # for group in range(0, 6, 2):
+    #     _x = X_train[np.isin(y_train, [group, group + 1]), :]
+    #     plt.scatter([group // 2] * _x.shape[0], _x[:, 2], alpha=0.5, marker=".")
+    #     plt.scatter([group // 2], [_x[:, 2].mean()], marker="x", color="k")
 
-    plt.ylabel("$x_3$ (standardized)")
+    # plt.ylabel("$x_3$ (standardized)")
 
-    ticks = list(range(3))
-    plt.xticks(ticks, list(map(lambda t: f"Dataset {t}", ticks)))
-    plt.yticks([-1, 0, 1])
-    plt.subplots_adjust(
-        left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.25, hspace=0.0
-    )
+    # ticks = list(range(3))
+    # plt.xticks(ticks, list(map(lambda t: f"Dataset {t}", ticks)))
+    # plt.yticks([-1, 0, 1])
+    # plt.subplots_adjust(
+    #     left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.25, hspace=0.0
+    # )
 
     plt.savefig(artifact_dir / "dataset.png", bbox_inches="tight")
     plt.close()
@@ -165,11 +165,7 @@ def subdataset_decision_boundary(
         gix = group // 2
         plt.subplot(2, ncols, gix + 1)
 
-        _X = (
-            torch.tensor(data.preprend_z(X, gix=gix, eps=dataset.eps))
-            .float()
-            .to(device)
-        )
+        _X = torch.tensor(X).float().to(device)
         c1, c2 = group, group + 1
 
         _, subset_val_dl = data.build_subset_loaders(dataset, (c1, c2))
@@ -207,17 +203,17 @@ def subdataset_decision_boundary(
         plt.xlabel("$x_1$")
         plt.ylabel("$x_2$")
 
-        plt.subplot(2, ncols, gix + 1 + ncols)
+        # plt.subplot(2, ncols, gix + 1 + ncols)
 
-        for cix, c in enumerate([c1, c2]):
-            selected = np.argwhere(dataset.y_val == c).reshape(-1)
-            logits = arr_logits[selected,]
-            plt.scatter(
-                logits[:, c1] - logits[:, c2],
-                dataset.x_val[selected, 2],
-                marker=".",
-                alpha=0.3,
-            )
+        # for cix, c in enumerate([c1, c2]):
+        #     selected = np.argwhere(dataset.y_val == c).reshape(-1)
+        #     logits = arr_logits[selected,]
+        #     plt.scatter(
+        #         logits[:, c1] - logits[:, c2],
+        #         dataset.x_val[selected, 2],
+        #         marker=".",
+        #         alpha=0.3,
+        #     )
         if gix == 0:
             plt.ylabel("$x_3$")
         plt.xlabel(f"$f_{c1} - f_{c2}$")
@@ -266,7 +262,7 @@ def decision_boundary_with_basis(
         if kix == 0:
             plt.ylabel(f"{basis}")
 
-        _X = torch.tensor(data.preprend_z(X, gix, dataset.eps)).float()
+        _X = torch.tensor(X).float()
 
         try:
             hook = module.register_forward_hook(

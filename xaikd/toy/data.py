@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 MEAN_GROUP = [1, 0, -1]
 TEST_SPLIT_RATIO = 0.2
-SAMPLES_PER_GROUP = 5000
+SAMPLES_PER_BLOB = 2000
 NUM_CLASSES = 6
 
 
@@ -36,48 +36,47 @@ def preprend_z(x: npt.NDArray, gix: int, eps: float) -> npt.NDArray:
     return np.hstack([x, z.reshape((-1, 1))])
 
 
-def construct_dataset(eps: float, seed: int, samples_per_group=SAMPLES_PER_GROUP):
+def construct_dataset(
+    eps: float, seed: int, samples_per_blob=SAMPLES_PER_BLOB, nblobs=6
+):
     # These toy datasets are generated with similar parameters used in
     # https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html
     np.random.seed(seed)
 
-    xm, ym = make_moons(n_samples=samples_per_group, noise=0.3, random_state=seed)
-    xm -= np.mean(xm, axis=0)
-    xm = preprend_z(xm, gix=0, eps=eps)
+    scale = 10
 
-    xc, yc = make_circles(
-        n_samples=samples_per_group, noise=0.2, factor=0.5, random_state=seed
-    )
-    xc -= np.mean(xc, axis=0)
-    yc = yc + 2  # labels: {2, 3}
-    xc = preprend_z(xc, gix=1, eps=eps)
+    mu = scale * np.random.rand(nblobs, 2) - scale / 2
 
-    xs, ys = make_classification(
-        n_samples=samples_per_group,
-        n_features=2,
-        n_redundant=0,
-        n_informative=2,
-        random_state=seed,
-        n_clusters_per_class=1,
-    )
-    xs -= np.mean(xs, axis=0)
-    ys = ys + 4  # labels: {4, 5}
-    xs = preprend_z(xs, gix=2, eps=eps)
+    arr_x = []
 
-    X = np.vstack([xm, xc, xs])
-    y = np.concatenate([ym, yc, ys])
+    arr_targets = []
+
+    for bix in range(nblobs):
+        _mu = mu[bix, :]
+
+        arr_x.append(_mu + eps * np.random.randn(samples_per_blob, 2))
+
+        arr_targets.append([bix] * samples_per_blob)
+
+    X = np.vstack(arr_x)
+    y = np.concatenate(arr_targets)
+
+    X = X / np.max(np.abs(X))
+
+    assert X.shape == (samples_per_blob * nblobs, 2)
+    assert y.shape == (samples_per_blob * nblobs,)
 
     x_train, x_val, y_train, y_val = train_test_split(
         X, y, test_size=TEST_SPLIT_RATIO, random_state=seed
     )
 
     mean = np.mean(x_train, axis=0)
-    std = np.std(x_train, axis=0)
+    std = np.ones_like(mean)
 
-    def standardize(x):
+    def normalize(x):
         return (x - mean) / std
 
-    return mean, std, standardize(x_train), standardize(x_val), y_train, y_val
+    return mean, std, normalize(x_train), normalize(x_val), y_train, y_val
 
 
 def build_loaders(

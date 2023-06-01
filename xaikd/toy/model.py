@@ -24,7 +24,7 @@ def construct_mlp(name: str) -> nn.Module:
     model = nn.Sequential(
         OrderedDict(
             [
-                ("lin1", nn.Linear(3, D)),
+                ("lin1", nn.Linear(2, D)),
                 ("act1", nn.ReLU()),
                 ("lin2", nn.Linear(D, D // 2)),
                 ("act2", nn.ReLU()),
