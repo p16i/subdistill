@@ -12,22 +12,11 @@ import numpy.typing as npt
 
 import torch
 from torch import nn
-from torch.utils.data import TensorDataset, DataLoader
-from torch.utils.hooks import RemovableHandle
+from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 
 from xaikd import utils, toy, bases
 from xaikd.utils import metrics
-
-BASIS_NAMES = [
-    "pca",
-    "prca-recon",
-    "prca-abs",
-    "prca",
-    "random1",
-    "random2",
-    "random3",
-]
 
 
 @torch.no_grad()
@@ -133,9 +122,24 @@ def extract_activation_and_bases(
 @click.option("--seed", default=1, type=int)
 @click.option("--epochs", default=20, type=int)
 @click.option(
+    "--basis-names",
+    type=str,
+    default=",".join(
+        [
+            "pca",
+            "prca-recon",
+            "prca-abs",
+            "prca",
+            "random1",
+            "random2",
+            "random3",
+        ]
+    ),
+)
+@click.option(
     "--mode", default="centered", type=click.Choice(["centered", "uncentered"])
 )
-def main(model, seed, eps, output_dir, epochs, mode):
+def main(model, seed, eps, output_dir, epochs, mode, basis_names):
     arguments = locals()
     start_time = datetime.now()
 
@@ -143,6 +147,7 @@ def main(model, seed, eps, output_dir, epochs, mode):
 
     output_dir = Path(output_dir) / dataset_slug(eps, seed)
     os.makedirs(output_dir, exist_ok=True)
+
     click.echo(f"Output dir: {output_dir}")
 
     # Step 1: Data preparation (generate if needed; otherwise load only)
@@ -183,7 +188,7 @@ def main(model, seed, eps, output_dir, epochs, mode):
     os.makedirs(model_output_dir, exist_ok=True)
 
     with torch.no_grad():
-        toy.viz.subdataset_decision_boundary(
+        stats_auroc = toy.viz.subdataset_decision_boundary(
             model=model,
             dataset=dataset,
             acc=acc,
@@ -191,7 +196,10 @@ def main(model, seed, eps, output_dir, epochs, mode):
             artifact_dir=model_output_dir,
         )
 
-    basis_names = list(map(lambda s: f"{s}--{mode}", BASIS_NAMES))
+    arguments["aurocs"] = stats_auroc
+    utils.dump_json(model_output_dir / "meta.json", arguments)
+
+    basis_names = list(map(lambda s: f"{s}--{mode}", basis_names.split(",")))
 
     for classes in [(0, 1), (2, 3), (4, 5)]:
         cls_slug = f"subdataset--{classes[0]}vs{classes[1]}"
@@ -253,8 +261,6 @@ def main(model, seed, eps, output_dir, epochs, mode):
                         device=device,
                         output_dir=basis_output_dir,
                     )
-
-    utils.dump_json(output_dir / "meta.json", arguments)
 
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")

@@ -26,6 +26,7 @@ class PRCAGreedyLeaner:
         seed=1,
         eps=1e-5,  # todo: this parameter seem to be very important!
         device="cpu",
+        beta=0,  # only for prca-recon
     ) -> npt.NDArray:
         assert activation.shape == context.shape
 
@@ -46,7 +47,9 @@ class PRCAGreedyLeaner:
 
         I = torch.eye(d).to(device)
 
-        for k in tqdm(range(d), total=d, desc=f"[mode={self.mode},device={device}]"):
+        for k in tqdm(
+            range(d), total=d, desc=f"[mode={self.mode},beta={beta},device={device}]"
+        ):
             UUt = U @ U.T
 
             # take a random vector
@@ -65,7 +68,7 @@ class PRCAGreedyLeaner:
                 A_compt = activation @ (I - UUt)
                 C_compt = context @ (I - UUt)
 
-                obj = self.obj_func(A_compt, C_compt, v)
+                obj = self.obj_func(A_compt, C_compt, v, beta)
 
                 obj.backward()
 
@@ -95,8 +98,10 @@ class PRCAGreedyLeaner:
 
     @staticmethod
     def _obj_abs(
-        activation: torch.Tensor, context: torch.Tensor, u: torch.Tensor
+        activation: torch.Tensor, context: torch.Tensor, u: torch.Tensor, beta=0
     ) -> torch.Tensor:
+        assert beta == 0, f"setting beta={beta} has not effect here."
+
         activation_projected = activation.matmul(u)
         context_projected = context.matmul(u)
 
@@ -111,6 +116,7 @@ class PRCAGreedyLeaner:
         activation: torch.Tensor,
         context: torch.Tensor,
         u: torch.Tensor,
+        beta=0,
     ) -> torch.Tensor:
         activation_projected = activation.matmul(u)
         context_projected = context.matmul(u)
@@ -126,4 +132,8 @@ class PRCAGreedyLeaner:
         assert len(obj.shape) == 1 and obj.shape[0] == activation.shape[0]
 
         # convert the problem into maximization problem.
-        return -obj.mean()
+        loss = -obj.mean()
+
+        reg = (beta * torch.abs(activation_projected)).mean()
+
+        return loss + reg
