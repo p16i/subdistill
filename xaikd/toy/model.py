@@ -118,3 +118,33 @@ def attach_projected_fh_with_k(
         return (output - mu) @ (U @ U.T) + mu
 
     return fh
+
+
+class QDA(nn.Module):
+    def __init__(self, centroids, covs, device) -> None:
+        super().__init__()
+
+        self.centroids = torch.tensor(centroids).to(device).float()
+        self.num_classes = self.centroids.shape[0]
+
+        self.covs = torch.tensor(covs).to(device).float()
+
+    def forward(self, x):
+        logits = torch.zeros(x.shape[0], self.num_classes).to(x.device)
+
+        for cix in range(self.num_classes):
+            # the code is taken from the reference below
+            # ref: https://github.com/scikit-learn/scikit-learn/blob/364c77e047ca08a95862becf40a04fe9d4cd2c98/sklearn/discriminant_analysis.py#L941
+            mu = self.centroids[cix, :]
+
+            xm = x - mu
+            V, U = torch.linalg.eigh(self.covs[cix, :, :])
+
+            x2 = xm @ (U * (V ** (-0.5)))
+
+            norm2 = torch.sum(x2**2, dim=1)
+            u = torch.log(V).sum()
+
+            logits[:, cix] = -0.5 * (norm2 + u)
+
+        return logits

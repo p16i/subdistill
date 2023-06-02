@@ -27,8 +27,9 @@ class Dataset:
     x_val: npt.NDArray
     y_val: npt.NDArray
 
-    arr_pairs: npt.NDArray
+    arr_class_pairs: npt.NDArray
     arr_centroids: npt.NDArray
+    arr_covs: npt.NDArray
 
     eps: float
     seed: int
@@ -47,9 +48,10 @@ def construct_dataset(
     # https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html
     np.random.seed(seed)
 
-    scale = 10
+    noise_scale = 1.0
 
-    points = scale * np.random.rand(100 * nblobs, 2) - scale / 2
+    # points = scale * np.random.rand(100 * nblobs, 2) - scale / 2
+    points = np.random.uniform(-1, 1, size=(100 * nblobs, 2))
 
     kmean = cluster.KMeans(nblobs, random_state=seed)
 
@@ -57,12 +59,14 @@ def construct_dataset(
 
     arr_centroids = kmean.cluster_centers_
     # (quasi) canonicalize cluster id
-    _dix = np.argsort(np.linalg.norm(arr_centroids - [-scale / 2, scale / 2], axis=1))
+    _dix = np.argsort(np.linalg.norm(arr_centroids - [-1, 1], axis=1))
     arr_centroids = arr_centroids[_dix, :]
 
     arr_x = []
 
     arr_targets = []
+
+    arr_covs = []
 
     for bix in range(nblobs):
         _mu = arr_centroids[bix, :]
@@ -76,32 +80,45 @@ def construct_dataset(
             ]
         )
 
-        arr_x.append(
-            _mu + (np.array([eps, eps]) * np.random.randn(samples_per_blob, 2)) @ rot
-        )
+        A = np.diag([eps, eps / 2]) @ rot
+
+        _x = _mu + (noise_scale * np.random.randn(samples_per_blob, 2) @ A)
+        arr_x.append(_x)
+
+        # B = N @ A \in \R^{n, 2}
+        # => cov = B.T @ B = (N @ A).T @ (N @ A)
+        #        = A.T @ (N.T @ N) @ A
+        #        = A.T @ I @ A
+        cov = A.T @ A
+
+        # cov = np.cov(_x.T)
+        np.testing.assert_allclose(cov, A.T @ A, atol=1e-3)
+
+        arr_covs.append(cov)
 
         arr_targets.append([bix] * samples_per_blob)
 
-    arr_pairs = []
+    arr_class_pairs = []
     arr_dist = []
 
     for c1 in range(nblobs - 1):
         for c2 in range(c1 + 1, nblobs):
             dist = np.linalg.norm(arr_centroids[c1, :] - arr_centroids[c2, :])
             arr_dist.append(dist)
-            arr_pairs.append((c1, c2))
+            arr_class_pairs.append((c1, c2))
 
-    arr_pairs = np.array(arr_pairs)
+    arr_class_pairs = np.array(arr_class_pairs)
     arr_dist = np.array(arr_dist)
     indices = np.argsort(arr_dist)
 
-    arr_pairs = arr_pairs[indices]
+    # sort by difficulty (most difficult first)
+    arr_class_pairs = arr_class_pairs[indices]
     arr_dist = arr_dist[indices]
 
     X = np.vstack(arr_x)
     y = np.concatenate(arr_targets)
 
-    X = X / (scale / 2)
+    # X = X
 
     assert X.shape == (samples_per_blob * nblobs, 2)
     assert y.shape == (samples_per_blob * nblobs,)
@@ -110,21 +127,20 @@ def construct_dataset(
         X, y, test_size=TEST_SPLIT_RATIO, random_state=seed
     )
 
-    mean = np.mean(x_train, axis=0)
-    std = np.ones_like(mean)
+    # mean = np.mean(x_train, axis=0)
+    # std = np.ones_like(mean)
 
-    def normalize(x):
-        return (x - mean) / std
+    # def normalize(x):
+    #     return (x - mean) / std
 
     return (
-        mean,
-        std,
-        normalize(x_train),
-        normalize(x_val),
+        arr_centroids,
+        arr_covs,
+        x_train,
+        x_val,
         y_train,
         y_val,
-        arr_pairs,
-        arr_centroids,
+        arr_class_pairs,
     )
 
 

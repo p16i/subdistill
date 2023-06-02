@@ -60,7 +60,15 @@ def generate_data(eps: float, seed: int, artifact_dir: Path) -> toy.data.Dataset
     if os.path.isfile(artifact_dir / "x_train.npy"):
         print("Data is already there; we load only here.")
         artifacts = dict()
-        for k in ["x_train", "y_train", "x_val", "y_val", "arr_pairs", "arr_centroids"]:
+        for k in [
+            "x_train",
+            "y_train",
+            "x_val",
+            "y_val",
+            "arr_class_pairs",
+            "arr_centroids",
+            "arr_covs",
+        ]:
             artifacts[k] = np.load(artifact_dir / f"{k}.npy")
 
         return toy.data.Dataset(**artifacts, eps=eps, seed=seed)
@@ -68,14 +76,13 @@ def generate_data(eps: float, seed: int, artifact_dir: Path) -> toy.data.Dataset
         print(f"Generate data with eps={eps}, seed={seed}")
         for k, v in zip(
             [
-                "mean",
-                "std",
+                "arr_centroids",
+                "arr_covs",
                 "x_train",
                 "x_val",
                 "y_train",
                 "y_val",
-                "arr_pairs",
-                "arr_centroids",
+                "arr_class_pairs",
             ],
             toy.data.construct_dataset(eps=eps, seed=seed),
         ):
@@ -197,7 +204,7 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
     # Step 3: Teacher Performance on Subdatasets
     # comptue auroc, viz dececision boundary?
 
-    total_pairs = dataset.arr_pairs.shape[0]
+    total_pairs = dataset.arr_class_pairs.shape[0]
     pair_indices = list(range(total_pairs))
     selected_pairs = pair_indices[:3] + pair_indices[-3:]
 
@@ -217,7 +224,7 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
     basis_names = list(map(lambda s: f"{s}--{mode}", basis_names.split(",")))
 
     for pix in selected_pairs:
-        classes = dataset.arr_pairs[pix]
+        classes = dataset.arr_class_pairs[pix]
         cls_slug = f"subdataset--p{pix}"
 
         for layer in ["act1", "act2"]:

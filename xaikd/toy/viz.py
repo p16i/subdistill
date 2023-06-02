@@ -153,7 +153,7 @@ def subdataset_decision_boundary(
 
     ncols = data.NUM_CLASSES // 2
 
-    plt.figure(figsize=(ncols * 4, 3 * 2))
+    plt.figure(figsize=(ncols * 4, 4 * 2))
 
     plt.suptitle(f"accuracy: {acc:.4f}")
 
@@ -162,31 +162,51 @@ def subdataset_decision_boundary(
 
     stats_aurocs = dict()
 
+    qda = toy_model.QDA(
+        centroids=dataset.arr_centroids, covs=dataset.arr_covs, device=device
+    )
+
     for gix, pix in enumerate(arr_pairs):
         plt.subplot(2, ncols, gix + 1)
 
-        c1, c2 = dataset.arr_pairs[pix]
+        c1, c2 = dataset.arr_class_pairs[pix]
 
         _X = torch.tensor(X).float().to(device)
 
         _, subset_val_dl = data.build_subset_loaders(dataset, (c1, c2))
 
-        auroc = metrics.auroc(
+        auroc, bin_acc = metrics.auroc(
             model,
             subset_val_dl,
             (c1, c2),
             device=device,
         )
 
+        auroc_qda, bin_qda_acc = metrics.auroc(
+            qda,
+            subset_val_dl,
+            (c1, c2),
+            device=device,
+        )
+
+        # auroc oracel
+
         auroc = np.max([auroc, 1 - auroc])
+        auroc_qda = np.max([auroc_qda, 1 - auroc_qda])
 
         stats_aurocs[f"p{pix}"] = auroc
+        stats_aurocs["bin_acc_p{pix}"] = bin_acc
+        stats_aurocs[f"qda_p{pix}"] = auroc_qda
+        stats_aurocs["bin_acc_qda_p{pix}"] = bin_qda_acc
 
-        logits = model(_X).cpu()
+        # logits = model(_X).cpu()
+        logits = qda(_X).cpu()
 
         logodd = logits[:, c1] - logits[:, c2]
 
-        plt.title(f"Subdataset {gix}: AUROC={auroc:.4f}")
+        plt.title(
+            f"Subdataset {gix}: AUROC={auroc:.2f} ({auroc_qda:.2f})\n(acc={bin_acc:.2f}, qda-acc={bin_qda_acc:.2f})"
+        )
 
         plt.contourf(xv, yv, logodd.reshape(yv.shape), levels=10, cmap="RdBu", alpha=1)
 
@@ -198,8 +218,10 @@ def subdataset_decision_boundary(
                 dataset.x_val[selected, 1],
                 marker=".",
                 ec="k",
+                label=f"C{c}",
                 alpha=0.5,
             )
+        plt.legend()
 
         plt.xlabel("$x_1$")
         plt.ylabel("$x_2$")
@@ -267,7 +289,9 @@ def decision_boundary_with_basis(
                 dataset, selected_classes=classes
             )
 
-            auroc = metrics.auroc(model, subset_val_dl, classes=classes, device=device)
+            auroc, _ = metrics.auroc(
+                model, subset_val_dl, classes=classes, device=device
+            )
 
             auroc = np.max([auroc, 1 - auroc])
 
