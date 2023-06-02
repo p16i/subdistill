@@ -151,9 +151,10 @@ def subdataset_decision_boundary(
 
     X = np.stack([xv.reshape(-1), yv.reshape(-1)]).T
 
-    ncols = data.NUM_CLASSES // 2
+    ncols = len(arr_pairs)
+    nrows = 2
 
-    plt.figure(figsize=(ncols * 4, 3 * 2))
+    plt.figure(figsize=(ncols * 4, 4 * nrows))
 
     plt.suptitle(f"accuracy: {acc:.4f}")
 
@@ -162,51 +163,68 @@ def subdataset_decision_boundary(
 
     stats_aurocs = dict()
 
-    for gix, pix in enumerate(arr_pairs):
-        plt.subplot(2, ncols, gix + 1)
+    qda = toy_model.QDA(
+        centroids=dataset.arr_centroids, covs=dataset.arr_covs, device=device
+    )
 
-        c1, c2 = dataset.arr_pairs[pix]
+    for gix, pix in enumerate(arr_pairs):
+        c1, c2 = dataset.arr_class_pairs[pix]
 
         _X = torch.tensor(X).float().to(device)
 
         _, subset_val_dl = data.build_subset_loaders(dataset, (c1, c2))
 
-        auroc = metrics.auroc(
-            model,
-            subset_val_dl,
-            (c1, c2),
-            device=device,
-        )
+        for _mix, (name, _model) in enumerate([("mlp", model), ("qda", qda)]):
+            plt.subplot(nrows, ncols, _mix * ncols + gix + 1)
 
-        auroc = np.max([auroc, 1 - auroc])
-
-        stats_aurocs[f"p{pix}"] = auroc
-
-        logits = model(_X).cpu()
-
-        logodd = logits[:, c1] - logits[:, c2]
-
-        plt.title(f"Subdataset {gix}: AUROC={auroc:.4f}")
-
-        plt.contourf(xv, yv, logodd.reshape(yv.shape), levels=10, cmap="RdBu", alpha=1)
-
-        for cix, c in enumerate([c1, c2]):
-            selected = np.argwhere(dataset.y_val == c).reshape(-1)
-            selected = np.random.permutation(selected)[:200]
-            plt.scatter(
-                dataset.x_val[selected, 0],
-                dataset.x_val[selected, 1],
-                marker=".",
-                ec="k",
-                alpha=0.5,
+            auroc, bin_acc = metrics.auroc(
+                _model,
+                subset_val_dl,
+                (c1, c2),
+                device=device,
             )
 
-        plt.xlabel("$x_1$")
-        plt.ylabel("$x_2$")
+            auroc = np.max([auroc, 1 - auroc])
 
-        if gix == 0:
-            plt.ylabel("$x_3$")
-        plt.xlabel(f"$f_{c1} - f_{c2}$")
+            stats_aurocs[f"{name}-auroc-p{pix}"] = auroc
+            stats_aurocs[f"{name}-binacc-p{pix}"] = bin_acc
+
+            logits = _model(_X).cpu()
+
+            logodd = logits[:, c1] - logits[:, c2]
+
+            if _mix == 0:
+                plt.title(f"Subdataset {gix}: {c1}vs{c2}")
+
+            plt.contourf(
+                xv, yv, logodd.reshape(yv.shape), levels=10, cmap="RdBu", alpha=1
+            )
+
+            plt.text(
+                vmin + 0.5,
+                vmin + 0.5,
+                f"AUROC={auroc:.2f} (acc={bin_acc:.2f})",
+                bbox=dict(alpha=0.5, color="white"),
+            )
+
+            for cix, c in enumerate([c1, c2]):
+                selected = np.argwhere(dataset.y_val == c).reshape(-1)
+                selected = np.random.permutation(selected)[:200]
+                plt.scatter(
+                    dataset.x_val[selected, 0],
+                    dataset.x_val[selected, 1],
+                    marker=".",
+                    ec="k",
+                    label=f"C{c}",
+                    alpha=0.5,
+                )
+            plt.legend()
+
+            if gix == 0:
+                plt.ylabel(f"{name}: $x_2$")
+
+            if _mix == 1:
+                plt.xlabel(f"$x_1$")
     plt.savefig(artifact_dir / "decision_boundary.png")
     plt.close()
 
@@ -267,7 +285,9 @@ def decision_boundary_with_basis(
                 dataset, selected_classes=classes
             )
 
-            auroc = metrics.auroc(model, subset_val_dl, classes=classes, device=device)
+            auroc, _ = metrics.auroc(
+                model, subset_val_dl, classes=classes, device=device
+            )
 
             auroc = np.max([auroc, 1 - auroc])
 
