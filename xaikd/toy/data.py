@@ -77,8 +77,7 @@ def construct_dataset(
         )
 
         arr_x.append(
-            _mu
-            + (np.array([eps, eps / 2]) * np.random.randn(samples_per_blob, 2)) @ rot
+            _mu + (np.array([eps, eps]) * np.random.randn(samples_per_blob, 2)) @ rot
         )
 
         arr_targets.append([bix] * samples_per_blob)
