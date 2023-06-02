@@ -6,6 +6,9 @@ import numpy as np
 import numpy.typing as npt
 from matplotlib import pyplot as plt
 
+from matplotlib.patches import Ellipse
+import matplotlib.transforms as transforms
+
 
 import torch
 
@@ -16,18 +19,51 @@ from xaikd import bases
 from . import data, model as toy_model
 
 
+def plot_ellipse(ax, mu, cov, n_std=1, facecolor="none", edgecolor="red", alpha=0.5):
+    pearson = cov[0, 1] / np.sqrt(cov[0, 0] * cov[1, 1])
+    # Using a special case to obtain the eigenvalues of this
+    # two-dimensionl dataset.
+    ell_radius_x = np.sqrt(1 + pearson)
+    ell_radius_y = np.sqrt(1 - pearson)
+    ellipse = Ellipse(
+        (0, 0),
+        width=ell_radius_x * 2,
+        height=ell_radius_y * 2,
+        facecolor=facecolor,
+        edgecolor=edgecolor,
+        alpha=alpha,
+    )
+
+    # Calculating the stdandard deviation of x from
+    # the squareroot of the variance and multiplying
+    # with the given number of standard deviations.
+    scale_x = np.sqrt(cov[0, 0]) * n_std
+    mean_x = mu[0]
+
+    # calculating the stdandard deviation of y ...
+    scale_y = np.sqrt(cov[1, 1]) * n_std
+    mean_y = mu[1]
+
+    transf = (
+        transforms.Affine2D()
+        .rotate_deg(45)
+        .scale(scale_x, scale_y)
+        .translate(mean_x, mean_y)
+    )
+
+    ellipse.set_transform(transf + ax.transData)
+    ax.add_patch(ellipse)
+
+
 def dataset(artifact_dir: Path):
     X_train = np.load(artifact_dir / "x_train.npy")
     y_train = np.load(artifact_dir / "y_train.npy")
 
     slug = os.path.basename(artifact_dir)
 
-    ncols = 2 + data.NUM_CLASSES // 2
-
-    vmin, vmax = np.min(X_train[:, :2]), np.max(X_train[:, :2])
-    vmin -= 0.5
-    vmax += 0.5
-    plt.figure(figsize=(ncols * 3.5, 3))
+    vmax = 1
+    vmin = -vmax
+    plt.figure(figsize=(5, 5))
 
     total_classes = len(set(y_train))
 
@@ -35,7 +71,6 @@ def dataset(artifact_dir: Path):
         f"{slug}: {total_classes} classes, num_training={X_train.shape[0]}", y=1.07
     )
 
-    plt.subplot(1, ncols, 1)
     plt.title("Dataset")
     plt.xlim([vmin, vmax])
     plt.ylim([vmin, vmax])
@@ -43,69 +78,40 @@ def dataset(artifact_dir: Path):
     plt.axhline(0, ls="--", color="k", lw=1)
     plt.axvline(0, ls="--", color="k", lw=1)
 
-    for group in range(0, data.NUM_CLASSES, 2):
-        pos = y_train == group
-        neg = y_train == (group + 1)
+    theta = np.linspace(0, 2 * np.pi, 150)
 
-        plt.scatter(
-            X_train[pos, 0],
-            X_train[pos, 1],
-            label=f"Group {group}: Pos",
-            alpha=0.1,
+    xv, yv = np.meshgrid(
+        np.linspace(vmin, vmax, 100),
+        np.linspace(vmin, vmax, 100),
+    )
+
+    X = np.stack([xv.reshape(-1), yv.reshape(-1)]).T
+
+    cm = plt.get_cmap("gist_rainbow")
+
+    for i in range(total_classes):
+        _x = X_train[y_train == i]
+        _y = y_train[y_train == i]
+
+        mean = np.mean(_x, axis=0)
+        cov = np.cov((_x - mean).T)
+
+        color = cm(i / 10)
+
+        plot_ellipse(plt.gca(), mean, cov, edgecolor=color)
+
+        plt.text(
+            mean[0],
+            mean[1],
+            f"C{i}",
+            ha="center",
+            va="center",
+            color=color,
+            bbox=dict(facecolor="white", ec="white", ls=None, alpha=0.8),
         )
-        plt.scatter(
-            X_train[neg, 0],
-            X_train[neg, 1],
-            label=f"Group {group}: Neg",
-            alpha=0.1,
-        )
 
-    plt.xlabel("$x_1$ (standardized)")
-    plt.ylabel("$x_2$ (standardized)")
-
-    for group in range(0, data.NUM_CLASSES, 2):
-        plt.subplot(1, ncols, group // 2 + 2)
-        plt.axhline(0, ls="--", color="k", lw=1)
-        plt.axvline(0, ls="--", color="k", lw=1)
-
-        plt.title(f"Subdataset {group // 2}")
-        plt.xlim([vmin, vmax])
-        plt.ylim([vmin, vmax])
-
-        c1, c2 = group, group + 1
-        pos = y_train == c1
-        neg = y_train == c2
-
-        plt.scatter(
-            X_train[pos, 0],
-            X_train[pos, 1],
-            label=f"Class {c1}",
-            alpha=0.1,
-        )
-        plt.scatter(
-            X_train[neg, 0],
-            X_train[neg, 1],
-            label=f"Class {c2}",
-            alpha=0.1,
-        )
-        plt.legend()
-        plt.yticks([])
-
-    # plt.subplot(1, ncols, 5)
-
-    # for group in range(0, 6, 2):
-    #     _x = X_train[np.isin(y_train, [group, group + 1]), :]
-    #     plt.scatter([group // 2] * _x.shape[0], _x[:, 2], alpha=0.5, marker=".")
-    #     plt.scatter([group // 2], [_x[:, 2].mean()], marker="x", color="k")
-
-    # plt.ylabel("$x_3$ (standardized)")
-
-    # ticks = list(range(3))
-    # plt.xticks(ticks, list(map(lambda t: f"Dataset {t}", ticks)))
-    # plt.yticks([-1, 0, 1])
-    # plt.subplots_adjust(
-    #     left=0.1, bottom=0.1, right=0.9, top=0.9, wspace=0.25, hspace=0.0
-    # )
+    plt.xlabel("$x_1$")
+    plt.ylabel("$x_2$")
 
     plt.savefig(artifact_dir / "dataset.png", bbox_inches="tight")
     plt.close()
@@ -115,6 +121,7 @@ def subdataset_decision_boundary(
     model: torch.nn.Module,
     acc: float,
     dataset: data.Dataset,
+    arr_pairs: typing.List[typing.Tuple[int, int]],
     device: str,
     artifact_dir: Path,
 ):
@@ -155,12 +162,12 @@ def subdataset_decision_boundary(
 
     stats_aurocs = dict()
 
-    for group in range(0, data.NUM_CLASSES, 2):
-        gix = group // 2
+    for gix, pix in enumerate(arr_pairs):
         plt.subplot(2, ncols, gix + 1)
 
+        c1, c2 = dataset.arr_pairs[pix]
+
         _X = torch.tensor(X).float().to(device)
-        c1, c2 = group, group + 1
 
         _, subset_val_dl = data.build_subset_loaders(dataset, (c1, c2))
 
@@ -173,7 +180,7 @@ def subdataset_decision_boundary(
 
         auroc = np.max([auroc, 1 - auroc])
 
-        stats_aurocs[f"{c1}vs{c2}"] = auroc
+        stats_aurocs[f"p{pix}"] = auroc
 
         logits = model(_X).cpu()
 
@@ -197,17 +204,6 @@ def subdataset_decision_boundary(
         plt.xlabel("$x_1$")
         plt.ylabel("$x_2$")
 
-        # plt.subplot(2, ncols, gix + 1 + ncols)
-
-        # for cix, c in enumerate([c1, c2]):
-        #     selected = np.argwhere(dataset.y_val == c).reshape(-1)
-        #     logits = arr_logits[selected,]
-        #     plt.scatter(
-        #         logits[:, c1] - logits[:, c2],
-        #         dataset.x_val[selected, 2],
-        #         marker=".",
-        #         alpha=0.3,
-        #     )
         if gix == 0:
             plt.ylabel("$x_3$")
         plt.xlabel(f"$f_{c1} - f_{c2}$")
@@ -248,7 +244,6 @@ def decision_boundary_with_basis(
     plt.suptitle(f"eps={dataset.eps}; seed={dataset.seed}", y=1.02)
 
     c1, c2 = classes
-    gix = c1 // 2
 
     for kix, k in enumerate(arr_ks):
         plt.subplot(nrows, ncols, kix + 1)

@@ -60,14 +60,23 @@ def generate_data(eps: float, seed: int, artifact_dir: Path) -> toy.data.Dataset
     if os.path.isfile(artifact_dir / "x_train.npy"):
         print("Data is already there; we load only here.")
         artifacts = dict()
-        for k in ["x_train", "y_train", "x_val", "y_val"]:
+        for k in ["x_train", "y_train", "x_val", "y_val", "arr_pairs", "arr_centroids"]:
             artifacts[k] = np.load(artifact_dir / f"{k}.npy")
 
         return toy.data.Dataset(**artifacts, eps=eps, seed=seed)
     else:
         print(f"Generate data with eps={eps}, seed={seed}")
         for k, v in zip(
-            ["mean", "std", "x_train", "x_val", "y_train", "y_val"],
+            [
+                "mean",
+                "std",
+                "x_train",
+                "x_val",
+                "y_train",
+                "y_val",
+                "arr_pairs",
+                "arr_centroids",
+            ],
             toy.data.construct_dataset(eps=eps, seed=seed),
         ):
             np.save(artifact_dir / k, v)
@@ -160,13 +169,16 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
 
     model = toy.model.construct_mlp(model)
 
+    model_output_dir = output_dir / getattr(model, "__name")
+    os.makedirs(model_output_dir, exist_ok=True)
+
     train_loader, val_loader = toy.data.build_loaders(dataset=dataset)
 
     trainer = pl.Trainer(
         accelerator="cpu",
         max_epochs=epochs,
         deterministic=True,
-        default_root_dir=output_dir,
+        default_root_dir=model_output_dir,
     )
 
     trainer.fit(toy.model.ModelWrapper(model), train_loader, val_loader)
@@ -184,13 +196,16 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
 
     # Step 3: Teacher Performance on Subdatasets
     # comptue auroc, viz dececision boundary?
-    model_output_dir = output_dir / getattr(model, "__name")
-    os.makedirs(model_output_dir, exist_ok=True)
+
+    total_pairs = dataset.arr_pairs.shape[0]
+    pair_indices = list(range(total_pairs))
+    selected_pairs = pair_indices[:3] + pair_indices[-3:]
 
     with torch.no_grad():
         stats_auroc = toy.viz.subdataset_decision_boundary(
             model=model,
             dataset=dataset,
+            arr_pairs=selected_pairs,
             acc=acc,
             device=device,
             artifact_dir=model_output_dir,
@@ -201,9 +216,9 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
 
     basis_names = list(map(lambda s: f"{s}--{mode}", basis_names.split(",")))
 
-    for c in range(0, toy.data.NUM_CLASSES, 2):
-        classes = (c, c + 1)
-        cls_slug = f"subdataset--{classes[0]}vs{classes[1]}"
+    for pix in selected_pairs:
+        classes = dataset.arr_pairs[pix]
+        cls_slug = f"subdataset--p{pix}"
 
         for layer in ["act1", "act2"]:
             layer_output_dir = model_output_dir / cls_slug / layer
