@@ -37,14 +37,14 @@ def auroc_with_basis(
                 toy.model.attach_projected_fh_with_k(k=k, basis=basis, device=device)
             )
 
-            value = metrics.auroc(
+            auroc, _ = metrics.auroc(
                 model,
                 dataloader=dataloader,
                 classes=classes,
                 device=device,
             )
 
-            arr_aurocs.append(value)
+            arr_aurocs.append(auroc)
 
         finally:
             hook.remove()
