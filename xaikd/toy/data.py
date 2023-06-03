@@ -42,7 +42,11 @@ def preprend_z(x: npt.NDArray, gix: int, eps: float) -> npt.NDArray:
 
 
 def construct_dataset(
-    eps: float, seed: int, samples_per_blob=SAMPLES_PER_BLOB, nblobs=NUM_CLASSES
+    eps: float,
+    seed: int,
+    samples_per_blob=SAMPLES_PER_BLOB,
+    nblobs=NUM_CLASSES,
+    is_cov_diag=False,
 ):
     # These toy datasets are generated with similar parameters used in
     # https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html
@@ -67,6 +71,9 @@ def construct_dataset(
 
     arr_covs = []
 
+    scales = [eps, eps] if is_cov_diag else [eps, eps / 2]
+    scales = np.diag(scales)
+
     for bix in range(nblobs):
         _mu = arr_centroids[bix, :]
 
@@ -79,7 +86,7 @@ def construct_dataset(
             ]
         )
 
-        A = np.diag([eps, eps / 2]) @ rot
+        A = scales @ rot
 
         _x = _mu + (noise_scale * np.random.randn(samples_per_blob, 2) @ A)
         arr_x.append(_x)

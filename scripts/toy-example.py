@@ -52,11 +52,13 @@ def auroc_with_basis(
     return arr_aurocs
 
 
-def dataset_slug(eps: float, seed: int) -> str:
-    return f"toy-dataset-eps{eps}-seed{seed}"
+def dataset_slug(eps: float, seed: int, cov_diag: bool) -> str:
+    return f"toy-dataset-eps{eps}-covdiag{cov_diag}-seed{seed}"
 
 
-def generate_data(eps: float, seed: int, artifact_dir: Path) -> toy.data.Dataset:
+def generate_data(
+    eps: float, seed: int, artifact_dir: Path, is_cov_diag: bool
+) -> toy.data.Dataset:
     if os.path.isfile(artifact_dir / "x_train.npy"):
         print("Data is already there; we load only here.")
         artifacts = dict()
@@ -84,14 +86,14 @@ def generate_data(eps: float, seed: int, artifact_dir: Path) -> toy.data.Dataset
                 "y_val",
                 "arr_class_pairs",
             ],
-            toy.data.construct_dataset(eps=eps, seed=seed),
+            toy.data.construct_dataset(eps=eps, seed=seed, is_cov_diag=is_cov_diag),
         ):
             np.save(artifact_dir / k, v)
 
         # visualize the dataset
         toy.viz.dataset(artifact_dir)
 
-        return generate_data(eps, seed, artifact_dir)
+        return generate_data(eps, seed, artifact_dir, is_cov_diag=is_cov_diag)
 
 
 def extract_activation_and_bases(
@@ -155,19 +157,26 @@ def extract_activation_and_bases(
 @click.option(
     "--mode", default="centered", type=click.Choice(["centered", "uncentered"])
 )
-def main(model, seed, eps, output_dir, epochs, mode, basis_names):
+@click.option(
+    "--cov-diag",
+    is_flag=True,
+    default=False,
+)
+def main(model, seed, eps, output_dir, epochs, mode, basis_names, cov_diag):
     arguments = locals()
     start_time = datetime.now()
 
     device = utils.get_device()
 
-    output_dir = Path(output_dir) / dataset_slug(eps, seed)
+    output_dir = Path(output_dir) / dataset_slug(eps, seed, cov_diag)
     os.makedirs(output_dir, exist_ok=True)
 
     click.echo(f"Output dir: {output_dir}")
 
     # Step 1: Data preparation (generate if needed; otherwise load only)
-    dataset = generate_data(eps=eps, seed=seed, artifact_dir=output_dir)
+    dataset = generate_data(
+        eps=eps, seed=seed, artifact_dir=output_dir, is_cov_diag=cov_diag
+    )
 
     start_time = datetime.now()
 
