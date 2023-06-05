@@ -223,6 +223,45 @@ class PCA(Basis):
         return eigvecs, eigvals
 
 
+@register_basis("rel")
+class Rel(Basis):
+    artifact_keys = ["eigvecs", "eigvals"]
+
+    def _relevance_preprocessing(self, x: npt.NDArray) -> npt.NDArray:
+        return x
+
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray | None,
+        device: str,
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        n, d = activation.shape
+
+        if self.centering:
+            activation = activation - mean
+
+        relevance: npt.NDArray = self._relevance_preprocessing(activation * context)
+        eigvals = np.mean(relevance, axis=0)
+
+        # large relevance first
+        indices = np.argsort(-eigvals)
+
+        eigvecs = np.eye(d)[:, indices]
+
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, eigvals)))
+
+        return eigvecs, eigvals
+
+
+@register_basis("rel-abs")
+class RelAbs(Rel):
+    def _relevance_preprocessing(self, x: npt.NDArray) -> npt.NDArray:
+        # todo: add test?
+        return np.abs(x)
+
+
 @register_basis("prca")
 class PRCA(Basis):
     artifact_keys = ["eigvecs", "eigvals"]
@@ -340,10 +379,9 @@ class PRCARelRecon(PRCAVariant):
 
 
 @register_basis("prca-reconreg")
-class PRCARelReconReg (PRCAVariant):
+class PRCARelReconReg(PRCAVariant):
     mode = "recon"
 
-    def __init__(self,  beta=0.0, *args, **kwargs):
+    def __init__(self, beta=0.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.beta = beta
-
