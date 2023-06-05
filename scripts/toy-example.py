@@ -37,14 +37,14 @@ def auroc_with_basis(
                 toy.model.attach_projected_fh_with_k(k=k, basis=basis, device=device)
             )
 
-            value = metrics.auroc(
+            auroc, _ = metrics.auroc(
                 model,
                 dataloader=dataloader,
                 classes=classes,
                 device=device,
             )
 
-            arr_aurocs.append(value)
+            arr_aurocs.append(auroc)
 
         finally:
             hook.remove()
@@ -52,30 +52,48 @@ def auroc_with_basis(
     return arr_aurocs
 
 
-def dataset_slug(eps: float, seed: int) -> str:
-    return f"toy-dataset-eps{eps}-seed{seed}"
+def dataset_slug(eps: float, seed: int, cov_diag: bool) -> str:
+    return f"toy-dataset-eps{eps}-covdiag{cov_diag}-seed{seed}"
 
 
-def generate_data(eps: float, seed: int, artifact_dir: Path) -> toy.data.Dataset:
+def generate_data(
+    eps: float, seed: int, artifact_dir: Path, is_cov_diag: bool
+) -> toy.data.Dataset:
     if os.path.isfile(artifact_dir / "x_train.npy"):
         print("Data is already there; we load only here.")
         artifacts = dict()
-        for k in ["x_train", "y_train", "x_val", "y_val"]:
+        for k in [
+            "x_train",
+            "y_train",
+            "x_val",
+            "y_val",
+            "arr_class_pairs",
+            "arr_centroids",
+            "arr_covs",
+        ]:
             artifacts[k] = np.load(artifact_dir / f"{k}.npy")
 
         return toy.data.Dataset(**artifacts, eps=eps, seed=seed)
     else:
         print(f"Generate data with eps={eps}, seed={seed}")
         for k, v in zip(
-            ["mean", "std", "x_train", "x_val", "y_train", "y_val"],
-            toy.data.construct_dataset(eps=eps, seed=seed),
+            [
+                "arr_centroids",
+                "arr_covs",
+                "x_train",
+                "x_val",
+                "y_train",
+                "y_val",
+                "arr_class_pairs",
+            ],
+            toy.data.construct_dataset(eps=eps, seed=seed, is_cov_diag=is_cov_diag),
         ):
             np.save(artifact_dir / k, v)
 
         # visualize the dataset
         toy.viz.dataset(artifact_dir)
 
-        return generate_data(eps, seed, artifact_dir)
+        return generate_data(eps, seed, artifact_dir, is_cov_diag=is_cov_diag)
 
 
 def extract_activation_and_bases(
@@ -120,7 +138,7 @@ def extract_activation_and_bases(
 @click.option("--model", default="mlp64", type=str)
 @click.option("--output-dir", default="./tmp", type=str)
 @click.option("--seed", default=1, type=int)
-@click.option("--epochs", default=200, type=int)
+@click.option("--epochs", default=100, type=int)
 @click.option(
     "--basis-names",
     type=str,
@@ -139,19 +157,26 @@ def extract_activation_and_bases(
 @click.option(
     "--mode", default="centered", type=click.Choice(["centered", "uncentered"])
 )
-def main(model, seed, eps, output_dir, epochs, mode, basis_names):
+@click.option(
+    "--cov-diag",
+    is_flag=True,
+    default=False,
+)
+def main(model, seed, eps, output_dir, epochs, mode, basis_names, cov_diag):
     arguments = locals()
     start_time = datetime.now()
 
     device = utils.get_device()
 
-    output_dir = Path(output_dir) / dataset_slug(eps, seed)
+    output_dir = Path(output_dir) / dataset_slug(eps, seed, cov_diag)
     os.makedirs(output_dir, exist_ok=True)
 
     click.echo(f"Output dir: {output_dir}")
 
     # Step 1: Data preparation (generate if needed; otherwise load only)
-    dataset = generate_data(eps=eps, seed=seed, artifact_dir=output_dir)
+    dataset = generate_data(
+        eps=eps, seed=seed, artifact_dir=output_dir, is_cov_diag=cov_diag
+    )
 
     start_time = datetime.now()
 
@@ -160,13 +185,16 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
 
     model = toy.model.construct_mlp(model)
 
+    model_output_dir = output_dir / getattr(model, "__name")
+    os.makedirs(model_output_dir, exist_ok=True)
+
     train_loader, val_loader = toy.data.build_loaders(dataset=dataset)
 
     trainer = pl.Trainer(
         accelerator="cpu",
         max_epochs=epochs,
         deterministic=True,
-        default_root_dir=output_dir,
+        default_root_dir=model_output_dir,
     )
 
     trainer.fit(toy.model.ModelWrapper(model), train_loader, val_loader)
@@ -184,13 +212,16 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
 
     # Step 3: Teacher Performance on Subdatasets
     # comptue auroc, viz dececision boundary?
-    model_output_dir = output_dir / getattr(model, "__name")
-    os.makedirs(model_output_dir, exist_ok=True)
+
+    total_pairs = dataset.arr_class_pairs.shape[0]
+    pair_indices = list(range(total_pairs))
+    selected_pairs = pair_indices[:3] + pair_indices[-3:]
 
     with torch.no_grad():
         stats_auroc = toy.viz.subdataset_decision_boundary(
             model=model,
             dataset=dataset,
+            arr_pairs=selected_pairs,
             acc=acc,
             device=device,
             artifact_dir=model_output_dir,
@@ -201,8 +232,9 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names):
 
     basis_names = list(map(lambda s: f"{s}--{mode}", basis_names.split(",")))
 
-    for classes in [(0, 1), (2, 3), (4, 5)]:
-        cls_slug = f"subdataset--{classes[0]}vs{classes[1]}"
+    for pix in selected_pairs:
+        classes = dataset.arr_class_pairs[pix]
+        cls_slug = f"subdataset--p{pix}"
 
         for layer in ["act1", "act2"]:
             layer_output_dir = model_output_dir / cls_slug / layer

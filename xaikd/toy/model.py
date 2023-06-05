@@ -1,5 +1,6 @@
 import typing
 
+import numpy as np
 from datetime import datetime
 
 import torch
@@ -13,6 +14,7 @@ import torchmetrics
 from collections import OrderedDict
 
 from xaikd import bases
+from xaikd.toy import data
 
 
 def construct_mlp(name: str) -> nn.Module:
@@ -24,11 +26,11 @@ def construct_mlp(name: str) -> nn.Module:
     model = nn.Sequential(
         OrderedDict(
             [
-                ("lin1", nn.Linear(3, D)),
+                ("lin1", nn.Linear(2, D)),
                 ("act1", nn.ReLU()),
                 ("lin2", nn.Linear(D, D // 2)),
                 ("act2", nn.ReLU()),
-                ("lin3", nn.Linear(D // 2, 6)),
+                ("lin3", nn.Linear(D // 2, data.NUM_CLASSES)),
             ]
         )
     )
@@ -117,3 +119,46 @@ def attach_projected_fh_with_k(
         return (output - mu) @ (U @ U.T) + mu
 
     return fh
+
+
+class QDA(nn.Module):
+    def __init__(self, centroids, covs, device) -> None:
+        super().__init__()
+
+        self.centroids = torch.tensor(centroids).to(device).float()
+        self.num_classes = self.centroids.shape[0]
+
+        scales = []
+        rotations = []
+        for i in range(self.num_classes):
+            cov = covs[i]
+            _scale, _rot = np.linalg.eigh(cov)
+            scales.append(_scale)
+            rotations.append(_rot)
+
+        scales = np.stack(scales)
+        rotations = np.stack(rotations)
+
+        self.scales = torch.tensor(scales).float().to(device)
+        self.rotations = torch.tensor(rotations).float().to(device)
+
+    def forward(self, x):
+        logits = torch.zeros(x.shape[0], self.num_classes).to(x.device)
+
+        for cix in range(self.num_classes):
+            # the code is taken from the reference below
+            # ref: https://github.com/scikit-learn/scikit-learn/blob/364c77e047ca08a95862becf40a04fe9d4cd2c98/sklearn/discriminant_analysis.py#L941
+            mu = self.centroids[cix, :]
+
+            xm = x - mu
+            V = self.scales[cix]
+            U = self.rotations[cix]
+
+            x2 = xm @ (U * (V ** (-0.5)))
+
+            norm2 = torch.sum(x2**2, dim=1)
+            u = torch.log(V).sum()
+
+            logits[:, cix] = -0.5 * (norm2 + u)
+
+        return logits

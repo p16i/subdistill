@@ -8,7 +8,7 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader
 from torch import nn
 from torchmetrics import Accuracy
-from torchmetrics.classification import BinaryAUROC
+from torchmetrics.classification import BinaryAUROC, BinaryAccuracy
 
 from xaikd import attributors, bases
 
@@ -18,10 +18,11 @@ def auroc(
     dataloader: DataLoader,
     classes: typing.Tuple[int, int],
     device: str,
-) -> float:
+) -> typing.Tuple[float, float]:
     c1, c2 = classes
 
-    metric = BinaryAUROC()
+    metric_auroc = BinaryAUROC()
+    metric_binary = BinaryAccuracy()
     for x, y in dataloader:
         logits = model(x.to(device)).cpu()
 
@@ -29,12 +30,14 @@ def auroc(
 
         assert np.logical_or(y == c1, y == c2).all()
 
-        ybin = np.where(y == c1, 0, 1)
-        metric.update(logodd, torch.from_numpy(ybin))
+        ybin = torch.from_numpy(np.where(y == c1, 0, 1))
+        metric_auroc.update(logodd, ybin)
+        metric_binary.update((logodd < 0).int(), ybin.int())
 
-    auroc = metric.compute()
+    auroc = metric_auroc.compute()
+    bin_accuracy = metric_binary.compute()
 
-    return float(auroc)
+    return float(auroc), float(bin_accuracy)
 
 
 def accuracy(model: nn.Module, dl: DataLoader, num_classes: int, device: str) -> float:
