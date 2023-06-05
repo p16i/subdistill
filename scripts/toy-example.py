@@ -1,7 +1,9 @@
 import os
 import typing
 import click
+from glob import glob
 from tqdm import tqdm
+import json
 
 from datetime import datetime
 from pathlib import Path
@@ -190,46 +192,69 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names, cov_diag):
 
     train_loader, val_loader = toy.data.build_loaders(dataset=dataset)
 
-    trainer = pl.Trainer(
-        accelerator="cpu",
-        max_epochs=epochs,
-        deterministic=True,
-        default_root_dir=model_output_dir,
-    )
-
-    trainer.fit(toy.model.ModelWrapper(model), train_loader, val_loader)
-
-    model = model.to(device)
-
-    with torch.no_grad():
-        acc = metrics.accuracy(
-            model, val_loader, num_classes=toy.data.NUM_CLASSES, device=device
-        )
-
-    arguments["accuracy"] = acc
-
-    click.echo(f"Accuracy={acc:.4f}")
-
-    # Step 3: Teacher Performance on Subdatasets
-    # comptue auroc, viz dececision boundary?
-
     total_pairs = dataset.arr_class_pairs.shape[0]
     pair_indices = list(range(total_pairs))
     selected_pairs = pair_indices[:3] + pair_indices[-3:]
 
-    with torch.no_grad():
-        stats_auroc = toy.viz.subdataset_decision_boundary(
-            model=model,
-            dataset=dataset,
-            arr_pairs=selected_pairs,
-            acc=acc,
-            device=device,
-            artifact_dir=model_output_dir,
+    pretrained_model_exists = os.path.isdir(model_output_dir / "lightning_logs")
+
+    if not pretrained_model_exists:
+        trainer = pl.Trainer(
+            accelerator="cpu",
+            max_epochs=epochs,
+            deterministic=True,
+            default_root_dir=model_output_dir,
         )
 
-    arguments["aurocs"] = stats_auroc
-    utils.dump_json(model_output_dir / "meta.json", arguments)
+        trainer.fit(toy.model.ModelWrapper(model), train_loader, val_loader)
 
+        with torch.no_grad():
+            acc = metrics.accuracy(
+                model, val_loader, num_classes=toy.data.NUM_CLASSES, device=device
+            )
+
+        arguments["accuracy"] = acc
+
+        with torch.no_grad():
+            stats_auroc = toy.viz.subdataset_decision_boundary(
+                model=model,
+                dataset=dataset,
+                arr_pairs=selected_pairs,
+                acc=acc,
+                device=device,
+                artifact_dir=model_output_dir,
+            )
+
+        arguments["aurocs"] = stats_auroc
+        utils.dump_json(model_output_dir / "meta.json", arguments)
+
+    else:
+        checkpoints = glob(
+            str(model_output_dir / "lightning_logs" / "version_*" / "*" / "*.ckpt")
+        )
+
+        assert len(checkpoints) == 1, "we should have only one check point!"
+
+        wrapper = toy.model.ModelWrapper.load_from_checkpoint(
+            checkpoints[0], model=model
+        )
+
+        click.echo("We have a trained model already, hence reusing it!")
+
+        with torch.no_grad():
+            acc = metrics.accuracy(
+                model, val_loader, num_classes=toy.data.NUM_CLASSES, device=device
+            )
+
+        with open(model_output_dir / "meta.json", "r") as fh:
+            previous_meta = json.load(fh)
+
+        click.echo(f"Accuracy={acc:.4f}")
+        np.testing.assert_allclose(previous_meta["accuracy"], acc)
+
+    model = model.to(device)
+
+    # Step 3: Teacher Performance on Subdatasets
     basis_names = list(map(lambda s: f"{s}--{mode}", basis_names.split(",")))
 
     for pix in selected_pairs:
