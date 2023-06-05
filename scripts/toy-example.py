@@ -250,6 +250,7 @@ def main(model, seed, eps, output_dir, epochs, mode, basis_names, cov_diag):
             previous_meta = json.load(fh)
 
         click.echo(f"Accuracy={acc:.4f}")
+        np.testing.assert_allclose(previous_meta["accuracy"], acc)
 
     model = model.to(device)
 
