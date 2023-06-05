@@ -234,7 +234,7 @@ class Rel(Basis):
         self,
         activation: npt.NDArray,
         context: npt.NDArray,
-        mean: npt.NDArray | None,
+        mean: typing.Union[npt.NDArray, None],
         device: str,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         n, d = activation.shape
