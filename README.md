@@ -119,13 +119,34 @@ Activative env `peotry shell` or run commands via `peotry run ....`
 
 ### Sprint 7 (2023/06/01)
 - refactor
-  - [] prca-abs,recon,reg with the same fit but adding assersion
+  - [x] prca-abs,recon,reg with the same fit but adding assersion
 - experiment: beta
-  - 
+  - eps: `1.0`
+  - basis: `pca,prca-abs,prca-reconreg0.0,prca-reconreg0.001,prca-reconreg0.01,prca-reconreg0.1,prca-reconreg1.0,prca-reconreg10.0,prca-reconreg100.0,prca-reconreg1000.0`
+    - run `249288_ (eps1.0), 249303_(eps10.0), 249308_ (eps0.1)`
+- why stderr is high? how to reduce variance? is the model not that stable? 
+  - this large stderr would be larger in  gaussian blobs
 - new toy dataset: mixture of gaussian
-  - 
+  - increase epochs from 20 to 200
+- [x] Experiment: compression \propto eps
+  - cases: covdiag=True, covdiag=False
+  - eps={0.75, 1.0} (1 seems to high)
+- [x] Add rel basis
+- [x] not training new model if `lighting_log` exists
+- [x] Experiment: comparison between pca,prca-abs,prca-recon,rel
+  - data: covDiag=False, eps=0.5,0.75, 1.0
+  - basis-choice:
+    - [x] `rel,rel-abs`, 
 
-
+    - `prca-reconreg0.0,prca-reconreg0.001,prca-reconreg0.01,prca-reconreg0.1,prca-reconreg1.0,prca-reconreg10.0,prca-reconreg100.0,prca-reconreg1000.0`
+      - [x] job: `249927_, 249922_, 249917_`
+- [] proof of concept for kernel and approximation
+  - MLP
+    - training
+    - extract activation
+    - training svm
+    - svm direction from samples
+  - [] to what extent we can use kernel to approximate module in DNNs?
 ### Backlog
 - [] refactor
   - the way we construct loader
