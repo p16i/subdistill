@@ -131,15 +131,22 @@ Activative env `peotry shell` or run commands via `peotry run ....`
 - [x] Experiment: compression \propto eps
   - cases: covdiag=True, covdiag=False
   - eps={0.75, 1.0} (1 seems to high)
-- [] Add rel basis
-- [] not training new model if `lighting_log` exists
-- [] Experiment: comparison between pca,prca-abs,prca-recon,rel
+- [x] Add rel basis
+- [x] not training new model if `lighting_log` exists
+- [x] Experiment: comparison between pca,prca-abs,prca-recon,rel
   - data: covDiag=False, eps=0.5,0.75, 1.0
   - basis-choice:
     - [x] `rel,rel-abs`, 
 
     - `prca-reconreg0.0,prca-reconreg0.001,prca-reconreg0.01,prca-reconreg0.1,prca-reconreg1.0,prca-reconreg10.0,prca-reconreg100.0,prca-reconreg1000.0`
-      - [ ] job: `249927_, 249922_, 249917_`
+      - [x] job: `249927_, 249922_, 249917_`
+- [] proof of concept for kernel and approximation
+  - MLP
+    - training
+    - extract activation
+    - training svm
+    - svm direction from samples
+  - [] to what extent we can use kernel to approximate module in DNNs?
 ### Backlog
 - [] refactor
   - the way we construct loader
