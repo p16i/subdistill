@@ -94,3 +94,10 @@ def test_get_random_basis(slug, seed):
 
     # todo: find way to test this  w/o relying on the mean artifacts.
     # basis.load(Path("dummy-path"))
+
+
+@pytest.mark.parametrize("variant", ["abs", "recon", "reconreg0.1"])
+@pytest.mark.parametrize("slug", ["centered", "uncentered"])
+def test_instantiate_prca_greedy_basese(variant, slug):
+    basis = bases.get_basis(f"prca-{variant}--{slug}")
+    assert True

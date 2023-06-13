@@ -223,6 +223,45 @@ class PCA(Basis):
         return eigvecs, eigvals
 
 
+@register_basis("rel")
+class Rel(Basis):
+    artifact_keys = ["eigvecs", "eigvals"]
+
+    def _relevance_preprocessing(self, x: npt.NDArray) -> npt.NDArray:
+        return x
+
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: typing.Union[npt.NDArray, None],
+        device: str,
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        n, d = activation.shape
+
+        if self.centering:
+            activation = activation - mean
+
+        relevance: npt.NDArray = self._relevance_preprocessing(activation * context)
+        eigvals = np.mean(relevance, axis=0)
+
+        # large relevance first
+        indices = np.argsort(-eigvals)
+
+        eigvecs = np.eye(d)[:, indices]
+
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, eigvals)))
+
+        return eigvecs, eigvals
+
+
+@register_basis("rel-abs")
+class RelAbs(Rel):
+    def _relevance_preprocessing(self, x: npt.NDArray) -> npt.NDArray:
+        # todo: add test?
+        return np.abs(x)
+
+
 @register_basis("prca")
 class PRCA(Basis):
     artifact_keys = ["eigvecs", "eigvals"]
@@ -320,7 +359,7 @@ class PRCAVariant(Basis):
 
         learner = learners.PRCAGreedyLeaner(mode=self.mode)
 
-        U = learner.fit(activation, context, **kwargs)
+        U = learner.fit(activation, context, **kwargs, beta=self.beta)
 
         self.artifact = dict(zip(self.artifact_keys, (U, mean)))
 
@@ -330,45 +369,19 @@ class PRCAVariant(Basis):
 @register_basis("prca-abs")
 class PRCAAbs(PRCAVariant):
     mode = "abs"
+    beta = 0.0
 
 
 @register_basis("prca-recon")
 class PRCARelRecon(PRCAVariant):
     mode = "recon"
+    beta = 0.0
 
 
 @register_basis("prca-reconreg")
-class PRCARelReconRegt (PRCAVariant):
+class PRCARelReconReg(PRCAVariant):
     mode = "recon"
 
-    def __init__(self, alias, centering: bool = True, beta=0, **kwargs):
-        super().__init__(alias, centering, **kwargs)
-
+    def __init__(self, beta=0.0, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.beta = beta
-
-    def fit(
-        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
-        """_summary_ Summary
-
-        Args:
-            activation (npt.NDArray): _description_
-            context (npt.NDArray): _description_
-
-        Returns:
-            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
-        """
-        _, d = activation.shape
-
-        if not self.centering:
-            mean = np.zeros(d)
-
-        activation = activation - mean
-
-        learner = learners.PRCAGreedyLeaner(mode=self.mode)
-
-        U = learner.fit(activation, context, **kwargs, beta=self.beta)
-
-        self.artifact = dict(zip(self.artifact_keys, (U, mean)))
-
-        return U, None

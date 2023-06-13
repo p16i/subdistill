@@ -5,6 +5,7 @@ import numpy.typing as npt
 
 from sklearn.datasets import make_moons, make_circles, make_classification
 from sklearn.model_selection import train_test_split
+from sklearn import cluster
 
 import torch
 
@@ -15,8 +16,8 @@ from dataclasses import dataclass
 
 MEAN_GROUP = [1, 0, -1]
 TEST_SPLIT_RATIO = 0.2
-SAMPLES_PER_GROUP = 5000
-NUM_CLASSES = 6
+SAMPLES_PER_BLOB = 1000
+NUM_CLASSES = 10
 
 
 @dataclass
@@ -25,6 +26,10 @@ class Dataset:
     y_train: npt.NDArray
     x_val: npt.NDArray
     y_val: npt.NDArray
+
+    arr_class_pairs: npt.NDArray
+    arr_centroids: npt.NDArray
+    arr_covs: npt.NDArray
 
     eps: float
     seed: int
@@ -36,48 +41,105 @@ def preprend_z(x: npt.NDArray, gix: int, eps: float) -> npt.NDArray:
     return np.hstack([x, z.reshape((-1, 1))])
 
 
-def construct_dataset(eps: float, seed: int, samples_per_group=SAMPLES_PER_GROUP):
+def construct_dataset(
+    eps: float,
+    seed: int,
+    samples_per_blob=SAMPLES_PER_BLOB,
+    nblobs=NUM_CLASSES,
+    is_cov_diag=False,
+):
     # These toy datasets are generated with similar parameters used in
     # https://scikit-learn.org/stable/auto_examples/classification/plot_classifier_comparison.html
     np.random.seed(seed)
 
-    xm, ym = make_moons(n_samples=samples_per_group, noise=0.3, random_state=seed)
-    xm -= np.mean(xm, axis=0)
-    xm = preprend_z(xm, gix=0, eps=eps)
+    noise_scale = 1.0
 
-    xc, yc = make_circles(
-        n_samples=samples_per_group, noise=0.2, factor=0.5, random_state=seed
-    )
-    xc -= np.mean(xc, axis=0)
-    yc = yc + 2  # labels: {2, 3}
-    xc = preprend_z(xc, gix=1, eps=eps)
+    points = np.random.uniform(-1, 1, size=(100 * nblobs, 2))
 
-    xs, ys = make_classification(
-        n_samples=samples_per_group,
-        n_features=2,
-        n_redundant=0,
-        n_informative=2,
-        random_state=seed,
-        n_clusters_per_class=1,
-    )
-    xs -= np.mean(xs, axis=0)
-    ys = ys + 4  # labels: {4, 5}
-    xs = preprend_z(xs, gix=2, eps=eps)
+    kmean = cluster.KMeans(nblobs, random_state=seed)
 
-    X = np.vstack([xm, xc, xs])
-    y = np.concatenate([ym, yc, ys])
+    kmean.fit(points)
+
+    arr_centroids = kmean.cluster_centers_
+    # (quasi) canonicalize cluster id
+    _dix = np.argsort(np.linalg.norm(arr_centroids - [-1, 1], axis=1))
+    arr_centroids = arr_centroids[_dix, :]
+
+    arr_x = []
+
+    arr_targets = []
+
+    arr_covs = []
+
+    scales = [eps, eps] if is_cov_diag else [eps, eps / 2]
+    scales = np.diag(scales)
+
+    for bix in range(nblobs):
+        _mu = arr_centroids[bix, :]
+
+        theta = np.random.uniform(low=0, high=2 * np.pi)
+
+        rot = np.array(
+            [
+                [np.cos(theta), -np.sin(theta)],
+                [np.sin(theta), np.cos(theta)],
+            ]
+        )
+
+        A = scales @ rot
+
+        _x = _mu + (noise_scale * np.random.randn(samples_per_blob, 2) @ A)
+        arr_x.append(_x)
+
+        # B = N @ A \in \R^{n, 2}
+        # => cov = B.T @ B = (N @ A).T @ (N @ A)
+        #        = A.T @ (N.T @ N) @ A
+        #        = A.T @ I @ A
+        cov = A.T @ A
+
+        # cov = np.cov(_x.T)
+        np.testing.assert_allclose(cov, A.T @ A, atol=1e-3)
+
+        arr_covs.append(cov)
+
+        arr_targets.append([bix] * samples_per_blob)
+
+    arr_class_pairs = []
+    arr_dist = []
+
+    for c1 in range(nblobs - 1):
+        for c2 in range(c1 + 1, nblobs):
+            dist = np.linalg.norm(arr_centroids[c1, :] - arr_centroids[c2, :])
+            arr_dist.append(dist)
+            arr_class_pairs.append((c1, c2))
+
+    arr_class_pairs = np.array(arr_class_pairs)
+    arr_dist = np.array(arr_dist)
+    indices = np.argsort(arr_dist)
+
+    # sort by difficulty (most difficult first)
+    arr_class_pairs = arr_class_pairs[indices]
+    arr_dist = arr_dist[indices]
+
+    X = np.vstack(arr_x)
+    y = np.concatenate(arr_targets)
+
+    assert X.shape == (samples_per_blob * nblobs, 2)
+    assert y.shape == (samples_per_blob * nblobs,)
 
     x_train, x_val, y_train, y_val = train_test_split(
         X, y, test_size=TEST_SPLIT_RATIO, random_state=seed
     )
 
-    mean = np.mean(x_train, axis=0)
-    std = np.std(x_train, axis=0)
-
-    def standardize(x):
-        return (x - mean) / std
-
-    return mean, std, standardize(x_train), standardize(x_val), y_train, y_val
+    return (
+        arr_centroids,
+        arr_covs,
+        x_train,
+        x_val,
+        y_train,
+        y_val,
+        arr_class_pairs,
+    )
 
 
 def build_loaders(
