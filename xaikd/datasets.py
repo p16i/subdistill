@@ -160,8 +160,23 @@ class TwoClassesDataset(DatasetConfiguration):
     def create_dataset(self, train_split=False) -> Dataset:
         return self.base.create_dataset(train_split=train_split)
 
-    def loader(self, batch_size=64, num_workers=2, train_split=False, shuffle=False):
+    def loader(
+        self,
+        batch_size=64,
+        num_workers=2,
+        train_split=False,
+        shuffle=False,
+        aug_transform=False,
+    ):
         ds = self.create_dataset(train_split=train_split)
+        if aug_transform:
+            ds.transform = transforms.Compose(
+                [
+                    transforms.RandomCrop(32, padding=4),
+                    transforms.RandomHorizontalFlip(),
+                    self.base.transformation,
+                ]
+            )
 
         labels = ds.targets
 
