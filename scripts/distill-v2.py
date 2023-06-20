@@ -21,7 +21,12 @@ from tensorboard_logger import configure
 @click.option("--dataset", default="cifar100-35vs98", type=str, required=True)
 @click.option("--model", default="cifar100-resnet18-p1", required=True)
 @click.option("--layer", default="layer3", type=str, required=True)
-@click.option("--basis-names", type=str, default="pca,prca-abs", required=True)
+@click.option(
+    "--basis-names",
+    type=str,
+    default="pca,prca-abs,random1,random2,random3",
+    required=True,
+)
 @click.option("--basis-mode", type=str, default="centered", required=True)
 @click.option("--compression-rate", type=float, default=0.25, required=True)
 @click.option("--output-dir", type=str, required=True)
