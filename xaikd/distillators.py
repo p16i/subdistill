@@ -27,8 +27,40 @@ from xaikd import utils, datasets, attributors, bases, models
 from xaikd.utils import metrics
 
 
-LAYERS = ["layer1", "layer2", "layer3", "layer4"]
-EPOCHS_PER_LAYER = 10
+@dataclass
+class LayerDistillInfo:
+    layer_name: str
+    num_input_channels: int
+    num_output_channels: int
+    output_spatial_dims: typing.Tuple[int, int]
+
+
+def get_distill_infor(
+    arch: str, layer: str, compression_rate: float
+) -> LayerDistillInfo:
+    assert arch == "cifar100-resnet18-p1"
+
+    info = dict(
+        zip(
+            ["layer3", "layer4"],
+            [
+                LayerDistillInfo(
+                    layer_name="layer3",
+                    num_input_channels=128,
+                    num_output_channels=int(256 * compression_rate),
+                    output_spatial_dims=(8, 8),
+                ),
+                LayerDistillInfo(
+                    layer_name="layer4",
+                    num_input_channels=256,
+                    num_output_channels=int(512 * compression_rate),
+                    output_spatial_dims=(4, 4),
+                ),
+            ],
+        )
+    )
+
+    return info[layer]
 
 
 class ModelWrapper(pl.LightningModule):
@@ -94,14 +126,6 @@ class ModelWrapper(pl.LightningModule):
         self.model.train()
 
 
-@dataclass
-class LayerDistillInfo:
-    layer_name: str
-    num_input_channels: int
-    num_output_channels: int
-    output_spatial_dims: typing.Tuple[int, int]
-
-
 def get_approximator_for_resnet18(
     layer: str, output_dimensions: int, num_classes=100
 ) -> nn.Module:
@@ -132,10 +156,18 @@ class Layerwise:
         self.compression_rate = compression_rate
 
         self.device = device
+        self.ref_auroc, _ = metrics.auroc(
+            teacher,
+            self.dataset.loader(train_split=False),
+            classes=self.dataset.selected_classes,
+            device=self.device,
+            should_convert_auroc=True,
+        )
 
     def distill(
         self,
-        layer: str,
+        approx_mod: nn.Module,
+        distill_info: LayerDistillInfo,
         epochs: int,
         basis: bases.Basis,
         device: str,
@@ -150,27 +182,15 @@ class Layerwise:
 
         student.eval()
 
-        ref_auroc, _ = metrics.auroc(
-            student,
-            self.dataset.loader(train_split=False),
-            classes=self.dataset.selected_classes,
-            device=self.device,
-        )
-        ref_auroc = np.max([ref_auroc, 1 - ref_auroc])
-
-        print(f"Distilling layer={layer} with {epochs} epochs")
+        print(f"Distilling layer={distill_info.layer_name} with {epochs} epochs")
 
         (
             total_teacher_params,
             _,
         ) = utils.count_params_in_model(self.teacher)
 
-        pl.seed_everything(seed)
-
-        distill_info = self.setup(layer)
-
-        approxer = self.on_training_layer_start(
-            student, distill_info, basis=basis, device=device
+        self.on_training_layer_start(
+            student, approx_mod=approx_mod, distill_info=distill_info
         )
 
         count_total_params, count_trainable_params = utils.count_params_in_model(
@@ -192,9 +212,19 @@ class Layerwise:
         decoder = basis.contruct_rank_d_decoder(distill_info.num_output_channels)
         decoder.to(device)
 
-        approxer.adapter = decoder
+        approx_mod.adapter = decoder
 
         training_wrapper = ModelWrapper(student, lr=lr, dataset=self.dataset)
+
+        student_auroc_before_training, _ = metrics.auroc(
+            student,
+            self.dataset.loader(train_split=False),
+            classes=self.dataset.selected_classes,
+            device=self.device,
+        )
+        print(
+            f"Student AUROC Before Training: {student_auroc_before_training:.4f} (teacher={self.ref_auroc:.4f})"
+        )
 
         print(f"Training log is saved to `{log_dir}`")
 
@@ -218,8 +248,9 @@ class Layerwise:
                 dict(
                     layer=distill_info.layer_name,
                     epoch=epoch,
-                    auroc=auroc,
-                    teacher_auroc=ref_auroc,
+                    epoch_auroc=auroc,
+                    teacher_auroc=self.ref_auroc,
+                    student_auroc_before_training=student_auroc_before_training,
                     student_trainable_param=count_trainable_params,
                     student_total_params=count_total_params,
                     teacher_total_params=total_teacher_params,
@@ -228,46 +259,15 @@ class Layerwise:
 
         return arr_metrics
 
-    def setup(self, layer: str) -> LayerDistillInfo:
-        # remark: hardcode for now
-        info = dict(
-            zip(
-                ["layer3", "layer4"],
-                [
-                    LayerDistillInfo(
-                        layer_name="layer3",
-                        num_input_channels=128,
-                        num_output_channels=int(256 * self.compression_rate),
-                        output_spatial_dims=(8, 8),
-                    ),
-                    LayerDistillInfo(
-                        layer_name="layer4",
-                        num_input_channels=256,
-                        num_output_channels=int(512 * self.compression_rate),
-                        output_spatial_dims=(4, 4),
-                    ),
-                ],
-            )
-        )
-
-        return info[layer]
-
     def on_training_layer_start(
         self,
         student: nn.Module,
-        distil_info: LayerDistillInfo,
-        basis: bases.Basis,
-        device: str,
+        approx_mod: nn.Module,
+        distill_info: LayerDistillInfo,
     ) -> nn.Module:
         utils.deactivate_requires_grad(student)
 
-        approx_mod = get_approximator_for_resnet18(
-            distil_info.layer_name, distil_info.num_output_channels
-        )
-
-        approx_mod.to(device)
-
-        setattr(student, distil_info.layer_name, approx_mod)
+        setattr(student, distill_info.layer_name, approx_mod)
 
         return approx_mod
 
