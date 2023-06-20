@@ -338,11 +338,9 @@ class Random(Basis):
 
     def fit(
         self,
-        activation: NDArray,
-        context: NDArray | None,
-        mean: NDArray | None,
-        device: str,
-    ) -> Tuple[NDArray, NDArray]:
+        *args,
+        **kwargs,
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         pass
 
 
