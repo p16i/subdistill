@@ -103,19 +103,20 @@ def main(
         arch=model_name, layer=layer, compression_rate=compression_rate
     )
 
-    layer_approximator = distillators.get_approximator_for_resnet18(
-        layer,
-        distill_info.num_output_channels,
-    )
-
-    distillator = distillators.Layerwise(
-        teacher=model,
-        dataset=dataset,
-        compression_rate=compression_rate,
-        device=device,
-    )
-
     for basis_name in basis_names.split(","):
+        pl.seed_everything(seed)
+
+        layer_approximator = distillators.get_approximator_for_resnet18(
+            layer,
+            distill_info.num_output_channels,
+        )
+
+        distillator = distillators.Layerwise(
+            teacher=model,
+            dataset=dataset,
+            device=device,
+        )
+
         basis_name = f"{basis_name}--{basis_mode}"
         basis_output_dir = output_dir / basis_name
         os.makedirs(basis_output_dir, exist_ok=True)
@@ -131,7 +132,7 @@ def main(
 
         results = distillator.distill(
             student=student,
-            approx_mod=deepcopy(layer_approximator),
+            approx_mod=layer_approximator,
             distill_info=distill_info,
             epochs=epochs,
             train_dataloader=train_loader_with_aug,

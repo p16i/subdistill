@@ -166,14 +166,12 @@ class Layerwise:
         self,
         teacher: torch.nn.Module,
         dataset: datasets.TwoClassesDataset,
-        compression_rate: float,
         device: str,
     ) -> None:
         pass
-        self.teacher = teacher
         self.dataset = dataset
 
-        self.compression_rate = compression_rate
+        self.teacher = teacher
 
         self.device = device
         self.ref_auroc, _ = metrics.auroc(

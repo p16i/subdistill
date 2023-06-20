@@ -93,9 +93,13 @@ class DatasetConfiguration(ABC):
     transformation: typing.Callable
     dataclass: typing.Callable
 
+    # todo: init method already instatitate dataset
+
     @abstractmethod
     def create_dataset(slef, train_split=False) -> Dataset:
         pass
+
+    # todo: add new method get_dataset to get the dataset from dict
 
     def loader(self, batch_size=64, num_workers=2, train_split=False, shuffle=False):
         return DataLoader(
