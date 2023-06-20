@@ -63,6 +63,8 @@ def main(
         dataset, num_training_samples=num_samples
     )
 
+    model.to(device)
+
     logodd_mod = attributors.LogOddEvidence(dataset.selected_classes)
 
     # todo: make sure that all bases use the same activation and context vectors
