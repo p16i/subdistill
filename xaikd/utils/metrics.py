@@ -24,6 +24,7 @@ def auroc(
 
     metric_auroc = BinaryAUROC()
     metric_binary = BinaryAccuracy()
+    model = model.to(device)
     for x, y in dataloader:
         logits = model(x.to(device)).cpu()
 
