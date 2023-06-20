@@ -333,6 +333,18 @@ class Random(Basis):
 
         self.mean = mean
 
+    def save(self, output_dir: Path):
+        pass
+
+    def fit(
+        self,
+        activation: NDArray,
+        context: NDArray | None,
+        mean: NDArray | None,
+        device: str,
+    ) -> Tuple[NDArray, NDArray]:
+        pass
+
 
 class PRCAVariant(Basis):
     artifact_keys = ["eigvecs"]
