@@ -325,6 +325,8 @@ class Layerwise:
         student = copy.deepcopy(self.teacher)
         student.to(device)
 
+        student.eval()
+
         ref_auroc, _ = metrics.auroc(
             student,
             self.dataset.loader(train_split=False),
@@ -372,7 +374,7 @@ class Layerwise:
         )
 
         # Optimizers specified in the torch.optim package
-        optimizer = torch.optim.SGD(approxer.parameters(), lr=lr)
+        optimizer = torch.optim.Adam(approxer.parameters(), lr=lr)
 
         tbar = tqdm(total=epochs)
 
@@ -382,21 +384,26 @@ class Layerwise:
         decoder = basis.contruct_rank_d_decoder(distill_info.num_output_channels)
         decoder.to(device)
 
+        approxer.adapter = decoder
+
         arr_metrics = []
         step = 0
         for epoch in range(epochs):
-            for x, _ in self.dataset.loader(
+            student.train()
+            for x, y in self.dataset.loader(
                 train_split=True, shuffle=True, aug_transform=True
             ):
                 optimizer.zero_grad()
                 x = x.to(device)
 
-                with torch.no_grad():
-                    target = projector(teacher_head(x))
+                # with torch.no_grad():
+                #     target = projector(teacher_head(x))
 
-                actual = student_head(x)
+                # actual = student_head(x)
 
-                loss = F.mse_loss(actual, target) * 16
+                # loss = F.mse_loss(actual, target) * 16
+
+                loss = F.cross_entropy(student(x), y.to(device))
 
                 loss.backward()
 
@@ -406,8 +413,9 @@ class Layerwise:
                 log_value("epoch", epoch, step)
                 step += 1
 
+            student.eval()
             auroc, _ = metrics.auroc(
-                nn.Sequential(student_head, decoder, teacher_classifier),
+                student,
                 self.dataset.loader(train_split=False),
                 self.dataset.selected_classes,
                 self.device,
@@ -429,8 +437,6 @@ class Layerwise:
                     teacher_auroc=ref_auroc,
                 )
             )
-
-        # approxer.adapter = decoder
 
         return arr_metrics
 
