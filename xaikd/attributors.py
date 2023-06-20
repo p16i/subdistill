@@ -9,6 +9,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torchvision import models, transforms
+from torch.utils.data import DataLoader
 
 from zennit.torchvision import ResNetCanonizer
 from zennit.composites import EpsilonGammaBox
@@ -77,12 +78,11 @@ def extract_activation_context(
     model: nn.Module,
     layer: str,
     dataset: datasets.DatasetConfiguration,
+    data_loader: DataLoader,
     logit_modifier: LogitModifier,
     device="cpu",
     number_of_selected_spatial_locations=20,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-    data_loader = dataset.loader(train_split=True)
-
     arr_act = []
     arr_ctx = []
 

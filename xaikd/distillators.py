@@ -14,6 +14,7 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torch.utils.data import DataLoader
 import torchvision
 import torchmetrics
 
@@ -71,6 +72,7 @@ class ModelWrapper(pl.LightningModule):
         classification_head: nn.Module,
         lr: float,
         dataset: datasets.TwoClassesDataset,
+        val_dataloader: DataLoader,
     ):
         super().__init__()
 
@@ -83,6 +85,7 @@ class ModelWrapper(pl.LightningModule):
         self.arr_metrics = []
         self.dataset = dataset
         self.val_loss = torchmetrics.MeanMetric()
+        self.val_dataloader = val_dataloader
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
@@ -128,7 +131,7 @@ class ModelWrapper(pl.LightningModule):
 
         auroc, _ = metrics.auroc(
             self,
-            self.dataset.loader(train_split=False),
+            self.val_dataloader,
             self.dataset.selected_classes,
             self.device,
             should_convert_auroc=True,
@@ -183,8 +186,11 @@ class Layerwise:
 
     def distill(
         self,
+        student: nn.Module,
         approx_mod: nn.Module,
         distill_info: LayerDistillInfo,
+        train_dataloader: DataLoader,
+        val_dataloader: DataLoader,
         epochs: int,
         basis: bases.Basis,
         device: str,
@@ -193,11 +199,11 @@ class Layerwise:
         seed=1,
     ):
         os.makedirs(str(log_dir), exist_ok=True)
-        # todo: deep copy should not change any
-        student = copy.deepcopy(self.teacher)
+        # # todo: deep copy should not change any
+        # student = copy.deepcopy(self.teacher)
         student.to(device)
 
-        student.eval()
+        # student.eval()
 
         print(f"Distilling layer={distill_info.layer_name} with {epochs} epochs")
 
@@ -241,11 +247,12 @@ class Layerwise:
             classification_head=classification_head,
             lr=lr,
             dataset=self.dataset,
+            val_dataloader=val_dataloader,
         )
 
         student_auroc_before_training, _ = metrics.auroc(
             student,
-            self.dataset.loader(train_split=False),
+            val_dataloader,
             classes=self.dataset.selected_classes,
             device=self.device,
             should_convert_auroc=True,
@@ -262,12 +269,9 @@ class Layerwise:
             logger=TensorBoardLogger(log_dir),
             log_every_n_steps=1,
             enable_checkpointing=False,
+            deterministic=True,
         )
-        trainer.fit(
-            training_wrapper,
-            self.dataset.loader(train_split=True, shuffle=True, aug_transform=True),
-            self.dataset.loader(train_split=False),
-        )
+        trainer.fit(training_wrapper, train_dataloader, val_dataloader)
 
         arr_metrics = []
 

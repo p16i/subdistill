@@ -11,6 +11,8 @@ from datetime import datetime
 from pathlib import Path
 from copy import deepcopy
 
+from torchvision import transforms
+
 from xaikd.utils import click_types
 from xaikd import datasets, utils, distillators, models, attributors, bases
 
@@ -47,7 +49,7 @@ def main(
     layer,
     basis_mode,
 ):
-    np.random.seed(seed)
+    pl.seed_everything(seed)
 
     arguments = locals()
     start_time = datetime.now()
@@ -72,10 +74,24 @@ def main(
 
     logodd_mod = attributors.LogOddEvidence(dataset.selected_classes)
 
+    train_loader = dataset.loader(train_split=True, shuffle=True)
+    val_loader = dataset.loader(train_split=False, shuffle=False)
+
+    train_loader_with_aug = deepcopy(train_loader)
+    # todo: convert this to utils
+    train_loader_with_aug.dataset.dataset.transform = transforms.Compose(
+        [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+            train_loader_with_aug.dataset.dataset.transform,
+        ]
+    )
+
     # todo: make sure that all bases use the same activation and context vectors
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=model,
         layer=layer,
+        data_loader=train_loader,
         dataset=dataset,
         logit_modifier=logodd_mod,
         device=device,
@@ -92,7 +108,6 @@ def main(
         distill_info.num_output_channels,
     )
 
-    pl.seed_everything(seed)
     distillator = distillators.Layerwise(
         teacher=model,
         dataset=dataset,
@@ -112,10 +127,15 @@ def main(
 
         basis.load(output_dir)
 
+        student = models.get_model(model_name)
+
         results = distillator.distill(
+            student=student,
             approx_mod=deepcopy(layer_approximator),
             distill_info=distill_info,
             epochs=epochs,
+            train_dataloader=train_loader_with_aug,
+            val_dataloader=val_loader,
             basis=basis,
             seed=seed,
             device=device,
