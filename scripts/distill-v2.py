@@ -55,9 +55,6 @@ def main(
     os.makedirs(output_dir, exist_ok=True)
     click.echo(f"Output: {output_dir}")
 
-    os.makedirs(output_dir / "log", exist_ok=True)
-    configure(output_dir / "log", flush_secs=5)
-
     device = utils.get_device()
 
     dataset: datasets.TwoClassesDataset = datasets.construct(
@@ -98,9 +95,11 @@ def main(
         seed=seed,
         device=device,
         lr=lr,
+        log_dir=output_dir / "log",
     )
 
     df = pd.DataFrame(results)
+    print(f"AUROC (max={df.auroc.max():.4f}): {df.auroc.values[-1]:.4f}")
 
     filename = output_dir / "result.csv"
     print(f"> check output at: {filename}")
