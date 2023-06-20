@@ -65,11 +65,19 @@ def get_distill_infor(
 
 class ModelWrapper(pl.LightningModule):
     def __init__(
-        self, model: nn.Module, lr: float, dataset: datasets.TwoClassesDataset
+        self,
+        feature_extractor: nn.Module,
+        approximator: nn.Module,
+        classification_head: nn.Module,
+        lr: float,
+        dataset: datasets.TwoClassesDataset,
     ):
         super().__init__()
 
-        self.model = model
+        self.feature_extrator = feature_extractor
+        self.approximator = approximator
+        self.classification_head = classification_head
+
         self.lr = lr
 
         self.arr_metrics = []
@@ -80,11 +88,23 @@ class ModelWrapper(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
 
+    def forward(self, x) -> torch.Tensor:
+        self.feature_extrator.eval()
+        self.classification_head.eval()
+
+        with torch.no_grad():
+            x = self.feature_extrator(x)
+
+        x = self.approximator(x)
+
+        x = self.classification_head(x)
+
+        return x
+
     def training_step(self, train_batch, batch_idx):
-        assert self.model.training
         x, y = train_batch
 
-        logits = self.model(x)
+        logits = self(x)
 
         loss = F.cross_entropy(logits, y)
 
@@ -95,7 +115,7 @@ class ModelWrapper(pl.LightningModule):
     def validation_step(self, val_batch, batch_idx):
         x, y = val_batch
 
-        logits = self.model(x)
+        logits = self(x)
 
         loss = F.cross_entropy(logits, y)
         self.val_loss.update(loss)
@@ -104,12 +124,10 @@ class ModelWrapper(pl.LightningModule):
         self.log("val_loss", self.val_loss.compute())
 
     def on_train_epoch_end(self) -> None:
-        self.model.eval()
-
-        assert not self.model.training
+        self.approximator.eval()
 
         auroc, _ = metrics.auroc(
-            self.model,
+            self,
             self.dataset.loader(train_split=False),
             self.dataset.selected_classes,
             self.device,
@@ -122,7 +140,7 @@ class ModelWrapper(pl.LightningModule):
 
         self.arr_metrics.append(auroc)
 
-        self.model.train()
+        self.approximator.train()
 
 
 def get_approximator_for_resnet18(
@@ -213,7 +231,17 @@ class Layerwise:
 
         approx_mod.adapter = decoder
 
-        training_wrapper = ModelWrapper(student, lr=lr, dataset=self.dataset)
+        feature_extractor, _, classification_head = models.resnet.split_resnet_18_at(
+            student, distill_info.layer_name
+        )
+
+        training_wrapper = ModelWrapper(
+            feature_extractor=feature_extractor,
+            approximator=approx_mod,
+            classification_head=classification_head,
+            lr=lr,
+            dataset=self.dataset,
+        )
 
         student_auroc_before_training, _ = metrics.auroc(
             student,
