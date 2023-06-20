@@ -113,9 +113,8 @@ class ModelWrapper(pl.LightningModule):
             self.dataset.loader(train_split=False),
             self.dataset.selected_classes,
             self.device,
+            should_convert_auroc=True,
         )
-
-        auroc = np.max([auroc, 1 - auroc])
 
         self.logger.experiment.add_scalar(
             "auroc", auroc, global_step=self.current_epoch
@@ -221,6 +220,7 @@ class Layerwise:
             self.dataset.loader(train_split=False),
             classes=self.dataset.selected_classes,
             device=self.device,
+            should_convert_auroc=True,
         )
         print(
             f"Student AUROC Before Training: {student_auroc_before_training:.4f} (teacher={self.ref_auroc:.4f})"
