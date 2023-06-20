@@ -18,6 +18,7 @@ def auroc(
     dataloader: DataLoader,
     classes: typing.Tuple[int, int],
     device: str,
+    should_convert_auroc=False,
 ) -> typing.Tuple[float, float]:
     c1, c2 = classes
 
@@ -35,6 +36,9 @@ def auroc(
         metric_binary.update((logodd < 0).int(), ybin.int())
 
     auroc = metric_auroc.compute()
+    if should_convert_auroc:
+        auroc = np.max([auroc, 1 - auroc])
+
     bin_accuracy = metric_binary.compute()
 
     return float(auroc), float(bin_accuracy)
