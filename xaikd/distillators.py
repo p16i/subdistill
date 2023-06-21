@@ -230,8 +230,9 @@ class Layerwise:
             count_trainable_params > 0 and count_trainable_params < total_teacher_params
         )
 
-        decoder = basis.contruct_rank_d_decoder(distill_info.num_output_channels)
-        decoder.to(device)
+        decoder = basis.contruct_rank_d_decoder(
+            distill_info.num_output_channels, device=device
+        )
 
         approx_mod.adapter = decoder
 
