@@ -37,8 +37,11 @@ def test_extract_activation_context(layer):
 
     output_dims = models.get_layer_dimensions(model, layer)
 
+    train_dl = dataset.loader(train_split=True)
+
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=model,
+        data_loader=train_dl,
         dataset=dataset,
         layer=layer,
         device=DEVICE,
