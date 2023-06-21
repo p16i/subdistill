@@ -30,6 +30,17 @@ class Projector(torch.nn.Module):
         return F.conv2d(x - self.mean, self.U)
 
 
+class Decoder(torch.nn.Module):
+    def __init__(self, U: torch.Tensor, mean: torch.Tensor, device: str) -> None:
+        super().__init__()
+
+        self.U = U.unsqueeze(2).unsqueeze(3).to(device)
+        self.mean = mean.reshape((1, -1, 1, 1)).to(device)
+
+    def forward(self, x):
+        return F.conv2d(x, self.U) + self.mean
+
+
 def register_basis(name):
     """Decorator to register a data modality provider."""
 
@@ -151,16 +162,10 @@ class Basis(ABC):
 
         return Projector(U, self.mean, device)
 
-    def contruct_rank_d_decoder(self, k: int) -> torch.nn.Module:
+    def contruct_rank_d_decoder(self, k: int, device: str) -> torch.nn.Module:
         U = self.artifact["eigvecs"][:, :k]
 
-        decoder = torch.nn.Conv2d(k, U.shape[0], kernel_size=1)
-        decoder.weight = torch.nn.Parameter(U.unsqueeze(2).unsqueeze(3))
-        decoder.bias = torch.nn.Parameter(self.mean)
-
-        utils.deactivate_requires_grad(decoder)
-
-        return decoder
+        return Decoder(U, self.mean, device=device)
 
     def __str__(self) -> str:
         return getattr(self, "__name")
