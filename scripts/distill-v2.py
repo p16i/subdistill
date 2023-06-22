@@ -19,6 +19,20 @@ from xaikd import datasets, utils, distillators, models, attributors, bases
 from tensorboard_logger import configure
 
 
+def get_transformation(dataset_name):
+    if "cifar100" in dataset_name:
+        return [
+            transforms.RandomCrop(32, padding=4),
+            transforms.RandomHorizontalFlip(),
+        ]
+    elif "imagenet" in dataset_name:
+        return [
+            transforms.RandomHorizontalFlip(),
+        ]
+    else:
+        raise NotImplementedError("")
+
+
 @click.command()
 @click.option("--dataset", default="cifar100-35vs98", type=str, required=True)
 @click.option("--model", default="cifar100-resnet18-p1", required=True)
@@ -81,8 +95,7 @@ def main(
     # todo: convert this to utils
     train_loader_with_aug.dataset.dataset.transform = transforms.Compose(
         [
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
+            *get_transformation(dataset_name=getattr(dataset, "__name")),
             train_loader_with_aug.dataset.dataset.transform,
         ]
     )
