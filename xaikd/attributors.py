@@ -60,7 +60,6 @@ class LogOddEvidence(LogitModifier):
         self,
         classes: typing.Tuple[int, int],
     ) -> None:
-        # todo: perhaps, we only need `dataset` and extract classes from there.
         assert len(classes) == 2
 
         self.classes = classes
