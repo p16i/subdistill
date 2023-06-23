@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
 import pandas as pd
+import numpy as np
 
 import torch
 
@@ -86,17 +87,25 @@ def construction_model(name: str, dataset_name: str, num_classes: int) -> nn.Mod
         return Lenet5(num_classes=num_classes)
     elif "resnet" in name:
         model = None
-        if "cifar100" in dataset_name:
-            model = models._resnet18_cifar(num_classes=num_classes)
-        elif "imagenet" in dataset_name:
-            model = resnet.resnet18(weights=None)
 
-        if name == "resnet18-2l":
+        if "pretrain" in name:
+            if "cifar100" in dataset_name:
+                model = models.get_model("cifar100-resnet18-p1")
+            elif "imagenet" in dataset_name:
+                model = models.get_model("imagenet-resnet18-tv")
+            utils.deactivate_requires_grad(model)
+        else:
+            if "cifar100" in dataset_name:
+                model = models._resnet18_cifar(num_classes=num_classes)
+            elif "imagenet" in dataset_name:
+                model = resnet.resnet18(weights=None)
+
+        if "resnet18-2l" in name:
             model.layer3 = nn.Identity()
             model.layer4 = nn.Identity()
             model.fc = nn.Linear(128, num_classes)
             model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        elif name == "resnet18-3l":
+        elif "resnet18-3l" in name:
             model.layer4 = nn.Identity()
             model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
             model.fc = nn.Linear(256, num_classes)
@@ -184,7 +193,8 @@ class ModelWrapper(pl.LightningModule):
 @click.option("--seed", default=1)
 @click.option("--epochs", default=100)
 @click.option("--dataset-name", default="cifar100-35vs98")
-def main(dataset_name, epochs, output_dir, seed=1):
+@click.option("--num-samples", default="10,100,1000")
+def main(dataset_name, epochs, output_dir, seed, num_samples):
     arguments = locals()
     start_time = datetime.now()
 
@@ -194,7 +204,7 @@ def main(dataset_name, epochs, output_dir, seed=1):
 
     os.makedirs(output_dir, exist_ok=True)
 
-    arr_num_samples = [10, 100, 1000]
+    arr_num_samples = np.array(num_samples.split(",")).astype(int).tolist()
 
     num_classes = 100 if "cifar100" in dataset_name else 1000
 
@@ -211,7 +221,14 @@ def main(dataset_name, epochs, output_dir, seed=1):
             ]
         )
 
-        for model_name in ["lenet5", "resnet18-2l", "resnet18-3l", "resnet18-full"]:
+        for model_name in [
+            "lenet5",
+            "resnet18-2l",
+            "pretrained-resnet18-2l",
+            "resnet18-3l",
+            "pretrained-resnet18-3l",
+            # "resnet18-full",
+        ]:
             log_dir = output_dir / f"{model_name}-n{num_samples}"
             os.makedirs(log_dir, exist_ok=True)
 
