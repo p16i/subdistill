@@ -183,7 +183,7 @@ class ModelWrapper(pl.LightningModule):
 @click.option("--output-dir", type=str, default="./tmp")
 @click.option("--seed", default=1)
 @click.option("--epochs", default=100)
-@click.option("--dataset_name", default="cifar100-35vs98")
+@click.option("--dataset-name", default="cifar100-35vs98")
 def main(dataset_name, epochs, output_dir, seed=1):
     arguments = locals()
     start_time = datetime.now()
