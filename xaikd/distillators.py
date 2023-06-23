@@ -33,13 +33,13 @@ class LayerDistillInfo:
     layer_name: str
     num_input_channels: int
     num_output_channels: int
-    output_spatial_dims: typing.Tuple[int, int]
+    # output_spatial_dims: typing.Tuple[int, int]
 
 
 def get_distill_infor(
     arch: str, layer: str, compression_rate: float
 ) -> LayerDistillInfo:
-    assert arch == "cifar100-resnet18-p1"
+    assert arch == "cifar100-resnet18-p1" or arch == "imagenet-resnet18-tv"
 
     info = dict(
         zip(
@@ -49,13 +49,13 @@ def get_distill_infor(
                     layer_name="layer3",
                     num_input_channels=128,
                     num_output_channels=int(256 * compression_rate),
-                    output_spatial_dims=(8, 8),
+                    #                    output_spatial_dims=(8, 8),
                 ),
                 LayerDistillInfo(
                     layer_name="layer4",
                     num_input_channels=256,
                     num_output_channels=int(512 * compression_rate),
-                    output_spatial_dims=(4, 4),
+                    #                    output_spatial_dims=(4, 4),
                 ),
             ],
         )
