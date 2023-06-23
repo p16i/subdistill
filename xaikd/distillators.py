@@ -88,7 +88,7 @@ class ModelWrapper(pl.LightningModule):
         self.val_dataloader = val_dataloader
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.approximator.parameters(), lr=self.lr)
         return optimizer
 
     def forward(self, x) -> torch.Tensor:
@@ -125,6 +125,7 @@ class ModelWrapper(pl.LightningModule):
 
     def on_validation_epoch_end(self):
         self.log("val_loss", self.val_loss.compute())
+        self.val_loss.reset()
 
     def on_train_epoch_end(self) -> None:
         self.approximator.eval()
