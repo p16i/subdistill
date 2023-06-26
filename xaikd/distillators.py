@@ -71,7 +71,8 @@ class ModelWrapper(pl.LightningModule):
         approximator: nn.Module,
         classification_head: nn.Module,
         lr: float,
-        dataset: datasets.TwoClassesDataset,
+        dataset: datasets.Cifar100SuperClassesDataset,
+        train_dataloader: DataLoader,
         val_dataloader: DataLoader,
     ):
         super().__init__()
@@ -85,7 +86,10 @@ class ModelWrapper(pl.LightningModule):
         self.arr_metrics = []
         self.dataset = dataset
         self.val_loss = torchmetrics.MeanMetric()
-        self.val_dataloader = val_dataloader
+
+        # todo: find a better way to do this. Perhaps, via Callback?
+        self._train_dataloader = train_dataloader
+        self._val_dataloader = val_dataloader
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.approximator.parameters(), lr=self.lr)
@@ -130,19 +134,26 @@ class ModelWrapper(pl.LightningModule):
     def on_train_epoch_end(self) -> None:
         self.approximator.eval()
 
-        auroc, _ = metrics.auroc(
-            self,
-            self.val_dataloader,
-            self.dataset.selected_classes,
-            self.device,
-            should_convert_auroc=True,
-        )
+        accs = []
 
-        self.logger.experiment.add_scalar(
-            "auroc", auroc, global_step=self.current_epoch
-        )
+        for name, loader in zip(
+            ["train", "val"], [self._train_dataloader, self._val_dataloader]
+        ):
+            acc = metrics.accuracy_with_subclasses(
+                self,
+                loader,
+                considered_classes=self.dataset.selected_classes,
+                transform_target=self.dataset.transform_target,
+                device=self.device,
+            )
 
-        self.arr_metrics.append(auroc)
+            self.logger.experiment.add_scalar(
+                f"{name}_acc", acc, global_step=self.current_epoch
+            )
+
+            accs.append(acc)
+
+        self.arr_metrics.append(accs)
 
         self.approximator.train()
 
@@ -166,21 +177,25 @@ class Layerwise:
     def __init__(
         self,
         teacher: torch.nn.Module,
-        dataset: datasets.TwoClassesDataset,
+        dataset: datasets.Cifar100SuperClassesDataset,
+        train_dataloader: DataLoader,
+        val_dataloader: DataLoader,
         device: str,
     ) -> None:
-        pass
         self.dataset = dataset
+        self.train_dataloader = train_dataloader
+        self.val_dataloader = val_dataloader
 
         self.teacher = teacher
 
         self.device = device
-        self.ref_auroc, _ = metrics.auroc(
-            teacher,
-            self.dataset.loader(train_split=False),
-            classes=self.dataset.selected_classes,
+
+        self.ref_acc = metrics.accuracy_with_subclasses(
+            self.teacher,
+            val_dataloader,
+            considered_classes=self.dataset.selected_classes,
+            transform_target=self.dataset.transform_target,
             device=self.device,
-            should_convert_auroc=True,
         )
 
     def distill(
@@ -188,14 +203,11 @@ class Layerwise:
         student: nn.Module,
         approx_mod: nn.Module,
         distill_info: LayerDistillInfo,
-        train_dataloader: DataLoader,
-        val_dataloader: DataLoader,
         epochs: int,
         basis: bases.Basis,
         device: str,
         lr: float,
         log_dir=Path,
-        seed=1,
     ):
         os.makedirs(str(log_dir), exist_ok=True)
         student.to(device)
@@ -243,18 +255,20 @@ class Layerwise:
             classification_head=classification_head,
             lr=lr,
             dataset=self.dataset,
-            val_dataloader=val_dataloader,
+            train_dataloader=self.train_dataloader,
+            val_dataloader=self.val_dataloader,
         )
 
-        student_auroc_before_training, _ = metrics.auroc(
+        student_acc_before_training = metrics.accuracy_with_subclasses(
             student,
-            val_dataloader,
-            classes=self.dataset.selected_classes,
+            dl=self.val_dataloader,
+            considered_classes=self.dataset.selected_classes,
+            transform_target=self.dataset.transform_target,
             device=self.device,
-            should_convert_auroc=True,
         )
+
         print(
-            f"Student AUROC Before Training: {student_auroc_before_training:.4f} (teacher={self.ref_auroc:.4f})"
+            f"Student ACC Before Training: {student_acc_before_training:.4f} (teacher={self.ref_acc:.4f})"
         )
 
         print(f"Training log is saved to `{log_dir}`")
@@ -267,18 +281,19 @@ class Layerwise:
             enable_checkpointing=False,
             deterministic=True,
         )
-        trainer.fit(training_wrapper, train_dataloader, val_dataloader)
+        trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)
 
         arr_metrics = []
 
-        for epoch, auroc in enumerate(training_wrapper.arr_metrics):
+        for epoch, (train_acc, val_acc) in enumerate(training_wrapper.arr_metrics):
             arr_metrics.append(
                 dict(
                     layer=distill_info.layer_name,
                     epoch=epoch,
-                    epoch_auroc=auroc,
-                    teacher_auroc=self.ref_auroc,
-                    student_auroc_before_training=student_auroc_before_training,
+                    epoch_val_acc=val_acc,
+                    epoch_train_acc=train_acc,
+                    teacher_acc=self.ref_acc,
+                    student_acc_before_training=student_acc_before_training,
                     student_trainable_param=count_trainable_params,
                     student_total_params=count_total_params,
                     teacher_total_params=total_teacher_params,

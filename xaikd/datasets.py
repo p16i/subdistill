@@ -11,6 +11,8 @@ import pandas as pd
 import numpy as np
 import numpy.typing as npt
 
+
+import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset, Dataset
 
@@ -284,6 +286,7 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         )
 
         df_selected = df_meta[df_meta.coarse_label_name == super_class]
+        df_selected = df_selected.sort_values(by="fine_label")
         print(
             f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
         )
@@ -292,16 +295,28 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
 
         self.selected_classes = df_selected.fine_label.values.tolist()
 
-        # remark: this might be a bit confusing
-        self.num_classes = len(self.selected_classes)
+        # remark: Attention! this is `num_classes` of CIFAR100.
+        self.num_classes = 100
 
         self.input_statistics = self.base.input_statistics
         self.transformation = self.base.transformation
 
         self.num_train_samples = num_train_samples
 
+        self.target_transform_dict = dict(
+            zip(self.selected_classes, range(len(self.selected_classes)))
+        )
+
     def create_dataset(self, train_split=False) -> Dataset:
         return self.base.create_dataset(train_split=train_split)
+
+    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        new_target = []
+
+        for t in target:
+            new_target.append(self.target_transform_dict[int(t.detach().cpu())])
+
+        return torch.Tensor(new_target).to(target.device)
 
     def loader(
         self,

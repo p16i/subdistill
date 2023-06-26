@@ -34,7 +34,7 @@ def get_transformation(dataset_name):
 
 
 @click.command()
-@click.option("--dataset", default="cifar100-35vs98", type=str, required=True)
+@click.option("--dataset", default="cifar100-people", type=str, required=True)
 @click.option("--model", default="cifar100-resnet18-p1", required=True)
 @click.option("--layer", default="layer3", type=str, required=True)
 @click.option(
@@ -80,13 +80,14 @@ def main(
 
     device = utils.get_device()
 
-    dataset: datasets.TwoClassesDataset = datasets.construct(
+    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
         dataset, num_training_samples=num_samples
     )
 
     model.to(device)
 
-    logodd_mod = attributors.LogOddEvidence(dataset.selected_classes)
+    # logodd_mod = attributors.LogOddEvidence(dataset.selected_classes)
+    logit_mod = attributors.OneClassEvidence(dataset=dataset)
 
     train_loader = dataset.loader(train_split=True, shuffle=True)
     val_loader = dataset.loader(train_split=False, shuffle=False)
@@ -106,7 +107,7 @@ def main(
         layer=layer,
         data_loader=train_loader,
         dataset=dataset,
-        logit_modifier=logodd_mod,
+        logit_modifier=logit_mod,
         device=device,
     )
     mean = np.mean(arr_act, axis=0)
@@ -127,6 +128,8 @@ def main(
         distillator = distillators.Layerwise(
             teacher=model,
             dataset=dataset,
+            train_dataloader=train_loader_with_aug,
+            val_dataloader=val_loader,
             device=device,
         )
 
@@ -148,18 +151,16 @@ def main(
             approx_mod=layer_approximator,
             distill_info=distill_info,
             epochs=epochs,
-            train_dataloader=train_loader_with_aug,
-            val_dataloader=val_loader,
             basis=basis,
-            seed=seed,
             device=device,
             lr=lr,
             log_dir=basis_output_dir / "log",
         )
 
         df = pd.DataFrame(results)
+        stats = df.epoch_val_acc
         click.echo(
-            f"[basis={basis_name}] AUROC (max={df.epoch_auroc.max():.4f}): {df.epoch_auroc.values[-1]:.4f}"
+            f"[basis={basis_name}] acc (max={stats.max():.4f}): {stats.values[-1]:.4f}"
         )
 
         filename = basis_output_dir / "result.csv"
