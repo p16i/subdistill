@@ -210,7 +210,6 @@ class Layerwise:
         log_dir=Path,
     ):
         os.makedirs(str(log_dir), exist_ok=True)
-        student.to(device)
 
         print(f"Distilling layer={distill_info.layer_name} with {epochs} epochs")
 
@@ -259,6 +258,7 @@ class Layerwise:
             val_dataloader=self.val_dataloader,
         )
 
+        student.to(device)
         student_acc_before_training = metrics.accuracy_with_subclasses(
             student,
             dl=self.val_dataloader,
