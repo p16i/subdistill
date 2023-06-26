@@ -47,7 +47,7 @@ def get_transformation(dataset_name):
 @click.option("--compression-rate", type=float, default=0.25, required=True)
 @click.option("--output-dir", type=str, required=True)
 @click.option("--num-samples", type=int, default=100, required=True)
-@click.option("--epochs", type=int, default=50, required=True)
+@click.option("--epochs", type=int, default=100, required=True)
 @click.option("--lr", type=float, default=0.001, required=True)
 @click.option("--seed", type=int, default=1)
 def main(
