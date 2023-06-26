@@ -30,6 +30,13 @@ DATASETS = dict()
 
 DATADIR = Path("./datasets")
 TORCHVISION_DATASET_DOWNLOAD = int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0"))
+CIFAR100_SUPER_CLASSES = (
+    pd.read_csv(constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv")[
+        "coarse_label_name"
+    ]
+    .unique()
+    .tolist()
+)
 
 if TORCHVISION_DATASET_DOWNLOAD:
     print(f"[warning!] TORCHVISION_DATASET_DOWNLOAD={TORCHVISION_DATASET_DOWNLOAD}")
@@ -130,7 +137,7 @@ def construct(name: str, num_training_samples=None) -> DatasetConfiguration:
             dataset = TwoClassesDataset(
                 dataset_cls(), selected_classes, num_train_samples=num_training_samples
             )
-        elif variant == "people":
+        elif dataset_name == "cifar100" and variant in CIFAR100_SUPER_CLASSES:
             dataset = Cifar100SuperClassesDataset(
                 dataset_cls(),
                 super_class=variant,
