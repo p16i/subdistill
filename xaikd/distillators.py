@@ -74,6 +74,7 @@ class ModelWrapper(pl.LightningModule):
         dataset: datasets.Cifar100SuperClassesDataset,
         train_dataloader: DataLoader,
         val_dataloader: DataLoader,
+        weight_decay: float,
     ):
         super().__init__()
 
@@ -90,9 +91,12 @@ class ModelWrapper(pl.LightningModule):
         # todo: find a better way to do this. Perhaps, via Callback?
         self._train_dataloader = train_dataloader
         self._val_dataloader = val_dataloader
+        self.weight_decay = weight_decay
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.approximator.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(
+            self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
         return optimizer
 
     def forward(self, x) -> torch.Tensor:
@@ -181,6 +185,7 @@ class Layerwise:
         train_dataloader: DataLoader,
         val_dataloader: DataLoader,
         device: str,
+        weight_decay: float,
     ) -> None:
         self.dataset = dataset
         self.train_dataloader = train_dataloader
@@ -197,6 +202,8 @@ class Layerwise:
             transform_target=self.dataset.transform_target,
             device=self.device,
         )
+
+        self.weight_decay = weight_decay
 
     def distill(
         self,
@@ -256,6 +263,7 @@ class Layerwise:
             dataset=self.dataset,
             train_dataloader=self.train_dataloader,
             val_dataloader=self.val_dataloader,
+            weight_decay=self.weight_decay,
         )
 
         student.to(device)
