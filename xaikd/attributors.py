@@ -55,6 +55,19 @@ class OneClassEvidence(LogitModifier):
         return logits * F.one_hot(targets, self.dataset.num_classes).to(logits.device)
 
 
+class SelectedClassesEvidence(LogitModifier):
+    def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
+        self.dataset = dataset
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        output = torch.zeros_like(logits)
+        output[:, self.dataset.selected_classes] = logits[
+            :, self.dataset.selected_classes
+        ]
+
+        return output
+
+
 class LogOddEvidence(LogitModifier):
     def __init__(
         self,
@@ -64,7 +77,7 @@ class LogOddEvidence(LogitModifier):
 
         self.classes = classes
 
-    def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor:
+    def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor
         output = torch.zeros_like(logits)
         # todo: this that assinging with targets has no effect
         output[:, self.classes[0]] = logits[:, self.classes[0]]
