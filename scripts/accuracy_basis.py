@@ -18,6 +18,8 @@ from xaikd import utils, datasets, attributors, bases, constants, models
 
 from xaikd.utils import click_types, metrics
 
+import pytorch_lightning as pl
+
 
 def extract_activation_and_bases(
     model: nn.Module,
@@ -101,6 +103,11 @@ def estimate_acc_for_basis(
     "--basis-mode", default="centered", type=click.Choice(["centered", "uncentered"])
 )
 @click.option(
+    "--logit-modifier",
+    default="oneclass",
+    type=click.Choice(["oneclass", "multipleclasses"]),
+)
+@click.option(
     "--basis-names",
     type=click_types.List(),
     default="pca,prca-abs,random1,random2,random3",
@@ -116,13 +123,17 @@ def main(
     basis_mode: str,
     basis_names: typing.List[str],
     num_training_samples: typing.Union[None, int],
+    logit_modifier: str,
 ):
+    pl.seed_everything(seed)
     arguments = locals()
     start_time = datetime.now()
 
     device = utils.get_device()
 
     model = model.to(device)
+
+    # todo: seed should be here?
 
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
         dataset, num_training_samples=num_training_samples
@@ -135,7 +146,12 @@ def main(
     click.echo(f"Basis Centering Mode: {basis_mode}")
     click.echo(f"with bases: {basis_names}")
 
-    logit_mod = attributors.SelectedClassesEvidence(dataset)
+    if logit_modifier == "oneclass":
+        logit_mod = attributors.OneClassEvidence(dataset)
+    elif logit_modifier == "multipleclasses":
+        logit_mod = attributors.SelectedClassesEvidence(dataset)
+    else:
+        raise ValueError("")
 
     original_acc = metrics.accuracy_with_subclasses(
         model,
@@ -149,16 +165,17 @@ def main(
     if num_training_samples is not None:
         dataset_slug = f"{dataset_slug}--n{num_training_samples}"
 
-    output_dir = Path(output_dir) / dataset_slug / getattr(model, "__name")
+    output_dir = (
+        Path(output_dir) / dataset_slug / f"logit-mod-{logit_modifier}" / getattr(model, "__name")
+    )
 
     click.echo(f"Output: {output_dir}")
 
     for layer in layers:
+        pl.seed_everything(seed)
+
         layer_output_dir = output_dir / layer
         os.makedirs(layer_output_dir, exist_ok=True)
-
-        # remark: should we set seed globally or every layer?
-        np.random.seed(seed)
 
         basis_names_with_mode = list(map(lambda s: f"{s}--{basis_mode}", basis_names))
 
