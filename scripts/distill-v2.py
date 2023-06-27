@@ -50,6 +50,7 @@ def get_transformation(dataset_name):
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--lr", type=float, default=0.001, required=True)
 @click.option("--seed", type=int, default=1)
+@click.option("--weight-decay", type=float, default=0.0)
 def main(
     model,
     dataset,
@@ -62,6 +63,7 @@ def main(
     num_samples,
     layer,
     basis_mode,
+    weight_decay,
 ):
     pl.seed_everything(seed)
 
@@ -71,7 +73,7 @@ def main(
     model = models.get_model(model)
     model_name = getattr(model, "__name")
 
-    layer_slug = f"layer{layer}-n{num_samples}-comp{compression_rate}-seed{seed}"
+    layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-comp{compression_rate}-seed{seed}"
 
     output_dir = Path(output_dir) / dataset / model_name / layer_slug
 
@@ -131,6 +133,7 @@ def main(
             train_dataloader=train_loader_with_aug,
             val_dataloader=val_loader,
             device=device,
+            weight_decay=weight_decay,
         )
 
         basis_name = f"{basis_name}--{basis_mode}"
