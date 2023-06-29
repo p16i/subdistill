@@ -55,6 +55,18 @@ class OneClassEvidence(LogitModifier):
         return logits * F.one_hot(targets, self.dataset.num_classes).to(logits.device)
 
 
+class OneClassLogSumExpEvidence(LogitModifier):
+    def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
+        self.dataset = dataset
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        logexp = torch.logsumexp(logits[:, self.dataset.selected_classes], dim=1, keepdim=True)
+        return (logits - logexp) * F.one_hot(targets, self.dataset.num_classes).to(
+            logits.device
+        )
+
+
 class SelectedClassesEvidence(LogitModifier):
     def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
         self.dataset = dataset
