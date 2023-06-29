@@ -65,8 +65,7 @@ def estimate_acc_for_basis(
     device: str,
     arr_ks: typing.List[int],
 ) -> typing.List[float]:
-    # todo: this has to be attract in the model/arch logic!
-    module: nn.Module = getattr(model, layer)[-1]
+    module = utils.interceptor.get_module(model, layer)
 
     arr_accs = []
 
@@ -166,7 +165,10 @@ def main(
         dataset_slug = f"{dataset_slug}--n{num_training_samples}"
 
     output_dir = (
-        Path(output_dir) / dataset_slug / f"logit-mod-{logit_modifier}" / getattr(model, "__name")
+        Path(output_dir)
+        / dataset_slug
+        / f"logit-mod-{logit_modifier}"
+        / getattr(model, "__name")
     )
 
     click.echo(f"Output: {output_dir}")

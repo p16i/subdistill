@@ -5,12 +5,14 @@ from torch import nn
 
 ARCH_LAYER_DIMENSIONS = dict(
     dict(
-        resnet18=dict(
-            layer1=64,
-            layer2=128,
-            layer3=256,
-            layer4=512,
-        )
+        resnet18={
+            "layer1": 64,
+            "layer2": 128,
+            "layer3": 256,
+            "layer4": 512,
+            "layer4.0": 512,
+            "layer4.1": 512,
+        }
     )
 )
 
@@ -18,6 +20,9 @@ ARCH_LAYER_DIMENSIONS = dict(
 def split_resnet_18_at(
     model: nn.Module, layer: str
 ) -> typing.Tuple[nn.Module, nn.Module, nn.Module]:
+
+    assert len(layer.split(".")) == 1
+
     layer_ix = int(layer[-1]) - 1
 
     layers = [model.layer1, model.layer2, model.layer3, model.layer4]
