@@ -10,6 +10,12 @@ from torchvision import models
 
 MODEL_GENERATORS = dict()
 
+MODEL_CHECKPOINT_MAPPING = {
+    "cifar10-resnet18-p1": "https://tubcloud.tu-berlin.de/s/xZ29d76Sz29M9Qa/download/resnet18-cifar100.pth",
+    "cifar100-resnet18-p1": "https://tubcloud.tu-berlin.de/s/xZ29d76Sz29M9Qa/download/resnet18-cifar100.pth",
+    "cifar100-resnet18-p2": "https://tubcloud.tu-berlin.de/s/RraE5L8CBQXs5tC/download/resnet18-cifar100-seed2.pth",
+}
+
 
 def register_model(name):
     """Decorator to register a data modality provider."""
@@ -27,21 +33,16 @@ def get_model(name: str) -> nn.Module:
     dataset, arch, variant = name.split("-")
 
     # todo: better organizing these if-else structures
-    if name in ["cifar10-resnet18-p1", "cifar100-resnet18-p1"]:
-        assert variant == "p1", "We only have one variant for now!"
-
+    if name in MODEL_CHECKPOINT_MAPPING.keys():
         num_classes = 10 if dataset == "cifar10" else 100
 
         model = MODEL_GENERATORS["cifar-resnet18"](num_classes=num_classes)
 
-        if dataset == "cifar10":
-            url = "https://tubcloud.tu-berlin.de/s/Ymy9WjzizxraqJy/download/resnet18-cifar10.pth"
-        elif dataset == "cifar100":
-            url = "https://tubcloud.tu-berlin.de/s/xZ29d76Sz29M9Qa/download/resnet18-cifar100.pth"
-        else:
-            raise ValueError(f"No checkpoint for `{name}`")
+        url = MODEL_CHECKPOINT_MAPPING[name]
 
-        model.load_state_dict(torch.hub.load_state_dict_from_url(url))
+        model.load_state_dict(
+            torch.hub.load_state_dict_from_url(url, map_location="cpu")
+        )
 
     elif name == "imagenet-resnet18-tv":
         model = MODEL_GENERATORS["imagenet-resnet18"]()
