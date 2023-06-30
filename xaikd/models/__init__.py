@@ -15,6 +15,7 @@ MODEL_CHECKPOINT_MAPPING = {
     "cifar100-resnet18-p1": "https://tubcloud.tu-berlin.de/s/xZ29d76Sz29M9Qa/download/resnet18-cifar100.pth",
     "cifar100-resnet18-p2": "https://tubcloud.tu-berlin.de/s/82DSTLJppJfGesc/download/resnet18-cifar100-seed2.pth",
     "cifar100-resnet18-p3": "https://tubcloud.tu-berlin.de/s/E2KLikTmZCsbEqK/download/resnet18-cifar100-seed3.pth",
+    "cifar100-resnet50-p1": "https://tubcloud.tu-berlin.de/s/FCefnjtD3KyRFRs/download/resnet50-cifar100-seed1.pth",
 }
 
 
@@ -37,7 +38,7 @@ def get_model(name: str) -> nn.Module:
     if name in MODEL_CHECKPOINT_MAPPING.keys():
         num_classes = 10 if dataset == "cifar10" else 100
 
-        model = MODEL_GENERATORS["cifar-resnet18"](num_classes=num_classes)
+        model = MODEL_GENERATORS[f"cifar-{arch}"](num_classes=num_classes)
 
         url = MODEL_CHECKPOINT_MAPPING[name]
 
@@ -89,6 +90,22 @@ def _resnet18_cifar(num_classes: int) -> nn.Module:
 
     model.avgpool = nn.AvgPool2d(kernel_size=4)
     model.fc = nn.Linear(512, num_classes)
+
+    model.num_classes = num_classes
+
+    return model
+
+
+@register_model("cifar-resnet50")
+def _resnet50_cifar(num_classes: int) -> nn.Module:
+    model = torchvision.models.resnet50(weights=None)
+
+    # why we use this? (ask Florian?)
+    model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
+    model.maxpool = nn.Identity()
+
+    model.avgpool = nn.AvgPool2d(kernel_size=4)
+    model.fc = nn.Linear(2048, num_classes)
 
     model.num_classes = num_classes
 
