@@ -350,12 +350,12 @@ class Random(Basis):
 
 
 class PRCAVariant(Basis):
-    artifact_keys = ["eigvecs"]
+    artifact_keys = ["eigvecs", "eigvals"]
     mode: str
 
     def fit(
         self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
         Args:
@@ -378,7 +378,9 @@ class PRCAVariant(Basis):
 
         self.artifact = dict(zip(self.artifact_keys, (U, mean)))
 
-        return U, None
+        eigvals = np.var(activation @ U, axis=0)
+
+        return U, eigvals
 
 
 @register_basis("prca-abs")
