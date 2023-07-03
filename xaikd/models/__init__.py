@@ -20,6 +20,7 @@ MODEL_CHECKPOINT_MAPPING = {
     "cifar100-vgg11-p1": "https://tubcloud.tu-berlin.de/s/xDbi6DsjyPppi3B/download/vgg11-cifar100-seed1.pth",
 }
 
+
 def register_model(name):
     """Decorator to register a data modality provider."""
 
@@ -97,8 +98,6 @@ def _resnet18_cifar(num_classes: int) -> nn.Module:
     return model
 
 
-<<<<<<< Updated upstream
-=======
 @register_model("cifar-vgg11")
 def _cifar_vgg11(num_classes: int) -> nn.Module:
     model = vgg.vgg11()
@@ -125,7 +124,6 @@ def _resnet50_cifar(num_classes: int) -> nn.Module:
     return model
 
 
->>>>>>> Stashed changes
 @register_model("imagenet-resnet18")
 def _resnet18_imagenet() -> nn.Module:
     return torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
