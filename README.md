@@ -138,9 +138,9 @@ Activative env `peotry shell` or run commands via `peotry run ....`
   - basis-choice:
     - [x] `rel,rel-abs`, 
 
-    - `prca-reconreg0.0,prca-reconreg0.001,prca-reconreg0.01,prca-reconreg0.1,prca-reconreg1.0,prca-reconreg10.0,prca-reconreg100.0,prca-reconreg1000.0`
+    - `rel,rel-abs,prca-reconreg0.0,prca-reconreg0.001,prca-reconreg0.01,prca-reconreg0.1,prca-reconreg1.0,prca-reconreg10.0,prca-reconreg100.0,prca-reconreg1000.0`
       - [x] job: `249927_, 249922_, 249917_`
-- [] proof of concept for kernel and approximation
+- [x] proof of concept for kernel and approximation
   - MLP
     - training
     - extract activation

@@ -18,11 +18,13 @@ def auroc(
     dataloader: DataLoader,
     classes: typing.Tuple[int, int],
     device: str,
+    should_convert_auroc=False,
 ) -> typing.Tuple[float, float]:
     c1, c2 = classes
 
     metric_auroc = BinaryAUROC()
     metric_binary = BinaryAccuracy()
+    model = model.to(device)
     for x, y in dataloader:
         logits = model(x.to(device)).cpu()
 
@@ -35,6 +37,9 @@ def auroc(
         metric_binary.update((logodd < 0).int(), ybin.int())
 
     auroc = metric_auroc.compute()
+    if should_convert_auroc:
+        auroc = np.max([auroc, 1 - auroc])
+
     bin_accuracy = metric_binary.compute()
 
     return float(auroc), float(bin_accuracy)
@@ -46,6 +51,24 @@ def accuracy(model: nn.Module, dl: DataLoader, num_classes: int, device: str) ->
     for x, y in dl:
         logits = model(x.to(device)).cpu()
         metric.update(logits, y)
+
+    return float(metric.compute())
+
+
+def accuracy_with_subclasses(
+    model: nn.Module,
+    dl: DataLoader,
+    considered_classes: typing.List[int],
+    transform_target: typing.Callable[[torch.Tensor], torch.Tensor],
+    device: str,
+) -> float:
+    metric = Accuracy(task="multiclass", num_classes=len(considered_classes))
+
+    for x, y in dl:
+        logits = model(x.to(device)).cpu()
+        selected_logits = logits[:, considered_classes]
+        transformed_y = transform_target(y)
+        metric.update(selected_logits, transformed_y)
 
     return float(metric.compute())
 
