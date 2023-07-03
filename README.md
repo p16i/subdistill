@@ -146,7 +146,159 @@ Activative env `peotry shell` or run commands via `peotry run ....`
     - extract activation
     - training svm
     - svm direction from samples
-  - [] to what extent we can use kernel to approximate module in DNNs?
+  - [x] to what extent we can use kernel to approximate module in DNNs?
+
+### Sprint 8 (2023/06/13)
+- [] toy dataset 10 seeds:
+  - ./logs/array/254632_1
+    - [] error bar on beta sweeping
+- [] Toy Dataset (100 classes)
+  - ./logs/array/253593_1.out
+    - [] the results quite different why?
+- [] approximation
+  - focus: layer3 and layer4
+  - approximation module: only one residue block
+  - unittests:
+    - test that feature_extractor, classification head the same output
+  - trial experiments
+    - layer3
+      - n={600}, compression=0.1 (264765_*), compression=0.01 (264802_*)
+        - epochs=100 and compression=0.01 (265266)
+      - n={60}, compression=0.1 (264807_*), compression=0.01 (264844_*)
+        - epochs=100 and compression=0.01 (265156); 
+      - n={6}, compression=0.01 (265151_*)
+        - epochs=100 and compression=0.01 (done)
+    - layer4
+      - n={60}, compression=0.01 (264839)
+
+    - imagenet (imagenet-385vs386):
+      - layer3 : n={100,  python ./scripts/baseline.py --epochs 31000} (epochs=100); compression 0.1, 0.01
+        - n=100; compression 0.1 (268036*) 
+        - n=100; compression 0.01 (268033*)
+        - n=10; compression 0.1 (268445*)
+        - n=10; compression 0.01 (268449*)
+    - baseline training
+      - cifar100-35vs98  (268523*) 
+      - imagenet-385vs386 (268528*) 
+
+    - baseline training with pretrained
+      - cifar100-35vs98  (268552*) 
+      - imagenet-385vs386 (n10,100: 268564*) (n1000: 269070_)
+
+  - implementation cifar100 with coarse labels
+    - [x] implement cifar100 subdataset
+      - unittest
+    - [x] check accuracy of coarse labels
+    - [x] logit modifier
+    - [ ] question: does model make mistakes across different superclasses
+      - if not, pca migth be as good as prca.
+    - experiment: (2023-06-s8/distill-superclass, layer=layer3)
+      - [x] n600: compr=0.1 (270755*) 
+        - [x] expected: all bases reach acc=0.5x
+          - yes, indeed that is the case
+      - [x] n600: compr=0.01 (271516) 
+
+      - [x] n60: compr=0.1 (270757*)
+        - [x] expected: pca or prca have highest acc
+      - [x] n60: compression0.25 (271018*)
+      - [x] n60: compression0.05 (270758*)
+      - [x] n60: compression0.01 (270759)
+    - experiment: (2023-06-s8/distill-superclass, layer=layer4)
+      - [x] n500: compr=0.1 (271567*) 
+      - [x] n500: compr=0.01 (271572*)
+      - [x] n50: compr=0.1 (271602*)
+      - [x] n50: compression0.25 (271743*)
+      - [x] n50: compression0.05 (271742*)
+      - [x] n50: compression0.01 (271597*)
+    - hypotheses:
+      - few samples (overfitting) -> poor accuracy
+      - with good basis -> good accuracy with few samples
+  - baseline from sctach
+    - [x] 271522*
+  - accuracy basis:
+    - [x] cifar100-people 271985
+  - logit modifier: comparision between target label or selected classes
+    - [x] q: which one is better? (next step)
+        - oneclass is better!
+    - [x] try to vary number of training samples
+  - experiment: (2023-06-s8/distill-superclass-wd, layer=layer3)
+    - goal: investigate the effect of overfitting.
+    - [x] n50, compr=0.01, weight-decay=0.0 (272836*)
+    - [x] n50, compr=0.01, weight-decay=0.1 (272838*)
+  - [x] experiment: accuracy_basis (cifar100-*)
+    - goal: see whether PRCA-abs is better than PCA.
+    ```
+     SEEDFILE=./xaikd/resources/cifar100-datasets.txt sbatch -p cpu-5h --array=1-20  ./slurm/job_array_cpu.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet18-p1 --output-dir ./artifacts/2023-06-s8/accuracy --logit-modifier oneclass --num-training-samples 50 --dataset {}
+    ```
+    - [x] n50 `273800*`
+    - [x] n500 (274083*)
+    - [x] n50: prca-recon1.0, prca-recon10.0 (274123*)
+    - conclusion: well, at Layer 4, PCA is better. why?
+    - comparison between centered and uncentered
+      - [x] n50; mode=uncentered 
+        - [x] layer=layer3,layer4; (275152)
+        - question: to what extend uncentereding worse PCA.
+        - answer: centering again 
+  - [x] experiment: accuracy_basis (cifar100 subset) with layer4.0, layer4.1
+    - ```
+      SEEDFILE=./resources/cifar100-super-subset.txt sbatch -p gpu-2h --array=1-5  ./slurm/job_array.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet18-p1 --output-dir ./artifacts/2023-06-s8/accuracy --logit-modifier oneclass --num-training-samples 50 --dataset {} --layers layer4.0,layer4.1
+      ```
+    - job: `275741`
+    - remark: layer4.1 should equal to layer4
+    - question: do prca-abs better than pca at layer4.0?
+      - yes: some how things got bad after layer4.1
+  - [x] experiment : validating layer=layer3,layer4.0,layer4.1 for cifar100-resnet18-p2
+      - ```
+        SEEDFILE=./resources/cifar100-super-subset.txt sbatch -p gpu-2h --array=1-5  ./slurm/job_array.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet18-p2 --output-dir ./artifacts/2023-06-s8/accuracy --logit-modifier oneclass --num-training-samples 50 --dataset {} --layers layer3,layer4.0,layer4.1
+        ```
+      - [x] job: p2 `276482`; p3 `276491`
+      - hypothesis: does the trend persist?
+        - PCA is better at layer4.1
+        - PRCA is better at layer3, 4.0
+      - yes: both trend persist
+  - [x] experiment: cifar100-resnet50-p1 (layer=3,4.0,4.1,4.2)
+      - ```
+      SEEDFILE=./resources/cifar100-super-subset.txt sbatch -p gpu-5h --array=1-5  ./slurm/job_array.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet50-p1 --output-dir ./artifacts/2023-06-s8/accuracy  --num-training-samples 50 --dataset {} --layers "layer3,layer4.0,layer4.1,layer4.2" ```
+      - job: `277331` (layer=layer3,4.0,4.1) `277928`
+      - goal: comparison between pca,prca-abs across those layers
+        - expected: prca-abs better at layer3, but not layer4*
+        - actual: actually, prca-abs is better pca at every layer. This is quite different from what we observe from resnet18
+  - [x] experiment: pcaprca-abs (cifar100-resnet18-p1) layer=layer3,layer4.0,layer4.1
+      - job: `277710`
+      - ```
+      SEEDFILE=./resources/cifar100-super-subset.txt sbatch -p gpu-2h --array=1-5  ./slurm/job_array.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet18-p1 --output-dir ./artifacts/2023-06-s8/accuracy  --num-training-samples 50 --dataset {} --layers "layer3,layer4.0,layer4.1" --basis-names pcaprca-abs
+        ```
+      - question: does the new basis better than PCA @layer4.1?
+
+  - [ ] experiment: cifar100-resnet18-p1 (layer=1, 2)
+      - job: `278333`
+      - expected: pca, prca-abs performs the same
+      - 
+  - next steps:
+    - [ ] check 278333
+    - [ ] train VGG11
+      - [ ] implement attribution
+
+
+  - [ ] kernel approximation (pretrained till layer3, predicting logit of 5 classes)
+    - [ ] n500
+      - check whether acc reaches Slide 11
+
+  - eigenvector of classes in people
+  - visualization
+      - teacher
+      - teacher w/ bottle neck
+       - distilation with different basis
+  - implementation inaturlist
+    - training resnet18 (start from ImageNet pretrained models)
+    - imagesize 64x64
+    - how long does it take to train?
+    - ....
+
+
+- [] activation for different compression is the same
+- [] write torchvision.dataset for UFI
+
 ### Backlog
 - [] refactor
   - the way we construct loader
