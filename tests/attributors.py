@@ -37,8 +37,11 @@ def test_extract_activation_context(layer):
 
     output_dims = models.get_layer_dimensions(model, layer)
 
+    train_dl = dataset.loader(train_split=True)
+
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=model,
+        data_loader=train_dl,
         dataset=dataset,
         layer=layer,
         device=DEVICE,
@@ -89,4 +92,25 @@ def test_logit_modifier_logodd(target):
     assert (logits_mod_logood[:, class2] == -logits[:, class2]).all()
     assert (
         logits_mod_logood[:, list(all_classes.difference([class1, class2]))] == 0
+    ).all()
+
+
+def test_logit_modifier_selected_classes():
+    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
+        "cifar100-people"
+    )
+    selected_classes = dataset.selected_classes
+
+    all_classes = set(range(dataset.num_classes))
+
+    torch.manual_seed(1)
+
+    logits = torch.rand((2, dataset.num_classes))
+    logits[:, selected_classes] += 1
+
+    logits_mod_single = attributors.SelectedClassesEvidence(dataset)(logits, None)
+
+    assert (logits_mod_single[:, selected_classes] > 0).all()
+    assert (
+        logits_mod_single[:, list(all_classes.difference(selected_classes))] == 0
     ).all()

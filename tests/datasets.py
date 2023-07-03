@@ -3,10 +3,17 @@ from contextlib import nullcontext
 import os
 import pytest
 
-from xaikd import datasets
 import numpy as np
+import torch
 
 from torchvision.datasets import CIFAR10
+import pandas as pd
+
+from xaikd import datasets
+
+DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
+    datasets.constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
+)
 
 
 @pytest.mark.parametrize("name", ["cifar10", "cifar100", "imagenet"])
@@ -116,3 +123,36 @@ def test_subset_with_without_num_samples(train_split):
 )
 def test_parse_dataset_name(name, expected):
     assert datasets._parse_dataset_name(name) == expected
+
+
+@pytest.mark.parametrize(
+    "super_class", DF_CIFAR100_LABEL_MAPPING["coarse_label_name"].unique().tolist()
+)
+def test_cifar100_superclass(super_class):
+    ds = datasets.construct(f"cifar100-{super_class}")
+
+    df = DF_CIFAR100_LABEL_MAPPING
+
+    fine_labels = df[df.coarse_label_name == super_class].fine_label.values.tolist()
+
+    for ix, (_, y) in enumerate(ds.loader(train_split=False, shuffle=True)):
+        assert np.isin(y.numpy(), fine_labels).all()
+
+
+@pytest.mark.parametrize(
+    "super_class", DF_CIFAR100_LABEL_MAPPING["coarse_label_name"].unique().tolist()
+)
+def test_cifar100_superclass_transform_target(super_class):
+    ds: datasets.Cifar100SuperClassesDataset = datasets.construct(
+        f"cifar100-{super_class}"
+    )
+
+    df = DF_CIFAR100_LABEL_MAPPING
+
+    fine_labels = sorted(
+        df[df.coarse_label_name == super_class].fine_label.values.tolist()
+    )
+
+    targets = ds.transform_target(torch.Tensor(fine_labels)).numpy()
+
+    assert np.isin(targets, range(len(fine_labels))).all()

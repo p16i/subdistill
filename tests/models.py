@@ -22,15 +22,18 @@ def test_get_models(slug):
 def test_split_model(slug, layer):
     model = models.get_model(slug)
 
-    head, classifier = models.resnet.split_resnet_18_at(model, layer)
-
+    head, layer_module, classifier = models.resnet.split_resnet_18_at(model, layer)
     if "imagenet" in slug:
         input = torch.randn(10, 3, 224, 224)
     else:
         input = torch.randn(10, 3, 32, 32)
 
+    assert layer_module == getattr(model, layer)
+
     with torch.no_grad():
-        actual = classifier(head(input)).numpy()
+        x = head(input)
+        x = layer_module(x)
+        actual = classifier(x).numpy()
         expected = model(input).numpy()
 
         np.testing.assert_allclose(actual, expected)
