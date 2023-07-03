@@ -4,6 +4,8 @@ import torchvision
 
 from torch import nn
 
+from . import resnet
+
 from torchvision.models.resnet import ResNet18_Weights
 from torchvision.models import vgg
 from torchvision import models
