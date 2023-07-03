@@ -55,6 +55,24 @@ def accuracy(model: nn.Module, dl: DataLoader, num_classes: int, device: str) ->
     return float(metric.compute())
 
 
+def accuracy_with_subclasses(
+    model: nn.Module,
+    dl: DataLoader,
+    considered_classes: typing.List[int],
+    transform_target: typing.Callable[[torch.Tensor], torch.Tensor],
+    device: str,
+) -> float:
+    metric = Accuracy(task="multiclass", num_classes=len(considered_classes))
+
+    for x, y in dl:
+        logits = model(x.to(device)).cpu()
+        selected_logits = logits[:, considered_classes]
+        transformed_y = transform_target(y)
+        metric.update(selected_logits, transformed_y)
+
+    return float(metric.compute())
+
+
 def auroc_with_basis(
     model: nn.Module,
     module: nn.Module,

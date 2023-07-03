@@ -138,15 +138,111 @@ Activative env `peotry shell` or run commands via `peotry run ....`
   - basis-choice:
     - [x] `rel,rel-abs`, 
 
-    - `prca-reconreg0.0,prca-reconreg0.001,prca-reconreg0.01,prca-reconreg0.1,prca-reconreg1.0,prca-reconreg10.0,prca-reconreg100.0,prca-reconreg1000.0`
+    - `rel,rel-abs,prca-reconreg0.0,prca-reconreg0.001,prca-reconreg0.01,prca-reconreg0.1,prca-reconreg1.0,prca-reconreg10.0,prca-reconreg100.0,prca-reconreg1000.0`
       - [x] job: `249927_, 249922_, 249917_`
-- [] proof of concept for kernel and approximation
+- [x] proof of concept for kernel and approximation
   - MLP
     - training
     - extract activation
     - training svm
     - svm direction from samples
-  - [] to what extent we can use kernel to approximate module in DNNs?
+  - [x] to what extent we can use kernel to approximate module in DNNs?
+
+### Sprint 8 (2023/06/13)
+- [] toy dataset 10 seeds:
+  - ./logs/array/254632_1
+    - [] error bar on beta sweeping
+- [] Toy Dataset (100 classes)
+  - ./logs/array/253593_1.out
+    - [] the results quite different why?
+- [] approximation
+  - focus: layer3 and layer4
+  - approximation module: only one residue block
+  - unittests:
+    - test that feature_extractor, classification head the same output
+  - trial experiments
+    - layer3
+      - n={600}, compression=0.1 (264765_*), compression=0.01 (264802_*)
+        - epochs=100 and compression=0.01 (265266)
+      - n={60}, compression=0.1 (264807_*), compression=0.01 (264844_*)
+        - epochs=100 and compression=0.01 (265156); 
+      - n={6}, compression=0.01 (265151_*)
+        - epochs=100 and compression=0.01 (done)
+    - layer4
+      - n={60}, compression=0.01 (264839)
+
+    - imagenet (imagenet-385vs386):
+      - layer3 : n={100,  python ./scripts/baseline.py --epochs 31000} (epochs=100); compression 0.1, 0.01
+        - n=100; compression 0.1 (268036*) 
+        - n=100; compression 0.01 (268033*)
+        - n=10; compression 0.1 (268445*)
+        - n=10; compression 0.01 (268449*)
+    - baseline training
+      - cifar100-35vs98  (268523*) 
+      - imagenet-385vs386 (268528*) 
+
+    - baseline training with pretrained
+      - cifar100-35vs98  (268552*) 
+      - imagenet-385vs386 (n10,100: 268564*) (n1000: 269070_)
+
+  - implementation cifar100 with coarse labels
+    - [x] implement cifar100 subdataset
+      - unittest
+    - [x] check accuracy of coarse labels
+    - [x] logit modifier
+    - [ ] question: does model make mistakes across different superclasses
+      - if not, pca migth be as good as prca.
+    - experiment: (2023-06-s8/distill-superclass, layer=layer3)
+      - [x] n600: compr=0.1 (270755*) 
+        - [x] expected: all bases reach acc=0.5x
+          - yes, indeed that is the case
+      - [x] n600: compr=0.01 (271516) 
+
+      - [x] n60: compr=0.1 (270757*)
+        - [x] expected: pca or prca have highest acc
+      - [x] n60: compression0.25 (271018*)
+      - [x] n60: compression0.05 (270758*)
+      - [x] n60: compression0.01 (270759)
+    - experiment: (2023-06-s8/distill-superclass, layer=layer4)
+      - [x] n500: compr=0.1 (271567*) 
+      - [x] n500: compr=0.01 (271572*)
+      - [x] n50: compr=0.1 (271602*)
+      - [x] n50: compression0.25 (271743*)
+      - [x] n50: compression0.05 (271742*)
+      - [x] n50: compression0.01 (271597*)
+    - hypotheses:
+      - few samples (overfitting) -> poor accuracy
+      - with good basis -> good accuracy with few samples
+  - baseline from sctach
+    - [x] 271522*
+  - accuracy basis:
+    - [x] cifar100-people 271985
+  - logit modifier: comparision between target label or selected classes
+    - [x] q: which one is better? (next step)
+        - oneclass is better!
+    - [x] try to vary number of training samples
+  - experiment: (2023-06-s8/distill-superclass-wd, layer=layer3)
+    - goal: investigate the effect of overfitting.
+    - [ ] n50, compr=0.01, weight-decay=0.0 (272836*)
+    - [ ] n50, compr=0.01, weight-decay=0.1 (272838*)
+  - [ ] experiment: accuracy_basis (cifar100-*)
+    - goal: see whether PRCA-abs is better than PCA.
+    ```
+     SEEDFILE=./xaikd/resources/cifar100-datasets.txt sbatch -p cpu-5h --array=1-20  ./slurm/job_array_cpu.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet18-p1 --output-dir ./artifacts/2023-06-s8/accuracy --logit-modifier oneclass --num-training-samples 50 --dataset {}
+    ```
+    - job: `273800`
+
+  - eigenvector of classes in people
+  - visualization
+      - teacher
+      - teacher w/ bottle neck
+       - distilation with different basis
+  - implementation inaturlist
+
+
+- [] activation for different compression is the same
+- [] write torchvision.dataset for UFI
+
 ### Backlog
 - [] refactor
   - the way we construct loader

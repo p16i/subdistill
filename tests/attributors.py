@@ -93,3 +93,24 @@ def test_logit_modifier_logodd(target):
     assert (
         logits_mod_logood[:, list(all_classes.difference([class1, class2]))] == 0
     ).all()
+
+
+def test_logit_modifier_selected_classes():
+    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
+        "cifar100-people"
+    )
+    selected_classes = dataset.selected_classes
+
+    all_classes = set(range(dataset.num_classes))
+
+    torch.manual_seed(1)
+
+    logits = torch.rand((2, dataset.num_classes))
+    logits[:, selected_classes] += 1
+
+    logits_mod_single = attributors.SelectedClassesEvidence(dataset)(logits, None)
+
+    assert (logits_mod_single[:, selected_classes] > 0).all()
+    assert (
+        logits_mod_single[:, list(all_classes.difference(selected_classes))] == 0
+    ).all()

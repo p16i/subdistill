@@ -6,9 +6,13 @@ import typing
 
 from pathlib import Path
 
+import pandas as pd
+
 import numpy as np
 import numpy.typing as npt
 
+
+import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset, Dataset
 
@@ -21,11 +25,20 @@ from torchvision import datasets as tvd
 
 from torchvision.models import ResNet18_Weights
 
+from xaikd import constants
+
 
 DATASETS = dict()
 
 DATADIR = Path("./datasets")
 TORCHVISION_DATASET_DOWNLOAD = int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0"))
+CIFAR100_SUPER_CLASSES = (
+    pd.read_csv(constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv")[
+        "coarse_label_name"
+    ]
+    .unique()
+    .tolist()
+)
 
 if TORCHVISION_DATASET_DOWNLOAD:
     print(f"[warning!] TORCHVISION_DATASET_DOWNLOAD={TORCHVISION_DATASET_DOWNLOAD}")
@@ -125,6 +138,12 @@ def construct(name: str, num_training_samples=None) -> DatasetConfiguration:
             selected_classes = [int(match.group(1)), int(match.group(2))]
             dataset = TwoClassesDataset(
                 dataset_cls(), selected_classes, num_train_samples=num_training_samples
+            )
+        elif dataset_name == "cifar100" and variant in CIFAR100_SUPER_CLASSES:
+            dataset = Cifar100SuperClassesDataset(
+                dataset_cls(),
+                super_class=variant,
+                num_train_samples=num_training_samples,
             )
         else:
             raise ValueError(f"{dataset_name} has no variant `{variant}`")
@@ -249,4 +268,79 @@ class ImageNet(DatasetConfiguration):
             root=self.root,
             split="train" if train_split else "val",
             transform=self.transformation,
+        )
+
+
+@dataclass
+class Cifar100SuperClassesDataset(DatasetConfiguration):
+    def __init__(
+        self,
+        base: DatasetConfiguration,
+        super_class: str,
+        num_train_samples: typing.Union[None, int] = None,
+    ):
+        # todo: refactor this not w.r.t the twoclass dataset
+        self.base = base
+        df_meta = pd.read_csv(
+            constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
+        )
+
+        df_selected = df_meta[df_meta.coarse_label_name == super_class]
+        df_selected = df_selected.sort_values(by="fine_label")
+        print(
+            f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
+        )
+        for row in df_selected.to_dict("records"):
+            print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
+
+        self.selected_classes = df_selected.fine_label.values.tolist()
+
+        # remark: Attention! this is `num_classes` of CIFAR100.
+        self.num_classes = 100
+
+        self.input_statistics = self.base.input_statistics
+        self.transformation = self.base.transformation
+
+        self.num_train_samples = num_train_samples
+
+        self.target_transform_dict = dict(
+            zip(self.selected_classes, range(len(self.selected_classes)))
+        )
+
+    def create_dataset(self, train_split=False) -> Dataset:
+        return self.base.create_dataset(train_split=train_split)
+
+    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        new_target = []
+
+        for t in target:
+            new_target.append(self.target_transform_dict[int(t.detach().cpu())])
+
+        return torch.Tensor(new_target).to(target.device)
+
+    def loader(
+        self,
+        batch_size=64,
+        num_workers=2,
+        train_split=False,
+        shuffle=False,
+    ):
+        ds = self.create_dataset(train_split=train_split)
+        labels = ds.targets
+
+        if train_split and self.num_train_samples is not None:
+            selected_data_indices = selected_subset_samples_for_classes(
+                np.array(labels),
+                self.selected_classes,
+                samples_per_class=self.num_train_samples,
+            )
+        else:
+            selected_data_indices = np.argwhere(
+                np.isin(labels, self.selected_classes)
+            ).reshape(-1)
+
+        subset = Subset(ds, list(selected_data_indices))
+
+        return DataLoader(
+            subset, num_workers=num_workers, batch_size=batch_size, shuffle=shuffle
         )

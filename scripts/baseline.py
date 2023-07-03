@@ -121,7 +121,13 @@ def construction_model(name: str, dataset_name: str, num_classes: int) -> nn.Mod
 
 
 class ModelWrapper(pl.LightningModule):
-    def __init__(self, model, dataset, train_loader, val_loader):
+    def __init__(
+        self,
+        model,
+        dataset: datasets.Cifar100SuperClassesDataset,
+        train_loader,
+        val_loader,
+    ):
         super().__init__()
 
         self.model = model
@@ -169,19 +175,19 @@ class ModelWrapper(pl.LightningModule):
         row = dict()
 
         for name, loader in zip(["train", "val"], [self.train_loader, self.val_loader]):
-            auroc, _ = metrics.auroc(
+            acc = metrics.accuracy_with_subclasses(
                 self,
                 loader,
-                self.dataset.selected_classes,
-                self.device,
-                should_convert_auroc=True,
+                considered_classes=self.dataset.selected_classes,
+                transform_target=self.dataset.transform_target,
+                device=self.device,
             )
 
             self.logger.experiment.add_scalar(
-                f"{name}_auroc", auroc, global_step=self.current_epoch
+                f"{name}_acc", acc, global_step=self.current_epoch
             )
 
-            row[f"{name}_auroc"] = auroc
+            row[f"{name}_acc"] = acc
 
         self.arr_metrics.append(row)
 
@@ -192,8 +198,8 @@ class ModelWrapper(pl.LightningModule):
 @click.option("--output-dir", type=str, default="./tmp")
 @click.option("--seed", default=1)
 @click.option("--epochs", default=100)
-@click.option("--dataset-name", default="cifar100-35vs98")
-@click.option("--num-samples", default="10,100,1000")
+@click.option("--dataset-name", default="cifar100-people")
+@click.option("--num-samples", default="5,50,500")
 def main(dataset_name, epochs, output_dir, seed, num_samples):
     arguments = locals()
     start_time = datetime.now()

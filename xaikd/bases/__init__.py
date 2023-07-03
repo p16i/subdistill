@@ -350,12 +350,12 @@ class Random(Basis):
 
 
 class PRCAVariant(Basis):
-    artifact_keys = ["eigvecs"]
+    artifact_keys = ["eigvecs", "eigvals"]
     mode: str
 
     def fit(
         self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
         Args:
@@ -378,7 +378,9 @@ class PRCAVariant(Basis):
 
         self.artifact = dict(zip(self.artifact_keys, (U, mean)))
 
-        return U, None
+        eigvals = np.var(activation @ U, axis=0)
+
+        return U, eigvals
 
 
 @register_basis("prca-abs")
@@ -400,3 +402,46 @@ class PRCARelReconReg(PRCAVariant):
     def __init__(self, beta=0.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.beta = beta
+
+
+@register_basis("pcaprca-abs")
+class PCAPRCAVariant(Basis):
+    artifact_keys = ["eigvecs", "eigvals"]
+    mode = "abs"
+    beta = 0.0
+
+    def fit(
+        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        """_summary_ Summary
+
+        Args:
+            activation (npt.NDArray): _description_
+            context (npt.NDArray): _description_
+
+        Returns:
+            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
+        """
+        _, d = activation.shape
+
+        if not self.centering:
+            mean = np.zeros(d)
+
+        activation = activation - mean
+
+        cov = np.cov(activation.T)
+        _, E = np.linalg.eigh(cov)
+        E = np.copy(E[:, ::-1])
+
+        learner = learners.PRCAGreedyLeaner(mode=self.mode)
+
+        activation = activation @ E
+        context = context @ E
+
+        U = learner.fit(activation, context, **kwargs, beta=self.beta)
+
+        self.artifact = dict(zip(self.artifact_keys, (E @ U, mean)))
+
+        eigvals = np.var(activation, axis=0)
+
+        return U, eigvals
