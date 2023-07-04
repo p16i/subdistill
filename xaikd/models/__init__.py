@@ -6,6 +6,7 @@ from torch import nn
 
 from . import resnet
 from torchvision.models.resnet import ResNet18_Weights
+from torchvision.models import vgg
 from torchvision import models
 
 MODEL_GENERATORS = dict()
@@ -16,6 +17,7 @@ MODEL_CHECKPOINT_MAPPING = {
     "cifar100-resnet18-p2": "https://tubcloud.tu-berlin.de/s/82DSTLJppJfGesc/download/resnet18-cifar100-seed2.pth",
     "cifar100-resnet18-p3": "https://tubcloud.tu-berlin.de/s/E2KLikTmZCsbEqK/download/resnet18-cifar100-seed3.pth",
     "cifar100-resnet50-p1": "https://tubcloud.tu-berlin.de/s/FCefnjtD3KyRFRs/download/resnet50-cifar100-seed1.pth",
+    "cifar100-vgg11-p1": "https://tubcloud.tu-berlin.de/s/xDbi6DsjyPppi3B/download/vgg11-cifar100-seed1.pth",
 }
 
 
@@ -90,6 +92,16 @@ def _resnet18_cifar(num_classes: int) -> nn.Module:
 
     model.avgpool = nn.AvgPool2d(kernel_size=4)
     model.fc = nn.Linear(512, num_classes)
+
+    model.num_classes = num_classes
+
+    return model
+
+
+@register_model("cifar-vgg11")
+def _cifar_vgg11(num_classes: int) -> nn.Module:
+    model = vgg.vgg11()
+    model.classifier[6] = nn.Linear(4096, num_classes)
 
     model.num_classes = num_classes
 

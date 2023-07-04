@@ -223,14 +223,66 @@ Activative env `peotry shell` or run commands via `peotry run ....`
     - [x] try to vary number of training samples
   - experiment: (2023-06-s8/distill-superclass-wd, layer=layer3)
     - goal: investigate the effect of overfitting.
-    - [ ] n50, compr=0.01, weight-decay=0.0 (272836*)
-    - [ ] n50, compr=0.01, weight-decay=0.1 (272838*)
-  - [ ] experiment: accuracy_basis (cifar100-*)
+    - [x] n50, compr=0.01, weight-decay=0.0 (272836*)
+    - [x] n50, compr=0.01, weight-decay=0.1 (272838*)
+  - [x] experiment: accuracy_basis (cifar100-*)
     - goal: see whether PRCA-abs is better than PCA.
     ```
      SEEDFILE=./xaikd/resources/cifar100-datasets.txt sbatch -p cpu-5h --array=1-20  ./slurm/job_array_cpu.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet18-p1 --output-dir ./artifacts/2023-06-s8/accuracy --logit-modifier oneclass --num-training-samples 50 --dataset {}
     ```
-    - job: `273800`
+    - [x] n50 `273800*`
+    - [x] n500 (274083*)
+    - [x] n50: prca-recon1.0, prca-recon10.0 (274123*)
+    - conclusion: well, at Layer 4, PCA is better. why?
+    - comparison between centered and uncentered
+      - [x] n50; mode=uncentered 
+        - [x] layer=layer3,layer4; (275152)
+        - question: to what extend uncentereding worse PCA.
+        - answer: centering again 
+  - [x] experiment: accuracy_basis (cifar100 subset) with layer4.0, layer4.1
+    - ```
+      SEEDFILE=./resources/cifar100-super-subset.txt sbatch -p gpu-2h --array=1-5  ./slurm/job_array.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet18-p1 --output-dir ./artifacts/2023-06-s8/accuracy --logit-modifier oneclass --num-training-samples 50 --dataset {} --layers layer4.0,layer4.1
+      ```
+    - job: `275741`
+    - remark: layer4.1 should equal to layer4
+    - question: do prca-abs better than pca at layer4.0?
+      - yes: some how things got bad after layer4.1
+  - [x] experiment : validating layer=layer3,layer4.0,layer4.1 for cifar100-resnet18-p2
+      - ```
+        SEEDFILE=./resources/cifar100-super-subset.txt sbatch -p gpu-2h --array=1-5  ./slurm/job_array.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet18-p2 --output-dir ./artifacts/2023-06-s8/accuracy --logit-modifier oneclass --num-training-samples 50 --dataset {} --layers layer3,layer4.0,layer4.1
+        ```
+      - [x] job: p2 `276482`; p3 `276491`
+      - hypothesis: does the trend persist?
+        - PCA is better at layer4.1
+        - PRCA is better at layer3, 4.0
+      - yes: both trend persist
+  - [x] experiment: cifar100-resnet50-p1 (layer=3,4.0,4.1,4.2)
+      - ```
+      SEEDFILE=./resources/cifar100-super-subset.txt sbatch -p gpu-5h --array=1-5  ./slurm/job_array.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet50-p1 --output-dir ./artifacts/2023-06-s8/accuracy  --num-training-samples 50 --dataset {} --layers "layer3,layer4.0,layer4.1,layer4.2" ```
+      - job: `277331` (layer=layer3,4.0,4.1) `277928`
+      - goal: comparison between pca,prca-abs across those layers
+        - expected: prca-abs better at layer3, but not layer4*
+        - actual: actually, prca-abs is better pca at every layer. This is quite different from what we observe from resnet18
+  - [x] experiment: pcaprca-abs (cifar100-resnet18-p1) layer=layer3,layer4.0,layer4.1
+      - job: `277710`
+      - ```
+      SEEDFILE=./resources/cifar100-super-subset.txt sbatch -p gpu-2h --array=1-5  ./slurm/job_array.sh ./runpy ./scripts/accuracy_basis.py --model cifar100-resnet18-p1 --output-dir ./artifacts/2023-06-s8/accuracy  --num-training-samples 50 --dataset {} --layers "layer3,layer4.0,layer4.1" --basis-names pcaprca-abs
+        ```
+      - question: does the new basis better than PCA @layer4.1?
+
+  - [ ] experiment: cifar100-resnet18-p1 (layer=1, 2)
+      - job: `278333`
+      - expected: pca, prca-abs performs the same
+      - 
+  - next steps:
+    - [ ] check 278333
+    - [ ] train VGG11
+      - [ ] implement attribution
+
+
+  - [ ] kernel approximation (pretrained till layer3, predicting logit of 5 classes)
+    - [ ] n500
+      - check whether acc reaches Slide 11
 
   - eigenvector of classes in people
   - visualization
@@ -238,6 +290,10 @@ Activative env `peotry shell` or run commands via `peotry run ....`
       - teacher w/ bottle neck
        - distilation with different basis
   - implementation inaturlist
+    - training resnet18 (start from ImageNet pretrained models)
+    - imagesize 64x64
+    - how long does it take to train?
+    - ....
 
 
 - [] activation for different compression is the same
