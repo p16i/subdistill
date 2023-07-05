@@ -149,9 +149,9 @@ class ModelWrapper(pl.LightningModule):
     def training_step(self, train_batch, batch_idx):
         x, y = train_batch
 
-        yh = self.model(x)
+        logits = self.model(x)
 
-        loss = F.cross_entropy(yh, y)
+        loss = self._compute_loss(logits, y)
 
         self.log("train_loss", loss)
 
@@ -162,8 +162,14 @@ class ModelWrapper(pl.LightningModule):
 
         logits = self.model(x)
 
-        loss = F.cross_entropy(logits, y)
+        loss = self._compute_loss(logits, y)
         self.val_loss.update(loss)
+
+    def _compute_loss(self, logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+        logits = logits[:, self.dataset.selected_classes]
+        ynew = self.dataset.transform_target(y)
+
+        return F.cross_entropy(logits, ynew)
 
     def on_validation_epoch_end(self):
         self.log("val_loss", self.val_loss.compute())
