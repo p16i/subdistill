@@ -235,6 +235,14 @@ class CIFAR10(DatasetConfiguration):
         )
 
 
+@register_dataset("cifar10all")
+class CIFAR10All(CIFAR10):
+    selected_classes = list(range(10))
+
+    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        return target
+
+
 @register_dataset("cifar100")
 @dataclass
 class CIFAR100(CIFAR10):
