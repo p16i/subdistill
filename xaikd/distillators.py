@@ -117,6 +117,7 @@ class ModelWrapper(pl.LightningModule):
 
         logits = self(x)
 
+        # TODO: this has to be changed to take into account classes we consider
         loss = F.cross_entropy(logits, y)
 
         self.log("train_loss", loss)
