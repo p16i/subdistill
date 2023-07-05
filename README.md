@@ -270,14 +270,30 @@ Activative env `peotry shell` or run commands via `peotry run ....`
         ```
       - question: does the new basis better than PCA @layer4.1?
 
-  - [ ] experiment: cifar100-resnet18-p1 (layer=1, 2)
+  - [x] experiment: cifar100-resnet18-p1 (layer=1, 2)
       - job: `278333`
       - expected: pca, prca-abs performs the same
-      - 
-  - next steps:
-    - [ ] check 278333
-    - [ ] train VGG11
-      - [ ] implement attribution
+      - actual: yes, that is more or less the case but there are some setups that PRCA-abs is slighly better
+  - [x] experiment: cifar100-vgg11-p1 (layer=features.10,features.15,features.20)
+      - job: `282344_*`(layer=10,15,20); `282361_*`(layer=2,5)
+      - expected: prca-abs is better than pca
+      - actual:
+        for layer2, 5, we do not see the different; layer=10,15, prca seems better
+        but layer20, pca is better
+  - [x] experiment: cifar100-vgg11-p1 (layer=*; basis=pcaprca-abs)
+      - job: 282375
+      - expected: pcaprca-abs is better than pca in layer10,15,20
+      - actual: pcaprca-abs is only better than pca at layer 10, 15 but not 20.
+  - [x] experiment: cifar10-resnet18-{simclr_finetuned_all1,simclr_finetuned_fc1, p1} on cifar10
+      - commands: 
+        ```
+        SEEDFILE=./resources/cifar10-models.txt sbatch -p gpu-5h --array=1-3  ./slurm/job_array.sh ./runpy ./scripts/accuracy_basis.py --model {}  --output-dir ./artifacts/2023-06-s8/accuracy-simclr-pretrained  --num-training-samples 50 --dataset cifar10all --basis-names pca,prca-abs,random1 --layers "layer3,layer4.0,layer4.1" 
+        ``
+      - job: `284713_` (layer3,4.0); `284756` (layer1,2), `285134` (layer4.1)
+      - expected: difference between Perf(PRCA) and Perf(PCA) is large on simclr models
+      - actual: we could see some different there, especially last layer fine-tuning
+  - [x] train VGG11
+    - [x] implement attribution methods and
 
 
   - [ ] kernel approximation (pretrained till layer3, predicting logit of 5 classes)
