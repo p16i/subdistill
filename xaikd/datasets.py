@@ -324,7 +324,7 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         for t in target:
             new_target.append(self.target_transform_dict[int(t.detach().cpu())])
 
-        return torch.Tensor(new_target).to(target.device)
+        return torch.Tensor(new_target).long().to(target.device)
 
     def loader(
         self,
