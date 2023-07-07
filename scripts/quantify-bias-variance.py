@@ -82,42 +82,25 @@ class Lenet5(nn.Module):
         return x
 
 
-def construction_model(name: str, dataset_name: str, num_classes: int) -> nn.Module:
-    if name == "lenet5":
-        return Lenet5(num_classes=num_classes)
-    elif "resnet" in name:
-        model = None
+def construction_model(
+    teacher: str, layer: str, mode: str, num_classes: int
+) -> nn.Module:
+    model = models.get_model(teacher)
 
-        if "pretrain" in name:
-            if "cifar100" in dataset_name:
-                model = models.get_model("cifar100-resnet18-p1")
-            elif "imagenet" in dataset_name:
-                model = models.get_model("imagenet-resnet18-tv")
-            utils.deactivate_requires_grad(model)
-        else:
-            if "cifar100" in dataset_name:
-                model = models._resnet18_cifar(num_classes=num_classes)
-            elif "imagenet" in dataset_name:
-                model = resnet.resnet18(weights=None)
+    utils.deactivate_requires_grad(model)
 
-        if "resnet18-2l" in name:
-            model.layer3 = nn.Identity()
-            model.layer4 = nn.Identity()
-            model.fc = nn.Linear(128, num_classes)
-            model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        elif "resnet18-3l" in name:
-            model.layer4 = nn.Identity()
-            model.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-            model.fc = nn.Linear(256, num_classes)
-        elif name == "resnet18-full":
-            pass
-        else:
-            raise ValueError(f"model={name} not available")
+    random_model = models._resnet18_cifar(num_classes=num_classes)
 
-        return model
-
+    if mode == "homogenous":
+        new_module = getattr(random_model, layer)
+    elif mode == "inhomogenous":
+        new_module = getattr(random_model, layer)[:1]
     else:
-        raise ValueError(f"model={name} not available")
+        raise ValueError("mode={mode} not available")
+
+    setattr(model, layer, new_module)
+
+    return model
 
 
 class ModelWrapper(pl.LightningModule):
@@ -157,19 +140,19 @@ class ModelWrapper(pl.LightningModule):
 
         return loss
 
-    def validation_step(self, val_batch, batch_idx):
-        x, y = val_batch
-
-        logits = self.model(x)
-
-        loss = self._compute_loss(logits, y)
-        self.val_loss.update(loss)
-
     def _compute_loss(self, logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         logits = logits[:, self.dataset.selected_classes]
         ynew = self.dataset.transform_target(y)
 
         return F.cross_entropy(logits, ynew)
+
+    def validation_step(self, val_batch, batch_idx):
+        x, y = val_batch
+
+        logits = self.model(x)
+        loss = self._compute_loss(logits, y)
+
+        self.val_loss.update(loss)
 
     def on_validation_epoch_end(self):
         self.log("val_loss", self.val_loss.compute())
@@ -203,11 +186,21 @@ class ModelWrapper(pl.LightningModule):
 @click.command()
 @click.option("--output-dir", type=str, default="./tmp")
 @click.option("--seed", default=1)
-@click.option("--epochs", default=100)
+@click.option("--epochs", default=50)
 @click.option("--dataset-name", default="cifar100-people")
-@click.option("--num-samples", default="5,50,500")
-def main(dataset_name, epochs, output_dir, seed, num_samples):
+@click.option(
+    "--mode", default="homogenous", type=click.Choice(["homogenous", "inhomogenous"])
+)
+@click.option("--num-samples", default="5,50,250,500")
+@click.option("--teacher", default="cifar100-resnet18-p1")
+def main(teacher, dataset_name, epochs, output_dir, seed, mode, num_samples):
     arguments = locals()
+
+    layers = ["layer3", "layer4"]
+
+    assert "cifar100" in dataset_name
+    num_classes = 100
+
     start_time = datetime.now()
 
     output_dir = Path(output_dir) / f"{dataset_name}-seed{seed}"
@@ -217,8 +210,6 @@ def main(dataset_name, epochs, output_dir, seed, num_samples):
     os.makedirs(output_dir, exist_ok=True)
 
     arr_num_samples = np.array(num_samples.split(",")).astype(int).tolist()
-
-    num_classes = 100 if "cifar100" in dataset_name else 1000
 
     for num_samples in arr_num_samples:
         pl.seed_everything(seed)
@@ -233,26 +224,19 @@ def main(dataset_name, epochs, output_dir, seed, num_samples):
             ]
         )
 
-        for model_name in [
-            "lenet5",
-            "resnet18-2l",
-            "pretrained-resnet18-2l",
-            "resnet18-3l",
-            "pretrained-resnet18-3l",
-            # "resnet18-full",
-        ]:
-            log_dir = output_dir / f"{model_name}-n{num_samples}"
-            os.makedirs(log_dir, exist_ok=True)
-
-            click.echo(f"Working on `{model_name}`")
-
-            model = construction_model(
-                model_name,
-                dataset_name=dataset_name,
-                num_classes=num_classes,
+        for layer in layers:
+            log_dir = (
+                output_dir / f"{teacher}--layer-{layer}--mode-{mode}--n{num_samples}"
             )
 
-            assert model is not None
+            os.makedirs(log_dir, exist_ok=True)
+
+            model = construction_model(
+                teacher,
+                layer=layer,
+                mode=mode,
+                num_classes=num_classes,
+            )
 
             model_wrapper = ModelWrapper(
                 model=model,
