@@ -14,10 +14,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from dataclasses import dataclass
 
 
-MEAN_GROUP = [1, 0, -1]
 TEST_SPLIT_RATIO = 0.2
 SAMPLES_PER_BLOB = 1000
-NUM_CLASSES = 10
+NUM_CLASSES = 100
 
 
 @dataclass
@@ -33,12 +32,6 @@ class Dataset:
 
     eps: float
     seed: int
-
-
-def preprend_z(x: npt.NDArray, gix: int, eps: float) -> npt.NDArray:
-    z = MEAN_GROUP[gix] + eps * np.random.randn(x.shape[0])
-
-    return np.hstack([x, z.reshape((-1, 1))])
 
 
 def construct_dataset(

@@ -30,6 +30,17 @@ class Projector(torch.nn.Module):
         return F.conv2d(x - self.mean, self.U)
 
 
+class Decoder(torch.nn.Module):
+    def __init__(self, U: torch.Tensor, mean: torch.Tensor, device: str) -> None:
+        super().__init__()
+
+        self.U = U.unsqueeze(2).unsqueeze(3).to(device)
+        self.mean = mean.reshape((1, -1, 1, 1)).to(device)
+
+    def forward(self, x):
+        return F.conv2d(x, self.U) + self.mean
+
+
 def register_basis(name):
     """Decorator to register a data modality provider."""
 
@@ -151,16 +162,10 @@ class Basis(ABC):
 
         return Projector(U, self.mean, device)
 
-    def contruct_rank_d_decoder(self, k: int) -> torch.nn.Module:
+    def contruct_rank_d_decoder(self, k: int, device: str) -> torch.nn.Module:
         U = self.artifact["eigvecs"][:, :k]
 
-        decoder = torch.nn.Conv2d(k, U.shape[0], kernel_size=1)
-        decoder.weight = torch.nn.Parameter(U.unsqueeze(2).unsqueeze(3))
-        decoder.bias = torch.nn.Parameter(self.mean)
-
-        utils.deactivate_requires_grad(decoder)
-
-        return decoder
+        return Decoder(U, self.mean, device=device)
 
     def __str__(self) -> str:
         return getattr(self, "__name")
@@ -333,14 +338,24 @@ class Random(Basis):
 
         self.mean = mean
 
+    def save(self, output_dir: Path):
+        pass
+
+    def fit(
+        self,
+        *args,
+        **kwargs,
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        pass
+
 
 class PRCAVariant(Basis):
-    artifact_keys = ["eigvecs"]
+    artifact_keys = ["eigvecs", "eigvals"]
     mode: str
 
     def fit(
         self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
         Args:
@@ -363,7 +378,9 @@ class PRCAVariant(Basis):
 
         self.artifact = dict(zip(self.artifact_keys, (U, mean)))
 
-        return U, None
+        eigvals = np.var(activation @ U, axis=0)
+
+        return U, eigvals
 
 
 @register_basis("prca-abs")
@@ -385,3 +402,46 @@ class PRCARelReconReg(PRCAVariant):
     def __init__(self, beta=0.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.beta = beta
+
+
+@register_basis("pcaprca-abs")
+class PCAPRCAVariant(Basis):
+    artifact_keys = ["eigvecs", "eigvals"]
+    mode = "abs"
+    beta = 0.0
+
+    def fit(
+        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        """_summary_ Summary
+
+        Args:
+            activation (npt.NDArray): _description_
+            context (npt.NDArray): _description_
+
+        Returns:
+            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
+        """
+        _, d = activation.shape
+
+        if not self.centering:
+            mean = np.zeros(d)
+
+        activation = activation - mean
+
+        cov = np.cov(activation.T)
+        _, E = np.linalg.eigh(cov)
+        E = np.copy(E[:, ::-1])
+
+        learner = learners.PRCAGreedyLeaner(mode=self.mode)
+
+        activation = activation @ E
+        context = context @ E
+
+        U = learner.fit(activation, context, **kwargs, beta=self.beta)
+
+        self.artifact = dict(zip(self.artifact_keys, (E @ U, mean)))
+
+        eigvals = np.var(activation, axis=0)
+
+        return U, eigvals

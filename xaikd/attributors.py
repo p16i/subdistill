@@ -9,6 +9,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torchvision import models, transforms
+from torch.utils.data import DataLoader
 
 from zennit.torchvision import ResNetCanonizer
 from zennit.composites import EpsilonGammaBox
@@ -54,12 +55,38 @@ class OneClassEvidence(LogitModifier):
         return logits * F.one_hot(targets, self.dataset.num_classes).to(logits.device)
 
 
+class OneClassLogSumExpEvidence(LogitModifier):
+    def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
+        self.dataset = dataset
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        logexp = torch.logsumexp(
+            logits[:, self.dataset.selected_classes], dim=1, keepdim=True
+        )
+        return (logits - logexp) * F.one_hot(targets, self.dataset.num_classes).to(
+            logits.device
+        )
+
+
+class SelectedClassesEvidence(LogitModifier):
+    def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
+        self.dataset = dataset
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        output = torch.zeros_like(logits)
+        output[:, self.dataset.selected_classes] = logits[
+            :, self.dataset.selected_classes
+        ]
+
+        return output
+
+
 class LogOddEvidence(LogitModifier):
     def __init__(
         self,
         classes: typing.Tuple[int, int],
     ) -> None:
-        # todo: perhaps, we only need `dataset` and extract classes from there.
         assert len(classes) == 2
 
         self.classes = classes
@@ -77,12 +104,11 @@ def extract_activation_context(
     model: nn.Module,
     layer: str,
     dataset: datasets.DatasetConfiguration,
+    data_loader: DataLoader,
     logit_modifier: LogitModifier,
     device="cpu",
     number_of_selected_spatial_locations=20,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-    data_loader = dataset.loader(train_split=True)
-
     arr_act = []
     arr_ctx = []
 
@@ -128,3 +154,43 @@ def extract_activation_context(
     arr_ctx = np.vstack(arr_ctx)
 
     return arr_act, arr_ctx
+
+
+def extract_activation(
+    model: nn.Module,
+    layer: str,
+    dataset: datasets.DatasetConfiguration,
+    data_loader: DataLoader,
+    device="cpu",
+    number_of_selected_spatial_locations=20,
+) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+    arr_act = []
+    arr_ctx = []
+
+    try:
+        module, hook = utils.interceptor.attach_hook_intercept_layer_output(
+            model, layer
+        )
+
+        with make_attributor_for(model, dataset.input_statistics) as attributor:
+            for batch in tqdm(data_loader):
+                x, y = batch
+                x = x.to(device)
+
+                _ = model(x)
+
+                act = utils.interceptor.get_output(module)
+
+                act = act.detach().cpu().numpy()
+
+                selected_act, _ = utils.subsample_tensors(
+                    act, act, num_locations=number_of_selected_spatial_locations
+                )
+                arr_act.append(selected_act)
+
+    finally:
+        hook.remove()
+
+    arr_act = np.vstack(arr_act)
+
+    return arr_act

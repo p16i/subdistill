@@ -6,9 +6,21 @@ from torch import nn
 
 from . import resnet
 from torchvision.models.resnet import ResNet18_Weights
+from torchvision.models import vgg
 from torchvision import models
 
 MODEL_GENERATORS = dict()
+
+MODEL_CHECKPOINT_MAPPING = {
+    "cifar10-resnet18-p1": "https://tubcloud.tu-berlin.de/s/Ymy9WjzizxraqJy/download/resnet18-cifar10.pth",
+    "cifar10-resnet18-simclr_finetuned_all1": "https://tubcloud.tu-berlin.de/s/qBY4b3tA3L9ZYN9/download/resnet18simclr-finetune-all-cifar10-seed1.pth",
+    "cifar10-resnet18-simclr_finetuned_fc1": "https://tubcloud.tu-berlin.de/s/bwrNFY36KSy7KYj/download/resnet18simclr-finetune-fc-cifar10-seed1.pth",
+    "cifar100-resnet18-p1": "https://tubcloud.tu-berlin.de/s/xZ29d76Sz29M9Qa/download/resnet18-cifar100.pth",
+    "cifar100-resnet18-p2": "https://tubcloud.tu-berlin.de/s/82DSTLJppJfGesc/download/resnet18-cifar100-seed2.pth",
+    "cifar100-resnet18-p3": "https://tubcloud.tu-berlin.de/s/E2KLikTmZCsbEqK/download/resnet18-cifar100-seed3.pth",
+    "cifar100-resnet50-p1": "https://tubcloud.tu-berlin.de/s/FCefnjtD3KyRFRs/download/resnet50-cifar100-seed1.pth",
+    "cifar100-vgg11-p1": "https://tubcloud.tu-berlin.de/s/xDbi6DsjyPppi3B/download/vgg11-cifar100-seed1.pth",
+}
 
 
 def register_model(name):
@@ -27,19 +39,12 @@ def get_model(name: str) -> nn.Module:
     dataset, arch, variant = name.split("-")
 
     # todo: better organizing these if-else structures
-    if name in ["cifar10-resnet18-p1", "cifar100-resnet18-p1"]:
-        assert variant == "p1", "We only have one variant for now!"
-
+    if name in MODEL_CHECKPOINT_MAPPING.keys():
         num_classes = 10 if dataset == "cifar10" else 100
 
-        model = MODEL_GENERATORS["cifar-resnet18"](num_classes=num_classes)
+        model = MODEL_GENERATORS[f"cifar-{arch}"](num_classes=num_classes)
 
-        if dataset == "cifar10":
-            url = "https://tubcloud.tu-berlin.de/s/Ymy9WjzizxraqJy/download/resnet18-cifar10.pth"
-        elif dataset == "cifar100":
-            url = "https://tubcloud.tu-berlin.de/s/xZ29d76Sz29M9Qa/download/resnet18-cifar100.pth"
-        else:
-            raise ValueError(f"No checkpoint for `{name}`")
+        url = MODEL_CHECKPOINT_MAPPING[name]
 
         model.load_state_dict(torch.hub.load_state_dict_from_url(url))
 
@@ -89,6 +94,32 @@ def _resnet18_cifar(num_classes: int) -> nn.Module:
 
     model.avgpool = nn.AvgPool2d(kernel_size=4)
     model.fc = nn.Linear(512, num_classes)
+
+    model.num_classes = num_classes
+
+    return model
+
+
+@register_model("cifar-vgg11")
+def _cifar_vgg11(num_classes: int) -> nn.Module:
+    model = vgg.vgg11()
+    model.classifier[6] = nn.Linear(4096, num_classes)
+
+    model.num_classes = num_classes
+
+    return model
+
+
+@register_model("cifar-resnet50")
+def _resnet50_cifar(num_classes: int) -> nn.Module:
+    model = torchvision.models.resnet50(weights=None)
+
+    # why we use this? (ask Florian?)
+    model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
+    model.maxpool = nn.Identity()
+
+    model.avgpool = nn.AvgPool2d(kernel_size=4)
+    model.fc = nn.Linear(2048, num_classes)
 
     model.num_classes = num_classes
 
