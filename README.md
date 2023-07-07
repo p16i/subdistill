@@ -294,8 +294,25 @@ Activative env `peotry shell` or run commands via `peotry run ....`
       - actual: we could see some different there, especially last layer fine-tuning
   - [x] train VGG11
     - [x] implement attribution methods and
+  - [x] experiment: quantify bias and variance
+    - mode={homogenous , inhomogenous}
+    - expect: when n={5, 50}, accdiff(teacher, student) as well as accdiff(train, val)
+    - actual: we clearly observe trend that `valacc` increases as `n`. 
+  - [x] experiment: distillation (revisited after fixing the loss)
+    - command:
+      ```
+      CUBLAS_WORKSPACE_CONFIG=:4096:8 PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python SEEDFILE=./resources/seeds.txt sbatch -p gpu-2h --array=1-5  ./slurm/job_array.sh ./runpy ./scripts/distill-v2.py --seed {}  --output-dir ./artifacts/2023-06-s8/distill-after-fixing-loss-2 --num-samples 250 --compression-rate 0.25 --dataset cifar100-people --layer layer3
+      ```
+    - seeds=1..5, models=resnet18,resnet50
+    - layers:
+      - layer3 
+        - comp0.25: 250 (done), n=50 (286500_*), 500 (286506*)
+      - layer4;
+        - comp0.1: n=50 (), 250 (..), 500 ()
+    - expect: PRCA increases efficiency in distilling (inhomogenous).
+    - actual: ...
 
-
+  - [ ] experiment: baseline (revisited after fixing the loss)
   - [ ] kernel approximation (pretrained till layer3, predicting logit of 5 classes)
     - [ ] n500
       - check whether acc reaches Slide 11
