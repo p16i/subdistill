@@ -5,9 +5,12 @@ import torchvision
 from torch import nn
 
 from . import resnet
+
 from torchvision.models.resnet import ResNet18_Weights
 from torchvision.models import vgg
 from torchvision import models
+
+from xaikd import constants
 
 MODEL_GENERATORS = dict()
 
@@ -68,9 +71,7 @@ def get_model(name: str) -> nn.Module:
 
     setattr(model, "__name", name)
 
-    if "resnet" in name:
-        # we do this for now!
-        setattr(model, "__layer_dimension", resnet.ARCH_LAYER_DIMENSIONS[arch])
+    setattr(model, "__layer_dimension", constants.ARCH_LAYER_DIMENSIONS[arch])
 
     model.eval()
 

@@ -1,35 +1,16 @@
 import typing
 
-import torch
 from torch import nn
 
-ARCH_LAYER_DIMENSIONS = dict(
-    dict(
-        resnet18={
-            "layer1": 64,
-            "layer2": 128,
-            "layer3": 256,
-            "layer4": 512,
-            "layer4.0": 512,
-            "layer4.1": 512,
-        },
-        resnet50={
-            "layer1": 256,
-            "layer2": 512,
-            "layer3": 1024,
-            "layer4": 2048,
-            "layer4.0": 2048,
-            "layer4.1": 2048,
-            "layer4.2": 2048,
-        },
-    )
-)
+from torchvision.models import resnet
 
 
 def split_resnet_18_at(
     model: nn.Module, layer: str
 ) -> typing.Tuple[nn.Module, nn.Module, nn.Module]:
     assert len(layer.split(".")) == 1
+
+    assert type(model) == resnet.ResNet
 
     layer_ix = int(layer[-1]) - 1
 
