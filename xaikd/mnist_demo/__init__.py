@@ -153,7 +153,9 @@ def build_subclasses_loader(considered_classes, samples_per_class):
     return train_subset, val_subset
 
 
-def extract_activaiton_and_context(model: nn.Module, layer: str, train_subset):
+def extract_activaiton_and_context(
+    model: nn.Module, layer: str, train_subset, device: str
+):
     arr_act = []
     arr_ctx = []
 
@@ -166,6 +168,8 @@ def extract_activaiton_and_context(model: nn.Module, layer: str, train_subset):
     ):
         try:
             module, hook = utils.interceptor.attach_hook_intercept_module(module)
+
+            x = x.to(device)
 
             with Gradient(model=model, composite=composite) as attributor:
                 _ = attributor.forward(x, lambda logits: LOGIT_MODIFIER(logits))

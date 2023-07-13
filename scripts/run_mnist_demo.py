@@ -110,6 +110,7 @@ def main(model_name, epochs, output_dir, samples_per_class):
         teacher_model,
         layer=mnist_demo.CONSIDERED_LAYER,
         train_subset=train_subclass_ds,
+        device=device,
     )
 
     stats_basis_accuracy = []
