@@ -168,6 +168,7 @@ def main(model_name, epochs, output_dir, samples_per_class):
                     output_dir
                     / mnist_demo.CONSIDERED_LAYER
                     / "models"
+                    / basis_name
                     / f"k{k}-lm{lambda_mse}-lx{lambda_crossent}"
                 )
                 print(f"Working with {model_path}")
