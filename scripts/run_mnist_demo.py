@@ -35,7 +35,6 @@ def train_approximator(
     approximator = mnist_demo.approximator.Approximator(
         k, kernel_size=teacher_model.kernel_size
     )
-    approximator.to(device=device)
 
     trainer = pl.Trainer(
         accelerator=device,
@@ -53,6 +52,7 @@ def train_approximator(
             lambda_mse=lambda_mse,
             lambda_crossent=lambda_crossent,
             verbose=verbose,
+            device=device,
         ),
         data_loader,
     )
