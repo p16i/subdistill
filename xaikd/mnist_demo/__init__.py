@@ -180,8 +180,8 @@ def extract_activaiton_and_context(
             ctx = torch.where(act.abs() > 0, rel / act, 0)
 
             act, ctx = utils.subsample_tensors(
-                act.detach().numpy(),
-                ctx.detach().numpy(),
+                act.detach().cpu().numpy(),
+                ctx.detach().cpu().numpy(),
                 num_locations=NUM_SPATIAL_LOCATIONS_SAMPLING,
             )
 
