@@ -44,6 +44,7 @@ ARRAY_KS = np.arange(1, 10 + 1)
 
 BASIS_CONSIDERED = ["pca", "prca-abs", "prca-recon"]
 
+ARRAY_LAMBDA = [0, 1e-3, 1e-2, 1e-1, 1]
 
 LOGIT_MODIFIER = attributors.LogOddEvidence(tuple(CONSIDERED_CLASSES))
 

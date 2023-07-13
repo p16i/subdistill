@@ -1,3 +1,4 @@
+import numpy as np
 import os
 import pandas as pd
 from torch.utils.data import DataLoader
@@ -17,6 +18,9 @@ from xaikd import utils
 from xaikd.utils import metrics
 from xaikd.bases import get_basis, Basis
 from torch.utils.data import DataLoader
+
+
+import itertools
 
 
 def train_approximator(
@@ -158,7 +162,17 @@ def main(model_name, epochs, output_dir, samples_per_class):
         basis.load(output_dir / mnist_demo.CONSIDERED_LAYER, device=device)
 
         for k in mnist_demo.ARRAY_KS:
-            for lambda_mse, lambda_crossent in [(1, 0)]:
+            for lambda_mse, lambda_crossent in itertools.product(
+                mnist_demo.ARRAY_LAMBDA, mnist_demo.ARRAY_LAMBDA
+            ):
+                model_path = (
+                    output_dir
+                    / mnist_demo.CONSIDERED_LAYER
+                    / "models"
+                    / f"k{k}-lm{lambda_mse}-lx{lambda_crossent}"
+                )
+                print(f"Working with {model_path}")
+                os.makedirs(model_path, exist_ok=True)
                 approx = train_approximator(
                     teacher_model,
                     basis=basis,
@@ -169,6 +183,11 @@ def main(model_name, epochs, output_dir, samples_per_class):
                     epochs=epochs,
                     device=device,
                 )
+
+                np.save(
+                    model_path / "weight", approx.conv1.weight.detach().cpu().numpy()
+                )
+                np.save(model_path / "bias", approx.conv1.bias.detach().cpu().numpy())
 
                 model_with_approx = mnist_demo.approximator.CombinedModule(
                     approximator=approx,
