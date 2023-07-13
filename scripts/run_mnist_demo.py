@@ -78,6 +78,8 @@ def main(model_name, epochs, output_dir, samples_per_class):
     teacher_model = mnist_demo.get_model(model_name)
     _, val_loader = mnist_demo.get_loaders()
 
+    teacher_model.to(device=device)
+
     train_subclass_ds, val_subclass_ds = mnist_demo.build_subclasses_loader(
         mnist_demo.CONSIDERED_CLASSES, samples_per_class=samples_per_class
     )
