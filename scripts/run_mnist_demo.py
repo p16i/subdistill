@@ -157,7 +157,7 @@ def main(model_name, epochs, output_dir, samples_per_class):
     for basis_name in mnist_demo.BASIS_CONSIDERED:
         basis = get_basis(f"{basis_name}--uncentered")
 
-        basis.load(output_dir / mnist_demo.CONSIDERED_LAYER / basis_name, device=device)
+        basis.load(output_dir / mnist_demo.CONSIDERED_LAYER, device=device)
         stats_approximator = []
 
         for k in np.arange(1, 5 + 1):
@@ -219,7 +219,7 @@ def main(model_name, epochs, output_dir, samples_per_class):
                 stats_approximator.append(row)
 
         df_stats_approx = pd.DataFrame(stats_approximator)
-        df_stats_approx.to_csv(output_dir / "stats_approx.csv")
+        df_stats_approx.to_csv(output_dir / f"{basis_name}_stats_approx.csv")
 
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
