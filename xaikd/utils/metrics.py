@@ -81,6 +81,7 @@ def auroc_with_basis(
     basis: bases.Basis,
     device: str,
     arr_ks: typing.List[int],
+    should_convert_auroc: bool,
 ) -> typing.List[float]:
     arr_aurocs = []
 
@@ -93,11 +94,12 @@ def auroc_with_basis(
                 dataloader=dataloader,
                 classes=classes,
                 device=device,
+                should_convert_auroc=should_convert_auroc,
             )
 
             arr_aurocs.append(value)
 
         finally:
-            pass
+            hook.remove()
 
     return arr_aurocs
