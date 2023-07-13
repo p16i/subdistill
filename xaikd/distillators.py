@@ -175,10 +175,12 @@ def get_approximator_for_resnet18(
     model = models._resnet18_cifar(num_classes)
     model.inplanes = getattr(model, layer)[0].conv1.weight.shape[1]
 
+    blocks = len(getattr(model, layer))
+
     return model._make_layer(
         torchvision.models.resnet.BasicBlock,
         output_dimensions,
-        1,
+        blocks,
         stride=2,
         dilate=False,
     )

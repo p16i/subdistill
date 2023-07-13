@@ -6,12 +6,20 @@ from xaikd import models
 
 
 @pytest.mark.parametrize(
-    "slug", ["cifar10-resnet18-p1", "cifar100-resnet18-p1", "imagenet-resnet18-tv"]
+    "slug",
+    [
+        "cifar10-resnet18-p1",
+        "cifar100-resnet18-p1",
+        "imagenet-resnet18-tv",
+        "cifar100-vgg11-p1",
+    ],
 )
 def test_get_models(slug):
     model = models.get_model(slug)
     assert not model.training
-    assert models.get_model(slug) is not None
+    assert model is not None
+    assert getattr(model, "__name") == slug
+    assert len(getattr(model, "__layer_dimension").keys()) > 0
 
 
 @pytest.mark.parametrize(
@@ -19,7 +27,7 @@ def test_get_models(slug):
 )
 @pytest.mark.parametrize("layer", ["layer1", "layer2", "layer3", "layer4"])
 @pytest.mark.slow
-def test_split_model(slug, layer):
+def test_split_resnet_model(slug, layer):
     model = models.get_model(slug)
 
     head, layer_module, classifier = models.resnet.split_resnet_18_at(model, layer)
@@ -37,3 +45,7 @@ def test_split_model(slug, layer):
         expected = model(input).numpy()
 
         np.testing.assert_allclose(actual, expected)
+
+@pytest.mark.skip("[todo]")
+def test_split_vgg11_model(slug, layer):
+    pass

@@ -26,15 +26,18 @@ def make_attributor_for(
     input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]],
 ) -> Gradient:
     # remark this only works for cifar10 and cifar100 for now
-    assert type(model) == models.resnet.ResNet
+    assert type(model) in [models.resnet.ResNet, models.vgg.VGG]
 
     input_transform = transforms.Normalize(*input_statistics)
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
-    canonizer = ResNetCanonizer()
+    if type(model) == models.resnet.ResNet:
+        canonizers = [ResNetCanonizer()]
+    else:
+        canonizers = []
 
-    composite = EpsilonGammaBox(low=low, high=high, canonizers=[canonizer])
+    composite = EpsilonGammaBox(low=low, high=high, canonizers=canonizers)
 
     return Gradient(model=model, composite=composite)
 
