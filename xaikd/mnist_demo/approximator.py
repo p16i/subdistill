@@ -17,17 +17,23 @@ class Approximator(nn.Module):
         kernel_size = kernel_size
 
         self.conv1 = nn.Conv2d(
-            in_channels=1, out_channels=2 * k, kernel_size=kernel_size, padding="valid"
+            in_channels=1, out_channels=k, kernel_size=kernel_size, padding="valid"
+        )
+
+        self.conv2 = nn.Conv2d(
+            in_channels=k,
+            out_channels=k,
+            kernel_size=(1, 1),
+            padding="valid",
+            bias=True,
         )
 
         self.act = nn.ReLU()
 
     def forward(self, x):
-        x = self.conv1(x)
-
-        out = self.act(x)
-
-        out = out[:, : self.k, :, :] - out[:, self.k :, :, :]
+        out = self.conv1(x)
+        out = self.act(out)
+        out = self.conv2(out)
 
         return out
 

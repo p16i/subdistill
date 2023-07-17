@@ -118,12 +118,15 @@ def main(model_name, epochs, output_dir, samples_per_class):
         device=device,
     )
 
+    mean = arr_act.mean(axis=0)
+    np.save(output_dir / mnist_demo.CONSIDERED_LAYER / "act_mean.npy", mean)
+
     stats_basis_accuracy = []
 
     for basis_name in ["identity"] + mnist_demo.BASIS_CONSIDERED + ["rel", "rel-abs"]:
-        basis = get_basis(f"{basis_name}--uncentered")
+        basis = get_basis(f"{basis_name}--centered")
 
-        basis.fit(arr_act, arr_ctx, mean=None, device=device)
+        basis.fit(arr_act, arr_ctx, mean=mean, device=device)
 
         basis.save(output_dir / mnist_demo.CONSIDERED_LAYER)
         basis.load(output_dir / mnist_demo.CONSIDERED_LAYER, device=device)
@@ -155,7 +158,7 @@ def main(model_name, epochs, output_dir, samples_per_class):
     )
 
     for basis_name in mnist_demo.BASIS_CONSIDERED:
-        basis = get_basis(f"{basis_name}--uncentered")
+        basis = get_basis(f"{basis_name}--centered")
 
         basis.load(output_dir / mnist_demo.CONSIDERED_LAYER, device=device)
         stats_approximator = []
