@@ -119,6 +119,7 @@ def main(model_name, epochs, output_dir, samples_per_class):
     )
 
     mean = arr_act.mean(axis=0)
+    os.makedirs(output_dir / mnist_demo.CONSIDERED_LAYER, exist_ok=True)
     np.save(output_dir / mnist_demo.CONSIDERED_LAYER / "act_mean.npy", mean)
 
     stats_basis_accuracy = []
