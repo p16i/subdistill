@@ -378,7 +378,7 @@ class PRCAVariant(Basis):
         """_summary_ Summary
 
         Args:
-            activation (npt.NDArray): _description_
+            activation (npt.NDArray): (uncenter)
             context (npt.NDArray): _description_
 
         Returns:
