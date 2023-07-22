@@ -243,7 +243,7 @@ def main(teacher, dataset_name, epochs, output_dir, seed, mode, num_samples):
             ]
         )
 
-        for layer in layers[:1]:
+        for layer in layers:
             log_dir = (
                 output_dir / f"{teacher}--layer-{layer}--mode-{mode}--n{num_samples}"
             )
