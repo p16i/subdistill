@@ -103,8 +103,17 @@ def construction_model(
             "cifar100-resnet18-p1", layer, compression_rate=compr_rate
         )
 
-        new_module = distillators.get_approximator_for_resnet18(
+        block = distillators.get_approximator_for_resnet18(
             layer, dist_info.num_output_channels
+        )[0]
+
+        return nn.Sequential(
+            block,
+            nn.Conv2d(
+                in_channels=dist_info.num_output_channels,
+                out_channels=int(dist_info.num_output_channels / compr_rate),
+                kernel_size=1,
+            ),
         )
     else:
         raise ValueError("mode={mode} not available")
