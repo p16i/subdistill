@@ -200,7 +200,7 @@ class ModelWrapper(pl.LightningModule):
 @click.option("--epochs", default=50)
 @click.option("--dataset-name", default="cifar100-people")
 @click.option("--mode", default="homogenous")
-@click.option("--num-samples", default="5,50,250,500")
+@click.option("--num-samples", default="50,250,500")
 @click.option("--teacher", default="cifar100-resnet18-p1")
 def main(teacher, dataset_name, epochs, output_dir, seed, mode, num_samples):
     arguments = locals()
