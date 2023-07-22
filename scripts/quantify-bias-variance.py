@@ -207,7 +207,7 @@ class ModelWrapper(pl.LightningModule):
 @click.command()
 @click.option("--output-dir", type=str, default="./tmp")
 @click.option("--seed", default=1)
-@click.option("--epochs", default=50)
+@click.option("--epochs", default=100)
 @click.option("--dataset-name", default="cifar100-people")
 @click.option("--mode", default="homogenous")
 @click.option("--num-samples", default="50,250,500")
