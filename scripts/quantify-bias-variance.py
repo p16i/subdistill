@@ -12,7 +12,7 @@ import numpy as np
 
 import torch
 
-from xaikd import datasets, models, utils, distillators
+from xaikd import datasets, models, utils, distillators, constants
 from xaikd.utils import metrics
 from torch import nn
 from torchvision.models import resnet
@@ -107,14 +107,15 @@ def construction_model(
             layer, dist_info.num_output_channels
         )[0]
 
-        return nn.Sequential(
+        new_module = nn.Sequential(
             block,
             nn.Conv2d(
                 in_channels=dist_info.num_output_channels,
-                out_channels=int(dist_info.num_output_channels / compr_rate),
+                out_channels=constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer],
                 kernel_size=1,
             ),
         )
+        print(new_module)
     else:
         raise ValueError("mode={mode} not available")
 
@@ -242,7 +243,7 @@ def main(teacher, dataset_name, epochs, output_dir, seed, mode, num_samples):
             ]
         )
 
-        for layer in layers:
+        for layer in layers[:1]:
             log_dir = (
                 output_dir / f"{teacher}--layer-{layer}--mode-{mode}--n{num_samples}"
             )
