@@ -12,7 +12,7 @@ import numpy as np
 
 import torch
 
-from xaikd import datasets, models, utils
+from xaikd import datasets, models, utils, distillators
 from xaikd.utils import metrics
 from torch import nn
 from torchvision.models import resnet
@@ -95,6 +95,17 @@ def construction_model(
         new_module = getattr(random_model, layer)
     elif mode == "inhomogenous":
         new_module = getattr(random_model, layer)[:1]
+    elif "homogenous-compr" in mode:
+        # homogenous-compr0.15
+        compr_rate = float(mode.split("compr")[-1])
+
+        dist_info = distillators.get_distill_infor(
+            "cifar100-resnet18-p1", layer, compression_rate=compr_rate
+        )
+
+        new_module = distillators.get_approximator_for_resnet18(
+            layer, dist_info.num_output_channels
+        )
     else:
         raise ValueError("mode={mode} not available")
 
@@ -188,9 +199,7 @@ class ModelWrapper(pl.LightningModule):
 @click.option("--seed", default=1)
 @click.option("--epochs", default=50)
 @click.option("--dataset-name", default="cifar100-people")
-@click.option(
-    "--mode", default="homogenous", type=click.Choice(["homogenous", "inhomogenous"])
-)
+@click.option("--mode", default="homogenous")
 @click.option("--num-samples", default="5,50,250,500")
 @click.option("--teacher", default="cifar100-resnet18-p1")
 def main(teacher, dataset_name, epochs, output_dir, seed, mode, num_samples):
