@@ -115,10 +115,11 @@ class Basis(ABC):
 
         setattr(self, "artifact", artifact)
 
-        mean = np.load(artifact_dir / "act_mean.npy")
-
-        if not self.centering:
-            mean = np.zeros_like(mean)
+        if self.centering:
+            mean = np.load(artifact_dir / "act_mean.npy")
+        else:
+            d = artifact[self.artifact_keys[0]].shape[0]
+            mean = np.zeros(d)
 
         self.mean = torch.from_numpy(mean).float().to(device)
 
@@ -226,6 +227,24 @@ class PCA(Basis):
         self.artifact = dict(zip(self.artifact_keys, (eigvecs, eigvals)))
 
         return eigvecs, eigvals
+
+
+@register_basis("identity")
+class Identity(Basis):
+    artifact = dict()
+    artifact_keys = []
+
+    def construct_fh_rank_k_projection(self, k: int):
+        def fh(module, input, output):
+            return output
+
+        return fh
+
+    def load(self, artifact_dir: Path, device="cpu"):
+        pass
+
+    def save(self, output_dir: Path):
+        pass
 
 
 @register_basis("rel")
@@ -359,7 +378,7 @@ class PRCAVariant(Basis):
         """_summary_ Summary
 
         Args:
-            activation (npt.NDArray): _description_
+            activation (npt.NDArray): (uncenter)
             context (npt.NDArray): _description_
 
         Returns:

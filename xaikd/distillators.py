@@ -177,13 +177,21 @@ def get_approximator_for_resnet18(
 
     blocks = len(getattr(model, layer))
 
-    return model._make_layer(
-        torchvision.models.resnet.BasicBlock,
-        output_dimensions,
-        blocks,
-        stride=2,
-        dilate=False,
+    output = nn.Sequential(
+        model._make_layer(
+            torchvision.models.resnet.BasicBlock,
+            output_dimensions,
+            blocks,
+            stride=2,
+            dilate=False,
+        ),
+        nn.Dropout2d(p=0.5),
+        nn.Conv2d(
+            in_channels=output_dimensions, out_channels=output_dimensions, kernel_size=1
+        ),
     )
+
+    return output
 
 
 class Layerwise:

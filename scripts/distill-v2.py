@@ -40,7 +40,7 @@ def get_transformation(dataset_name):
 @click.option(
     "--basis-names",
     type=str,
-    default="pca,prca-abs,random1,random2,random3",
+    default="pca,prca-abs,prca-recon,random1,random2",
     required=True,
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
