@@ -185,6 +185,7 @@ def get_approximator_for_resnet18(
             stride=2,
             dilate=False,
         ),
+        nn.Dropout2d(p=0.5),
         nn.Conv2d(
             in_channels=output_dimensions, out_channels=output_dimensions, kernel_size=1
         ),
