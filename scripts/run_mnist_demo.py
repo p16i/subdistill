@@ -170,7 +170,7 @@ def main(model_name, epochs, output_dir, samples_per_class):
         basis.load(output_dir / mnist_demo.CONSIDERED_LAYER, device=device)
         stats_approximator = []
 
-        for k in np.arange(1, 5 + 1):
+        for k in np.arange(1, 3 + 1):
             for lambda_mse, lambda_crossent in itertools.product(
                 mnist_demo.ARRAY_LAMBDA, mnist_demo.ARRAY_LAMBDA
             ):
