@@ -22,7 +22,7 @@ BATCH_SIZE = 64
 
 CONSIDERED_CLASSES = [4, 9]
 CONSIDERED_LAYER = "act1"
-NUM_SPATIAL_LOCATIONS_SAMPLING = 10
+NUM_SPATIAL_LOCATIONS_SAMPLING = 20
 
 
 DATASET_DIR = "./datasets"
@@ -42,9 +42,9 @@ INPUT_LOW_VALUE, INPUT_HIGH_VALUE = MAIN_TRANSFORM.transforms[1](
 ARRAY_KS = np.arange(1, 10 + 1)
 
 
-BASIS_CONSIDERED = ["pca", "prca-abs", "prca-recon"]
+BASIS_CONSIDERED = ["pca", "prca-recon", "prca-abs"]
 
-ARRAY_LAMBDA = [0, 1e-2, 1e-1, 1]
+ARRAY_LAMBDA = [0, 1e-1, 1]
 
 LOGIT_MODIFIER = attributors.LogOddEvidence(tuple(CONSIDERED_CLASSES))
 
