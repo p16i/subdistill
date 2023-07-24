@@ -157,7 +157,7 @@ class Basis(ABC):
 
         return fh
 
-    def construct_projection_on_rank_k(self, k: int, device: str) -> typing.Callable:
+    def construct_projection_on_rank_k(self, k: int, device: str) -> torch.nn.Module:
         U: torch.Tensor = self.artifact["eigvecs"][:, :k]
         U = U.T
 

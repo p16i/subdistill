@@ -51,6 +51,8 @@ def get_transformation(dataset_name):
 @click.option("--lr", type=float, default=0.001, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--weight-decay", type=float, default=0.0)
+@click.option("--lambda-mse", type=float, default=1.0)
+@click.option("--lambda-xent", type=float, default=1.0)
 def main(
     model,
     dataset,
@@ -64,6 +66,8 @@ def main(
     layer,
     basis_mode,
     weight_decay,
+    lambda_mse,
+    lambda_xent,
 ):
     pl.seed_everything(seed)
 
@@ -73,7 +77,7 @@ def main(
     model = models.get_model(model)
     model_name = getattr(model, "__name")
 
-    layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-comp{compression_rate}-seed{seed}"
+    layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}-comp{compression_rate}-seed{seed}"
 
     output_dir = Path(output_dir) / dataset / model_name / layer_slug
 
@@ -158,6 +162,8 @@ def main(
             device=device,
             lr=lr,
             log_dir=basis_output_dir / "log",
+            lambda_mse=lambda_mse,
+            lambda_xent=lambda_xent,
         )
 
         df = pd.DataFrame(results)
