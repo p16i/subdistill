@@ -257,7 +257,7 @@ class Layerwise:
         self.device = device
 
         self.ref_acc = metrics.accuracy_with_subclasses(
-            self.teacher,
+            self.teacher.to(device),
             val_dataloader,
             considered_classes=self.dataset.selected_classes,
             transform_target=self.dataset.transform_target,
