@@ -49,7 +49,7 @@ class ApproximatorModelWrapper(pl.LightningModule):
         basis: bases.Basis,
         k: int,
         lambda_mse: float,
-        lambda_crossent: float,
+        lambda_xent: float,
         verbose=False,
         device="cpu",
     ):
@@ -61,7 +61,7 @@ class ApproximatorModelWrapper(pl.LightningModule):
         self.verbose = verbose
 
         self.lambda_mse = lambda_mse
-        self.lambda_crosse_ent = lambda_crossent
+        self.lambda_xent = lambda_xent
         self.encoder = basis.construct_projection_on_rank_k(k, device=device)
         self.decoder = basis.contruct_rank_d_decoder(k, device=device)
 
@@ -69,8 +69,8 @@ class ApproximatorModelWrapper(pl.LightningModule):
         optimizer = torch.optim.Adam(self.approx.parameters(), lr=1e-3)
         return optimizer
 
-    def training_step(self, train_batch, batch_idx):
-        x, y = train_batch
+    def compute_loss(self, batch, prefix):
+        x, y = batch
 
         with torch.no_grad():
             act = self.teacher.forward_feat(x)
@@ -82,7 +82,10 @@ class ApproximatorModelWrapper(pl.LightningModule):
         approxed_projected_act = self.approx(x)
 
         # compute MSE loss
-        mse = ((projected_act - approxed_projected_act) ** 2) * spatial_scaling
+        mse = (
+            F.mse_loss(approxed_projected_act, projected_act, reduction="none")
+            * spatial_scaling
+        )
 
         mse = mse.flatten(start_dim=1)
         mse = mse.sum(dim=1)
@@ -94,16 +97,21 @@ class ApproximatorModelWrapper(pl.LightningModule):
         logits = self.teacher.lin2(decoded_approxed_projected_act)
 
         loss_mse = self.lambda_mse * mse.mean()
-        loss_crossent = self.lambda_crosse_ent * F.cross_entropy(logits, y)
+        loss_xent = self.lambda_xent * F.cross_entropy(logits, y)
 
-        loss = loss_mse + loss_crossent
+        loss = loss_mse + loss_xent
 
-        if batch_idx % 100 == 0 and self.verbose:
-            print(
-                f"[batch_ix={batch_idx:3d}] mse_loss={loss_mse.detach().numpy():.4f}, crossent={loss_crossent:.4f}"
-            )
+        self.log(f"{prefix}_loss_xent", loss_xent, on_epoch=True)
+        self.log(f"{prefix}_loss_mse", loss_mse, on_epoch=True)
+        self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
         return loss
+
+    def training_step(self, batch, batch_idx):
+        return self.compute_loss(batch, "train")
+
+    def validation_step(self, batch, batch_idx):
+        return self.compute_loss(batch, "val")
 
 
 class CombinedModule(nn.Module):
