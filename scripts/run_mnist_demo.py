@@ -66,7 +66,7 @@ def train_approximator(
 
 @click.command()
 @click.option("--model-name", default="mnist-k14-h128", type=str)
-@click.option("--epochs", default=20, type=int)
+@click.option("--epochs", default=50, type=int)
 @click.option("--output-dir", default="./tmp", type=str)
 @click.option("--samples-per-class", default=7000, type=int)
 def main(model_name, epochs, output_dir, samples_per_class):
