@@ -30,7 +30,7 @@ def train_approximator(
     lambda_mse: float,
     lambda_crossent: float,
     data_loader: DataLoader,
-    epochs=20,
+    epochs=50,
     device="cpu",
     verbose=False,
 ) -> mnist_demo.approximator.Approximator:
