@@ -1,3 +1,4 @@
+import typing
 import os
 import click
 from datetime import datetime
@@ -84,7 +85,7 @@ class Lenet5(nn.Module):
 
 def construction_model(
     teacher: str, layer: str, mode: str, num_classes: int
-) -> nn.Module:
+) -> typing.Tuple[nn.Module, nn.Module]:
     model = models.get_model(teacher)
 
     utils.deactivate_requires_grad(model)
@@ -93,8 +94,8 @@ def construction_model(
 
     if mode == "homogenous":
         new_module = getattr(random_model, layer)
-    elif mode == "inhomogenous":
-        new_module = getattr(random_model, layer)[:1]
+    # elif mode == "inhomogenous":
+    #     new_module = getattr(random_model, layer)[:1]
     elif "homogenous-compr" in mode:
         # homogenous-compr0.15
         compr_rate = float(mode.split("compr")[-1])
@@ -119,74 +120,126 @@ def construction_model(
     else:
         raise ValueError("mode={mode} not available")
 
+    original_module = getattr(model, layer)
     setattr(model, layer, new_module)
 
-    return model
+    return model, original_module
 
 
 class ModelWrapper(pl.LightningModule):
     def __init__(
         self,
-        model,
+        student_model,
+        teacher_module: nn.Module,
+        layer: str,
         dataset: datasets.Cifar100SuperClassesDataset,
         train_loader,
         val_loader,
+        lambda_mse: float,
+        lambda_xent: float,
     ):
         super().__init__()
 
-        self.model = model
+        (
+            self.feat_extractor,
+            self.approximator,
+            self.classifier,
+        ) = models.resnet.split_resnet_18_at(student_model, layer)
 
-        self.val_loss = torchmetrics.MeanMetric()
+        self.teacher_module = teacher_module
+
+        with torch.no_grad():
+            x = torch.randn((10, 3, 32, 32))
+            assert torch.allclose(
+                self.classifier(self.approximator(self.feat_extractor(x))),
+                student_model(x),
+            )
+
         self.dataset = dataset
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.arr_metrics = []
-
-    def forward(self, x):
-        embedding = self.model(x)
-        return embedding
+        self.lambda_mse = lambda_mse
+        self.lambda_xent = lambda_xent
+        print(f"Training with lambda_mse={lambda_mse}; lambda_xent={lambda_xent}")
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.approximator.parameters(), lr=1e-3)
         return optimizer
 
-    def training_step(self, train_batch, batch_idx):
-        x, y = train_batch
+    def training_step(self, batch, batch_idx):
+        loss = self._compute_loss(batch, prefix="train")
+        return loss
 
-        logits = self.model(x)
+    def on_train_start(self) -> None:
+        super().on_train_start()
+        self.feat_extractor.eval()
+        self.classifier.eval()
+        self.teacher_module.eval()
 
-        loss = self._compute_loss(logits, y)
+    def _compute_loss(self, batch, prefix):
+        x, y = batch
 
-        self.log("train_loss", loss)
+        assert not self.feat_extractor.training
+        assert not self.classifier.training
+        assert not self.teacher_module.training
+
+        if prefix == "train":
+            assert self.approximator.training
+
+        with torch.no_grad():
+            feats = self.feat_extractor(x)
+
+        zh = self.approximator(feats)
+        logits = self.classifier(zh)
+
+        loss_mse = self._compute_loss_mse(feats, zh)
+        loss_xent = self._compute_loss_xent(logits, y)
+
+        loss = loss_mse + loss_xent
+
+        self.log(f"{prefix}_loss_xent", loss_xent, on_epoch=True)
+        self.log(f"{prefix}_loss_mse", loss_mse, on_epoch=True)
+        self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
         return loss
 
-    def _compute_loss(self, logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def _compute_loss_xent(self, logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         logits = logits[:, self.dataset.selected_classes]
         ynew = self.dataset.transform_target(y)
 
-        return F.cross_entropy(logits, ynew)
+        return self.lambda_xent * F.cross_entropy(logits, ynew)
 
-    def validation_step(self, val_batch, batch_idx):
-        x, y = val_batch
+    def _compute_loss_mse(
+        self, feat_in: torch.Tensor, feat_out: torch.Tensor
+    ) -> torch.Tensor:
+        with torch.no_grad():
+            expected_feat_out = self.teacher_module(feat_in)
 
-        logits = self.model(x)
-        loss = self._compute_loss(logits, y)
+        _, _, h, w = expected_feat_out.shape
 
-        self.val_loss.update(loss)
+        loss = F.mse_loss(feat_out, expected_feat_out, reduction="none")
 
-    def on_validation_epoch_end(self):
-        self.log("val_loss", self.val_loss.compute())
-        self.val_loss.reset()
+        loss = loss.flatten(start_dim=1) / (h * w)
+        loss = loss.sum(dim=1)
+
+        return self.lambda_mse * loss.mean()
+
+    def validation_step(self, batch, batch_idx):
+        self._compute_loss(batch, prefix="val")
 
     def on_train_epoch_end(self) -> None:
-        self.model.eval()
+        self.approximator.eval()
 
         row = dict()
 
         for name, loader in zip(["train", "val"], [self.train_loader, self.val_loader]):
             acc = metrics.accuracy_with_subclasses(
-                self,
+                nn.Sequential(
+                    self.feat_extractor,
+                    self.approximator,
+                    self.classifier,
+                ),
                 loader,
                 considered_classes=self.dataset.selected_classes,
                 transform_target=self.dataset.transform_target,
@@ -201,7 +254,7 @@ class ModelWrapper(pl.LightningModule):
 
         self.arr_metrics.append(row)
 
-        self.model.train()
+        self.approximator.train()
 
 
 @click.command()
@@ -212,7 +265,19 @@ class ModelWrapper(pl.LightningModule):
 @click.option("--mode", default="homogenous")
 @click.option("--num-samples", default="50,250,500")
 @click.option("--teacher", default="cifar100-resnet18-p1")
-def main(teacher, dataset_name, epochs, output_dir, seed, mode, num_samples):
+@click.option("--lambda-mse", default=1.0)
+@click.option("--lambda-xent", default=1.0)
+def main(
+    teacher,
+    dataset_name,
+    epochs,
+    output_dir,
+    seed,
+    mode,
+    num_samples,
+    lambda_mse,
+    lambda_xent,
+):
     arguments = locals()
 
     layers = ["layer3", "layer4"]
@@ -245,12 +310,13 @@ def main(teacher, dataset_name, epochs, output_dir, seed, mode, num_samples):
 
         for layer in layers:
             log_dir = (
-                output_dir / f"{teacher}--layer-{layer}--mode-{mode}--n{num_samples}"
+                output_dir
+                / f"{teacher}--layer-{layer}--mode-{mode}--n{num_samples}-lmse{lambda_mse}-lxent{lambda_xent}"
             )
 
             os.makedirs(log_dir, exist_ok=True)
 
-            model = construction_model(
+            student_model, teacher_module = construction_model(
                 teacher,
                 layer=layer,
                 mode=mode,
@@ -258,10 +324,14 @@ def main(teacher, dataset_name, epochs, output_dir, seed, mode, num_samples):
             )
 
             model_wrapper = ModelWrapper(
-                model=model,
+                student_model=student_model,
+                teacher_module=teacher_module,
+                layer=layer,
                 dataset=dataset,
                 train_loader=train_loader,
                 val_loader=val_loader,
+                lambda_mse=lambda_mse,
+                lambda_xent=lambda_xent,
             )
 
             trainer = pl.Trainer(
