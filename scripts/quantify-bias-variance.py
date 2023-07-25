@@ -181,13 +181,12 @@ class ModelWrapper(pl.LightningModule):
     def on_fit_start(self) -> None:
         self.eval_safeguard()
 
-    def on_train_start(self) -> None:
-        super().on_train_start()
+    def on_train_batch_start(self, batch, batch_idx) -> int | None:
+        status = super().on_train_batch_start(batch, batch_idx)
+
         self.eval_safeguard()
 
-    def on_validation_start(self) -> None:
-        super().on_validation_start()
-        self.eval_safeguard()
+        return status
 
     def _compute_loss(self, batch, prefix):
         x, y = batch
