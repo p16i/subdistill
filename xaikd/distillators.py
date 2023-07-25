@@ -92,7 +92,6 @@ class ModelWrapper(pl.LightningModule):
 
         self.arr_metrics = []
         self.dataset = dataset
-        self.val_loss = torchmetrics.MeanMetric()
 
         self.lambda_mse = lambda_mse
         self.lambda_xent = lambda_xent
@@ -103,6 +102,8 @@ class ModelWrapper(pl.LightningModule):
         self._val_dataloader = val_dataloader
         self.weight_decay = weight_decay
 
+        self.eval_safeguard()
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
             self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
@@ -112,9 +113,6 @@ class ModelWrapper(pl.LightningModule):
     def forward_with_feats(
         self, feat
     ) -> typing.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        self.feature_extrator.eval()
-        self.classification_head.eval()
-
         with torch.no_grad():
             feat_in = self.feature_extrator(feat)
 
@@ -130,8 +128,15 @@ class ModelWrapper(pl.LightningModule):
         _, _, logits = self.forward_with_feats(feat)
         return logits
 
-    def training_step(self, train_batch, batch_idx):
-        x, y = train_batch
+    def _compute_loss(self, batch, prefix):
+        x, y = batch
+
+        assert not self.feature_extrator.training
+        assert not self.classification_head.training
+        assert not self.teacher_module.training
+
+        if prefix == "train":
+            assert self.approximator.training
 
         feat_in, feat_out, logits = self.forward_with_feats(x)
 
@@ -139,9 +144,9 @@ class ModelWrapper(pl.LightningModule):
         loss_mse = self._compute_mse_loss(feat_in, feat_out)
         loss = loss_xent + loss_mse
 
-        self.log("train_loss_xent", loss_xent, on_epoch=True)
-        self.log("train_loss_mse", loss_mse, on_epoch=True)
-        self.log("train_loss_all", loss, on_epoch=True)
+        self.log(f"{prefix}_loss_xent", loss_xent, on_epoch=True)
+        self.log(f"{prefix}_loss_mse", loss_mse, on_epoch=True)
+        self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
         return loss
 
@@ -159,32 +164,32 @@ class ModelWrapper(pl.LightningModule):
 
         _, _, h, w = expected_out.shape
 
-        loss_mse = (expected_out - feat_out) ** 2
+        loss_mse = F.mse_loss(feat_out, expected_out, reduction="none")
         loss_mse = loss_mse.flatten(start_dim=1) / (h * w)
         loss_mse = loss_mse.sum(dim=1)
 
         return self.lambda_mse * loss_mse.mean()
 
+    def training_step(self, train_batch, batch_idx):
+        return self._compute_loss(train_batch, "train")
+
     def validation_step(self, val_batch, batch_idx):
-        x, y = val_batch
+        return self._compute_loss(val_batch, "val")
 
-        feat_in, feat_out, logits = self.forward_with_feats(x)
+    def eval_safeguard(self):
+        self.feature_extrator.eval()
+        self.classification_head.eval()
+        self.teacher_module.eval()
 
-        # self.val_loss.update(loss)
-        loss_xent = self._compute_xent_loss(logits, y)
-        loss_mse = self._compute_mse_loss(feat_in, feat_out)
+    def on_fit_start(self) -> None:
+        self.eval_safeguard()
 
-        loss = loss_mse + loss_xent
+    def on_train_batch_start(self, batch, batch_idx) -> int | None:
+        status = super().on_train_batch_start(batch, batch_idx)
 
-        self.log("val_loss_xent", loss_xent, on_epoch=True)
-        self.log("val_loss_mse", loss_mse, on_epoch=True)
-        self.log("val_loss_all", loss, on_epoch=True)
+        self.eval_safeguard()
 
-        return loss
-
-    # def on_validation_epoch_end(self):
-    #     self.log("val_loss", self.val_loss.compute())
-    #     self.val_loss.reset()
+        return status
 
     def on_train_epoch_end(self) -> None:
         self.approximator.eval()
