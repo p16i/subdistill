@@ -163,6 +163,8 @@ class ModelWrapper(pl.LightningModule):
         self.lambda_xent = lambda_xent
         print(f"Training with lambda_mse={lambda_mse}; lambda_xent={lambda_xent}")
 
+        self.eval_safeguard()
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.approximator.parameters(), lr=1e-3)
         return optimizer
