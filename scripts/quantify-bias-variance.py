@@ -118,7 +118,7 @@ def construction_model(
         )
         print(new_module)
     else:
-        raise ValueError("mode={mode} not available")
+        raise ValueError(f"mode={mode} not available")
 
     original_module = getattr(model, layer)
     setattr(model, layer, new_module)
@@ -171,11 +171,18 @@ class ModelWrapper(pl.LightningModule):
         loss = self._compute_loss(batch, prefix="train")
         return loss
 
-    def on_train_start(self) -> None:
-        super().on_train_start()
+    def eval_safeguard(self):
         self.feat_extractor.eval()
         self.classifier.eval()
         self.teacher_module.eval()
+
+    def on_train_start(self) -> None:
+        super().on_train_start()
+        self.eval_safeguard()
+
+    def on_validation_start(self) -> None:
+        super().on_validation_start()
+        self.eval_safeguard()
 
     def _compute_loss(self, batch, prefix):
         x, y = batch
