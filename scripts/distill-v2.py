@@ -40,7 +40,7 @@ def get_transformation(dataset_name):
 @click.option(
     "--basis-names",
     type=str,
-    default="pca,prca-abs,prca-recon,random1,random2",
+    default="pca,prca-recon,prca-abs,random1,random2",
     required=True,
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
@@ -123,6 +123,8 @@ def main(
         arch=model_name, layer=layer, compression_rate=compression_rate
     )
 
+    ref_acc = None
+
     for basis_name in basis_names.split(","):
         pl.seed_everything(seed)
 
@@ -132,13 +134,18 @@ def main(
         )
 
         distillator = distillators.Layerwise(
-            teacher=model,
+            teacher=models.get_model(model_name),
             dataset=dataset,
             train_dataloader=train_loader_with_aug,
             val_dataloader=val_loader,
             device=device,
             weight_decay=weight_decay,
         )
+
+        if ref_acc is None:
+            ref_acc = distillator.ref_acc
+        else:
+            assert distillator.ref_acc == ref_acc, "Models have different accuracy"
 
         basis_name = f"{basis_name}--{basis_mode}"
         basis_output_dir = output_dir / basis_name
