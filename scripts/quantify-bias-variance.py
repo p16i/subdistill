@@ -178,6 +178,9 @@ class ModelWrapper(pl.LightningModule):
         self.classifier.eval()
         self.teacher_module.eval()
 
+    def on_fit_start(self) -> None:
+        self.eval_safeguard()
+
     def on_train_start(self) -> None:
         super().on_train_start()
         self.eval_safeguard()
