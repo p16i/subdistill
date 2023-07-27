@@ -162,7 +162,7 @@ def main(
 
     dataset_slug = getattr(dataset, "__name")
     if num_training_samples is not None:
-        dataset_slug = f"{dataset_slug}--n{num_training_samples}"
+        dataset_slug = f"{dataset_slug}--n{num_training_samples}-seed{seed}"
 
     output_dir = (
         Path(output_dir)
