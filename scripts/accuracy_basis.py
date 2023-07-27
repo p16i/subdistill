@@ -103,8 +103,8 @@ def estimate_acc_for_basis(
 )
 @click.option(
     "--logit-modifier",
-    default="multipleclasses",
-    type=click.Choice(["multipleclasses", "oneclasslogsumexp"]),
+    default="oneclass",
+    type=click.Choice(["oneclass", "multipleclasses", "oneclasslogsumexp"]),
 )
 @click.option(
     "--basis-names",
@@ -143,7 +143,9 @@ def main(
     click.echo(f"Basis Centering Mode: {basis_mode}")
     click.echo(f"with bases: {basis_names}")
 
-    if logit_modifier == "multipleclasses":
+    if logit_modifier == "oneclass":
+        logit_mod = attributors.OneClassEvidence(dataset)
+    elif logit_modifier == "multipleclasses":
         logit_mod = attributors.SelectedClassesEvidence(dataset)
     elif logit_modifier == "oneclasslogsumexp":
         logit_mod = attributors.OneClassLogSumExpEvidence(dataset)
