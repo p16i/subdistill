@@ -464,3 +464,9 @@ class PCAPRCAVariant(Basis):
         eigvals = np.var(activation, axis=0)
 
         return U, eigvals
+
+
+@register_basis("pcaprca-recon")
+class PCAPRCARecon(PCAPRCAVariant):
+    mode = "recon"
+    beta = 0.0
