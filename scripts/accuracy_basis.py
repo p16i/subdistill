@@ -109,7 +109,7 @@ def estimate_acc_for_basis(
 @click.option(
     "--basis-names",
     type=click_types.List(),
-    default="pca,prca-abs,prca-recon,rel-abs,rel,random1,random2",
+    default="pca,prca-abs,prca-recon,pcaprca-abs,pcaprca-recon,rel-abs,rel,random1,random2",
 )
 @click.option("--seed", default=1, type=int)
 @click.option("--num-training-samples", default=50, type=int)
