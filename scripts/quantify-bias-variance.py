@@ -13,7 +13,7 @@ import numpy as np
 
 import torch
 
-from xaikd import datasets, models, utils, distillators, constants
+from xaikd import datasets, models, utils, distillators, constants, attributors
 from xaikd.utils import metrics
 from torch import nn
 from torchvision.models import resnet
@@ -36,6 +36,24 @@ def get_transformation(dataset_name):
         ]
     else:
         raise NotImplementedError("")
+
+
+class Normalizer(nn.Module):
+    def __init__(self, scaling_factors, device):
+        super().__init__()
+
+        self.scaling_factors = (
+            torch.from_numpy(scaling_factors).reshape((1, -1, 1, 1)).to(device)
+        )
+
+    def forward(self, x):
+        return self.unnormalize(x)
+
+    def normalize(self, x: torch.Tensor) -> torch.Tensor:
+        return x * (1 / self.scaling_factors)
+
+    def unnormalize(self, x: torch.Tensor) -> torch.Tensor:
+        return x * self.scaling_factors
 
 
 class Lenet5(nn.Module):
@@ -132,6 +150,7 @@ class ModelWrapper(pl.LightningModule):
         student_model,
         teacher_module: nn.Module,
         layer: str,
+        normalizer: Normalizer,
         dataset: datasets.Cifar100SuperClassesDataset,
         train_loader,
         val_loader,
@@ -154,6 +173,8 @@ class ModelWrapper(pl.LightningModule):
                 self.classifier(self.approximator(self.feat_extractor(x))),
                 student_model(x),
             )
+
+        self.normalizer = normalizer
 
         self.dataset = dataset
         self.train_loader = train_loader
@@ -226,6 +247,7 @@ class ModelWrapper(pl.LightningModule):
     ) -> torch.Tensor:
         with torch.no_grad():
             expected_feat_out = self.teacher_module(feat_in)
+            expected_feat_out = self.normalizer.normalize(expected_feat_out)
 
         _, _, h, w = expected_feat_out.shape
 
@@ -249,6 +271,7 @@ class ModelWrapper(pl.LightningModule):
                 nn.Sequential(
                     self.feat_extractor,
                     self.approximator,
+                    self.normalizer,
                     self.classifier,
                 ),
                 loader,
@@ -291,7 +314,7 @@ def main(
 ):
     arguments = locals()
 
-    layers = ["layer3", "layer4"]
+    layers = ["layer3", "layer4"][:1]
 
     assert "cifar100" in dataset_name
     num_classes = 100
@@ -325,6 +348,17 @@ def main(
                 / f"{teacher}--layer-{layer}--mode-{mode}--n{num_samples}-lmse{lambda_mse}-lxent{lambda_xent}"
             )
 
+            arr_act = attributors.extract_activation(
+                models.get_model(teacher),
+                layer,
+                dataset,
+                dataset.loader(train_split=True),
+            )
+
+            normalizer = Normalizer(
+                scaling_factors=np.std(arr_act, axis=0), device=device
+            )
+
             os.makedirs(log_dir, exist_ok=True)
 
             student_model, teacher_module = construction_model(
@@ -339,6 +373,7 @@ def main(
                 teacher_module=teacher_module,
                 layer=layer,
                 dataset=dataset,
+                normalizer=normalizer,
                 train_loader=train_loader,
                 val_loader=val_loader,
                 lambda_mse=lambda_mse,
