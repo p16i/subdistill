@@ -292,7 +292,7 @@ def main(
 ):
     arguments = locals()
 
-    layers = ["layer3", "layer4"]
+    layers = ["layer3", "layer4"][:1]
 
     assert "cifar100" in dataset_name
     num_classes = 100
