@@ -252,7 +252,6 @@ class ModelWrapper(pl.LightningModule):
         _, _, h, w = expected_feat_out.shape
 
         loss = F.mse_loss(feat_out, expected_feat_out, reduction="none")
-        loss = F.relu(loss - 0.05)
 
         loss = loss.flatten(start_dim=1) / (h * w)
         loss = loss.sum(dim=1)
