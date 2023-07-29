@@ -157,6 +157,16 @@ class Basis(ABC):
 
         return Adapter(U=U, mean=self.mean, std=std, mode=mode, device=device)
 
+    def construct_fh_rank_k_projection(self, k: int, device: str) -> typing.Callable:
+        encoder = self.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device)
+        decoder = self.construct_adapter(k=k, mode=AdapterMode.DECODER, device=device)
+
+        def fh(mod, input, output):
+            assert isinstance(output, torch.Tensor)
+            return decoder(encoder(output))
+
+        return fh
+
     def __str__(self) -> str:
         return getattr(self, "__name")
 
@@ -231,9 +241,9 @@ class Identity(Basis):
     artifact = dict()
     artifact_keys = []
 
-    def construct_fh_rank_k_projection(self, k: int):
+    def construct_fh_rank_k_projection(self, k: int, device: str):
         def fh(module, input, output):
-            return output
+            pass
 
         return fh
 
