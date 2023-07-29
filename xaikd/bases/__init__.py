@@ -16,29 +16,57 @@ from . import learners
 from xaikd import utils
 
 
+from enum import Enum
+
+EPS = 1e-6
 BASES = dict()
 
+AdapterMode = Enum("AdapterMode", ["ENCODER", "DECODER"])
 
-class Projector(torch.nn.Module):
-    def __init__(self, U: torch.Tensor, mean: torch.Tensor, device: str) -> None:
+
+class Adapter(torch.nn.Module):
+    def __init__(
+        self,
+        U: torch.Tensor,
+        mean: torch.Tensor,
+        std: torch.Tensor,
+        device: str,
+        mode: AdapterMode,
+    ) -> None:
         super().__init__()
 
-        self.U = U.unsqueeze(2).unsqueeze(3).to(device)
+        d, k = U.shape
+
+        assert std.shape[0] == k
+        assert mean.shape[0] == d
+
+        self.mat_encoder = U.T.unsqueeze(2).unsqueeze(3).to(device)
+        self.mat_decoder = U.unsqueeze(2).unsqueeze(3).to(device)
+
         self.mean = mean.reshape((1, -1, 1, 1)).to(device)
+        self.std = std.reshape((1, -1, 1, 1)).to(device)
 
-    def forward(self, x):
-        return F.conv2d(x - self.mean, self.U)
+        self.mode = mode
 
+    def forward(self, x) -> torch.Tensor:
+        if self.mode == AdapterMode.ENCODER:
+            return self.encoder(x)
+        elif self.mode == AdapterMode.DECODER:
+            return self.decoder(x)
+        else:
+            raise ValueError(f"[mode={self.mode}] doesn't exist!")
 
-class Decoder(torch.nn.Module):
-    def __init__(self, U: torch.Tensor, mean: torch.Tensor, device: str) -> None:
-        super().__init__()
+    def encoder(self, x):
+        out = x - self.mean
+        out = F.conv2d(out, self.mat_encoder)
+        out = out / (self.std + EPS)
+        return out
 
-        self.U = U.unsqueeze(2).unsqueeze(3).to(device)
-        self.mean = mean.reshape((1, -1, 1, 1)).to(device)
-
-    def forward(self, x):
-        return F.conv2d(x, self.U) + self.mean
+    def decoder(self, x):
+        out = x * (self.std + EPS)
+        out = F.conv2d(x, self.mat_decoder)
+        out = out + self.mean
+        return out
 
 
 def register_basis(name):
@@ -123,50 +151,11 @@ class Basis(ABC):
 
         self.mean = torch.from_numpy(mean).float().to(device)
 
-    def construct_fh_rank_k_projection(self, k: int) -> typing.Callable:
-        """_summary_
-
-        Assumption: this generates a hook for 4d tensors!
-
-        Args:
-            k (_type_): _description_
-
-        Returns:
-            _type_: _description_
-        """
-        U = self.artifact["eigvecs"][:, :k]
-        mu = self.mean
-
-        if not self.centering:
-            assert torch.allclose(mu, torch.zeros_like(mu))
-
-        assert U.shape == (mu.shape[0], k)
-
-        UUT = U @ U.T
-
-        UUT = UUT.unsqueeze(2).unsqueeze(3)
-
-        mu = mu.reshape((1, -1, 1, 1))
-
-        def fh(mod, input, output):
-            assert isinstance(output, torch.Tensor)
-
-            projected = F.conv2d(output - mu, UUT)
-
-            return projected + mu
-
-        return fh
-
-    def construct_projection_on_rank_k(self, k: int, device: str) -> torch.nn.Module:
+    def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         U: torch.Tensor = self.artifact["eigvecs"][:, :k]
-        U = U.T
+        std = self.artifact["std"][:k]
 
-        return Projector(U, self.mean, device)
-
-    def contruct_rank_d_decoder(self, k: int, device: str) -> torch.nn.Module:
-        U = self.artifact["eigvecs"][:, :k]
-
-        return Decoder(U, self.mean, device=device)
+        return Adapter(U=U, mean=self.mean, std=std, mode=mode, device=device)
 
     def __str__(self) -> str:
         return getattr(self, "__name")
@@ -175,6 +164,10 @@ class Basis(ABC):
 def get_basis(slug, **kwargs) -> Basis:
     name_slug, centering_slug = slug.split("--")
     centering = True if centering_slug == "centered" else False
+
+    assert (
+        centering
+    ), "Since Sprint S9 (2023-07), we conclude that `centering=True` is the fixed parameter."
 
     if "random" in name_slug:
         seed = int(name_slug.replace("random", ""))
@@ -200,7 +193,7 @@ def get_basis(slug, **kwargs) -> Basis:
 
 @register_basis("pca")
 class PCA(Basis):
-    artifact_keys = ["eigvecs", "eigvals"]
+    artifact_keys = ["eigvecs", "std"]
 
     def fit(
         self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
@@ -224,9 +217,13 @@ class PCA(Basis):
         eigvals = eigvals[indices]
         eigvecs = eigvecs[:, indices]
 
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, eigvals)))
+        std = np.std(activation @ eigvecs, axis=0)
 
-        return eigvecs, eigvals
+        np.testing.assert_allclose(std, eigvals**0.5, atol=1e-6)
+
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+
+        return eigvecs, std
 
 
 @register_basis("identity")
@@ -249,7 +246,7 @@ class Identity(Basis):
 
 @register_basis("rel")
 class Rel(Basis):
-    artifact_keys = ["eigvecs", "eigvals"]
+    artifact_keys = ["eigvecs", "std"]
 
     def _relevance_preprocessing(self, x: npt.NDArray) -> npt.NDArray:
         return x
@@ -274,9 +271,11 @@ class Rel(Basis):
 
         eigvecs = np.eye(d)[:, indices]
 
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, eigvals)))
+        std = np.std(activation @ eigvecs, axis=0)
 
-        return eigvecs, eigvals
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+
+        return eigvecs, std
 
 
 @register_basis("rel-abs")
@@ -288,11 +287,11 @@ class RelAbs(Rel):
 
 @register_basis("prca")
 class PRCA(Basis):
-    artifact_keys = ["eigvecs", "eigvals"]
+    artifact_keys = ["eigvecs", "std"]
 
     def fit(
         self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
         Args:
@@ -316,60 +315,39 @@ class PRCA(Basis):
         eigvals = eigvals[indices]
         eigvecs = eigvecs[:, indices]
 
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, eigvals)))
+        std = np.std(activation @ eigvecs, axis=0)
 
-        return eigvecs, eigvals
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+
+        return eigvecs, std
 
 
 @register_basis("random")
 class Random(Basis):
-    def load(self, artifact_dir: str, device="cpu"):
-        """_summary_
+    artifact_keys = ["eigvecs", "std"]
 
-        Remark: although, artifacts are saved as `numpy.NDArray`, here, for convenience,
-        we directly load artifacts as `torch.Tensor`.
+    def fit(
+        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        if self.centering:
+            activation = activation - mean
 
-
-
-        Args:
-            artifact_dir (str): _description_
-            device (str, optional): _description_. Defaults to "cpu".
-        """
-
-        mean = torch.from_numpy(np.load(Path(artifact_dir) / "act_mean.npy")).float()
-
-        if not self.centering:
-            mean = torch.zeros_like(mean)
-
-        mean = mean.to(device)
-
-        d = mean.shape[0]
-
+        _, d = activation.shape
         seed = self.kwargs["seed"]
 
         np.random.seed(seed)
 
-        mat = ortho_group.rvs(d)
-        mat = torch.from_numpy(mat).float()
-        mat = mat.to(device)
+        U = ortho_group.rvs(d)
 
-        setattr(self, "artifact", dict(eigvecs=mat))
+        std = np.std(activation @ U, axis=0)
 
-        self.mean = mean
+        setattr(self, "artifact", dict(eigvecs=U, std=std))
 
-    def save(self, output_dir: Path):
-        pass
-
-    def fit(
-        self,
-        *args,
-        **kwargs,
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-        pass
+        return U, std
 
 
 class PRCAVariant(Basis):
-    artifact_keys = ["eigvecs", "eigvals"]
+    artifact_keys = ["eigvecs", "std"]
     mode: str
 
     def fit(
@@ -395,11 +373,11 @@ class PRCAVariant(Basis):
 
         U = learner.fit(activation, context, **kwargs, beta=self.beta)
 
-        self.artifact = dict(zip(self.artifact_keys, (U, mean)))
+        std = np.std(activation @ U, axis=0)
 
-        eigvals = np.var(activation @ U, axis=0)
+        self.artifact = dict(zip(self.artifact_keys, (U, std)))
 
-        return U, eigvals
+        return U, std
 
 
 @register_basis("prca-abs")
@@ -425,7 +403,7 @@ class PRCARelReconReg(PRCAVariant):
 
 @register_basis("pcaprca-abs")
 class PCAPRCAVariant(Basis):
-    artifact_keys = ["eigvecs", "eigvals"]
+    artifact_keys = ["eigvecs", "std"]
     mode = "abs"
     beta = 0.0
 
@@ -459,11 +437,15 @@ class PCAPRCAVariant(Basis):
 
         U = learner.fit(activation, context, **kwargs, beta=self.beta)
 
-        self.artifact = dict(zip(self.artifact_keys, (E @ U, mean)))
+        # combining the eigvectors of cov(x) and the vectors from PRCA
+        # -> X @ (E@U)
+        U = E @ U
 
-        eigvals = np.var(activation, axis=0)
+        std = np.std(activation @ U, axis=0)
 
-        return U, eigvals
+        self.artifact = dict(zip(self.artifact_keys, (U, std)))
+
+        return U, std
 
 
 @register_basis("pcaprca-recon")

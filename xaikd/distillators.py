@@ -33,7 +33,6 @@ class LayerDistillInfo:
     layer_name: str
     num_input_channels: int
     num_output_channels: int
-    # output_spatial_dims: typing.Tuple[int, int]
 
 
 def get_distill_infor(
@@ -326,12 +325,16 @@ class Layerwise:
             feature_extractor=feature_extractor,
             teacher_module=nn.Sequential(
                 teacher_module,
-                basis.construct_projection_on_rank_k(
-                    distill_info.num_output_channels, device=device
+                basis.construct_adapter(
+                    k=distill_info.num_output_channels,
+                    device=device,
+                    mode=bases.AdapterMode.ENCODER,
                 ),
             ),
-            adapter=basis.contruct_rank_d_decoder(
-                distill_info.num_output_channels, device=device
+            adapter=basis.construct_adapter(
+                k=distill_info.num_output_channels,
+                device=device,
+                mode=bases.AdapterMode.DECODER,
             ),
             approximator=approx_mod,
             classification_head=classification_head,
