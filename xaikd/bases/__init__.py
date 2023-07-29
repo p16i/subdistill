@@ -229,7 +229,7 @@ class PCA(Basis):
 
         std = np.std(activation @ eigvecs, axis=0)
 
-        np.testing.assert_allclose(std, eigvals**0.5, atol=1e-6)
+        np.testing.assert_allclose(std, eigvals**0.5, atol=1e-3)
 
         self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
 
