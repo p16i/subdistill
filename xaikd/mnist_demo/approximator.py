@@ -28,7 +28,7 @@ class Approximator(nn.Module):
             bias=True,
         )
 
-        self.act = nn.LeakyReLU()
+        self.act = nn.ReLU()
 
     def forward(self, x):
         out = self.conv1(x)
@@ -62,8 +62,12 @@ class ApproximatorModelWrapper(pl.LightningModule):
 
         self.lambda_mse = lambda_mse
         self.lambda_xent = lambda_xent
-        self.encoder = basis.construct_projection_on_rank_k(k, device=device)
-        self.decoder = basis.contruct_rank_d_decoder(k, device=device)
+        self.encoder = basis.construct_adapter(
+            k=k, mode=bases.AdapterMode.ENCODER, device=device
+        )
+        self.decoder = basis.construct_adapter(
+            k=k, mode=bases.AdapterMode.DECODER, device=device
+        )
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.approx.parameters(), lr=1e-3)
@@ -127,7 +131,9 @@ class CombinedModule(nn.Module):
         self.approximator = approximator
         self.teacher = teacher
 
-        self.decoder = basis.contruct_rank_d_decoder(approximator.k, device=device)
+        self.decoder = basis.construct_adapter(
+            approximator.k, mode=bases.AdapterMode.DECODER, device=device
+        )
 
     def forward(self, x):
         latent = self.approximator(x)

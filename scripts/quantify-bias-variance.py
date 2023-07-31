@@ -223,7 +223,7 @@ class ModelWrapper(pl.LightningModule):
             feats = self.feat_extractor(x)
 
         zh = self.approximator(feats)
-        logits = self.classifier(zh)
+        logits = self.classifier(self.normalizer.unnormalize(zh))
 
         loss_mse = self._compute_loss_mse(feats, zh)
         loss_xent = self._compute_loss_xent(logits, y)
