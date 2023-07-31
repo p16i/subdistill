@@ -133,8 +133,8 @@ def test_correct_std(basis_name):
 def test_adapter():
     d = 20
     U = torch.from_numpy(ortho_group.rvs(d)).float()
-    mean = torch.zeros(d).float()
-    std = torch.ones(d).float()
+    mean = torch.randn(d).float()
+    std = torch.rand(d).float()
     encoder = bases.Adapter(
         U=U, mean=mean, std=std, mode=bases.AdapterMode.ENCODER, device="cpu"
     )

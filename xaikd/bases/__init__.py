@@ -57,16 +57,16 @@ class Adapter(torch.nn.Module):
             raise ValueError(f"[mode={self.mode}] doesn't exist!")
 
     def encoder(self, x):
-        out = x - self.mean
-        out = F.conv2d(out, self.mat_encoder)
-        out = out / (self.std + EPS)
-        return out
+        x = x - self.mean
+        x = F.conv2d(x, self.mat_encoder)
+        x = x / (self.std + EPS)
+        return x
 
     def decoder(self, x):
-        out = x * (self.std + EPS)
-        out = F.conv2d(x, self.mat_decoder)
-        out = out + self.mean
-        return out
+        x = x * (self.std + EPS)
+        x = F.conv2d(x, self.mat_decoder)
+        x = x + self.mean
+        return x
 
 
 def register_basis(name):
