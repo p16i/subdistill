@@ -28,7 +28,7 @@ class Approximator(nn.Module):
             bias=True,
         )
 
-        self.act = nn.LeakyReLU()
+        self.act = nn.ReLU()
 
     def forward(self, x):
         out = self.conv1(x)
