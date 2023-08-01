@@ -75,13 +75,16 @@ def get_model(name: str) -> nn.Module:
 
     model.eval()
 
+
+    assert getattr(model, "num_classes")
+
     # todo: disable grad
     # perhaps, check whether disable grad improve inference speed?
 
     return model
 
 
-def get_layer_dimensions(model: nn.Module, layer: str) -> int:
+def get_layer_output_dimensions(model: nn.Module, layer: str) -> int:
     return getattr(model, "__layer_dimension")[layer]
 
 

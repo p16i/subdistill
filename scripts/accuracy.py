@@ -58,7 +58,7 @@ def main(model_name, layer, basis_names, artifact_dir):
 
     artifact_dir = Path(artifact_dir) / model_name / layer
 
-    dims = models.get_layer_dimensions(arch, layer)
+    dims = models.get_layer_output_dimensions(arch, layer)
 
     click.echo(f"Loading artifacts from `{artifact_dir}`")
     click.echo(f"Device: {device}")
