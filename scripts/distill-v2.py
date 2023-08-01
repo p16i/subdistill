@@ -197,7 +197,7 @@ def main(
         basis_name = f"{conf.basis_name}--{basis_mode}"
         approximator_mode = approximators.normalize_mode_name(conf.approximator_mode)
         basis_output_dir = (
-            output_dir / f"{approximator_mode}-comp{compression_rate}" / basis_name
+            output_dir / f"{approximator_mode}-comp{conf.compression_rate}" / basis_name
         )
         os.makedirs(basis_output_dir, exist_ok=True)
 
@@ -225,6 +225,7 @@ def main(
 
         df = pd.DataFrame(results)
         stats = df.epoch_val_acc
+        # todo: add trainable params
         click.echo(
             f"[basis={basis_name}] acc (max={stats.max():.4f}): {stats.values[-1]:.4f}"
         )
