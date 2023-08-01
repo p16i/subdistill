@@ -54,7 +54,8 @@ def get_approximator_for_resnet18(
         torchvision.models.resnet.BasicBlock,
         output_dimensions,
         blocks,
-        # todo: check whether they use stride=2?
+        # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L202
         stride=2,
+        # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L78
         dilate=False,
     )

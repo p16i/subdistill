@@ -259,7 +259,7 @@ class Identity(Basis):
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         std = self.artifact["std"]
         d = std.shape[0]
-        # todo: add unit test for this!
+
         return Adapter(
             U=torch.eye(d),
             std=std,

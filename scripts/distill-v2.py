@@ -196,10 +196,17 @@ def main(
 
         basis_name = conf.basis_name
         approximator_mode = approximators.normalize_mode_name(conf.approximator_mode)
+        # todo: perhaps, parameterize also output_dir / `distillation` / ...
         basis_output_dir = (
             output_dir / f"{approximator_mode}-comp{conf.compression_rate}" / basis_name
         )
-        os.makedirs(basis_output_dir, exist_ok=True)
+        if os.path.exists(basis_output_dir):
+            click.echo(
+                f"Directory `{basis_output_dir}` already exists! Skipping the task"
+            )
+            continue
+
+        os.makedirs(basis_output_dir)
 
         basis = bases.get_basis(basis_name)
 

@@ -300,6 +300,8 @@ class Layerwise:
         assert (
             count_trainable_params > 0 and count_trainable_params < total_teacher_params
         )
+        # todo: this split should be available via the model itself.
+        # e.g., self.teacher.split_at(...)
         _, teacher_module, _ = models.resnet.split_resnet_18_at(
             self.teacher, distill_info.layer_name
         )
