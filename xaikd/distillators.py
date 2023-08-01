@@ -82,11 +82,23 @@ class ModelWrapper(pl.LightningModule):
     ):
         super().__init__()
 
-        self.feature_extrator = feature_extractor
+        self.feature_extrator = utils.freeze_model(feature_extractor)
+        self.classification_head = utils.freeze_model(classification_head)
+        self.teacher_module = utils.freeze_model(teacher_module)
+
+        self.adapter = utils.freeze_model(adapter)
+
+        # sanity check
+        for module in [
+            self.feature_extrator,
+            self.classification_head,
+            self.teacher_module,
+        ]:
+            _, trainable_param = utils.count_params_in_model(module)
+            assert trainable_param == 0
+            assert not module.training
+
         self.approximator = approximator
-        self.classification_head = classification_head
-        self.teacher_module = teacher_module
-        self.adapter = adapter
 
         self.lr = lr
 
@@ -298,20 +310,16 @@ class Layerwise:
             classification_head,
         ) = models.resnet.split_resnet_18_at(student, distill_info.layer_name)
 
-        teacher_module = utils.freeze_model(
-            nn.Sequential(
+        training_wrapper = ModelWrapper(
+            feature_extractor=feature_extractor,
+            teacher_module=nn.Sequential(
                 teacher_module,
                 basis.construct_adapter(
                     k=distill_info.num_output_channels,
                     device=device,
                     mode=bases.AdapterMode.ENCODER,
                 ),
-            )
-        )
-
-        training_wrapper = ModelWrapper(
-            feature_extractor=feature_extractor,
-            teacher_module=teacher_module,
+            ),
             adapter=basis.construct_adapter(
                 k=distill_info.num_output_channels,
                 device=device,
