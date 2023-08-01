@@ -28,7 +28,8 @@ NUM_SPATIAL_LOCATIONS_SAMPLING = 20
 DATASET_DIR = "./datasets"
 
 MODEL_URLS = {
-    "mnist-k14-h128": "https://tubcloud.tu-berlin.de/s/84X83BZ7STJy28D/download/cnn-mnist-colab-ks14.pth"
+    "mnist-k14-h128": "https://tubcloud.tu-berlin.de/s/84X83BZ7STJy28D/download/cnn-mnist-colab-ks14.pth",
+    "mnist-k28-h128": "https://tubcloud.tu-berlin.de/s/AedT28n6A6pdWFZ/download/cnn-mnist-colab-ks28.pth",
 }
 
 DATA_MEAN, DATA_STD = 0.5, 0.5
@@ -70,12 +71,12 @@ class CNN(nn.Module):
 
         self.kernel_size = kernel_size
 
-        if kernel_size == 7:
-            nsteps = 22
-        elif kernel_size == 14:
+        if kernel_size == 14:
             nsteps = 15
         elif kernel_size == 28:
             nsteps = 1
+        else:
+            raise ValueError(f"{kernel_size} not properly configured!")
 
         self.conv1 = nn.Conv2d(
             in_channels=1,
@@ -85,7 +86,7 @@ class CNN(nn.Module):
         )
         self.act1 = nn.ReLU()
 
-        self.lin2 = nn.Linear((15**2) * (nhidden), 10)
+        self.lin2 = nn.Linear((nsteps**2) * (nhidden), 10)
 
     def forward_feat(self, x):
         x = self.act1(self.conv1(x))

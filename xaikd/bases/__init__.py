@@ -57,16 +57,16 @@ class Adapter(torch.nn.Module):
             raise ValueError(f"[mode={self.mode}] doesn't exist!")
 
     def encoder(self, x):
-        out = x - self.mean
-        out = F.conv2d(out, self.mat_encoder)
-        out = out / (self.std + EPS)
-        return out
+        x = x - self.mean
+        x = F.conv2d(x, self.mat_encoder)
+        x = x / (self.std + EPS)
+        return x
 
     def decoder(self, x):
-        out = x * (self.std + EPS)
-        out = F.conv2d(x, self.mat_decoder)
-        out = out + self.mean
-        return out
+        x = x * (self.std + EPS)
+        x = F.conv2d(x, self.mat_decoder)
+        x = x + self.mean
+        return x
 
 
 def register_basis(name):
@@ -220,7 +220,11 @@ class PCA(Basis):
         if self.centering:
             activation = activation - mean
 
-        eigvals, eigvecs = np.linalg.eigh(activation.T @ activation / n)
+        assert not np.isnan(activation).any()
+
+        cov = activation.T @ activation / n
+
+        eigvals, eigvecs = np.linalg.eigh(cov)
 
         indices = np.argsort(eigvals)[::-1]
 
@@ -229,6 +233,17 @@ class PCA(Basis):
 
         std = np.std(activation @ eigvecs, axis=0)
 
+        cond = eigvals < 0
+
+        if cond.sum() > 0:
+            print("[warning]: some eigenvalues are of PCA smaller than zero!")
+            print(
+                "Because this seems to be numerical issue, we set eigvals[eigvals < 0] = 0"
+            )
+            eigvals[cond] = 0
+
+        assert not np.isnan(std).any()
+        assert not (eigvals < 0).any()
         np.testing.assert_allclose(std, eigvals**0.5, atol=1e-3)
 
         self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
