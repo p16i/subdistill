@@ -109,7 +109,7 @@ def estimate_acc_for_basis(
 @click.option(
     "--basis-names",
     type=click_types.List(),
-    default="pca,prca-abs,random1,random2",
+    default="pca,prca-abs,prca-recon,pcaprca-abs,pcaprca-recon,rel-abs,rel,random1,random2",
 )
 @click.option("--seed", default=1, type=int)
 @click.option("--num-training-samples", default=50, type=int)
@@ -132,25 +132,23 @@ def main(
 
     model = model.to(device)
 
-    # todo: seed should be here?
-
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
         dataset, num_training_samples=num_training_samples
     )
     train_dataloader = dataset.loader(train_split=True)
 
     # remark: we need to use `batch_size=1` due to rounding issue.
-    val_dataloader = dataset.loader(train_split=False, batch_size=1)
+    val_dataloader = dataset.loader(train_split=False, batch_size=128)
 
     click.echo(f"Basis Centering Mode: {basis_mode}")
     click.echo(f"with bases: {basis_names}")
 
     if logit_modifier == "oneclass":
         logit_mod = attributors.OneClassEvidence(dataset)
-    elif logit_modifier == "oneclasslogsumexp":
-        logit_mod = attributors.OneClassLogSumExpEvidence(dataset)
     elif logit_modifier == "multipleclasses":
         logit_mod = attributors.SelectedClassesEvidence(dataset)
+    elif logit_modifier == "oneclasslogsumexp":
+        logit_mod = attributors.OneClassLogSumExpEvidence(dataset)
     else:
         raise ValueError("")
 
@@ -164,7 +162,7 @@ def main(
 
     dataset_slug = getattr(dataset, "__name")
     if num_training_samples is not None:
-        dataset_slug = f"{dataset_slug}--n{num_training_samples}"
+        dataset_slug = f"{dataset_slug}--n{num_training_samples}-seed{seed}"
 
     output_dir = (
         Path(output_dir)

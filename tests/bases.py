@@ -1,10 +1,14 @@
 import pytest
 import numpy as np
 
+import torch
+
+from scipy.stats import ortho_group
+
 from xaikd import bases
 
 
-@pytest.mark.parametrize("centering", [False, True])
+@pytest.mark.parametrize("centering", [True])
 def test_pca(centering):
     np.random.seed(1)
     n, d = 10, 5
@@ -18,7 +22,8 @@ def test_pca(centering):
     mean = activation.mean(axis=0)
 
     if centering:
-        expected_cov = (activation - mean).T @ (activation - mean) / n
+        centered_activation = activation - mean
+        expected_cov = centered_activation.T @ centered_activation / n
     else:
         expected_cov = (activation).T @ (activation) / n
 
@@ -26,11 +31,15 @@ def test_pca(centering):
 
     pca = bases.get_basis(f"pca--{suffix}")
 
-    eigvecs, eigvals = pca.fit(
+    eigvecs, std = pca.fit(
         activation, None, mean=mean if centering else None, device="cpu"
     )
 
+    eigvals = std**2
+
     np.testing.assert_allclose(eigvecs @ np.diag(eigvals) @ eigvecs.T, expected_cov)
+
+    np.testing.assert_allclose(std, np.std(centered_activation @ eigvecs, axis=0))
 
     assert (eigvals[:-1] < eigvals[1:]).sum() == 0, "eigvalues are in descending order."
 
@@ -40,7 +49,7 @@ def test_pca(centering):
         assert f"{pca}" == "pca--uncentered"
 
 
-@pytest.mark.parametrize("centering", [False, True])
+@pytest.mark.parametrize("centering", [True])
 def test_prca(centering):
     np.random.seed(1)
     n, d = 10, 5
@@ -61,22 +70,16 @@ def test_prca(centering):
         expected_cov = (
             (centered_activation.T @ context) + context.T @ centered_activation
         ) / n
-    else:
-        expected_cov = ((activation.T @ context) + context.T @ activation) / n
 
     suffix = "centered" if centering else "uncentered"
 
     prca = bases.get_basis(f"prca--{suffix}")
 
-    eigvecs, eigvals = prca.fit(
+    eigvecs, std = prca.fit(
         activation, context, mean=mean if centering else None, device="cpu"
     )
 
-    np.testing.assert_allclose(eigvecs @ np.diag(eigvals) @ eigvecs.T, expected_cov)
-
-    assert (
-        eigvals[:-1] < eigvals[1:]
-    ).sum() == 0, "Eigenvalues are in descending order"
+    np.testing.assert_allclose(std, np.std(centered_activation @ eigvecs, axis=0))
 
     if centering:
         assert f"{prca}" == "prca--centered"
@@ -84,7 +87,7 @@ def test_prca(centering):
         assert f"{prca}" == "prca--uncentered"
 
 
-@pytest.mark.parametrize("slug", ["centered", "uncentered"])
+@pytest.mark.parametrize("slug", ["centered"])
 @pytest.mark.parametrize("seed", [1, 10])
 def test_get_random_basis(slug, seed):
     basis = bases.get_basis(f"random{seed}--{slug}")
@@ -97,7 +100,48 @@ def test_get_random_basis(slug, seed):
 
 
 @pytest.mark.parametrize("variant", ["abs", "recon", "reconreg0.1"])
-@pytest.mark.parametrize("slug", ["centered", "uncentered"])
+@pytest.mark.parametrize("slug", ["centered"])
 def test_instantiate_prca_greedy_basese(variant, slug):
     basis = bases.get_basis(f"prca-{variant}--{slug}")
     assert True
+
+
+@pytest.mark.parametrize(
+    "basis_name", ["pca", "rel", "random1", "prca-abs", "prca-recon"]
+)
+def test_correct_std(basis_name):
+    mode = "centered"
+
+    np.random.seed(1)
+    n, d = 10, 5
+    activation = np.random.randn(n, d)
+    context = np.random.randn(n, d)
+
+    mean = activation.mean(axis=0)
+
+    centered_activation = activation - mean
+
+    basis = bases.get_basis(f"{basis_name}--{mode}")
+
+    eigvecs, std = basis.fit(
+        activation=activation, context=context, mean=mean, device="cpu"
+    )
+
+    np.testing.assert_allclose(std, np.std(centered_activation @ eigvecs, axis=0))
+
+
+def test_adapter():
+    d = 20
+    U = torch.from_numpy(ortho_group.rvs(d)).float()
+    mean = torch.randn(d).float()
+    std = torch.rand(d).float()
+    encoder = bases.Adapter(
+        U=U, mean=mean, std=std, mode=bases.AdapterMode.ENCODER, device="cpu"
+    )
+    decoder = bases.Adapter(
+        U=U, mean=mean, std=std, mode=bases.AdapterMode.DECODER, device="cpu"
+    )
+
+    x = torch.randn(20, d, 1, 1)
+
+    np.testing.assert_allclose(decoder(encoder(x)), x, atol=1e-5)

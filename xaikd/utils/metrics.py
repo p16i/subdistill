@@ -81,23 +81,27 @@ def auroc_with_basis(
     basis: bases.Basis,
     device: str,
     arr_ks: typing.List[int],
+    should_convert_auroc: bool,
 ) -> typing.List[float]:
     arr_aurocs = []
 
     for k in tqdm(arr_ks, desc=f"[basis={basis}]"):
         try:
-            hook = module.register_forward_hook(basis.construct_fh_rank_k_projection(k))
+            hook = module.register_forward_hook(
+                basis.construct_fh_rank_k_projection(k, device=device)
+            )
 
             value = auroc(
                 model,
                 dataloader=dataloader,
                 classes=classes,
                 device=device,
+                should_convert_auroc=should_convert_auroc,
             )
 
             arr_aurocs.append(value)
 
         finally:
-            pass
+            hook.remove()
 
     return arr_aurocs
