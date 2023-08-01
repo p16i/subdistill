@@ -148,12 +148,17 @@ def main(
     arr_experiment_confs = [
         # todo: make sure that we run this conf oly once!
         ExperimentConfiguration(
-            basis_name="identity",
+            basis_name="identity--uncentered",
             compression_rate=1.0,
             approximator_mode=ApproximatorMode.HOMOGENOUS,
         ),
         ExperimentConfiguration(
-            basis_name="identity",
+            basis_name="identity--uncentered",
+            compression_rate=compression_rate,
+            approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
+        ),
+        ExperimentConfiguration(
+            basis_name="identity--centered",
             compression_rate=compression_rate,
             approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
         ),
@@ -162,7 +167,7 @@ def main(
     for basis_name in basis_names.split(","):
         arr_experiment_confs.append(
             ExperimentConfiguration(
-                basis_name=basis_name,
+                basis_name=f"{basis_name}--{basis_mode}",
                 compression_rate=compression_rate,
                 approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
             ),
@@ -194,7 +199,7 @@ def main(
                 distillator.ref_acc == ref_acc
             ), "Reference models have different accuracy!"
 
-        basis_name = f"{conf.basis_name}--{basis_mode}"
+        basis_name = conf.basis_name
         approximator_mode = approximators.normalize_mode_name(conf.approximator_mode)
         basis_output_dir = (
             output_dir / f"{approximator_mode}-comp{conf.compression_rate}" / basis_name

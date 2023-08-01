@@ -24,15 +24,7 @@ BASES = dict()
 AdapterMode = Enum("AdapterMode", ["ENCODER", "DECODER"])
 
 
-class AdapterBase(torch.nn.Module):
-    def encode(self, x: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError
-
-    def decode(self, x: torch.Tensor) -> torch.Tensor:
-        raise NotImplementedError
-
-
-class Adapter(AdapterBase):
+class Adapter(torch.nn.Module):
     def __init__(
         self,
         U: torch.Tensor,
@@ -74,19 +66,6 @@ class Adapter(AdapterBase):
         x = x * (self.std + EPS)
         x = F.conv2d(x, self.mat_decoder)
         x = x + self.mean
-        return x
-
-
-class IdentityAdapter(AdapterBase, torch.nn.Identity):
-    std = 1
-
-    def __init__(self):
-        super().__init__()
-
-    def encode(self, x):
-        return x
-
-    def decode(self, x):
         return x
 
 
@@ -196,9 +175,10 @@ def get_basis(slug, **kwargs) -> Basis:
     name_slug, centering_slug = slug.split("--")
     centering = True if centering_slug == "centered" else False
 
-    assert (
-        centering
-    ), "Since Sprint S9 (2023-07), we conclude that `centering=True` is the fixed parameter."
+    if name_slug != "identity":
+        assert (
+            centering
+        ), "Since Sprint S9 (2023-07), we conclude that `centering=True` is the fixed parameter."
 
     if "random" in name_slug:
         seed = int(name_slug.replace("random", ""))
@@ -274,11 +254,19 @@ class PCA(Basis):
 
 @register_basis("identity")
 class Identity(Basis):
-    artifact = dict()
-    artifact_keys = []
+    artifact_keys = ["std"]
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
-        return IdentityAdapter()
+        std = self.artifact["std"]
+        d = std.shape[0]
+        # todo: add unit test for this!
+        return Adapter(
+            U=torch.eye(d),
+            std=std,
+            mean=self.mean,
+            device=device,
+            mode=mode,
+        )
 
     def construct_fh_rank_k_projection(self, k: int, device: str):
         def fh(module, input, output):
@@ -286,11 +274,21 @@ class Identity(Basis):
 
         return fh
 
-    def load(self, artifact_dir: Path, device="cpu"):
-        pass
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
+    ) -> typing.Tuple[npt.NDArray]:
+        if self.centering:
+            activation = activation - mean
 
-    def save(self, output_dir: Path):
-        pass
+        std = np.std(activation, axis=0)
+
+        setattr(self, "artifact", dict(zip(self.artifact_keys, [std])))
+
+        return std
 
 
 @register_basis("rel")
