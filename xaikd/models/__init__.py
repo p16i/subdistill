@@ -75,7 +75,6 @@ def get_model(name: str) -> nn.Module:
 
     model.eval()
 
-
     assert getattr(model, "num_classes")
 
     # todo: disable grad
@@ -132,4 +131,7 @@ def _resnet50_cifar(num_classes: int) -> nn.Module:
 
 @register_model("imagenet-resnet18")
 def _resnet18_imagenet() -> nn.Module:
-    return torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    model = torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    model.num_classes = 1000
+
+    return model
