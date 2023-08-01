@@ -298,16 +298,20 @@ class Layerwise:
             classification_head,
         ) = models.resnet.split_resnet_18_at(student, distill_info.layer_name)
 
-        training_wrapper = ModelWrapper(
-            feature_extractor=feature_extractor,
-            teacher_module=nn.Sequential(
+        teacher_module = utils.freeze_model(
+            nn.Sequential(
                 teacher_module,
                 basis.construct_adapter(
                     k=distill_info.num_output_channels,
                     device=device,
                     mode=bases.AdapterMode.ENCODER,
                 ),
-            ),
+            )
+        )
+
+        training_wrapper = ModelWrapper(
+            feature_extractor=feature_extractor,
+            teacher_module=teacher_module,
             adapter=basis.construct_adapter(
                 k=distill_info.num_output_channels,
                 device=device,

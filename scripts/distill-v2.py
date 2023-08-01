@@ -157,11 +157,6 @@ def main(
             compression_rate=compression_rate,
             approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
         ),
-        ExperimentConfiguration(
-            basis_name="identity--centered",
-            compression_rate=compression_rate,
-            approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
-        ),
     ]
 
     for basis_name in basis_names.split(","):

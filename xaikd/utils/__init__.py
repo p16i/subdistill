@@ -91,3 +91,10 @@ def deactivate_requires_grad(model: torch.nn.Module):
     # remark: https://github.com/lightly-ai/lightly/blob/master/lightly/models/utils.py#L166
     for param in model.parameters():
         param.requires_grad = False
+
+
+def freeze_model(model: torch.nn.Module) -> torch.nn.Module:
+    deactivate_requires_grad(model)
+    model.eval()
+
+    return model
