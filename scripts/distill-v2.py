@@ -14,7 +14,17 @@ from copy import deepcopy
 from torchvision import transforms
 
 from xaikd.utils import click_types
-from xaikd import datasets, utils, distillators, models, attributors, bases
+from xaikd import (
+    datasets,
+    utils,
+    distillators,
+    models,
+    attributors,
+    bases,
+    approximators,
+)
+
+from xaikd.approximators import ApproximatorMode
 
 from tensorboard_logger import configure
 
@@ -35,7 +45,7 @@ def get_transformation(dataset_name):
 
 @click.command()
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
-@click.option("--model", default="cifar100-resnet18-p1", required=True)
+@click.option("--teacher-model", default="cifar100-resnet18-p1", required=True)
 @click.option("--layer", default="layer3", type=str, required=True)
 @click.option(
     "--basis-names",
@@ -54,7 +64,7 @@ def get_transformation(dataset_name):
 @click.option("--lambda-mse", type=float, default=1.0)
 @click.option("--lambda-xent", type=float, default=1.0)
 def main(
-    model,
+    teacher_model,
     dataset,
     basis_names,
     output_dir,
@@ -74,8 +84,8 @@ def main(
     arguments = locals()
     start_time = datetime.now()
 
-    model = models.get_model(model)
-    model_name = getattr(model, "__name")
+    teacher_model = models.get_model(teacher_model)
+    model_name = getattr(teacher_model, "__name")
 
     layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}-comp{compression_rate}-seed{seed}"
 
@@ -90,7 +100,7 @@ def main(
         dataset, num_training_samples=num_samples
     )
 
-    model.to(device)
+    teacher_model.to(device)
 
     # logodd_mod = attributors.LogOddEvidence(dataset.selected_classes)
     logit_mod = attributors.OneClassEvidence(dataset=dataset)
@@ -109,7 +119,7 @@ def main(
 
     # todo: make sure that all bases use the same activation and context vectors
     arr_act, arr_ctx = attributors.extract_activation_context(
-        model=model,
+        model=teacher_model,
         layer=layer,
         data_loader=train_loader,
         dataset=dataset,
@@ -128,9 +138,11 @@ def main(
     for basis_name in basis_names.split(","):
         pl.seed_everything(seed)
 
-        layer_approximator = distillators.get_approximator_for_resnet18(
-            layer,
-            distill_info.num_output_channels,
+        layer_approximator = approximators.construct_approximator_for(
+            teacher_model,
+            layer=layer,
+            compression_rate=compression_rate,
+            mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
         )
 
         distillator = distillators.Layerwise(
@@ -145,7 +157,9 @@ def main(
         if ref_acc is None:
             ref_acc = distillator.ref_acc
         else:
-            assert distillator.ref_acc == ref_acc, "Models have different accuracy"
+            assert (
+                distillator.ref_acc == ref_acc
+            ), "Reference models have different accuracy!"
 
         basis_name = f"{basis_name}--{basis_mode}"
         basis_output_dir = output_dir / basis_name

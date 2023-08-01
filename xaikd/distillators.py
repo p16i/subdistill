@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 import torchvision
 import torchmetrics
 
+from enum import Enum
 
 from pathlib import Path
 
@@ -216,31 +217,6 @@ class ModelWrapper(pl.LightningModule):
         self.arr_metrics.append(accs)
 
         self.approximator.train()
-
-
-def get_approximator_for_resnet18(
-    layer: str, output_dimensions: int, num_classes=100
-) -> nn.Module:
-    model = models._resnet18_cifar(num_classes)
-    model.inplanes = getattr(model, layer)[0].conv1.weight.shape[1]
-
-    blocks = len(getattr(model, layer))
-
-    output = nn.Sequential(
-        model._make_layer(
-            torchvision.models.resnet.BasicBlock,
-            output_dimensions,
-            blocks,
-            # todo: check whether they use stride=2?
-            stride=2,
-            dilate=False,
-        ),
-        nn.Conv2d(
-            in_channels=output_dimensions, out_channels=output_dimensions, kernel_size=1
-        ),
-    )
-
-    return output
 
 
 class Layerwise:
