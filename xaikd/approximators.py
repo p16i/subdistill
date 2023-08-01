@@ -11,6 +11,10 @@ ApproximatorMode = Enum(
 )
 
 
+def normalize_mode_name(mode: ApproximatorMode) -> str:
+    return f"{mode}".split(".")[-1].lower()
+
+
 def construct_approximator_for(
     model: nn.Module,
     layer: str,

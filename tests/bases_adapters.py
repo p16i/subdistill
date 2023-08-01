@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from xaikd.utils import count_params_in_model
 
-from xaikd import distillators, bases
+from xaikd import bases
 
 from pathlib import Path
 import tempfile

@@ -12,6 +12,7 @@ from pathlib import Path
 from copy import deepcopy
 
 from torchvision import transforms
+from tqdm import tqdm
 
 from xaikd.utils import click_types
 from xaikd import (
@@ -27,6 +28,15 @@ from xaikd import (
 from xaikd.approximators import ApproximatorMode
 
 from tensorboard_logger import configure
+
+from dataclasses import dataclass
+
+
+@dataclass
+class ExperimentConfiguration:
+    basis_name: str
+    compression_rate: float
+    approximator_mode: ApproximatorMode
 
 
 def get_transformation(dataset_name):
@@ -87,7 +97,7 @@ def main(
     teacher_model = models.get_model(teacher_model)
     model_name = getattr(teacher_model, "__name")
 
-    layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}-comp{compression_rate}-seed{seed}"
+    layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}-seed{seed}"
 
     output_dir = Path(output_dir) / dataset / model_name / layer_slug
 
@@ -135,14 +145,37 @@ def main(
 
     ref_acc = None
 
+    arr_experiment_confs = [
+        # todo: make sure that we run this conf oly once!
+        ExperimentConfiguration(
+            basis_name="identity",
+            compression_rate=1.0,
+            approximator_mode=ApproximatorMode.HOMOGENOUS,
+        ),
+        ExperimentConfiguration(
+            basis_name="identity",
+            compression_rate=compression_rate,
+            approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
+        ),
+    ]
+
     for basis_name in basis_names.split(","):
+        arr_experiment_confs.append(
+            ExperimentConfiguration(
+                basis_name=basis_name,
+                compression_rate=compression_rate,
+                approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
+            ),
+        )
+
+    for conf in tqdm(arr_experiment_confs):
         pl.seed_everything(seed)
 
         layer_approximator = approximators.construct_approximator_for(
             teacher_model,
             layer=layer,
-            compression_rate=compression_rate,
-            mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
+            compression_rate=conf.compression_rate,
+            mode=conf.approximator_mode,
         )
 
         distillator = distillators.Layerwise(
@@ -161,8 +194,11 @@ def main(
                 distillator.ref_acc == ref_acc
             ), "Reference models have different accuracy!"
 
-        basis_name = f"{basis_name}--{basis_mode}"
-        basis_output_dir = output_dir / basis_name
+        basis_name = f"{conf.basis_name}--{basis_mode}"
+        approximator_mode = approximators.normalize_mode_name(conf.approximator_mode)
+        basis_output_dir = (
+            output_dir / f"{approximator_mode}-comp{compression_rate}" / basis_name
+        )
         os.makedirs(basis_output_dir, exist_ok=True)
 
         basis = bases.get_basis(basis_name)

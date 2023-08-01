@@ -24,7 +24,15 @@ BASES = dict()
 AdapterMode = Enum("AdapterMode", ["ENCODER", "DECODER"])
 
 
-class Adapter(torch.nn.Module):
+class AdapterBase(torch.nn.Module):
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError
+
+    def decode(self, x: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError
+
+
+class Adapter(AdapterBase):
     def __init__(
         self,
         U: torch.Tensor,
@@ -50,22 +58,35 @@ class Adapter(torch.nn.Module):
 
     def forward(self, x) -> torch.Tensor:
         if self.mode == AdapterMode.ENCODER:
-            return self.encoder(x)
+            return self.encode(x)
         elif self.mode == AdapterMode.DECODER:
-            return self.decoder(x)
+            return self.decode(x)
         else:
             raise ValueError(f"[mode={self.mode}] doesn't exist!")
 
-    def encoder(self, x):
+    def encode(self, x):
         x = x - self.mean
         x = F.conv2d(x, self.mat_encoder)
         x = x / (self.std + EPS)
         return x
 
-    def decoder(self, x):
+    def decode(self, x):
         x = x * (self.std + EPS)
         x = F.conv2d(x, self.mat_decoder)
         x = x + self.mean
+        return x
+
+
+class IdentityAdapter(AdapterBase, torch.nn.Identity):
+    std = 1
+
+    def __init__(self):
+        super().__init__()
+
+    def encode(self, x):
+        return x
+
+    def decode(self, x):
         return x
 
 
@@ -255,6 +276,9 @@ class PCA(Basis):
 class Identity(Basis):
     artifact = dict()
     artifact_keys = []
+
+    def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
+        return IdentityAdapter()
 
     def construct_fh_rank_k_projection(self, k: int, device: str):
         def fh(module, input, output):
