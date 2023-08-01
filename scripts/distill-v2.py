@@ -40,7 +40,7 @@ def get_transformation(dataset_name):
 @click.option(
     "--basis-names",
     type=str,
-    default="pca,prca-abs,prca-recon,random1,random2",
+    default="pca,prca-recon,prca-abs,pcaprca-abs,pcaprca-recon,random1,random2",
     required=True,
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
@@ -51,6 +51,8 @@ def get_transformation(dataset_name):
 @click.option("--lr", type=float, default=0.001, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--weight-decay", type=float, default=0.0)
+@click.option("--lambda-mse", type=float, default=1.0)
+@click.option("--lambda-xent", type=float, default=1.0)
 def main(
     model,
     dataset,
@@ -64,6 +66,8 @@ def main(
     layer,
     basis_mode,
     weight_decay,
+    lambda_mse,
+    lambda_xent,
 ):
     pl.seed_everything(seed)
 
@@ -73,7 +77,7 @@ def main(
     model = models.get_model(model)
     model_name = getattr(model, "__name")
 
-    layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-comp{compression_rate}-seed{seed}"
+    layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}-comp{compression_rate}-seed{seed}"
 
     output_dir = Path(output_dir) / dataset / model_name / layer_slug
 
@@ -119,6 +123,8 @@ def main(
         arch=model_name, layer=layer, compression_rate=compression_rate
     )
 
+    ref_acc = None
+
     for basis_name in basis_names.split(","):
         pl.seed_everything(seed)
 
@@ -128,13 +134,18 @@ def main(
         )
 
         distillator = distillators.Layerwise(
-            teacher=model,
+            teacher=models.get_model(model_name),
             dataset=dataset,
             train_dataloader=train_loader_with_aug,
             val_dataloader=val_loader,
             device=device,
             weight_decay=weight_decay,
         )
+
+        if ref_acc is None:
+            ref_acc = distillator.ref_acc
+        else:
+            assert distillator.ref_acc == ref_acc, "Models have different accuracy"
 
         basis_name = f"{basis_name}--{basis_mode}"
         basis_output_dir = output_dir / basis_name
@@ -158,6 +169,8 @@ def main(
             device=device,
             lr=lr,
             log_dir=basis_output_dir / "log",
+            lambda_mse=lambda_mse,
+            lambda_xent=lambda_xent,
         )
 
         df = pd.DataFrame(results)

@@ -6,6 +6,8 @@ import click
 from datetime import datetime
 from pathlib import Path
 
+from pytorch_lightning.loggers import TensorBoardLogger
+
 import xaikd.mnist_demo as mnist_demo
 
 import torch
@@ -29,8 +31,10 @@ def train_approximator(
     k: int,
     lambda_mse: float,
     lambda_crossent: float,
-    data_loader: DataLoader,
-    epochs=20,
+    train_dataloader: DataLoader,
+    val_dataloader: DataLoader,
+    model_path: Path,
+    epochs=50,
     device="cpu",
     verbose=False,
 ) -> mnist_demo.approximator.Approximator:
@@ -45,6 +49,7 @@ def train_approximator(
         max_epochs=epochs,
         enable_checkpointing=False,
         deterministic=True,
+        logger=TensorBoardLogger(model_path),
     )
 
     trainer.fit(
@@ -54,11 +59,12 @@ def train_approximator(
             basis=basis,
             k=k,
             lambda_mse=lambda_mse,
-            lambda_crossent=lambda_crossent,
+            lambda_xent=lambda_crossent,
             verbose=verbose,
             device=device,
         ),
-        data_loader,
+        train_dataloader,
+        val_dataloader,
     )
 
     return approximator
@@ -66,9 +72,9 @@ def train_approximator(
 
 @click.command()
 @click.option("--model-name", default="mnist-k14-h128", type=str)
-@click.option("--epochs", default=20, type=int)
+@click.option("--epochs", default=100, type=int)
 @click.option("--output-dir", default="./tmp", type=str)
-@click.option("--samples-per-class", default=7000, type=int)
+@click.option("--samples-per-class", default=5000, type=int)
 def main(model_name, epochs, output_dir, samples_per_class):
     arguments = locals()
     start_time = datetime.now()
@@ -164,7 +170,7 @@ def main(model_name, epochs, output_dir, samples_per_class):
         basis.load(output_dir / mnist_demo.CONSIDERED_LAYER, device=device)
         stats_approximator = []
 
-        for k in np.arange(1, 5 + 1):
+        for k in np.arange(1, 3 + 1):
             for lambda_mse, lambda_crossent in itertools.product(
                 mnist_demo.ARRAY_LAMBDA, mnist_demo.ARRAY_LAMBDA
             ):
@@ -180,10 +186,12 @@ def main(model_name, epochs, output_dir, samples_per_class):
                 approx = train_approximator(
                     teacher_model,
                     basis=basis,
+                    model_path=model_path,
                     k=k,
                     lambda_mse=lambda_mse,
                     lambda_crossent=lambda_crossent,
-                    data_loader=train_subset_loader,
+                    train_dataloader=train_subset_loader,
+                    val_dataloader=val_subset_loader,
                     epochs=epochs,
                     device=device,
                 )

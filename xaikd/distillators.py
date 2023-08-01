@@ -33,7 +33,6 @@ class LayerDistillInfo:
     layer_name: str
     num_input_channels: int
     num_output_channels: int
-    # output_spatial_dims: typing.Tuple[int, int]
 
 
 def get_distill_infor(
@@ -68,6 +67,8 @@ class ModelWrapper(pl.LightningModule):
     def __init__(
         self,
         feature_extractor: nn.Module,
+        teacher_module: nn.Module,
+        adapter: nn.Module,
         approximator: nn.Module,
         classification_head: nn.Module,
         lr: float,
@@ -75,23 +76,32 @@ class ModelWrapper(pl.LightningModule):
         train_dataloader: DataLoader,
         val_dataloader: DataLoader,
         weight_decay: float,
+        lambda_mse: float,
+        lambda_xent: float,
     ):
         super().__init__()
 
         self.feature_extrator = feature_extractor
         self.approximator = approximator
         self.classification_head = classification_head
+        self.teacher_module = teacher_module
+        self.adapter = adapter
 
         self.lr = lr
 
         self.arr_metrics = []
         self.dataset = dataset
-        self.val_loss = torchmetrics.MeanMetric()
+
+        self.lambda_mse = lambda_mse
+        self.lambda_xent = lambda_xent
+        print(f"Lambda (mse={self.lambda_mse}), (xent={self.lambda_xent})")
 
         # todo: find a better way to do this. Perhaps, via Callback?
         self._train_dataloader = train_dataloader
         self._val_dataloader = val_dataloader
         self.weight_decay = weight_decay
+
+        self.eval_safeguard()
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
@@ -99,48 +109,86 @@ class ModelWrapper(pl.LightningModule):
         )
         return optimizer
 
-    def forward(self, x) -> torch.Tensor:
-        self.feature_extrator.eval()
-        self.classification_head.eval()
-
+    def forward_with_feats(
+        self, feat
+    ) -> typing.Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         with torch.no_grad():
-            x = self.feature_extrator(x)
+            feat_in = self.feature_extrator(feat)
 
-        x = self.approximator(x)
+        feat_out = self.approximator(feat_in)
 
-        x = self.classification_head(x)
+        approximated_act = self.adapter(feat_out)
 
-        return x
+        logits = self.classification_head(approximated_act)
 
-    def training_step(self, train_batch, batch_idx):
-        x, y = train_batch
+        return feat_in, feat_out, logits
 
-        logits = self(x)
+    def forward(self, feat) -> torch.Tensor:
+        _, _, logits = self.forward_with_feats(feat)
+        return logits
 
-        loss = self._compute_loss(logits, y)
+    def _compute_loss(self, batch, prefix):
+        x, y = batch
 
-        self.log("train_loss", loss)
+        assert not self.feature_extrator.training
+        assert not self.classification_head.training
+        assert not self.teacher_module.training
+
+        if prefix == "train":
+            assert self.approximator.training
+
+        feat_in, feat_out, logits = self.forward_with_feats(x)
+
+        loss_xent = self._compute_xent_loss(logits, y)
+        loss_mse = self._compute_mse_loss(feat_in, feat_out)
+        loss = loss_xent + loss_mse
+
+        self.log(f"{prefix}_loss_xent", loss_xent, on_epoch=True)
+        self.log(f"{prefix}_loss_mse", loss_mse, on_epoch=True)
+        self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
         return loss
 
-    def _compute_loss(self, logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+    def _compute_xent_loss(self, logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         logits = logits[:, self.dataset.selected_classes]
         ynew = self.dataset.transform_target(y)
 
-        return F.cross_entropy(logits, ynew)
+        return self.lambda_xent * F.cross_entropy(logits, ynew)
+
+    def _compute_mse_loss(
+        self, feat_in: torch.Tensor, feat_out: torch.Tensor
+    ) -> torch.Tensor:
+        with torch.no_grad():
+            expected_out = self.teacher_module(feat_in)
+
+        _, _, h, w = expected_out.shape
+
+        loss_mse = F.mse_loss(feat_out, expected_out, reduction="none")
+        loss_mse = loss_mse.flatten(start_dim=1) / (h * w)
+        loss_mse = loss_mse.sum(dim=1)
+
+        return self.lambda_mse * loss_mse.mean()
+
+    def training_step(self, train_batch, batch_idx):
+        return self._compute_loss(train_batch, "train")
 
     def validation_step(self, val_batch, batch_idx):
-        x, y = val_batch
+        return self._compute_loss(val_batch, "val")
 
-        logits = self(x)
+    def eval_safeguard(self):
+        self.feature_extrator.eval()
+        self.classification_head.eval()
+        self.teacher_module.eval()
 
-        loss = self._compute_loss(logits, y)
+    def on_fit_start(self) -> None:
+        self.eval_safeguard()
 
-        self.val_loss.update(loss)
+    def on_train_batch_start(self, batch, batch_idx) -> int | None:
+        status = super().on_train_batch_start(batch, batch_idx)
 
-    def on_validation_epoch_end(self):
-        self.log("val_loss", self.val_loss.compute())
-        self.val_loss.reset()
+        self.eval_safeguard()
+
+        return status
 
     def on_train_epoch_end(self) -> None:
         self.approximator.eval()
@@ -182,10 +230,10 @@ def get_approximator_for_resnet18(
             torchvision.models.resnet.BasicBlock,
             output_dimensions,
             blocks,
+            # todo: check whether they use stride=2?
             stride=2,
             dilate=False,
         ),
-        nn.Dropout2d(p=0.5),
         nn.Conv2d(
             in_channels=output_dimensions, out_channels=output_dimensions, kernel_size=1
         ),
@@ -213,7 +261,7 @@ class Layerwise:
         self.device = device
 
         self.ref_acc = metrics.accuracy_with_subclasses(
-            self.teacher,
+            self.teacher.to(device),
             val_dataloader,
             considered_classes=self.dataset.selected_classes,
             transform_target=self.dataset.transform_target,
@@ -231,7 +279,9 @@ class Layerwise:
         basis: bases.Basis,
         device: str,
         lr: float,
-        log_dir=Path,
+        log_dir: Path,
+        lambda_mse: float,
+        lambda_xent: float,
     ):
         os.makedirs(str(log_dir), exist_ok=True)
 
@@ -261,19 +311,31 @@ class Layerwise:
         assert (
             count_trainable_params > 0 and count_trainable_params < total_teacher_params
         )
-
-        decoder = basis.contruct_rank_d_decoder(
-            distill_info.num_output_channels, device=device
+        _, teacher_module, _ = models.resnet.split_resnet_18_at(
+            self.teacher, distill_info.layer_name
         )
 
-        approx_mod.adapter = decoder
-
-        feature_extractor, _, classification_head = models.resnet.split_resnet_18_at(
-            student, distill_info.layer_name
-        )
+        (
+            feature_extractor,
+            _,
+            classification_head,
+        ) = models.resnet.split_resnet_18_at(student, distill_info.layer_name)
 
         training_wrapper = ModelWrapper(
             feature_extractor=feature_extractor,
+            teacher_module=nn.Sequential(
+                teacher_module,
+                basis.construct_adapter(
+                    k=distill_info.num_output_channels,
+                    device=device,
+                    mode=bases.AdapterMode.ENCODER,
+                ),
+            ),
+            adapter=basis.construct_adapter(
+                k=distill_info.num_output_channels,
+                device=device,
+                mode=bases.AdapterMode.DECODER,
+            ),
             approximator=approx_mod,
             classification_head=classification_head,
             lr=lr,
@@ -281,11 +343,19 @@ class Layerwise:
             train_dataloader=self.train_dataloader,
             val_dataloader=self.val_dataloader,
             weight_decay=self.weight_decay,
+            lambda_mse=lambda_mse,
+            lambda_xent=lambda_xent,
         )
 
         student.to(device)
+
         student_acc_before_training = metrics.accuracy_with_subclasses(
-            student,
+            nn.Sequential(
+                feature_extractor,
+                approx_mod,
+                training_wrapper.adapter,
+                classification_head,
+            ),
             dl=self.val_dataloader,
             considered_classes=self.dataset.selected_classes,
             transform_target=self.dataset.transform_target,
