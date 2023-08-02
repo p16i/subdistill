@@ -21,7 +21,7 @@ def construct_approximator_for(
     compression_ratio: float,
     mode: ApproximatorMode,
 ):
-    num_classes = getattr(mode, "num_classes")
+    num_classes = getattr(model, "num_classes")
     d = models.get_layer_output_dimensions(model, layer)
     k = int(compression_ratio / d)
 
