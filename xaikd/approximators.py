@@ -18,12 +18,12 @@ def normalize_mode_name(mode: ApproximatorMode) -> str:
 def construct_approximator_for(
     model: nn.Module,
     layer: str,
-    compression_rate: float,
+    compression_ratio: float,
     mode: ApproximatorMode,
 ):
-    num_classes = getattr(model, "num_classes")
+    num_classes = getattr(mode, "num_classes")
     d = models.get_layer_output_dimensions(model, layer)
-    k = int(compression_rate * d)
+    k = int(compression_ratio / d)
 
     # this will be adaptered to different arch.
     backbone_approximator = get_approximator_for_resnet18(
@@ -31,7 +31,7 @@ def construct_approximator_for(
     )
 
     if mode == ApproximatorMode.HOMOGENOUS:
-        assert compression_rate == 1.0, f"`{mode}` only work with `compression_rate=0`"
+        assert compression_ratio == 1.0, f"`{mode}` only work with `compression_rate=0`"
 
         last_module = nn.Identity()
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER:

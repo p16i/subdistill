@@ -36,7 +36,7 @@ from dataclasses import dataclass
 @dataclass
 class ExperimentConfiguration:
     basis_name: str
-    compression_rate: float
+    compression_ratio: float
     approximator_mode: ApproximatorMode
 
 
@@ -51,7 +51,7 @@ class ExperimentConfiguration:
     required=True,
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
-@click.option("--compression-rate", type=float, default=0.25, required=True)
+@click.option("--compression-ratio", type=float, default=4.0, required=True)
 @click.option("--output-dir", type=str, required=True)
 @click.option("--training-size", type=float, default=0.1, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
@@ -65,7 +65,7 @@ def main(
     dataset,
     basis_names,
     output_dir,
-    compression_rate,
+    compression_ratio,
     seed,
     epochs,
     lr,
@@ -137,7 +137,7 @@ def main(
     np.save(output_dir / "act_mean", mean)
 
     distill_info = distillators.get_distill_infor(
-        arch=model_name, layer=layer, compression_rate=compression_rate
+        arch=model_name, layer=layer, compression_ratio=compression_ratio
     )
 
     ref_acc = None
@@ -146,12 +146,12 @@ def main(
         # todo: make sure that we run this conf only once!
         ExperimentConfiguration(
             basis_name="identity--uncentered",
-            compression_rate=1.0,
+            compression_ratio=1.0,
             approximator_mode=ApproximatorMode.HOMOGENOUS,
         ),
         ExperimentConfiguration(
             basis_name="identity--uncentered",
-            compression_rate=compression_rate,
+            compression_ratio=compression_ratio,
             approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
         ),
     ]
@@ -160,7 +160,7 @@ def main(
         arr_experiment_confs.append(
             ExperimentConfiguration(
                 basis_name=f"{basis_name}--{basis_mode}",
-                compression_rate=compression_rate,
+                compression_ratio=compression_ratio,
                 approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
             ),
         )
@@ -171,7 +171,7 @@ def main(
         layer_approximator = approximators.construct_approximator_for(
             teacher_model,
             layer=layer,
-            compression_rate=conf.compression_rate,
+            compression_ratio=conf.compression_ratio,
             mode=conf.approximator_mode,
         )
 
@@ -197,7 +197,7 @@ def main(
         basis_distillation_output_dir = (
             output_dir
             / "distillation"
-            / f"{approximator_mode}-comp{conf.compression_rate}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}"
+            / f"{approximator_mode}-comp{conf.compression_ratio}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}"
             / basis_name
         )
         if os.path.exists(basis_distillation_output_dir):
