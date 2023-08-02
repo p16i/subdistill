@@ -108,13 +108,43 @@ def selected_subset_samples_for_classes(
     return np.array(selected)
 
 
+def selected_subset_samples_for_classes_ver2(
+    labels: npt.NDArray,
+    subsampling_ratio: float,
+    seed: int,
+) -> npt.NDArray:
+    selected = []
+
+    assert 0 < subsampling_ratio <= 1.0
+
+    rng = np.random.default_rng(seed=seed)
+
+    unique_labels = np.unique(labels)
+
+    for cix in unique_labels:
+        indices = np.argwhere(labels == cix).reshape(-1)
+        num_samples_for_classes = np.floor(indices.shape[0] * subsampling_ratio).astype(
+            int
+        )
+
+        permuted_indices = rng.permutation(indices)
+
+        selected.extend(permuted_indices[:num_samples_for_classes].tolist())
+
+    return np.array(selected)
+
+
 def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
     assert 0 < ratio <= 1
-    subsampled, _ = random_split(
-        dataset, [ratio, 1 - ratio], generator=torch.Generator().manual_seed(seed)
+
+    # todo: this might be different across torchvision dataset
+    labels = dataset.targets
+
+    indices = selected_subset_samples_for_classes_ver2(
+        labels, subsampling_ratio=ratio, seed=seed
     )
 
-    return subsampled
+    return Subset(dataset, indices=indices.tolist())
 
 
 @dataclass
