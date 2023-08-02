@@ -75,13 +75,15 @@ def get_model(name: str) -> nn.Module:
 
     model.eval()
 
+    assert getattr(model, "num_classes")
+
     # todo: disable grad
     # perhaps, check whether disable grad improve inference speed?
 
     return model
 
 
-def get_layer_dimensions(model: nn.Module, layer: str) -> int:
+def get_layer_output_dimensions(model: nn.Module, layer: str) -> int:
     return getattr(model, "__layer_dimension")[layer]
 
 
@@ -129,4 +131,7 @@ def _resnet50_cifar(num_classes: int) -> nn.Module:
 
 @register_model("imagenet-resnet18")
 def _resnet18_imagenet() -> nn.Module:
-    return torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    model = torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    model.num_classes = 1000
+
+    return model

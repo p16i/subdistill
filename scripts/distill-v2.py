@@ -12,11 +12,31 @@ from pathlib import Path
 from copy import deepcopy
 
 from torchvision import transforms
+from tqdm import tqdm
 
 from xaikd.utils import click_types
-from xaikd import datasets, utils, distillators, models, attributors, bases
+from xaikd import (
+    datasets,
+    utils,
+    distillators,
+    models,
+    attributors,
+    bases,
+    approximators,
+)
+
+from xaikd.approximators import ApproximatorMode
 
 from tensorboard_logger import configure
+
+from dataclasses import dataclass
+
+
+@dataclass
+class ExperimentConfiguration:
+    basis_name: str
+    compression_rate: float
+    approximator_mode: ApproximatorMode
 
 
 def get_transformation(dataset_name):
@@ -35,12 +55,12 @@ def get_transformation(dataset_name):
 
 @click.command()
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
-@click.option("--model", default="cifar100-resnet18-p1", required=True)
+@click.option("--teacher-model", default="cifar100-resnet18-p1", required=True)
 @click.option("--layer", default="layer3", type=str, required=True)
 @click.option(
     "--basis-names",
     type=str,
-    default="pca,prca-recon,prca-abs,pcaprca-abs,pcaprca-recon,random1,random2",
+    default="pca,prca-recon,prca-abs,pcaprca-abs,pcaprca-recon,random1",
     required=True,
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
@@ -54,7 +74,7 @@ def get_transformation(dataset_name):
 @click.option("--lambda-mse", type=float, default=1.0)
 @click.option("--lambda-xent", type=float, default=1.0)
 def main(
-    model,
+    teacher_model,
     dataset,
     basis_names,
     output_dir,
@@ -74,10 +94,10 @@ def main(
     arguments = locals()
     start_time = datetime.now()
 
-    model = models.get_model(model)
-    model_name = getattr(model, "__name")
+    teacher_model = models.get_model(teacher_model)
+    model_name = getattr(teacher_model, "__name")
 
-    layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}-comp{compression_rate}-seed{seed}"
+    layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}-seed{seed}"
 
     output_dir = Path(output_dir) / dataset / model_name / layer_slug
 
@@ -90,7 +110,7 @@ def main(
         dataset, num_training_samples=num_samples
     )
 
-    model.to(device)
+    teacher_model.to(device)
 
     # logodd_mod = attributors.LogOddEvidence(dataset.selected_classes)
     logit_mod = attributors.OneClassEvidence(dataset=dataset)
@@ -109,7 +129,7 @@ def main(
 
     # todo: make sure that all bases use the same activation and context vectors
     arr_act, arr_ctx = attributors.extract_activation_context(
-        model=model,
+        model=teacher_model,
         layer=layer,
         data_loader=train_loader,
         dataset=dataset,
@@ -125,12 +145,37 @@ def main(
 
     ref_acc = None
 
+    arr_experiment_confs = [
+        # todo: make sure that we run this conf oly once!
+        ExperimentConfiguration(
+            basis_name="identity--uncentered",
+            compression_rate=1.0,
+            approximator_mode=ApproximatorMode.HOMOGENOUS,
+        ),
+        ExperimentConfiguration(
+            basis_name="identity--uncentered",
+            compression_rate=compression_rate,
+            approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
+        ),
+    ]
+
     for basis_name in basis_names.split(","):
+        arr_experiment_confs.append(
+            ExperimentConfiguration(
+                basis_name=f"{basis_name}--{basis_mode}",
+                compression_rate=compression_rate,
+                approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
+            ),
+        )
+
+    for conf in tqdm(arr_experiment_confs):
         pl.seed_everything(seed)
 
-        layer_approximator = distillators.get_approximator_for_resnet18(
-            layer,
-            distill_info.num_output_channels,
+        layer_approximator = approximators.construct_approximator_for(
+            teacher_model,
+            layer=layer,
+            compression_rate=conf.compression_rate,
+            mode=conf.approximator_mode,
         )
 
         distillator = distillators.Layerwise(
@@ -145,11 +190,23 @@ def main(
         if ref_acc is None:
             ref_acc = distillator.ref_acc
         else:
-            assert distillator.ref_acc == ref_acc, "Models have different accuracy"
+            assert (
+                distillator.ref_acc == ref_acc
+            ), "Reference models have different accuracy!"
 
-        basis_name = f"{basis_name}--{basis_mode}"
-        basis_output_dir = output_dir / basis_name
-        os.makedirs(basis_output_dir, exist_ok=True)
+        basis_name = conf.basis_name
+        approximator_mode = approximators.normalize_mode_name(conf.approximator_mode)
+        # todo: perhaps, parameterize also output_dir / `distillation` / ...
+        basis_output_dir = (
+            output_dir / f"{approximator_mode}-comp{conf.compression_rate}" / basis_name
+        )
+        if os.path.exists(basis_output_dir):
+            click.echo(
+                f"Directory `{basis_output_dir}` already exists! Skipping the task"
+            )
+            continue
+
+        os.makedirs(basis_output_dir)
 
         basis = bases.get_basis(basis_name)
 
@@ -175,6 +232,7 @@ def main(
 
         df = pd.DataFrame(results)
         stats = df.epoch_val_acc
+        # todo: add trainable params
         click.echo(
             f"[basis={basis_name}] acc (max={stats.max():.4f}): {stats.values[-1]:.4f}"
         )

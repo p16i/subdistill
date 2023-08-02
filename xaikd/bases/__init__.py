@@ -50,19 +50,19 @@ class Adapter(torch.nn.Module):
 
     def forward(self, x) -> torch.Tensor:
         if self.mode == AdapterMode.ENCODER:
-            return self.encoder(x)
+            return self.encode(x)
         elif self.mode == AdapterMode.DECODER:
-            return self.decoder(x)
+            return self.decode(x)
         else:
             raise ValueError(f"[mode={self.mode}] doesn't exist!")
 
-    def encoder(self, x):
+    def encode(self, x):
         x = x - self.mean
         x = F.conv2d(x, self.mat_encoder)
         x = x / (self.std + EPS)
         return x
 
-    def decoder(self, x):
+    def decode(self, x):
         x = x * (self.std + EPS)
         x = F.conv2d(x, self.mat_decoder)
         x = x + self.mean
@@ -175,9 +175,10 @@ def get_basis(slug, **kwargs) -> Basis:
     name_slug, centering_slug = slug.split("--")
     centering = True if centering_slug == "centered" else False
 
-    assert (
-        centering
-    ), "Since Sprint S9 (2023-07), we conclude that `centering=True` is the fixed parameter."
+    if name_slug != "identity":
+        assert (
+            centering
+        ), "Since Sprint S9 (2023-07), we conclude that `centering=True` is the fixed parameter."
 
     if "random" in name_slug:
         seed = int(name_slug.replace("random", ""))
@@ -253,8 +254,19 @@ class PCA(Basis):
 
 @register_basis("identity")
 class Identity(Basis):
-    artifact = dict()
-    artifact_keys = []
+    artifact_keys = ["std"]
+
+    def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
+        std = self.artifact["std"]
+        d = std.shape[0]
+
+        return Adapter(
+            U=torch.eye(d),
+            std=std,
+            mean=self.mean,
+            device=device,
+            mode=mode,
+        )
 
     def construct_fh_rank_k_projection(self, k: int, device: str):
         def fh(module, input, output):
@@ -262,11 +274,21 @@ class Identity(Basis):
 
         return fh
 
-    def load(self, artifact_dir: Path, device="cpu"):
-        pass
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
+    ) -> typing.Tuple[npt.NDArray]:
+        if self.centering:
+            activation = activation - mean
 
-    def save(self, output_dir: Path):
-        pass
+        std = np.std(activation, axis=0)
+
+        setattr(self, "artifact", dict(zip(self.artifact_keys, [std])))
+
+        return std
 
 
 @register_basis("rel")

@@ -18,6 +18,7 @@ from torch.utils.data import DataLoader
 import torchvision
 import torchmetrics
 
+from enum import Enum
 
 from pathlib import Path
 
@@ -81,11 +82,23 @@ class ModelWrapper(pl.LightningModule):
     ):
         super().__init__()
 
-        self.feature_extrator = feature_extractor
+        self.feature_extrator = utils.freeze_model(feature_extractor)
+        self.classification_head = utils.freeze_model(classification_head)
+        self.teacher_module = utils.freeze_model(teacher_module)
+
+        self.adapter = utils.freeze_model(adapter)
+
+        # sanity check
+        for module in [
+            self.feature_extrator,
+            self.classification_head,
+            self.teacher_module,
+        ]:
+            _, trainable_param = utils.count_params_in_model(module)
+            assert trainable_param == 0
+            assert not module.training
+
         self.approximator = approximator
-        self.classification_head = classification_head
-        self.teacher_module = teacher_module
-        self.adapter = adapter
 
         self.lr = lr
 
@@ -218,31 +231,6 @@ class ModelWrapper(pl.LightningModule):
         self.approximator.train()
 
 
-def get_approximator_for_resnet18(
-    layer: str, output_dimensions: int, num_classes=100
-) -> nn.Module:
-    model = models._resnet18_cifar(num_classes)
-    model.inplanes = getattr(model, layer)[0].conv1.weight.shape[1]
-
-    blocks = len(getattr(model, layer))
-
-    output = nn.Sequential(
-        model._make_layer(
-            torchvision.models.resnet.BasicBlock,
-            output_dimensions,
-            blocks,
-            # todo: check whether they use stride=2?
-            stride=2,
-            dilate=False,
-        ),
-        nn.Conv2d(
-            in_channels=output_dimensions, out_channels=output_dimensions, kernel_size=1
-        ),
-    )
-
-    return output
-
-
 class Layerwise:
     def __init__(
         self,
@@ -312,6 +300,8 @@ class Layerwise:
         assert (
             count_trainable_params > 0 and count_trainable_params < total_teacher_params
         )
+        # todo: this split should be available via the model itself.
+        # e.g., self.teacher.split_at(...)
         _, teacher_module, _ = models.resnet.split_resnet_18_at(
             self.teacher, distill_info.layer_name
         )

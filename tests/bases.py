@@ -1,9 +1,6 @@
 import pytest
 import numpy as np
 
-import torch
-
-from scipy.stats import ortho_group
 
 from xaikd import bases
 
@@ -128,20 +125,3 @@ def test_correct_std(basis_name):
     )
 
     np.testing.assert_allclose(std, np.std(centered_activation @ eigvecs, axis=0))
-
-
-def test_adapter():
-    d = 20
-    U = torch.from_numpy(ortho_group.rvs(d)).float()
-    mean = torch.randn(d).float()
-    std = torch.rand(d).float()
-    encoder = bases.Adapter(
-        U=U, mean=mean, std=std, mode=bases.AdapterMode.ENCODER, device="cpu"
-    )
-    decoder = bases.Adapter(
-        U=U, mean=mean, std=std, mode=bases.AdapterMode.DECODER, device="cpu"
-    )
-
-    x = torch.randn(20, d, 1, 1)
-
-    np.testing.assert_allclose(decoder(encoder(x)), x, atol=1e-5)

@@ -35,7 +35,7 @@ def test_extract_activation_context(layer):
 
     dataset = CIFAR100VerySmall()
 
-    output_dims = models.get_layer_dimensions(model, layer)
+    output_dims = models.get_layer_output_dimensions(model, layer)
 
     train_dl = dataset.loader(train_split=True)
 
