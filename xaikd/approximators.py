@@ -1,4 +1,5 @@
 from enum import Enum
+import numpy as np
 
 from torch import nn
 import torchvision
@@ -9,6 +10,10 @@ ApproximatorMode = Enum(
     "ApproximatorMode",
     ["HOMOGENOUS", "HOMOGENOUS_LOWRANK_ADAPTER", "HOMOGENOUS_LOWRANK"],
 )
+
+
+def compute_compressed_dimension(d: int, compression_ratio: float) -> int:
+    return int(np.floor(d / compression_ratio))
 
 
 def normalize_mode_name(mode: ApproximatorMode) -> str:
@@ -23,7 +28,7 @@ def construct_approximator_for(
 ):
     num_classes = getattr(model, "num_classes")
     d = models.get_layer_output_dimensions(model, layer)
-    k = int(compression_ratio / d)
+    k = compute_compressed_dimension(d, compression_ratio)
 
     # this will be adaptered to different arch.
     backbone_approximator = get_approximator_for_resnet18(

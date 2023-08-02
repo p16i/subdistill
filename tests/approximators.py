@@ -44,7 +44,7 @@ def test_approximator_homogenous_mode(model, layer):
 )
 def test_approximator_homogenous_lowrank_modes(model, layer):
     model = models.get_model(model)
-    compression_rate = 0.3
+    compression_rate = 4.0
 
     approx_lowrank = approximators.construct_approximator_for(
         model=model,

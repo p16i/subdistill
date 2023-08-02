@@ -25,7 +25,7 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
-from xaikd import utils, datasets, attributors, bases, models
+from xaikd import utils, datasets, attributors, bases, models, approximators
 from xaikd.utils import metrics
 
 
@@ -49,12 +49,16 @@ def get_distill_infor(
                 LayerDistillInfo(
                     layer_name="layer3",
                     num_input_channels=128,
-                    num_output_channels=int(256 / compression_ratio),
+                    num_output_channels=approximators.compute_compressed_dimension(
+                        256, compression_ratio
+                    ),
                 ),
                 LayerDistillInfo(
                     layer_name="layer4",
                     num_input_channels=256,
-                    num_output_channels=int(512 / compression_ratio),
+                    num_output_channels=approximators.compute_compressed_dimension(
+                        512, compression_ratio
+                    ),
                 ),
             ],
         )
