@@ -15,7 +15,7 @@ NUMBER_OF_SPATIAL_LOCATIONS = 8
 
 class CIFAR100VerySmall(datasets.CIFAR100):
     def loader(self, batch_size=64, num_workers=2, train_split=False):
-        ds = self.create_dataset(train_split=train_split)
+        ds = self.create_subset(train_split=train_split)
 
         np.random.seed(1)
 

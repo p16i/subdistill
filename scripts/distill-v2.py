@@ -5,6 +5,7 @@ import pandas as pd
 import pytorch_lightning as pl
 import numpy as np
 import torch
+from torch.utils.data import DataLoader
 
 from datetime import datetime
 
@@ -14,7 +15,6 @@ from copy import deepcopy
 from torchvision import transforms
 from tqdm import tqdm
 
-from xaikd.utils import click_types
 from xaikd import (
     datasets,
     utils,
@@ -23,6 +23,7 @@ from xaikd import (
     attributors,
     bases,
     approximators,
+    augmentations,
 )
 
 from xaikd.approximators import ApproximatorMode
@@ -39,20 +40,6 @@ class ExperimentConfiguration:
     approximator_mode: ApproximatorMode
 
 
-def get_transformation(dataset_name):
-    if "cifar100" in dataset_name:
-        return [
-            transforms.RandomCrop(32, padding=4),
-            transforms.RandomHorizontalFlip(),
-        ]
-    elif "imagenet" in dataset_name:
-        return [
-            transforms.RandomHorizontalFlip(),
-        ]
-    else:
-        raise NotImplementedError("")
-
-
 @click.command()
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
 @click.option("--teacher-model", default="cifar100-resnet18-p1", required=True)
@@ -66,7 +53,7 @@ def get_transformation(dataset_name):
 @click.option("--basis-mode", type=str, default="centered", required=True)
 @click.option("--compression-rate", type=float, default=0.25, required=True)
 @click.option("--output-dir", type=str, required=True)
-@click.option("--num-samples", type=int, default=100, required=True)
+@click.option("--training-size", type=float, default=0.1, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--lr", type=float, default=0.001, required=True)
 @click.option("--seed", type=int, default=1)
@@ -82,7 +69,7 @@ def main(
     seed,
     epochs,
     lr,
-    num_samples,
+    training_size,
     layer,
     basis_mode,
     weight_decay,
@@ -97,35 +84,45 @@ def main(
     teacher_model = models.get_model(teacher_model)
     model_name = getattr(teacher_model, "__name")
 
-    layer_slug = f"layer{layer}-n{num_samples}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}-seed{seed}"
+    layer_slug = f"layer-{layer}"
 
-    output_dir = Path(output_dir) / dataset / model_name / layer_slug
+    output_dir = (
+        Path(output_dir)
+        / f"{dataset}-tz{training_size}-seed{seed}"
+        / model_name
+        / layer_slug
+    )
 
     os.makedirs(output_dir, exist_ok=True)
     click.echo(f"Output: {output_dir}")
 
     device = utils.get_device()
 
-    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
-        dataset, num_training_samples=num_samples
-    )
+    dataset = datasets.construct(dataset)
 
     teacher_model.to(device)
 
-    # logodd_mod = attributors.LogOddEvidence(dataset.selected_classes)
     logit_mod = attributors.OneClassEvidence(dataset=dataset)
 
-    train_loader = dataset.loader(train_split=True, shuffle=True)
-    val_loader = dataset.loader(train_split=False, shuffle=False)
+    ds_train = datasets.subsample_dataset(
+        dataset.create_subset(train_split=True), ratio=training_size, seed=seed
+    )
 
-    train_loader_with_aug = deepcopy(train_loader)
-    # todo: convert this to utils
-    train_loader_with_aug.dataset.dataset.transform = transforms.Compose(
+    train_loader = datasets.build_dataloader(ds_train, shuffle=True)
+    val_loader = datasets.build_dataloader(
+        dataset.create_subset(train_split=False),
+        shuffle=False,
+    )
+
+    ds_train_with_aug = deepcopy(ds_train)
+    ds_train_with_aug.dataset.transform = transforms.Compose(
         [
-            *get_transformation(dataset_name=getattr(dataset, "__name")),
-            train_loader_with_aug.dataset.dataset.transform,
+            *augmentations.get_augmentation_for(dataset=dataset),
+            ds_train_with_aug.dataset.transform,
         ]
     )
+
+    train_loader_with_aug = datasets.build_dataloader(ds_train_with_aug, shuffle=True)
 
     # todo: make sure that all bases use the same activation and context vectors
     arr_act, arr_ctx = attributors.extract_activation_context(
@@ -146,7 +143,7 @@ def main(
     ref_acc = None
 
     arr_experiment_confs = [
-        # todo: make sure that we run this conf oly once!
+        # todo: make sure that we run this conf only once!
         ExperimentConfiguration(
             basis_name="identity--uncentered",
             compression_rate=1.0,
@@ -196,23 +193,26 @@ def main(
 
         basis_name = conf.basis_name
         approximator_mode = approximators.normalize_mode_name(conf.approximator_mode)
-        # todo: perhaps, parameterize also output_dir / `distillation` / ...
-        basis_output_dir = (
-            output_dir / f"{approximator_mode}-comp{conf.compression_rate}" / basis_name
+
+        basis_distillation_output_dir = (
+            output_dir
+            / "distillation"
+            / f"{approximator_mode}-comp{conf.compression_rate}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}"
+            / basis_name
         )
-        if os.path.exists(basis_output_dir):
+        if os.path.exists(basis_distillation_output_dir):
             click.echo(
-                f"Directory `{basis_output_dir}` already exists! Skipping the task"
+                f"Directory `{basis_distillation_output_dir}` already exists! Skipping the task"
             )
             continue
 
-        os.makedirs(basis_output_dir)
+        os.makedirs(basis_distillation_output_dir)
 
         basis = bases.get_basis(basis_name)
 
+        #  todo: only fit if necessary
         basis.fit(arr_act, arr_ctx, mean=mean, device=device)
         basis.save(output_dir)
-
         basis.load(output_dir)
 
         student = models.get_model(model_name)
@@ -225,7 +225,7 @@ def main(
             basis=basis,
             device=device,
             lr=lr,
-            log_dir=basis_output_dir / "log",
+            log_dir=basis_distillation_output_dir / "log",
             lambda_mse=lambda_mse,
             lambda_xent=lambda_xent,
         )
@@ -237,7 +237,7 @@ def main(
             f"[basis={basis_name}] acc (max={stats.max():.4f}): {stats.values[-1]:.4f}"
         )
 
-        filename = basis_output_dir / "result.csv"
+        filename = basis_distillation_output_dir / "result.csv"
 
         df.to_csv(filename, index=False)
 
