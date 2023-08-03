@@ -24,20 +24,12 @@ from xaikd import (
     bases,
     approximators,
     augmentations,
+    distillation_info,
 )
 
 from xaikd.approximators import ApproximatorMode
 
-from tensorboard_logger import configure
-
-from dataclasses import dataclass
-
-
-@dataclass
-class ExperimentConfiguration:
-    basis_name: str
-    compression_ratio: float
-    approximator_mode: ApproximatorMode
+from xaikd.distillation_info import ExperimentConfiguration
 
 
 @click.command()
@@ -137,7 +129,7 @@ def main(
     mean = np.mean(arr_act, axis=0)
     np.save(output_dir / "act_mean", mean)
 
-    distill_info = distillators.get_distill_infor(
+    distill_info = distillation_info.get_distill_infor(
         arch=model_name, layer=layer, compression_ratio=compression_ratio
     )
 
