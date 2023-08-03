@@ -209,6 +209,7 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
 
             df.to_csv(filename, index=False)
 
+            student.to(device)
             arr_targets = []
             arr_preds = []
             with torch.no_grad():
