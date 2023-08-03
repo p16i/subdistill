@@ -76,7 +76,6 @@ class ModelWrapper(pl.LightningModule):
         self.eval_safeguard()
 
     def configure_optimizers(self):
-        print(f"we have {utils.count_params_in_model(self.approximator)} parameters")
         # todo: log how many trainable params we have
         optimizer = torch.optim.Adam(
             self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
@@ -270,9 +269,6 @@ class Layerwise:
             classification_head,
         ) = models.resnet.split_resnet_18_at(student, distill_info.layer_name)
 
-        print(
-            f"[before-create wrapper] we have {utils.count_params_in_model(approx_mod)} parameters (id={id(approx_mod)})"
-        )
         training_wrapper = ModelWrapper(
             feature_extractor=feature_extractor,
             teacher_module=nn.Sequential(
