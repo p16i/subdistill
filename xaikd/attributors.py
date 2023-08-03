@@ -109,6 +109,7 @@ def extract_activation_context(
     dataset: datasets.DatasetConfiguration,
     data_loader: DataLoader,
     logit_modifier: LogitModifier,
+    rng: np.random.Generator,
     device="cpu",
     number_of_selected_spatial_locations=20,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
@@ -143,7 +144,10 @@ def extract_activation_context(
                 ctx = ctx.detach().cpu().numpy()
 
                 selected_act, selected_ctx = utils.subsample_tensors(
-                    act, ctx, num_locations=number_of_selected_spatial_locations
+                    act,
+                    ctx,
+                    num_locations=number_of_selected_spatial_locations,
+                    rng=rng,
                 )
                 arr_act.append(selected_act)
                 arr_ctx.append(selected_ctx)
@@ -164,11 +168,11 @@ def extract_activation(
     layer: str,
     dataset: datasets.DatasetConfiguration,
     data_loader: DataLoader,
+    rng: np.random.Generator,
     device="cpu",
     number_of_selected_spatial_locations=20,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
     arr_act = []
-    arr_ctx = []
 
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
@@ -187,7 +191,10 @@ def extract_activation(
                 act = act.detach().cpu().numpy()
 
                 selected_act, _ = utils.subsample_tensors(
-                    act, act, num_locations=number_of_selected_spatial_locations
+                    act,
+                    act,
+                    num_locations=number_of_selected_spatial_locations,
+                    rng=rng,
                 )
                 arr_act.append(selected_act)
 

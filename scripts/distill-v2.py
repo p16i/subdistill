@@ -132,6 +132,7 @@ def main(
         dataset=dataset,
         logit_modifier=logit_mod,
         device=device,
+        rng=np.random.default_rng(seed=seed),
     )
     mean = np.mean(arr_act, axis=0)
     np.save(output_dir / "act_mean", mean)
