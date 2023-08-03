@@ -4,8 +4,6 @@
 #SBATCH --mail-type=FAIL,END
 #SBATCH --mail-user=p.chormai@tu-berlin.de
 
-nvidia-smi
-
 TASK_VALUE=`sed -n ${SLURM_ARRAY_TASK_ID}p $SEEDFILE`
 CMD=${@/\{\}/$TASK_VALUE}
 
