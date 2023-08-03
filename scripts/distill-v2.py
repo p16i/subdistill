@@ -4,8 +4,6 @@ import pandas as pd
 
 import pytorch_lightning as pl
 import numpy as np
-import torch
-from torch.utils.data import DataLoader
 
 from datetime import datetime
 
@@ -224,10 +222,10 @@ def main(
         )
 
         df = pd.DataFrame(results)
-        stats = df.epoch_val_acc
+        arr_epoch_val_accs = df.epoch_val_acc
         # todo: add trainable params
         click.echo(
-            f"[basis={basis_name}] acc (max={stats.max():.4f}): {stats.values[-1]:.4f}"
+            f"[basis={basis_name}] acc (max={arr_epoch_val_accs.max():.4f}): {arr_epoch_val_accs.values[-1]:.4f}"
         )
 
         filename = basis_distillation_output_dir / "result.csv"
