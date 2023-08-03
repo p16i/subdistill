@@ -14,7 +14,7 @@ import numpy.typing as npt
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, Subset, Dataset
+from torch.utils.data import DataLoader, Subset, Dataset, random_split
 
 from torchvision import transforms
 
@@ -56,6 +56,14 @@ def register_dataset(name):
     return wrapped
 
 
+def build_dataloader(
+    dataset: Dataset, shuffle, num_workers=2, batch_size=64
+) -> DataLoader:
+    return DataLoader(
+        dataset, num_workers=num_workers, batch_size=batch_size, shuffle=shuffle
+    )
+
+
 def _parse_dataset_name(
     name: str,
 ) -> typing.Tuple[str, typing.Union[None, str]]:
@@ -81,6 +89,7 @@ def selected_subset_samples_for_classes(
     verbose=False,
 ) -> npt.NDArray:
     selected = []
+    raise NotImplemented("need to be rewrite with generator!")
 
     assert set(classes).intersection(labels.tolist()) == set(classes)
 
@@ -99,6 +108,45 @@ def selected_subset_samples_for_classes(
     return np.array(selected)
 
 
+def selected_subset_samples_for_classes_ver2(
+    labels: npt.NDArray,
+    subsampling_ratio: float,
+    seed: int,
+) -> npt.NDArray:
+    selected = []
+
+    assert 0 < subsampling_ratio <= 1.0
+
+    rng = np.random.default_rng(seed=seed)
+
+    unique_labels = np.unique(labels)
+
+    for cix in unique_labels:
+        indices = np.argwhere(labels == cix).reshape(-1)
+        num_samples_for_classes = np.floor(indices.shape[0] * subsampling_ratio).astype(
+            int
+        )
+
+        permuted_indices = rng.permutation(indices)
+
+        selected.extend(permuted_indices[:num_samples_for_classes].tolist())
+
+    return np.array(selected)
+
+
+def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
+    assert 0 < ratio <= 1
+
+    # todo: this might be different across torchvision dataset
+    labels = dataset.targets
+
+    indices = selected_subset_samples_for_classes_ver2(
+        labels, subsampling_ratio=ratio, seed=seed
+    )
+
+    return Subset(dataset, indices=indices.tolist())
+
+
 @dataclass
 class DatasetConfiguration(ABC):
     num_classes: int
@@ -109,24 +157,24 @@ class DatasetConfiguration(ABC):
     # todo: init method already instatitate dataset
 
     @abstractmethod
-    def create_dataset(slef, train_split=False) -> Dataset:
+    def create_subset(self, train_split=False) -> Dataset:
         pass
 
-    # todo: add new method get_dataset to get the dataset from dict
+    # # todo: add new method get_dataset to get the dataset from dict
 
-    def loader(self, batch_size=64, num_workers=2, train_split=False, shuffle=False):
-        return DataLoader(
-            self.create_dataset(train_split=train_split),
-            num_workers=num_workers,
-            batch_size=batch_size,
-            shuffle=shuffle,
-        )
+    # def loader(self, batch_size=64, num_workers=2, train_split=False, shuffle=False):
+    #     return DataLoader(
+    #         self.create_dataset(train_split=train_split),
+    #         num_workers=num_workers,
+    #         batch_size=batch_size,
+    #         shuffle=shuffle,
+    #     )
 
     def __str__(self) -> str:
         return getattr(self, "__name")
 
 
-def construct(name: str, num_training_samples=None) -> DatasetConfiguration:
+def construct(name: str) -> DatasetConfiguration:
     dataset_name, variant = _parse_dataset_name(name)
 
     dataset_cls = DATASETS[dataset_name]
@@ -136,20 +184,15 @@ def construct(name: str, num_training_samples=None) -> DatasetConfiguration:
         match = re.match(r"(\d+)vs(\d+)", variant)
         if match:
             selected_classes = [int(match.group(1)), int(match.group(2))]
-            dataset = TwoClassesDataset(
-                dataset_cls(), selected_classes, num_train_samples=num_training_samples
-            )
+            dataset = TwoClassesDataset(dataset_cls(), selected_classes)
         elif dataset_name == "cifar100" and variant in CIFAR100_SUPER_CLASSES:
             dataset = Cifar100SuperClassesDataset(
                 dataset_cls(),
                 super_class=variant,
-                num_train_samples=num_training_samples,
             )
         else:
             raise ValueError(f"{dataset_name} has no variant `{variant}`")
     else:
-        if num_training_samples is not None:
-            print(f"[warning: num_training_samples has NO effect on {name}")
         dataset = dataset_cls()
 
     setattr(dataset, "__name", name)
@@ -180,8 +223,8 @@ class TwoClassesDataset(DatasetConfiguration):
 
         self.num_train_samples = num_train_samples
 
-    def create_dataset(self, train_split=False) -> Dataset:
-        return self.base.create_dataset(train_split=train_split)
+    def create_subset(self, train_split=False) -> Dataset:
+        return self.base.create_subset(train_split=train_split)
 
     def loader(
         self,
@@ -190,7 +233,7 @@ class TwoClassesDataset(DatasetConfiguration):
         train_split=False,
         shuffle=False,
     ):
-        ds = self.create_dataset(train_split=train_split)
+        ds = self.create_subset(train_split=train_split)
         labels = ds.targets
 
         if train_split and self.num_train_samples is not None:
@@ -226,7 +269,7 @@ class CIFAR10(DatasetConfiguration):
 
         self.root = DATADIR / "cifar10"
 
-    def create_dataset(self, train_split=False) -> Dataset:
+    def create_subset(self, train_split=False) -> Dataset:
         return self.dataclass(
             root=self.root,
             train=train_split,
@@ -235,24 +278,29 @@ class CIFAR10(DatasetConfiguration):
         )
 
 
-@register_dataset("cifar10all")
-class CIFAR10All(CIFAR10):
-    selected_classes = list(range(10))
+# @register_dataset("cifar10all")
+# class CIFAR10All(CIFAR10):
+#     selected_classes = list(range(10))
 
-    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
-        return target
+#     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+#         return target
 
 
 @register_dataset("cifar100")
 @dataclass
 class CIFAR100(CIFAR10):
+    selected_classes = list(range(100))
+
     def __init__(self):
         super().__init__()
 
         self.num_classes = 100
-        # remark: transformation (Normalization) of CIFAR100 should be different from CIFAR10
+        # remark: we use the transformation (Normalization) of CIFAR10 here!
         self.dataclass = tvd.CIFAR100
         self.root = DATADIR / "cifar100"
+
+    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        return target
 
 
 @register_dataset("imagenet")
@@ -271,7 +319,7 @@ class ImageNet(DatasetConfiguration):
         self.dataclass = tvd.ImageNet
         self.root = DATADIR / "imagenet"
 
-    def create_dataset(self, train_split=False) -> Dataset:
+    def create_subset(self, train_split=False) -> Dataset:
         return self.dataclass(
             root=self.root,
             split="train" if train_split else "val",
@@ -304,19 +352,30 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         self.selected_classes = df_selected.fine_label.values.tolist()
 
         # remark: Attention! this is `num_classes` of CIFAR100.
+        # todo: when do we use this?
         self.num_classes = 100
 
         self.input_statistics = self.base.input_statistics
         self.transformation = self.base.transformation
 
-        self.num_train_samples = num_train_samples
-
         self.target_transform_dict = dict(
             zip(self.selected_classes, range(len(self.selected_classes)))
         )
 
-    def create_dataset(self, train_split=False) -> Dataset:
-        return self.base.create_dataset(train_split=train_split)
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = self.base.create_subset(train_split=train_split)
+        labels = ds.targets
+
+        selected_data_indices = np.argwhere(
+            np.isin(labels, self.selected_classes)
+        ).reshape(-1)
+
+        ds.data = ds.data[selected_data_indices, :]
+        ds.targets = np.array(ds.targets)[selected_data_indices].tolist()
+
+        assert np.isin(ds.targets, self.selected_classes).all()
+
+        return ds
 
     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
         new_target = []
@@ -326,29 +385,32 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
 
         return torch.Tensor(new_target).long().to(target.device)
 
-    def loader(
-        self,
-        batch_size=64,
-        num_workers=2,
-        train_split=False,
-        shuffle=False,
-    ):
-        ds = self.create_dataset(train_split=train_split)
-        labels = ds.targets
+    # def loader(
+    #     self,
+    #     batch_size=64,
+    #     num_workers=2,
+    #     train_split=False,
+    #     shuffle=False,
+    # ):
+    #     ds = self.create_subset(train_split=train_split)
+    #     labels = ds.targets
 
-        if train_split and self.num_train_samples is not None:
-            selected_data_indices = selected_subset_samples_for_classes(
-                np.array(labels),
-                self.selected_classes,
-                samples_per_class=self.num_train_samples,
-            )
-        else:
-            selected_data_indices = np.argwhere(
-                np.isin(labels, self.selected_classes)
-            ).reshape(-1)
+    #     if train_split and self.num_train_samples is not None:
+    #         # for training split: select training samples for those classes and subsample
+    #         selected_data_indices = selected_subset_samples_for_classes(
+    #             np.array(labels),
+    #             self.selected_classes,
+    #             samples_per_class=self.num_train_samples,
+    #         )
+    #     else:
+    #         # for validation split: select samples for those classes only
+    #         selected_data_indices = np.argwhere(
+    #             np.isin(labels, self.selected_classes)
+    #         ).reshape(-1)
 
-        subset = Subset(ds, list(selected_data_indices))
+    #     ds.data = ds.data[selected_data_indices, :]
+    #     ds.targets = np.array(ds.targets)[selected_data_indices].tolist()
 
-        return DataLoader(
-            subset, num_workers=num_workers, batch_size=batch_size, shuffle=shuffle
-        )
+    #     assert np.isin(ds.targets, self.selected_classes).all()
+
+    #     return

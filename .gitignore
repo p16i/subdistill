@@ -167,3 +167,5 @@ tmp
 datasets
 artifacts
 logs
+
+notebooks/*/lightning_logs
