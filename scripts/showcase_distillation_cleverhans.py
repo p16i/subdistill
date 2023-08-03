@@ -1,0 +1,233 @@
+import os
+import numpy as np
+import click
+from datetime import datetime
+
+import pytorch_lightning as pl
+import torch
+
+from copy import deepcopy
+
+from torchvision import transforms
+
+from pathlib import Path
+
+import pandas as pd
+
+from xaikd import (
+    models,
+    datasets,
+    attributors,
+    distillators,
+    augmentations,
+    approximators,
+    distillation_info,
+    utils,
+    bases,
+)
+from xaikd.approximators import ApproximatorMode
+from xaikd.showcases import cleverhans
+from xaikd.distillation_info import ExperimentConfiguration
+
+
+BASIS_MODE = "centered"
+
+
+@click.command()
+@click.option("--output-dir", type=Path, default="./tmp/showcase-cleverhans")
+@click.option("--epochs", type=int, default=100)
+@click.option("--lambda-mse", type=float, default=1.0)
+@click.option("--lambda-xent", type=float, default=1.0)
+def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
+    arguments = locals()
+    start_time = datetime.now()
+
+    contamination_levels = [0.0, 0.25, 0.5]
+    lr = 0.001
+    seed = 1
+    training_size = 0.1
+    model_name = "cifar100-resnet18-p1"
+    dataset_name = "cifar100-people"
+    layer = "layer3"
+    compression_ratio = 10
+    basis_names = ["pca", "prca-recon", "random1"]
+    device = utils.get_device()
+
+    teacher_model = models.get_model(model_name)
+    dataset = datasets.construct(dataset_name)
+
+    logit_mod = attributors.OneClassEvidence(dataset)
+
+    clean_train_ds = datasets.subsample_dataset(
+        dataset.create_subset(train_split=True),
+        ratio=training_size,
+        seed=seed,
+    )
+
+    val_loader = datasets.build_dataloader(
+        dataset.create_subset(train_split=False), shuffle=False
+    )
+
+    for contamination_level in contamination_levels:
+        contaminated_train_ds = cleverhans.contaminate_dataset(
+            dataset=clean_train_ds, contamination_level=contamination_level, seed=seed
+        )
+
+        # todo: this can be abstract away
+        # perhaps, make it a method of `dataset``
+        contaminated_train_ds_with_aug = deepcopy(contaminated_train_ds)
+        contaminated_train_ds_with_aug.dataset.transforms = transforms.Compose(
+            [
+                *augmentations.get_augmentation_for(dataset=dataset),
+                contaminated_train_ds_with_aug,
+            ]
+        )
+
+        train_loader = datasets.build_dataloader(contaminated_train_ds, shuffle=True)
+        train_loader_with_aug = datasets.build_dataloader(
+            contaminated_train_ds_with_aug, shuffle=True
+        )
+
+        arr_act, arr_ctx = attributors.extract_activation_context(
+            model=teacher_model,
+            layer=layer,
+            data_loader=train_loader,
+            dataset=dataset,
+            logit_modifier=logit_mod,
+            device=device,
+            rng=np.random.default_rng(seed=seed),
+        )
+        mean = np.mean(arr_act, axis=0)
+        os.makedirs(output_dir, exist_ok=True)
+        np.save(output_dir / "act_mean", mean)
+
+        distill_info = distillation_info.get_distill_infor(
+            arch=model_name, layer=layer, compression_ratio=compression_ratio
+        )
+
+        arr_experiment_confs = [
+            ExperimentConfiguration(
+                basis_name="identity--uncentered",
+                compression_ratio=1.0,
+                approximator_mode=ApproximatorMode.HOMOGENOUS,
+            ),
+            ExperimentConfiguration(
+                basis_name="identity--uncentered",
+                compression_ratio=compression_ratio,
+                approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
+            ),
+        ]
+
+        for basis_name in basis_names:
+            arr_experiment_confs.append(
+                ExperimentConfiguration(
+                    basis_name=f"{basis_name}--{BASIS_MODE}",
+                    compression_ratio=compression_ratio,
+                    approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
+                ),
+            )
+
+        ref_acc = None
+
+        for conf in arr_experiment_confs:
+            pl.seed_everything(seed)
+
+            layer_approximator = approximators.construct_approximator_for(
+                teacher_model,
+                layer=layer,
+                compression_ratio=conf.compression_ratio,
+                mode=conf.approximator_mode,
+            )
+
+            distillator = distillators.Layerwise(
+                teacher=models.get_model(model_name),
+                dataset=dataset,
+                train_dataloader=train_loader_with_aug,
+                val_dataloader=val_loader,
+                device=device,
+                weight_decay=0.0,
+            )
+
+            if ref_acc is None:
+                ref_acc = distillator.ref_acc
+            else:
+                assert (
+                    distillator.ref_acc == ref_acc
+                ), "Reference models have different accuracy!"
+
+            basis_name = conf.basis_name
+            approximator_mode = approximators.normalize_mode_name(
+                conf.approximator_mode
+            )
+
+            basis_distillation_output_dir = (
+                output_dir
+                / "distillation"
+                / f"{approximator_mode}-comp{conf.compression_ratio}-ldmse{lambda_mse}-ldxent{lambda_xent}"
+                / basis_name
+            )
+
+            if os.path.exists(basis_distillation_output_dir):
+                click.echo(
+                    f"Directory `{basis_distillation_output_dir}` already exists! Skipping the task"
+                )
+                continue
+
+            # todo: remove exist_ok=True when doing prototyping
+            os.makedirs(basis_distillation_output_dir)
+
+            basis = bases.get_basis(basis_name)
+
+            basis.fit(arr_act, arr_ctx, mean=mean, device=device)
+            basis.save(output_dir)
+            basis.load(output_dir)
+
+            student = models.get_model(model_name)
+
+            results = distillator.distill(
+                student=student,
+                approx_mod=layer_approximator,
+                distill_info=distill_info,
+                epochs=epochs,
+                basis=basis,
+                device=device,
+                lr=lr,
+                log_dir=basis_distillation_output_dir / "log",
+                lambda_mse=lambda_mse,
+                lambda_xent=lambda_xent,
+            )
+
+            df = pd.DataFrame(results)
+            stats = df.epoch_val_acc
+
+            click.echo(
+                f"[basis={basis_name}] acc (max={stats.max():.4f}): {stats.values[-1]:.4f}"
+            )
+
+            filename = basis_distillation_output_dir / "result.csv"
+
+            df.to_csv(filename, index=False)
+
+            arr_targets = []
+            arr_preds = []
+            with torch.no_grad():
+                for x, y in val_loader:
+                    arr_targets.append(y.numpy())
+                    logits = student(x.to(device))
+                    ypred = torch.argmax(logits, dim=1).cpu().numpy()
+                    arr_preds.append(ypred)
+
+            arr_targets = np.concatenate(arr_targets)
+            arr_preds = np.concatenate(arr_preds)
+
+            pd.DataFrame.from_dict(dict(target=arr_targets, pred=arr_preds)).to_csv(
+                basis_distillation_output_dir / "predictions.csv", index=False
+            )
+
+    print(f"Artifact save at: {output_dir}")
+    time_took = datetime.now() - start_time
+    click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
+
+
+if __name__ == "__main__":
+    main()
