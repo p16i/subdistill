@@ -260,6 +260,8 @@ class Identity(Basis):
         std = self.artifact["std"]
         d = std.shape[0]
 
+        print(f"[basis=identity] setting k={k} has no effect. The following forces k=d={d}!")
+
         return Adapter(
             U=torch.eye(d),
             std=std,
