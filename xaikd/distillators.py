@@ -171,12 +171,17 @@ class ModelWrapper(pl.LightningModule):
         return status
 
     def on_train_epoch_end(self) -> None:
-        self.approximator.eval()
+        self.eval()
+
+        assert not self.feature_extrator.training
+        assert not self.classification_head.training
+        assert not self.teacher_module.training
+        assert not self.approximator.training
 
         accs = []
 
-        for name, loader in zip(
-            ["train", "val"], [self._train_dataloader, self._val_dataloader]
+        for name, loader in list(
+            zip(["train", "val"], [self._train_dataloader, self._val_dataloader])
         ):
             acc = metrics.accuracy_with_subclasses(
                 self,
@@ -336,7 +341,6 @@ class Layerwise:
         trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)
 
         arr_metrics = []
-
         for epoch, (train_acc, val_acc) in enumerate(training_wrapper.arr_metrics):
             arr_metrics.append(
                 dict(
