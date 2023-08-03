@@ -54,6 +54,7 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
     device = utils.get_device()
 
     teacher_model = models.get_model(model_name)
+    teacher_model.to(device)
     dataset = datasets.construct(dataset_name)
 
     logit_mod = attributors.OneClassEvidence(dataset)
