@@ -40,7 +40,10 @@ def dump_json(dest: Path, data: dict):
 
 
 def subsample_tensors(
-    act: npt.NDArray, ctx: npt.NDArray, num_locations=20
+    act: npt.NDArray,
+    ctx: npt.NDArray,
+    num_locations=20,
+    rng=np.random.default_rng(),
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
     assert len(act.shape) == 4
 
@@ -56,7 +59,7 @@ def subsample_tensors(
 
         assert _a.shape == (nc, h, w)
 
-        selected = np.random.permutation(total_spatial_locations)[:num_locations]
+        selected = rng.permutation(total_spatial_locations)[:num_locations]
         flattened_act = _a.reshape((nc, -1))
         flattened_ctx = _c.reshape((nc, -1))
         selected_act = flattened_act[:, selected]
