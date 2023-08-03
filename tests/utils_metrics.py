@@ -42,3 +42,6 @@ def test_accuracy_with_subclasses():
     )
 
     assert acc == 0.75
+
+
+# todo: all metrics should not change batch norm stats

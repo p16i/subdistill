@@ -20,6 +20,7 @@ def auroc(
     device: str,
     should_convert_auroc=False,
 ) -> typing.Tuple[float, float]:
+    model.eval()
     c1, c2 = classes
 
     metric_auroc = BinaryAUROC()
@@ -46,6 +47,7 @@ def auroc(
 
 
 def accuracy(model: nn.Module, dl: DataLoader, num_classes: int, device: str) -> float:
+    model.eval()
     metric = Accuracy(task="multiclass", num_classes=num_classes)
 
     for x, y in dl:
@@ -62,6 +64,8 @@ def accuracy_with_subclasses(
     transform_target: typing.Callable[[torch.Tensor], torch.Tensor],
     device: str,
 ) -> float:
+    model.eval()
+
     metric = Accuracy(task="multiclass", num_classes=len(considered_classes))
 
     for x, y in dl:
@@ -83,6 +87,8 @@ def auroc_with_basis(
     arr_ks: typing.List[int],
     should_convert_auroc: bool,
 ) -> typing.List[float]:
+    model.eval()
+
     arr_aurocs = []
 
     for k in tqdm(arr_ks, desc=f"[basis={basis}]"):

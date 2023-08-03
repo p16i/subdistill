@@ -6,7 +6,6 @@ import typing
 from pytorch_lightning.loggers import TensorBoardLogger
 
 
-from dataclasses import dataclass
 import pytorch_lightning as pl
 import numpy as np
 
@@ -15,17 +14,12 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
-import torchvision
-import torchmetrics
 
-from enum import Enum
 
 from pathlib import Path
 
-import pandas as pd
-from tqdm import tqdm
 
-from xaikd import utils, datasets, attributors, bases, models, approximators
+from xaikd import utils, datasets, bases, models
 from xaikd.utils import metrics
 from xaikd.distillation_info import LayerDistillInfo
 
@@ -51,7 +45,6 @@ class ModelWrapper(pl.LightningModule):
         self.feature_extrator = utils.freeze_model(feature_extractor)
         self.classification_head = utils.freeze_model(classification_head)
         self.teacher_module = utils.freeze_model(teacher_module)
-
         self.adapter = utils.freeze_model(adapter)
 
         # sanity check
@@ -83,6 +76,7 @@ class ModelWrapper(pl.LightningModule):
         self.eval_safeguard()
 
     def configure_optimizers(self):
+        print(f"we have {utils.count_params_in_model(self.approximator)} parameters")
         # todo: log how many trainable params we have
         optimizer = torch.optim.Adam(
             self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
@@ -171,13 +165,6 @@ class ModelWrapper(pl.LightningModule):
         return status
 
     def on_train_epoch_end(self) -> None:
-        self.eval()
-
-        assert not self.feature_extrator.training
-        assert not self.classification_head.training
-        assert not self.teacher_module.training
-        assert not self.approximator.training
-
         accs = []
 
         for name, loader in list(
@@ -283,6 +270,9 @@ class Layerwise:
             classification_head,
         ) = models.resnet.split_resnet_18_at(student, distill_info.layer_name)
 
+        print(
+            f"[before-create wrapper] we have {utils.count_params_in_model(approx_mod)} parameters (id={id(approx_mod)})"
+        )
         training_wrapper = ModelWrapper(
             feature_extractor=feature_extractor,
             teacher_module=nn.Sequential(
@@ -338,7 +328,36 @@ class Layerwise:
             enable_checkpointing=False,
             deterministic=True,
         )
+
         trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)
+
+        with torch.no_grad():
+            # sanity check!
+            assert getattr(student, distill_info.layer_name) == approx_mod
+
+            setattr(
+                student,
+                distill_info.layer_name,
+                torch.nn.Sequential(
+                    approx_mod,
+                    training_wrapper.adapter,
+                ),
+            )
+            student.eval()
+            student.to(device)
+            _, expected_final_val_acc = training_wrapper.arr_metrics[-1]
+            actual_final_val_acc = metrics.accuracy_with_subclasses(
+                student,
+                self.val_dataloader,
+                considered_classes=self.dataset.selected_classes,
+                transform_target=self.dataset.transform_target,
+                device=device,
+            )
+            np.testing.assert_allclose(
+                actual_final_val_acc,
+                expected_final_val_acc,
+                err_msg="accuracy computed from modified student should match the last one returned from distillator",
+            )
 
         arr_metrics = []
         for epoch, (train_acc, val_acc) in enumerate(training_wrapper.arr_metrics):
