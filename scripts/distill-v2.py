@@ -201,7 +201,7 @@ def main(
             )
             continue
 
-        os.makedirs(basis_distillation_output_dir)
+        os.makedirs(basis_distillation_output_dir, exist_ok=True)
 
         basis = bases.get_basis(basis_name)
 
