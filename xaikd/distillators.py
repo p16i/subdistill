@@ -171,6 +171,14 @@ class ModelWrapper(pl.LightningModule):
                 #     f"max(abs(bias))={bias.abs().max():.4f} ({bias.min():.4f}, {bias.max():.4f})"
                 # )
 
+                v1 = feat_out.flatten(start_dim=2).cpu().numpy()
+                v2 = expected_out.flatten(start_dim=2).cpu().numpy()
+
+                for dix in [0, 1, 3]:
+                    f1 = v1[:, dix, :].reshape(-1)
+                    f2 = v2[:, dix, :].reshape(-1)
+                    print(f"corr({dix})={np.corrcoef(f1, f2)[0, 1]:.4f}")
+
         loss_mse = F.mse_loss(feat_out, expected_out, reduction="none")
         loss_mse = loss_mse.flatten(start_dim=1) / (h * w)
 
