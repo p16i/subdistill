@@ -23,6 +23,8 @@ from xaikd import utils, datasets, bases, models
 from xaikd.utils import metrics
 from xaikd.distillation_info import LayerDistillInfo
 
+from torchmetrics import Accuracy
+
 
 class ModelWrapper(pl.LightningModule):
     def __init__(
@@ -75,6 +77,11 @@ class ModelWrapper(pl.LightningModule):
 
         self.eval_safeguard()
 
+        self.metric = dict(
+            train=Accuracy(task="multiclass", num_classes=dataset.num_classes),
+            val=Accuracy(task="multiclass", num_classes=dataset.num_classes),
+        )
+
     def configure_optimizers(self):
         # todo: log how many trainable params we have
         optimizer = torch.optim.Adam(
@@ -112,7 +119,11 @@ class ModelWrapper(pl.LightningModule):
 
         feat_in, feat_out, logits = self.forward_with_feats(x)
 
-        loss_xent = self._compute_xent_loss(logits, y)
+        # remark: here we transform `y` (from original dataset) to a new index set
+        selected_logits = logits[:, self.dataset.selected_classes]
+        transformed_y = self.dataset.transform_target(y)
+
+        loss_xent = self._compute_xent_loss(selected_logits, transformed_y)
         loss_mse = self._compute_mse_loss(feat_in, feat_out)
         loss = loss_xent + loss_mse
 
@@ -120,13 +131,12 @@ class ModelWrapper(pl.LightningModule):
         self.log(f"{prefix}_loss_mse", loss_mse, on_epoch=True)
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
+        self.metric[prefix].update(torch.argmax(selected_logits, dim=1), transformed_y)
+
         return loss
 
     def _compute_xent_loss(self, logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
-        logits = logits[:, self.dataset.selected_classes]
-        ynew = self.dataset.transform_target(y)
-
-        return self.lambda_xent * F.cross_entropy(logits, ynew)
+        return self.lambda_xent * F.cross_entropy(logits, y)
 
     def _compute_mse_loss(
         self, feat_in: torch.Tensor, feat_out: torch.Tensor
@@ -145,8 +155,23 @@ class ModelWrapper(pl.LightningModule):
     def training_step(self, train_batch, batch_idx):
         return self._compute_loss(train_batch, "train")
 
+    def on_train_end(self):
+        metric = self.metric["train"].compute()
+
+        acc = metric.compute()
+        metric.reset()
+
+        print(f"[on_train_end] acc={acc:.4f}")
+
     def validation_step(self, val_batch, batch_idx):
         return self._compute_loss(val_batch, "val")
+
+    def on_validation_end(self) -> None:
+        metric = self.metric["val"].compute()
+
+        acc = metric.compute()
+        metric.reset()
+        print(f"[on_val_end] acc={acc:.4f}")
 
     def eval_safeguard(self):
         self.feature_extrator.eval()
