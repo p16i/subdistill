@@ -160,8 +160,8 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
                     before.parameters(), after.parameters()
                 ):
                     np.testing.assert_allclose(
-                        before_params,
-                        after_params,
+                        before_params.cpu(),
+                        after_params.cpu(),
                         err_msg="All parameters stay the same",
                     )
 
