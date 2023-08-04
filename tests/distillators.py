@@ -169,4 +169,6 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
                 for before_approx_param, after_approx_param in zip(
                     before_approx.parameters(), after_approx.parameters()
                 ):
-                    np.testing.assert_allclose(before_approx_param, after_approx_param)
+                    np.testing.assert_allclose(
+                        before_approx_param.cpu(), after_approx_param.cpu()
+                    )
