@@ -156,7 +156,7 @@ class ModelWrapper(pl.LightningModule):
     def on_fit_start(self) -> None:
         self.eval_safeguard()
 
-    def on_train_batch_start(self, batch, batch_idx) -> int | None:
+    def on_train_batch_start(self, batch, batch_idx) -> typing.Union[int, None]:
         status = super().on_train_batch_start(batch, batch_idx)
 
         self.eval_safeguard()
