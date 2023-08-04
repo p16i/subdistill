@@ -40,13 +40,9 @@ def construct_approximator_for(
 
         last_module = nn.Identity()
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER:
-        last_module = nn.Conv2d(
-            in_channels=k, out_channels=d, kernel_size=1, bias=False
-        )
+        last_module = nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1)
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK:
-        last_module = nn.Conv2d(
-            in_channels=k, out_channels=k, kernel_size=1, bias=False
-        )
+        last_module = nn.Conv2d(in_channels=k, out_channels=k, kernel_size=1)
 
     return nn.Sequential(backbone_approximator, last_module)
 
