@@ -166,10 +166,10 @@ class ModelWrapper(pl.LightningModule):
                 print(
                     f"max(mse)={F.mse_loss(feat_out, expected_out, reduction='none').max()}"
                 )
-                # bias = self.approximator[-1].bias
-                # print(
-                #     f"max(abs(bias))={bias.abs().max():.4f} ({bias.min():.4f}, {bias.max():.4f})"
-                # )
+                bias = self.approximator[-1].bias
+                print(
+                    f"max(abs(bias))={bias.abs().max():.4f} ({bias.min():.4f}, {bias.max():.4f})"
+                )
 
                 v1 = feat_out.flatten(start_dim=2).cpu().numpy()
                 v2 = expected_out.flatten(start_dim=2).cpu().numpy()
