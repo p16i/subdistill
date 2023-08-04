@@ -80,7 +80,7 @@ class ModelWrapper(pl.LightningModule):
         self.eval_safeguard()
 
         self.metric = dict(
-            # train=Accuracy(task="multiclass", num_classes=dataset.num_classes),
+            train=Accuracy(task="multiclass", num_classes=dataset.num_classes),
             val=Accuracy(task="multiclass", num_classes=dataset.num_classes),
         )
 
@@ -125,9 +125,10 @@ class ModelWrapper(pl.LightningModule):
         feat_in, feat_out, logits = self.forward_with_feats(x)
 
         # remark: here we transform `y` (from original dataset) to a new index set
+        selected_logits = logits[:, self.dataset.selected_classes]
+        transformed_y = self.dataset.transform_target(y)
 
-        # loss_xent = self._compute_xent_loss(selected_logits, transformed_y)
-        loss_xent = 0
+        loss_xent = self._compute_xent_loss(selected_logits, transformed_y)
         loss_mse = self._compute_mse_loss(feat_in, feat_out)
         loss = loss_xent + loss_mse
 
@@ -135,13 +136,10 @@ class ModelWrapper(pl.LightningModule):
         self.log(f"{prefix}_loss_mse", loss_mse, on_epoch=True)
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
-        if prefix == "val":
-            selected_logits = logits[:, self.dataset.selected_classes]
-            transformed_y = self.dataset.transform_target(y)
-            self.metric[prefix].update(
-                torch.argmax(selected_logits, dim=1).detach().cpu(),
-                transformed_y.detach().cpu(),
-            )
+        self.metric[prefix].update(
+            torch.argmax(selected_logits, dim=1).detach().cpu(),
+            transformed_y.detach().cpu(),
+        )
 
         return loss
 
@@ -192,14 +190,13 @@ class ModelWrapper(pl.LightningModule):
         return status
 
     def on_train_epoch_end(self) -> None:
-        pass
-        # metric = self.metric["train"]
+        metric = self.metric["train"]
 
-        # acc = metric.compute()
-        # metric.reset()
+        acc = metric.compute()
+        metric.reset()
 
-        # print(f">>> [on_train_end] acc={acc:.4f}")
-        # self.log(f"train_acc", acc)
+        print(f">>> [on_train_end] acc={acc:.4f}")
+        self.log(f"train_acc", acc)
 
         # accs = []
 

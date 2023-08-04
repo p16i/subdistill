@@ -104,12 +104,7 @@ def main(
         shuffle=False,
     )
 
-    # ds_train_with_aug = deepcopy(ds_train)
-    ds_train_with_aug = datasets.subsample_dataset(
-        datasets.construct("cifar100").create_subset(train_split=True),
-        ratio=training_size,
-        seed=seed,
-    )
+    ds_train_with_aug = deepcopy(ds_train)
     ds_train_with_aug.dataset.transform = transforms.Compose(
         [
             *augmentations.get_augmentation_for(dataset=dataset),
