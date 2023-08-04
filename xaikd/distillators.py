@@ -117,12 +117,12 @@ class ModelWrapper(pl.LightningModule):
         assert not self.classification_head.training
         assert not self.teacher_module.training
 
-        # if prefix == "train":
-        #     assert self.approximator.training
-        # else:
-        #     assert not self.approximator.training
+        if prefix == "train":
+            assert self.approximator.training
+        else:
+            assert not self.approximator.training
 
-        self.approximator.eval()
+        # self.approximator.eval()
 
         feat_in, feat_out, logits = self.forward_with_feats(x)
 
