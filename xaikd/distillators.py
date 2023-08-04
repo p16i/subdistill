@@ -83,11 +83,11 @@ class ModelWrapper(pl.LightningModule):
         )
 
     def configure_optimizers(self):
-        # todo: log how many trainable params we have
         optimizer = torch.optim.Adam(
             self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50)
+        return optimizer, scheduler
 
     def forward_with_feats(
         self, feat
