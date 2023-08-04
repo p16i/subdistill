@@ -194,7 +194,8 @@ def main(
             / f"{approximator_mode}-comp{conf.compression_ratio}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}"
             / basis_name
         )
-        if os.path.exists(basis_distillation_output_dir):
+        # todo(debug): skip this for now
+        if os.path.exists(basis_distillation_output_dir) and False:
             click.echo(
                 f"Directory `{basis_distillation_output_dir}` already exists! Skipping the task"
             )
