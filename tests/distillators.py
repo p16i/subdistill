@@ -82,7 +82,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
 
         before_batch_norm_stats = list(
             map(
-                lambda bn: bn.running_mean.clone().numpy(),
+                lambda bn: bn.running_mean.clone().cpu().numpy(),
                 utils.query_module_children_with_type(
                     nn.Sequential(*before_modules), nn.BatchNorm2d
                 ),
@@ -130,7 +130,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
 
         after_batch_norm_stats = list(
             map(
-                lambda bn: bn.running_mean.clone().numpy(),
+                lambda bn: bn.running_mean.clone().cpu().numpy(),
                 utils.query_module_children_with_type(
                     nn.Sequential(*after_modules), nn.BatchNorm2d
                 ),
