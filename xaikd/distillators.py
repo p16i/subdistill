@@ -189,7 +189,7 @@ class ModelWrapper(pl.LightningModule):
         acc = metric.compute()
         metric.reset()
 
-        print(f"[on_train_end] acc={acc:.4f}")
+        print(f">>> [on_train_end] acc={acc:.4f}")
 
         accs = []
 

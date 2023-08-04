@@ -3,12 +3,16 @@ import numpy.typing as npt
 
 import json
 import torch
+from torch import nn
 import numpy as np
 
 from pathlib import Path
 
 
 from . import interceptor
+
+
+T = typing.TypeVar("T")
 
 
 def get_device() -> str:
@@ -101,3 +105,16 @@ def freeze_model(model: torch.nn.Module) -> torch.nn.Module:
     model.eval()
 
     return model
+
+
+def query_module_children_with_type(
+    module: nn.Module, module_type: typing.Type[T]
+) -> typing.List[T]:
+    basket = []
+    for child in module.children():
+        if isinstance(child, module_type):
+            basket.append(child)
+        else:
+            basket.extend(query_module_children_with_type(child, module_type))
+
+    return basket
