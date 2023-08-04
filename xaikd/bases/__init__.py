@@ -63,7 +63,7 @@ class Adapter(torch.nn.Module):
         return x
 
     def decode(self, x):
-        x = x * (self.std)
+        # x = x * (self.std)
         x = F.conv2d(x, self.mat_decoder)
         x = x + self.mean
         return x

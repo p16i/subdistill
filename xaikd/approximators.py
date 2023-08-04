@@ -50,7 +50,7 @@ def construct_approximator_for(
             # ),
             nn.BatchNorm2d(
                 num_features=k,
-                affine=False,
+                affine=True,
             ),
         )
 
