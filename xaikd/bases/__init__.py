@@ -59,11 +59,11 @@ class Adapter(torch.nn.Module):
     def encode(self, x):
         x = x - self.mean
         x = F.conv2d(x, self.mat_encoder)
-        x = x / (self.std + EPS)
+        # x = x / (self.std + EPS)
         return x
 
     def decode(self, x):
-        x = x * (self.std + EPS)
+        # x = x * (self.std + EPS)
         x = F.conv2d(x, self.mat_decoder)
         x = x + self.mean
         return x
@@ -260,7 +260,9 @@ class Identity(Basis):
         std = self.artifact["std"]
         d = std.shape[0]
 
-        print(f"[basis=identity] setting k={k} has no effect. The following forces k=d={d}!")
+        print(
+            f"[basis=identity] setting k={k} has no effect. The following forces k=d={d}!"
+        )
 
         return Adapter(
             U=torch.eye(d),
