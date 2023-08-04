@@ -110,7 +110,7 @@ class ModelWrapper(pl.LightningModule):
         _, _, logits = self.forward_with_feats(feat)
         return logits
 
-    def _compute_loss(self, batch, prefix):
+    def _compute_loss(self, batch, prefix, batch_idx):
         x, y = batch
 
         assert not self.feature_extrator.training
@@ -129,7 +129,7 @@ class ModelWrapper(pl.LightningModule):
         transformed_y = self.dataset.transform_target(y)
 
         loss_xent = self._compute_xent_loss(selected_logits, transformed_y)
-        loss_mse = self._compute_mse_loss(feat_in, feat_out)
+        loss_mse = self._compute_mse_loss(feat_in, feat_out, batch_idx, prefix)
         loss = loss_xent + loss_mse
 
         self.log(f"{prefix}_loss_xent", loss_xent, on_epoch=True)
@@ -147,24 +147,37 @@ class ModelWrapper(pl.LightningModule):
         return self.lambda_xent * F.cross_entropy(logits, y)
 
     def _compute_mse_loss(
-        self, feat_in: torch.Tensor, feat_out: torch.Tensor
+        self, feat_in: torch.Tensor, feat_out: torch.Tensor, batch_idx, prefix
     ) -> torch.Tensor:
         with torch.no_grad():
             expected_out = self.teacher_module(feat_in)
 
         _, _, h, w = expected_out.shape
 
+        with torch.no_grad():
+            if batch_idx == 0 and prefix == "val":
+                print(
+                    f"max(actual, expected)=({feat_out.max():.4f}, {expected_out.max():.4f})"
+                    + "  |  "
+                    + f"min(actual, expected)=({feat_out.min():.4f}, {expected_out.min():.4f})"
+                )
+                bias = self.approximator[-1].bias
+                print(
+                    f"max(abs(bias))={bias.abs().max():.4f} ({bias.min():.4f}, {bias.max():.4f})"
+                )
+
         loss_mse = F.mse_loss(feat_out, expected_out, reduction="none")
         loss_mse = loss_mse.flatten(start_dim=1) / (h * w)
+
         loss_mse = loss_mse.sum(dim=1)
 
         return self.lambda_mse * loss_mse.mean()
 
     def training_step(self, train_batch, batch_idx):
-        return self._compute_loss(train_batch, "train")
+        return self._compute_loss(train_batch, "train", batch_idx)
 
     def validation_step(self, val_batch, batch_idx):
-        return self._compute_loss(val_batch, "val")
+        return self._compute_loss(val_batch, "val", batch_idx)
 
     def on_validation_epoch_end(self) -> None:
         metric = self.metric["val"]
