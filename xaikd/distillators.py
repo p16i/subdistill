@@ -168,7 +168,7 @@ class ModelWrapper(pl.LightningModule):
 
         acc = metric.compute()
         metric.reset()
-        print(f">>> [on_val_end] acc={acc:.4f}")
+        print(f">>>>>>>>>>>>>>>>>>>>>> [on_val_end] acc={acc:.4f}")
         self.log(f"val_acc", acc)
 
     def eval_safeguard(self):
