@@ -168,6 +168,7 @@ class ModelWrapper(pl.LightningModule):
         acc = metric.compute()
         metric.reset()
         print(f">>> [on_val_end] acc={acc:.4f}")
+        self.log(f"val_acc", acc)
 
     def eval_safeguard(self):
         self.feature_extrator.eval()
@@ -191,6 +192,7 @@ class ModelWrapper(pl.LightningModule):
         metric.reset()
 
         print(f">>> [on_train_end] acc={acc:.4f}")
+        self.log(f"train_acc", acc)
 
         # accs = []
 
