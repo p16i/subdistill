@@ -131,7 +131,10 @@ class ModelWrapper(pl.LightningModule):
         self.log(f"{prefix}_loss_mse", loss_mse, on_epoch=True)
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
-        self.metric[prefix].update(torch.argmax(selected_logits, dim=1), transformed_y)
+        self.metric[prefix].update(
+            torch.argmax(selected_logits, dim=1).detach().cpu(),
+            transformed_y.detach().cpu(),
+        )
 
         return loss
 
