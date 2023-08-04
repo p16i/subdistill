@@ -45,7 +45,7 @@ from xaikd.distillation_info import ExperimentConfiguration
 @click.option("--output-dir", type=str, required=True)
 @click.option("--training-size", type=float, default=0.1, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
-@click.option("--lr", type=float, default=0.001, required=True)
+@click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--weight-decay", type=float, default=0.0)
 @click.option("--lambda-mse", type=float, default=1.0)
