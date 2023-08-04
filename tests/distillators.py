@@ -25,6 +25,8 @@ from xaikd import (
     utils,
 )
 
+from xaikd.utils import metrics
+
 
 @pytest.mark.gpu()
 @pytest.mark.slow()
@@ -32,7 +34,9 @@ from xaikd import (
 def test_distillation_not_alter_batchnorm_and_other_params(layer):
     model_name = "cifar100-resnet18-p1"
     teacher_model = models.get_model(model_name)
-    dataset = datasets.construct("cifar100-people")
+    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
+        "cifar100-people"
+    )
     device = utils.get_device()
 
     layer_dim = constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer]
@@ -67,11 +71,33 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
         basis.load(tmpdirname)
 
         student = models.get_model(model_name)
+
+        expected_acc = metrics.accuracy_with_subclasses(
+            student,
+            val_loader,
+            dataset.selected_classes,
+            dataset.transform_target,
+            device=device,
+        )
+
         (
             before_feature_extractor,
             before_approx,
             before_classification_head,
         ) = models.resnet.split_resnet_18_at(student, layer=layer)
+
+        np.testing.assert_allclose(
+            metrics.accuracy_with_subclasses(
+                nn.Sequential(
+                    before_feature_extractor, before_approx, before_classification_head
+                ),
+                val_loader,
+                dataset.selected_classes,
+                dataset.transform_target,
+                device=device,
+            ),
+            expected_acc,
+        )
 
         before_modules = list(
             map(
@@ -139,6 +165,19 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
                     nn.Sequential(*after_modules), nn.BatchNorm2d
                 ),
             )
+        )
+
+        np.testing.assert_allclose(
+            metrics.accuracy_with_subclasses(
+                nn.Sequential(
+                    after_feature_extractor, before_approx, after_classification_head
+                ),
+                val_loader,
+                dataset.selected_classes,
+                dataset.transform_target,
+                device=device,
+            ),
+            expected_acc,
         )
 
         with torch.no_grad():
