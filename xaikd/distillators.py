@@ -257,7 +257,7 @@ class Layerwise:
         log_dir: Path,
         lambda_mse: float,
         lambda_xent: float,
-    ):
+    ) -> typing.Tuple[nn.Module, typing.List]:
         os.makedirs(str(log_dir), exist_ok=True)
 
         print(f"Distilling layer={distill_info.layer_name} with {epochs} epochs")
@@ -400,7 +400,7 @@ class Layerwise:
                 )
             )
 
-        return arr_metrics
+        return student, arr_metrics
 
     def on_training_layer_start(
         self,

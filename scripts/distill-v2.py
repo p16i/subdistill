@@ -212,7 +212,7 @@ def main(
 
         student = models.get_model(model_name)
 
-        results = distillator.distill(
+        student, results = distillator.distill(
             student=student,
             approx_mod=layer_approximator,
             distill_info=distill_info,
@@ -227,7 +227,7 @@ def main(
 
         df = pd.DataFrame(results)
         arr_epoch_val_accs = df.epoch_val_acc
-        # todo: add trainable params
+
         click.echo(
             f"[basis={basis_name}] acc (max={arr_epoch_val_accs.max():.4f}): {arr_epoch_val_accs.values[-1]:.4f}"
         )
