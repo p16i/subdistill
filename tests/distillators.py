@@ -76,7 +76,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
         before_modules = list(
             map(
                 lambda m: deepcopy(m),
-                [before_feature_extractor, before_classification_head],
+                [teacher_model, before_feature_extractor, before_classification_head],
             )
         )
 
@@ -111,7 +111,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
             student=student,
             approx_mod=layer_approximator,
             distill_info=distill_info,
-            epochs=2,
+            epochs=1,
             basis=basis,
             device=device,
             lr=0.001,
@@ -126,7 +126,11 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
             after_classification_head,
         ) = models.resnet.split_resnet_18_at(student, layer=layer)
 
-        after_modules = [after_feature_extractor, after_classification_head]
+        after_modules = [
+            teacher_model,
+            after_feature_extractor,
+            after_classification_head,
+        ]
 
         after_batch_norm_stats = list(
             map(
