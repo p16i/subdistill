@@ -147,6 +147,9 @@ def main(
         ),
     ]
 
+    # todo(debug): remove this after debugging
+    arr_experiment_confs = arr_experiment_confs[:1]
+
     for basis_name in basis_names.split(","):
         arr_experiment_confs.append(
             ExperimentConfiguration(
