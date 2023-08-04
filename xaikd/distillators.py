@@ -31,7 +31,7 @@ class ModelWrapper(pl.LightningModule):
         self,
         feature_extractor: nn.Module,
         teacher_module: nn.Module,
-        adapter: bases.Adapter,
+        adapter: nn.Module,
         approximator: nn.Module,
         classification_head: nn.Module,
         lr: float,
@@ -150,9 +150,7 @@ class ModelWrapper(pl.LightningModule):
 
         _, _, h, w = expected_out.shape
 
-        loss_mse = F.mse_loss(
-            feat_out * self.adapter.std, expected_out, reduction="none"
-        )
+        loss_mse = F.mse_loss(feat_out, expected_out, reduction="none")
         loss_mse = loss_mse.flatten(start_dim=1) / (h * w)
         loss_mse = loss_mse.sum(dim=1)
 
