@@ -158,23 +158,15 @@ class ModelWrapper(pl.LightningModule):
     def training_step(self, train_batch, batch_idx):
         return self._compute_loss(train_batch, "train")
 
-    def on_train_end(self):
-        metric = self.metric["train"]
-
-        acc = metric.compute()
-        metric.reset()
-
-        print(f"[on_train_end] acc={acc:.4f}")
-
     def validation_step(self, val_batch, batch_idx):
         return self._compute_loss(val_batch, "val")
 
-    def on_validation_end(self) -> None:
+    def on_validation_epoch_end(self) -> None:
         metric = self.metric["val"]
 
         acc = metric.compute()
         metric.reset()
-        print(f"[on_val_end] acc={acc:.4f}")
+        print(f">>> [on_val_end] acc={acc:.4f}")
 
     def eval_safeguard(self):
         self.feature_extrator.eval()
@@ -192,6 +184,13 @@ class ModelWrapper(pl.LightningModule):
         return status
 
     def on_train_epoch_end(self) -> None:
+        metric = self.metric["train"]
+
+        acc = metric.compute()
+        metric.reset()
+
+        print(f"[on_train_end] acc={acc:.4f}")
+
         accs = []
 
         for name, loader in list(
