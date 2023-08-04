@@ -225,16 +225,17 @@ def main(
             lambda_xent=lambda_xent,
         )
 
-        df = pd.DataFrame(results)
-        arr_epoch_val_accs = df.epoch_val_acc
+        # todo(debug): disable for now!
+        # df = pd.DataFrame(results)
+        # arr_epoch_val_accs = df.epoch_val_acc
 
-        click.echo(
-            f"[basis={basis_name}] acc (max={arr_epoch_val_accs.max():.4f}): {arr_epoch_val_accs.values[-1]:.4f}"
-        )
+        # click.echo(
+        #     f"[basis={basis_name}] acc (max={arr_epoch_val_accs.max():.4f}): {arr_epoch_val_accs.values[-1]:.4f}"
+        # )
 
         filename = basis_distillation_output_dir / "result.csv"
 
-        df.to_csv(filename, index=False)
+        # df.to_csv(filename, index=False)
 
     click.echo(f"Check Results at: {output_dir}")
 
