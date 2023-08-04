@@ -177,6 +177,8 @@ class ModelWrapper(pl.LightningModule):
                 device=self.device,
             )
 
+            print(f"[epoch={self.current_epoch}] {name}_acc={acc:.4f}")
+
             self.logger.experiment.add_scalar(
                 f"{name}_acc", acc, global_step=self.current_epoch
             )
