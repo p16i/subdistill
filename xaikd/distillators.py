@@ -180,7 +180,9 @@ class ModelWrapper(pl.LightningModule):
                     f1 = v1[:, dix, :].reshape(-1)
                     f2 = v2[:, dix, :].reshape(-1)
                     arr_corrs.append(np.corrcoef(f1, f2)[0, 1])
-                print(f"min(corr@{np.argmin(arr_corrs)})={np.min(arr_corrs):.4f}")
+                print(
+                    f"min(corr@{np.argmin(arr_corrs)}/{v1.shape[1]})={np.min(arr_corrs):.4f}"
+                )
 
         loss_mse = F.mse_loss(feat_out, expected_out, reduction="none")
         loss_mse = loss_mse.flatten(start_dim=1) / (h * w)
