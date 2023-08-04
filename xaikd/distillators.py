@@ -159,7 +159,7 @@ class ModelWrapper(pl.LightningModule):
         return self._compute_loss(train_batch, "train")
 
     def on_train_end(self):
-        metric = self.metric["train"].compute()
+        metric = self.metric["train"]
 
         acc = metric.compute()
         metric.reset()
@@ -170,7 +170,7 @@ class ModelWrapper(pl.LightningModule):
         return self._compute_loss(val_batch, "val")
 
     def on_validation_end(self) -> None:
-        metric = self.metric["val"].compute()
+        metric = self.metric["val"]
 
         acc = metric.compute()
         metric.reset()
