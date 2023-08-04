@@ -86,9 +86,8 @@ class ModelWrapper(pl.LightningModule):
         optimizer = torch.optim.Adam(
             self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
-        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50)
-        # return [optimizer], [scheduler]
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50)
+        return [optimizer], [scheduler]
 
     def forward_with_feats(
         self, feat
@@ -117,6 +116,8 @@ class ModelWrapper(pl.LightningModule):
 
         if prefix == "train":
             assert self.approximator.training
+        else:
+            assert not self.approximator.training
 
         feat_in, feat_out, logits = self.forward_with_feats(x)
 
