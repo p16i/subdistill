@@ -25,6 +25,8 @@ from xaikd.distillation_info import LayerDistillInfo
 
 from torchmetrics import Accuracy
 
+from pytorch_lightning.callbacks import LearningRateMonitor
+
 
 class ModelWrapper(pl.LightningModule):
     def __init__(
@@ -86,7 +88,7 @@ class ModelWrapper(pl.LightningModule):
         optimizer = torch.optim.Adam(
             self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
         return [optimizer], [scheduler]
         return optimizer
 
@@ -357,6 +359,7 @@ class Layerwise:
             log_every_n_steps=1,
             enable_checkpointing=False,
             deterministic=True,
+            callbacks=[LearningRateMonitor(logging_interval="step")],
         )
 
         trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)
