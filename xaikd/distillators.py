@@ -155,9 +155,6 @@ class ModelWrapper(pl.LightningModule):
 
         _, _, h, w = expected_out.shape
 
-        feat_out = feat_out
-        # * self.adapter.std
-
         with torch.no_grad():
             if batch_idx == 0 and prefix == "val":
                 print(
