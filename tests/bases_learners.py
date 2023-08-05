@@ -4,6 +4,7 @@ import torch
 import numpy as np
 
 from xaikd.bases import learners
+from xaikd import bases
 
 
 @pytest.mark.parametrize("name", ["abs", "recon", "reconreg0.1"])
@@ -18,7 +19,6 @@ def test_obj(name):
 
     rel_original = (act * ctx).sum(axis=1)
     rel_projected = act_projected * ctx_projected
-
 
     if name == "abs":
         mode, beta = name, 0.0
@@ -49,6 +49,38 @@ def test_learner_trainable(mode):
 
     learner = learners.PRCAGreedyLeaner(mode=mode)
 
-    learner.fit(act, ctx, epochs=2)
+    U1 = learner.fit(act, ctx, epochs=2, seed=1)
 
-    assert True
+    U2 = learner.fit(act, ctx, epochs=2, seed=1)
+
+    np.testing.assert_allclose(U1, U2)
+
+
+@pytest.mark.parametrize("mode", ["centered"])
+@pytest.mark.parametrize(
+    "basis_name",
+    [
+        "prca-abs",
+        "prca-recon",
+        "pcaprca-abs",
+        "pcaprca-recon",
+    ],
+)
+def test_calling_learner_from_basis(basis_name, mode):
+    np.random.seed(1)
+
+    act = np.random.randn(10, 2)
+    ctx = np.random.randn(10, 2)
+
+    mean = act.mean(axis=0)
+
+    prca1 = bases.get_basis(f"{basis_name}--{mode}", seed=1)
+    U1, std1 = prca1.fit(act, ctx, mean=mean, device="cpu")
+
+    np.testing.assert_allclose(std1, np.std(act @ U1, axis=0))
+
+    prca2 = bases.get_basis(f"{basis_name}--{mode}", seed=1)
+    U2, std2 = prca2.fit(act, ctx, mean=mean, device="cpu")
+
+    np.testing.assert_allclose(U1, U2)
+    np.testing.assert_allclose(std1, std2)

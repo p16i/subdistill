@@ -205,7 +205,7 @@ def main(
 
         os.makedirs(basis_distillation_output_dir, exist_ok=True)
 
-        basis = bases.get_basis(basis_name)
+        basis = bases.get_basis(basis_name, seed=seed)
         #  todo: only fit if necessary
         # todo: pass seed!
         basis.fit(arr_act, arr_ctx, mean=mean, device=device)

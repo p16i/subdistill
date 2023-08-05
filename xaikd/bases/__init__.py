@@ -207,7 +207,11 @@ class PCA(Basis):
     artifact_keys = ["eigvecs", "std"]
 
     def fit(
-        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
     ):
         """_summary_
 
@@ -341,7 +345,11 @@ class PRCA(Basis):
     artifact_keys = ["eigvecs", "std"]
 
     def fit(
-        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
@@ -378,7 +386,11 @@ class Random(Basis):
     artifact_keys = ["eigvecs", "std"]
 
     def fit(
-        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         if self.centering:
             activation = activation - mean
@@ -386,9 +398,7 @@ class Random(Basis):
         _, d = activation.shape
         seed = self.kwargs["seed"]
 
-        np.random.seed(seed)
-
-        U = ortho_group.rvs(d)
+        U = ortho_group.rvs(d, random_state=np.random.default_rng(seed))
 
         std = np.std(activation @ U, axis=0)
 
@@ -402,7 +412,11 @@ class PRCAVariant(Basis):
     mode: str
 
     def fit(
-        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
@@ -422,7 +436,7 @@ class PRCAVariant(Basis):
 
         learner = learners.PRCAGreedyLeaner(mode=self.mode)
 
-        U = learner.fit(activation, context, **kwargs, beta=self.beta)
+        U = learner.fit(activation, context, beta=self.beta, seed=self.kwargs["seed"])
 
         std = np.std(activation @ U, axis=0)
 
@@ -459,7 +473,11 @@ class PCAPRCAVariant(Basis):
     beta = 0.0
 
     def fit(
-        self, activation: npt.NDArray, context: npt.NDArray, mean: npt.NDArray, **kwargs
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
@@ -486,7 +504,9 @@ class PCAPRCAVariant(Basis):
         activation_on_pca = activation @ E
         context_on_pca = context @ E
 
-        U = learner.fit(activation_on_pca, context_on_pca, **kwargs, beta=self.beta)
+        U = learner.fit(
+            activation_on_pca, context_on_pca, seed=self.kwargs["seed"], beta=self.beta
+        )
 
         # combining the eigvectors of cov(x) and the vectors from PRCA
         # -> X @ (E@U)
