@@ -483,10 +483,10 @@ class PCAPRCAVariant(Basis):
 
         learner = learners.PRCAGreedyLeaner(mode=self.mode)
 
-        activation = activation @ E
-        context = context @ E
+        activation_on_pca = activation @ E
+        context_on_pca = context @ E
 
-        U = learner.fit(activation, context, **kwargs, beta=self.beta)
+        U = learner.fit(activation_on_pca, context_on_pca, **kwargs, beta=self.beta)
 
         # combining the eigvectors of cov(x) and the vectors from PRCA
         # -> X @ (E@U)
