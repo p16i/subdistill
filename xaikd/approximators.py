@@ -22,6 +22,16 @@ def normalize_mode_name(mode: ApproximatorMode) -> str:
     return f"{mode}".split(".")[-1].lower()
 
 
+class Scaling(nn.Module):
+    def __init__(self, scaling: torch.Tensor, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.scaling = scaling.reshape((1, -1, 1, 1))
+
+    def forward(self, x):
+        return x * self.scaling.to(x.device)
+
+
 def construct_approximator_for(
     model: nn.Module,
     layer: str,
@@ -47,7 +57,7 @@ def construct_approximator_for(
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK:
         bn = nn.BatchNorm2d(
             num_features=k,
-            affine=True,
+            affine=False,
         )
         # bn.weight = nn.Parameter(scale[:k])
         last_module = nn.Sequential(
@@ -56,7 +66,8 @@ def construct_approximator_for(
             #     out_channels=k,
             #     kernel_size=1,
             # ),
-            bn
+            bn,
+            Scaling(scale[:k]),
         )
 
     return nn.Sequential(backbone_approximator, last_module)
