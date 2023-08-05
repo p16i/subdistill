@@ -129,6 +129,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
             layer=layer,
             compression_ratio=compression_ratio,
             mode=approximator_mode,
+            seed=1,
         )
 
         log_dir = tmpdirname / "distillation" / "log"
