@@ -163,6 +163,30 @@ def main(
 
     for conf in tqdm(arr_experiment_confs):
         pl.seed_everything(seed)
+
+        layer_approximator = approximators.construct_approximator_for(
+            teacher_model,
+            layer=layer,
+            compression_ratio=conf.compression_ratio,
+            mode=conf.approximator_mode,
+        )
+
+        distillator = distillators.Layerwise(
+            teacher=models.get_model(model_name),
+            dataset=dataset,
+            train_dataloader=train_loader_with_aug,
+            val_dataloader=val_loader,
+            device=device,
+            weight_decay=weight_decay,
+        )
+
+        if ref_acc is None:
+            ref_acc = distillator.ref_acc
+        else:
+            assert (
+                distillator.ref_acc == ref_acc
+            ), "Reference models have different accuracy!"
+
         basis_name = conf.basis_name
 
         approximator_mode = approximators.normalize_mode_name(conf.approximator_mode)
@@ -183,41 +207,11 @@ def main(
         os.makedirs(basis_distillation_output_dir, exist_ok=True)
 
         basis = bases.get_basis(basis_name)
-
         #  todo: only fit if necessary
+        # todo: pass seed!
         basis.fit(arr_act, arr_ctx, mean=mean, device=device)
         basis.save(output_dir)
         basis.load(output_dir)
-
-        layer_approximator = approximators.construct_approximator_for(
-            teacher_model,
-            layer=layer,
-            compression_ratio=conf.compression_ratio,
-            mode=conf.approximator_mode,
-            scale=basis.artifact["std"],
-        )
-
-        min_std = np.min(basis.artifact["std"].numpy())
-        max_std = np.max(basis.artifact["std"].numpy())
-        print(
-            f"std(min)={min_std:.4f} | std(max)={max_std:.4f}",
-        )
-
-        distillator = distillators.Layerwise(
-            teacher=models.get_model(model_name),
-            dataset=dataset,
-            train_dataloader=train_loader_with_aug,
-            val_dataloader=val_loader,
-            device=device,
-            weight_decay=weight_decay,
-        )
-
-        if ref_acc is None:
-            ref_acc = distillator.ref_acc
-        else:
-            assert (
-                distillator.ref_acc == ref_acc
-            ), "Reference models have different accuracy!"
 
         student = models.get_model(model_name)
 
@@ -232,6 +226,12 @@ def main(
             log_dir=basis_distillation_output_dir / "log",
             lambda_mse=lambda_mse,
             lambda_xent=lambda_xent,
+        )
+
+        min_std = np.min(basis.artifact["std"].numpy())
+        max_std = np.max(basis.artifact["std"].numpy())
+        print(
+            f"std(min)={min_std:.4f} | std(max)={max_std:.4f}",
         )
 
         # todo(debug): disable for now!
