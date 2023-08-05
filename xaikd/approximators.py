@@ -43,11 +43,11 @@ def construct_approximator_for(
         last_module = nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1)
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK:
         last_module = nn.Sequential(
-            nn.Conv2d(
-                in_channels=k,
-                out_channels=k,
-                kernel_size=1,
-            ),
+            # nn.Conv2d(
+            #     in_channels=k,
+            #     out_channels=k,
+            #     kernel_size=1,
+            # ),
             nn.BatchNorm2d(
                 num_features=k,
                 affine=True,
