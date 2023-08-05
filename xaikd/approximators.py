@@ -66,7 +66,7 @@ def construct_approximator_for(
             #     kernel_size=1,
             # ),
             bn,
-            # Scaling(scale[:k]),
+            Scaling(scale[:k]),
         )
 
     return nn.Sequential(backbone_approximator, last_module)
