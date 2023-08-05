@@ -57,7 +57,7 @@ def construct_approximator_for(
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK:
         bn = nn.BatchNorm2d(
             num_features=k,
-            affine=True,
+            affine=False,
         )
         last_module = nn.Sequential(
             # nn.Conv2d(
