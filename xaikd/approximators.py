@@ -51,12 +51,12 @@ def construct_approximator_for(
         )
         bn.weight = nn.Parameter(scale[:k])
         last_module = nn.Sequential(
-            # nn.Conv2d(
-            #     in_channels=k,
-            #     out_channels=k,
-            #     kernel_size=1,
-            # ),
-            bn
+            nn.Conv2d(
+                in_channels=k,
+                out_channels=k,
+                kernel_size=1,
+            ),
+            bn,
         )
 
     return nn.Sequential(backbone_approximator, last_module)
