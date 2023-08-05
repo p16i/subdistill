@@ -57,8 +57,9 @@ def construct_approximator_for(
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK:
         bn = nn.BatchNorm2d(
             num_features=k,
-            affine=False,
+            affine=True,
         )
+        bn.weight = nn.Parameter(scale[:k])
         last_module = nn.Sequential(
             # nn.Conv2d(
             #     in_channels=k,
@@ -66,7 +67,7 @@ def construct_approximator_for(
             #     kernel_size=1,
             # ),
             bn,
-            Scaling(scale[:k]),
+            # Scaling(scale[:k]),
         )
 
     return nn.Sequential(backbone_approximator, last_module)
