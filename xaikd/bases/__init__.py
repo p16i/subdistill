@@ -59,11 +59,11 @@ class Adapter(torch.nn.Module):
     def encode(self, x):
         x = x - self.mean
         x = F.conv2d(x, self.mat_encoder)
-        # x = x / (self.std + EPS)
+        x = x / (self.std + EPS)
         return x
 
     def decode(self, x):
-        # x = x * (self.std)
+        x = x * (self.std + EPS)
         x = F.conv2d(x, self.mat_decoder)
         x = x + self.mean
         return x
@@ -492,6 +492,7 @@ class PCAPRCAVariant(Basis):
         # -> X @ (E@U)
         U = E @ U
 
+        # todo: add test for this
         std = np.std(activation @ U, axis=0)
 
         self.artifact = dict(zip(self.artifact_keys, (U, std)))
