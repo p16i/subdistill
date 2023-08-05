@@ -37,11 +37,13 @@ def construct_approximator_for(
     layer: str,
     compression_ratio: float,
     mode: ApproximatorMode,
+    seed: int,
 ):
     num_classes = getattr(model, "num_classes")
     d = models.get_layer_output_dimensions(model, layer)
     k = compute_compressed_dimension(d, compression_ratio)
 
+    torch.manual_seed(seed)
     # this will be adaptered to different arch.
     backbone_approximator = get_approximator_for_resnet18(
         layer, output_dimensions=k, num_classes=num_classes

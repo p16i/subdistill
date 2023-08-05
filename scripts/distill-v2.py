@@ -162,13 +162,12 @@ def main(
         )
 
     for conf in tqdm(arr_experiment_confs):
-        pl.seed_everything(seed)
-
         layer_approximator = approximators.construct_approximator_for(
             teacher_model,
             layer=layer,
             compression_ratio=conf.compression_ratio,
             mode=conf.approximator_mode,
+            seed=seed,
         )
 
         distillator = distillators.Layerwise(
