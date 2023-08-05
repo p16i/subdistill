@@ -436,7 +436,9 @@ class PRCAVariant(Basis):
 
         learner = learners.PRCAGreedyLeaner(mode=self.mode)
 
-        U = learner.fit(activation, context, beta=self.beta, seed=self.kwargs["seed"])
+        U = learner.fit(
+            activation, context, beta=self.beta, seed=self.kwargs["seed"], device=device
+        )
 
         std = np.std(activation @ U, axis=0)
 
@@ -505,7 +507,11 @@ class PCAPRCAVariant(Basis):
         context_on_pca = context @ E
 
         U = learner.fit(
-            activation_on_pca, context_on_pca, seed=self.kwargs["seed"], beta=self.beta
+            activation_on_pca,
+            context_on_pca,
+            seed=self.kwargs["seed"],
+            beta=self.beta,
+            device=device,
         )
 
         # combining the eigvectors of cov(x) and the vectors from PRCA
