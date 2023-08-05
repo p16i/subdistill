@@ -49,7 +49,7 @@ def construct_approximator_for(
             num_features=k,
             affine=True,
         )
-        bn.weight = nn.Parameter(scale[:k])
+        # bn.weight = nn.Parameter(scale[:k])
         last_module = nn.Sequential(
             # nn.Conv2d(
             #     in_channels=k,
