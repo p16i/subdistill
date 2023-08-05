@@ -88,9 +88,8 @@ class ModelWrapper(pl.LightningModule):
         optimizer = torch.optim.Adam(
             self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
-        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
-        # return [optimizer], [scheduler]
-        return optimizer
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.5)
+        return [optimizer], [scheduler]
 
     def forward_with_feats(
         self, feat
