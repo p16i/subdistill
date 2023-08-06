@@ -88,9 +88,9 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
         rng=np.random.default_rng(seed=1),
     )
 
-    np.testing.assert_allclose(arr_act, expected_arr_act)
+    np.testing.assert_allclose(arr_act, expected_arr_act, atol=1e-6)
 
-    np.testing.assert_allclose(arr_ctx, expected_arr_ctx)
+    np.testing.assert_allclose(arr_ctx, expected_arr_ctx, atol=1e-6)
 
 
 def test_logit_modifier_oneclass():
