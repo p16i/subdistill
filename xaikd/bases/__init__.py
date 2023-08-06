@@ -44,6 +44,8 @@ class Adapter(torch.nn.Module):
         self.mat_decoder = U.unsqueeze(2).unsqueeze(3).to(device)
 
         self.mean = mean.reshape((1, -1, 1, 1)).to(device)
+        # remark: we don't use any `std` here.
+        # todo: perhaps, at some point, we should remove it!
         self.std = std.reshape((1, -1, 1, 1)).to(device)
 
         self.mode = mode
@@ -59,11 +61,9 @@ class Adapter(torch.nn.Module):
     def encode(self, x):
         x = x - self.mean
         x = F.conv2d(x, self.mat_encoder)
-        # x = x / (self.std + EPS)
         return x
 
     def decode(self, x):
-        # x = x * (self.std + EPS)
         x = F.conv2d(x, self.mat_decoder)
         x = x + self.mean
         return x
@@ -434,17 +434,33 @@ class PRCAVariant(Basis):
 
         activation = activation - mean
 
+        precondition_mat = self.precondition_matrix(activation)
+
         learner = learners.PRCAGreedyLeaner(mode=self.mode)
 
         U = learner.fit(
-            activation, context, beta=self.beta, seed=self.kwargs["seed"], device=device
+            activation @ precondition_mat,
+            context @ precondition_mat,
+            beta=self.beta,
+            seed=self.kwargs["seed"],
+            device=device,
         )
+
+        # remark: we do right multiplication
+        #      Z = X @ (Precondition Mat) @ U
+        # ; therefore, the final basis is
+        #      U = Precondition Mat @ U
+        U = precondition_mat @ U
 
         std = np.std(activation @ U, axis=0)
 
         self.artifact = dict(zip(self.artifact_keys, (U, std)))
 
         return U, std
+
+    def precondition_matrix(self, activation: npt.NDArray) -> npt.NDArray:
+        d = activation.shape[1]
+        return np.eye(d)
 
 
 @register_basis("prca-abs")
@@ -469,61 +485,21 @@ class PRCARelReconReg(PRCAVariant):
 
 
 @register_basis("pcaprca-abs")
-class PCAPRCAVariant(Basis):
+class PCAPRCAVariant(PRCAVariant):
     artifact_keys = ["eigvecs", "std"]
     mode = "abs"
     beta = 0.0
 
-    def fit(
-        self,
-        activation: npt.NDArray,
-        context: npt.NDArray,
-        mean: npt.NDArray,
-        device: str,
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-        """_summary_ Summary
+    def precondition_matrix(self, activation: npt.NDArray) -> npt.NDArray:
+        # remarks:
+        # - we assume `activation` is processed accordingly to the mode (centered or uncentered)
+        # - if mode=centered, then, this outer product is covariance
+        _, E = np.linalg.eigh(activation.T @ activation / activation.shape[0])
 
-        Args:
-            activation (npt.NDArray): _description_
-            context (npt.NDArray): _description_
+        # reorder according to the descendence of eigenvalues
+        E = np.flip(E, axis=1)
 
-        Returns:
-            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
-        """
-        _, d = activation.shape
-
-        if not self.centering:
-            mean = np.zeros(d)
-
-        activation = activation - mean
-
-        cov = np.cov(activation.T)
-        _, E = np.linalg.eigh(cov)
-        E = np.copy(E[:, ::-1])
-
-        learner = learners.PRCAGreedyLeaner(mode=self.mode)
-
-        activation_on_pca = activation @ E
-        context_on_pca = context @ E
-
-        U = learner.fit(
-            activation_on_pca,
-            context_on_pca,
-            seed=self.kwargs["seed"],
-            beta=self.beta,
-            device=device,
-        )
-
-        # combining the eigvectors of cov(x) and the vectors from PRCA
-        # -> X @ (E@U)
-        U = E @ U
-
-        # todo: add test for this
-        std = np.std(activation @ U, axis=0)
-
-        self.artifact = dict(zip(self.artifact_keys, (U, std)))
-
-        return U, std
+        return E
 
 
 @register_basis("pcaprca-recon")
