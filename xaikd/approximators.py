@@ -45,7 +45,13 @@ def construct_approximator_for(
 
         last_module = nn.Identity()
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER:
-        last_module = nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1)
+        last_module = nn.Sequential(
+            nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1),
+            nn.BatchNorm2d(
+                num_features=k,
+                affine=True,
+            ),
+        )
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK:
         last_module = nn.BatchNorm2d(
             num_features=k,
