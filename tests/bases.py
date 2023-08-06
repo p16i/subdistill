@@ -87,7 +87,7 @@ def test_prca(centering):
 @pytest.mark.parametrize("slug", ["centered"])
 @pytest.mark.parametrize("seed", [1, 10])
 def test_get_random_basis(slug, seed):
-    basis = bases.get_basis(f"random{seed}--{slug}")
+    basis = bases.get_basis(f"random--{slug}", seed=seed)
 
     assert hasattr(basis, "kwargs")
     assert basis.kwargs["seed"] == seed
@@ -118,11 +118,7 @@ def test_correct_std(basis_name):
 
     centered_activation = activation - mean
 
-    if "random" in basis_name:
-        kwargs = dict()
-    else:
-        kwargs = dict(seed=1)
-    basis = bases.get_basis(f"{basis_name}--{mode}", **kwargs)
+    basis = bases.get_basis(f"{basis_name}--{mode}", seed=1)
 
     eigvecs, std = basis.fit(
         activation=activation, context=context, mean=mean, device="cpu"
