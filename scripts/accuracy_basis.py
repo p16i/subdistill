@@ -159,8 +159,7 @@ def main(
     )
 
     dataset_slug = getattr(dataset, "__name")
-    if training_size is not None:
-        dataset_slug = f"{dataset_slug}--n{training_size}-seed{seed}"
+    dataset_slug = f"{dataset_slug}--ts{training_size}-seed{seed}"
 
     output_dir = (
         Path(output_dir)
