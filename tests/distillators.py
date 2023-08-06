@@ -70,7 +70,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer, compression_ra
         basis.save(tmpdirname)
         basis.load(tmpdirname)
 
-        student = models.get_model(model_name)
+        student = models.get_model(model_name).to(device)
 
         expected_acc = metrics.accuracy_with_subclasses(
             student,
