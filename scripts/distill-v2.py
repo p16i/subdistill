@@ -50,6 +50,7 @@ from xaikd.distillation_info import ExperimentConfiguration
 @click.option("--weight-decay", type=float, default=0.0)
 @click.option("--lambda-mse", type=float, default=1.0)
 @click.option("--lambda-xent", type=float, default=1.0)
+@click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
 def main(
     teacher_model,
     dataset,
@@ -65,6 +66,7 @@ def main(
     weight_decay,
     lambda_mse,
     lambda_xent,
+    skip_if_exist,
 ):
     pl.seed_everything(seed)
 
@@ -116,7 +118,6 @@ def main(
 
     train_loader_with_aug = datasets.build_dataloader(ds_train_with_aug, shuffle=True)
 
-    # todo: make sure that all bases use the same activation and context vectors
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=teacher_model,
         layer=layer,
@@ -127,6 +128,7 @@ def main(
         rng=np.random.default_rng(seed=seed),
     )
     mean = np.mean(arr_act, axis=0)
+    # todo: add overwriting flag; if exist, not overwrite and assert!
     np.save(output_dir / "act_mean", mean)
 
     distill_info = distillation_info.get_distill_infor(
@@ -148,9 +150,6 @@ def main(
             approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
         ),
     ]
-
-    # todo(debug): remove this after debugging
-    arr_experiment_confs = []
 
     for basis_name in basis_names.split(","):
         arr_experiment_confs.append(
@@ -196,8 +195,8 @@ def main(
             / f"{approximator_mode}-comp{conf.compression_ratio}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}"
             / basis_name
         )
-        # todo(debug): skip this for now
-        if os.path.exists(basis_distillation_output_dir) and False:
+
+        if skip_if_exist and os.path.exists(basis_distillation_output_dir):
             click.echo(
                 f"Directory `{basis_distillation_output_dir}` already exists! Skipping the task"
             )
@@ -232,17 +231,7 @@ def main(
             f"std(min)={min_std:.4f} | std(max)={max_std:.4f}",
         )
 
-        # todo(debug): disable for now!
-        # df = pd.DataFrame(results)
-        # arr_epoch_val_accs = df.epoch_val_acc
-
-        # click.echo(
-        #     f"[basis={basis_name}] acc (max={arr_epoch_val_accs.max():.4f}): {arr_epoch_val_accs.values[-1]:.4f}"
-        # )
-
         utils.dump_json(basis_distillation_output_dir / "results.json", results)
-
-        # df.to_csv(filename, index=False)
 
     click.echo(f"Check Results at: {output_dir}")
 
