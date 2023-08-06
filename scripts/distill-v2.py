@@ -162,7 +162,7 @@ def main(
         )
 
     for conf in tqdm(arr_experiment_confs):
-        layer_approximator = approximators.construct_approximator_for(
+        approximator = approximators.construct_approximator_for(
             teacher_model,
             layer=layer,
             compression_ratio=conf.compression_ratio,
@@ -207,7 +207,6 @@ def main(
 
         basis = bases.get_basis(basis_name, seed=seed)
         #  todo: only fit if necessary
-        # todo: pass seed!
         basis.fit(arr_act, arr_ctx, mean=mean, device=device)
         basis.save(output_dir)
         basis.load(output_dir)
@@ -216,7 +215,7 @@ def main(
 
         student, results = distillator.distill(
             student=student,
-            approx_mod=layer_approximator,
+            approximator=approximator,
             distill_info=distill_info,
             epochs=epochs,
             basis=basis,
@@ -241,7 +240,7 @@ def main(
         #     f"[basis={basis_name}] acc (max={arr_epoch_val_accs.max():.4f}): {arr_epoch_val_accs.values[-1]:.4f}"
         # )
 
-        filename = basis_distillation_output_dir / "result.csv"
+        utils.dump_json(basis_distillation_output_dir / "results.json", results)
 
         # df.to_csv(filename, index=False)
 
