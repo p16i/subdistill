@@ -228,7 +228,7 @@ class TwoClassesDataset(DatasetConfiguration):
 
     def loader(
         self,
-        batch_size=64,
+        batch_size=128,
         num_workers=2,
         train_split=False,
         shuffle=False,

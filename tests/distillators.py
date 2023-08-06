@@ -1,11 +1,17 @@
 import os
 import pytest
 
+import torch
+
+from torch import nn
+
 import tempfile
 
 import numpy as np
 
 from pathlib import Path
+
+from copy import deepcopy
 
 from xaikd import (
     approximators,
@@ -19,13 +25,20 @@ from xaikd import (
     utils,
 )
 
+from xaikd.utils import metrics
 
-def test_checking_no_batchnorm_get_updated_during_distillation():
-    layer = "layer3"
+
+@pytest.mark.gpu()
+@pytest.mark.slow()
+@pytest.mark.parametrize("layer", ["layer3", "layer4"])
+@pytest.mark.parametrize("compression_ratio", [1.0, 2.0])
+def test_distillation_not_alter_batchnorm_and_other_params(layer, compression_ratio):
     model_name = "cifar100-resnet18-p1"
     teacher_model = models.get_model(model_name)
-    dataset = datasets.construct("cifar100-people")
-    device = "cpu"
+    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
+        "cifar100-people"
+    )
+    device = utils.get_device()
 
     layer_dim = constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer]
 
@@ -43,7 +56,6 @@ def test_checking_no_batchnorm_get_updated_during_distillation():
 
     np.random.seed(1)
 
-    compression_ratio = 1.0
     approximator_mode = approximators.ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER
     distill_info = distillation_info.get_distill_infor(
         arch=model_name, layer=layer, compression_ratio=compression_ratio
@@ -60,8 +72,48 @@ def test_checking_no_batchnorm_get_updated_during_distillation():
 
         student = models.get_model(model_name)
 
-        before_bn1_mean = student.bn1.running_mean.clone().numpy()
-        before_bn2_mean = student.layer4[0].bn1.running_mean.clone().numpy()
+        expected_acc = metrics.accuracy_with_subclasses(
+            student,
+            val_loader,
+            dataset.selected_classes,
+            dataset.transform_target,
+            device=device,
+        )
+
+        (
+            before_feature_extractor,
+            before_approx,
+            before_classification_head,
+        ) = models.resnet.split_resnet_18_at(student, layer=layer)
+
+        np.testing.assert_allclose(
+            metrics.accuracy_with_subclasses(
+                nn.Sequential(
+                    before_feature_extractor, before_approx, before_classification_head
+                ),
+                val_loader,
+                dataset.selected_classes,
+                dataset.transform_target,
+                device=device,
+            ),
+            expected_acc,
+        )
+
+        before_modules = list(
+            map(
+                lambda m: deepcopy(m),
+                [teacher_model, before_feature_extractor, before_classification_head],
+            )
+        )
+
+        before_batch_norm_stats = list(
+            map(
+                lambda bn: bn.running_mean.clone().cpu().numpy(),
+                utils.query_module_children_with_type(
+                    nn.Sequential(*before_modules), nn.BatchNorm2d
+                ),
+            )
+        )
 
         distillator = distillators.Layerwise(
             teacher=teacher_model,
@@ -77,22 +129,14 @@ def test_checking_no_batchnorm_get_updated_during_distillation():
             layer=layer,
             compression_ratio=compression_ratio,
             mode=approximator_mode,
+            seed=1,
         )
 
         log_dir = tmpdirname / "distillation" / "log"
 
-        os.makedirs(log_dir, exist_ok=True)
-
-        for param in layer_approximator.parameters():
-            param.requires_grad = True
-
-        print(
-            f"[before init] we have {utils.count_params_in_model(layer_approximator)} parameters (id={id(layer_approximator)})"
-        )
-
         results = distillator.distill(
             student=student,
-            approx_mod=layer_approximator,
+            approximator=layer_approximator,
             distill_info=distill_info,
             epochs=1,
             basis=basis,
@@ -103,13 +147,72 @@ def test_checking_no_batchnorm_get_updated_during_distillation():
             lambda_xent=1.0,
         )
 
-        after_bn1_mean = student.bn1.running_mean.clone().numpy()
-        after_bn2_mean = student.layer4[0].bn1.running_mean.clone().numpy()
+        (
+            after_feature_extractor,
+            after_approx,
+            after_classification_head,
+        ) = models.resnet.split_resnet_18_at(student, layer=layer)
 
-        for before, after in [
-            (before_bn1_mean, after_bn1_mean),
-            (before_bn2_mean, after_bn2_mean),
-        ]:
-            np.testing.assert_allclose(
-                after, before, err_msg="Batchnorm stats changes!"
+        after_modules = [
+            teacher_model,
+            after_feature_extractor,
+            after_classification_head,
+        ]
+
+        after_batch_norm_stats = list(
+            map(
+                lambda bn: bn.running_mean.clone().cpu().numpy(),
+                utils.query_module_children_with_type(
+                    nn.Sequential(*after_modules), nn.BatchNorm2d
+                ),
             )
+        )
+
+        np.testing.assert_allclose(
+            metrics.accuracy_with_subclasses(
+                nn.Sequential(
+                    after_feature_extractor, before_approx, after_classification_head
+                ),
+                val_loader,
+                dataset.selected_classes,
+                dataset.transform_target,
+                device=device,
+            ),
+            expected_acc,
+        )
+
+        with torch.no_grad():
+            for before_bn_stat, after_bn_stat in zip(
+                before_batch_norm_stats, after_batch_norm_stats
+            ):
+                np.testing.assert_allclose(
+                    before_bn_stat,
+                    after_bn_stat,
+                    err_msg="BatchNorm stat stay the same!",
+                )
+
+            for before, after in zip(
+                before_modules,
+                after_modules,
+            ):
+                before_total_params, _ = utils.count_params_in_model(before)
+                after_total_params, _ = utils.count_params_in_model(after)
+
+                assert before_total_params == after_total_params
+
+                for before_params, after_params in zip(
+                    before.parameters(), after.parameters()
+                ):
+                    np.testing.assert_allclose(
+                        before_params.cpu(),
+                        after_params.cpu(),
+                        err_msg="All parameters stay the same",
+                    )
+
+            with pytest.raises(AssertionError):
+                for before_approx_param, after_approx_param in zip(
+                    before_approx.parameters(), after_approx.parameters()
+                ):
+                    np.testing.assert_allclose(
+                        before_approx_param.cpu(), after_approx_param.cpu()
+                    )

@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 import torch
 
@@ -20,12 +21,17 @@ def test_approximator_homogenous_mode(model, layer):
         layer=layer,
         compression_ratio=1.0,
         mode=approximators.ApproximatorMode.HOMOGENOUS,
+        seed=1,
     )
 
     _, actual_trainable_params = count_params_in_model(approx)
     _, expected_trainable_params = count_params_in_model(getattr(model, layer))
 
-    assert actual_trainable_params == expected_trainable_params
+    num_params_in_batchnorm = approx[-1].weight.shape[0] * 2
+
+    assert (
+        actual_trainable_params == expected_trainable_params + num_params_in_batchnorm
+    )
 
     setattr(model, layer, approx)
 
@@ -51,6 +57,7 @@ def test_approximator_homogenous_lowrank_modes(model, layer):
         layer=layer,
         compression_ratio=compression_rate,
         mode=approximators.ApproximatorMode.HOMOGENOUS_LOWRANK,
+        seed=1,
     )
 
     approx_lowrank_adapter = approximators.construct_approximator_for(
@@ -58,6 +65,7 @@ def test_approximator_homogenous_lowrank_modes(model, layer):
         layer=layer,
         compression_ratio=compression_rate,
         mode=approximators.ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
+        seed=1,
     )
 
     _, trainable_params_lowrank = count_params_in_model(approx_lowrank)
@@ -72,3 +80,51 @@ def test_approximator_homogenous_lowrank_modes(model, layer):
         y = model(torch.randn((10, 3, 32, 32)))
 
     assert not torch.isnan(y).all()
+
+
+@torch.no_grad()
+@pytest.mark.parametrize(
+    "model,layer",
+    [
+        ("cifar100-resnet18-p1", "layer3"),
+        ("cifar100-resnet18-p1", "layer4"),
+    ],
+)
+def test_approximator_homogenous_low_rank_have_same_inits_(model, layer):
+    model = models.get_model(model)
+
+    approx1 = approximators.construct_approximator_for(
+        model=model,
+        layer=layer,
+        compression_ratio=1.0,
+        mode=approximators.ApproximatorMode.HOMOGENOUS_LOWRANK,
+        seed=1,
+    )
+
+    approx2 = approximators.construct_approximator_for(
+        model=model,
+        layer=layer,
+        compression_ratio=1.0,
+        mode=approximators.ApproximatorMode.HOMOGENOUS_LOWRANK,
+        seed=1,
+    )
+
+    approx3 = approximators.construct_approximator_for(
+        model=model,
+        layer=layer,
+        compression_ratio=1.0,
+        mode=approximators.ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
+        seed=1,
+    )
+
+    assert count_params_in_model(approx1) == count_params_in_model(approx2)
+
+    for param1, param2 in zip(approx1.parameters(), approx2.parameters()):
+        np.testing.assert_allclose(param1, param2)
+
+    approx1_backbone = approx1[0]
+    approx3_backbone = approx3[0]
+    for param1, param2 in zip(
+        approx1_backbone.parameters(), approx3_backbone.parameters()
+    ):
+        np.testing.assert_allclose(param1, param2)

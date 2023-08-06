@@ -118,7 +118,11 @@ def test_correct_std(basis_name):
 
     centered_activation = activation - mean
 
-    basis = bases.get_basis(f"{basis_name}--{mode}")
+    if "random" in basis_name:
+        kwargs = dict()
+    else:
+        kwargs = dict(seed=1)
+    basis = bases.get_basis(f"{basis_name}--{mode}", **kwargs)
 
     eigvecs, std = basis.fit(
         activation=activation, context=context, mean=mean, device="cpu"

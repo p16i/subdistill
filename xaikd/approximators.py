@@ -1,6 +1,8 @@
 from enum import Enum
 import numpy as np
+from numpy import typing as npt
 
+import torch
 from torch import nn
 import torchvision
 
@@ -25,12 +27,15 @@ def construct_approximator_for(
     layer: str,
     compression_ratio: float,
     mode: ApproximatorMode,
+    seed: int,
 ):
     num_classes = getattr(model, "num_classes")
     d = models.get_layer_output_dimensions(model, layer)
     k = compute_compressed_dimension(d, compression_ratio)
 
-    # this will be adaptered to different arch.
+    torch.manual_seed(seed)
+
+    # todo: this will be adaptered to different arch.
     backbone_approximator = get_approximator_for_resnet18(
         layer, output_dimensions=k, num_classes=num_classes
     )
@@ -38,11 +43,23 @@ def construct_approximator_for(
     if mode == ApproximatorMode.HOMOGENOUS:
         assert compression_ratio == 1.0, f"`{mode}` only work with `compression_rate=0`"
 
-        last_module = nn.Identity()
+        last_module = nn.BatchNorm2d(
+            num_features=d,
+            affine=True,
+        )
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER:
-        last_module = nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1)
+        last_module = nn.Sequential(
+            nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1),
+            nn.BatchNorm2d(
+                num_features=d,
+                affine=True,
+            ),
+        )
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK:
-        last_module = nn.Conv2d(in_channels=k, out_channels=k, kernel_size=1)
+        last_module = nn.BatchNorm2d(
+            num_features=k,
+            affine=True,
+        )
 
     return nn.Sequential(backbone_approximator, last_module)
 
