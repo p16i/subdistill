@@ -225,10 +225,10 @@ def main(
             lambda_xent=lambda_xent,
         )
 
-        min_std = np.min(basis.artifact["std"].numpy())
-        max_std = np.max(basis.artifact["std"].numpy())
+        last_epoch_val_acc = results["arr_metrics"]["val"][-1]
+
         print(
-            f"std(min)={min_std:.4f} | std(max)={max_std:.4f}",
+            f"Result: Student with `{approximator_mode}` and `{basis}` acc={last_epoch_val_acc:.4f}"
         )
 
         utils.dump_json(basis_distillation_output_dir / "results.json", results)
