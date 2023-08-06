@@ -27,7 +27,11 @@ def test_approximator_homogenous_mode(model, layer):
     _, actual_trainable_params = count_params_in_model(approx)
     _, expected_trainable_params = count_params_in_model(getattr(model, layer))
 
-    assert actual_trainable_params == expected_trainable_params
+    num_params_in_batchnorm = approx[-1].weight.shape[0] * 2
+
+    assert (
+        actual_trainable_params == expected_trainable_params + num_params_in_batchnorm
+    )
 
     setattr(model, layer, approx)
 
