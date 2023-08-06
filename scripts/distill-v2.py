@@ -145,7 +145,7 @@ def main(
             approximator_mode=ApproximatorMode.HOMOGENOUS,
         ),
         ExperimentConfiguration(
-            basis_name="identity--uncentered",
+            basis_name="identity--centered",
             compression_ratio=compression_ratio,
             approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
         ),
