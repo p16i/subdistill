@@ -48,7 +48,7 @@ def construct_approximator_for(
         last_module = nn.Sequential(
             nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1),
             nn.BatchNorm2d(
-                num_features=k,
+                num_features=d,
                 affine=True,
             ),
         )
