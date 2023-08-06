@@ -21,6 +21,9 @@ from xaikd.utils import click_types, metrics
 import pytorch_lightning as pl
 
 
+COMPRESSION_RATIOS = np.array([1, 2, 4, 8, 16, 32, 64])
+
+
 def extract_activation_and_bases(
     model: nn.Module,
     dataset: datasets.Cifar100SuperClassesDataset,
@@ -30,7 +33,9 @@ def extract_activation_and_bases(
     layer: str,
     device: str,
     logit_modifier: attributors.LogitModifier,
+    seed: int,
 ):
+    rng = np.random.default_rng(seed=seed)
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=model,
         layer=layer,
@@ -38,6 +43,7 @@ def extract_activation_and_bases(
         data_loader=loader,
         logit_modifier=logit_modifier,
         device=device,
+        rng=rng,
     )
 
     print("arr_act.shape", arr_act.shape)
@@ -48,7 +54,7 @@ def extract_activation_and_bases(
     for basis_name in basis_names:
         click.echo(f"Learning {basis_name}")
 
-        basis = bases.get_basis(basis_name)
+        basis = bases.get_basis(basis_name, seed=seed)
 
         basis.fit(arr_act, arr_ctx, mean=mean_act, device=device)
 
@@ -71,7 +77,9 @@ def estimate_acc_for_basis(
 
     for k in tqdm(arr_ks, desc=f"[layer={layer}: basis={basis}]"):
         try:
-            hook = module.register_forward_hook(basis.construct_fh_rank_k_projection(k))
+            hook = module.register_forward_hook(
+                basis.construct_fh_rank_k_projection(k, device)
+            )
 
             acc = metrics.accuracy_with_subclasses(
                 model,
@@ -102,17 +110,12 @@ def estimate_acc_for_basis(
     "--basis-mode", default="centered", type=click.Choice(["centered", "uncentered"])
 )
 @click.option(
-    "--logit-modifier",
-    default="oneclass",
-    type=click.Choice(["oneclass", "multipleclasses", "oneclasslogsumexp"]),
-)
-@click.option(
     "--basis-names",
     type=click_types.List(),
-    default="pca,prca-abs,prca-recon,pcaprca-abs,pcaprca-recon,rel-abs,rel,random1,random2",
+    default="pca,prca-abs,prca-recon,pcaprca-abs,pcaprca-recon,rel-abs,rel,random",
 )
 @click.option("--seed", default=1, type=int)
-@click.option("--num-training-samples", default=50, type=int)
+@click.option("--training-size", default=1.0, type=float)
 def main(
     model: nn.Module,
     dataset: str,
@@ -121,8 +124,7 @@ def main(
     seed: int,
     basis_mode: str,
     basis_names: typing.List[str],
-    num_training_samples: typing.Union[None, int],
-    logit_modifier: str,
+    training_size: float,
 ):
     pl.seed_everything(seed)
     arguments = locals()
@@ -132,25 +134,21 @@ def main(
 
     model = model.to(device)
 
-    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
-        dataset, num_training_samples=num_training_samples
+    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(dataset)
+    train_ds = datasets.subsample_dataset(
+        dataset.create_subset(train_split=True), ratio=training_size, seed=seed
     )
-    train_dataloader = dataset.loader(train_split=True)
 
-    # remark: we need to use `batch_size=1` due to rounding issue.
-    val_dataloader = dataset.loader(train_split=False, batch_size=128)
+    train_dataloader = datasets.build_dataloader(train_ds, shuffle=False)
+
+    val_dataloader = datasets.build_dataloader(
+        dataset.create_subset(train_split=False), shuffle=False, batch_size=128
+    )
 
     click.echo(f"Basis Centering Mode: {basis_mode}")
     click.echo(f"with bases: {basis_names}")
 
-    if logit_modifier == "oneclass":
-        logit_mod = attributors.OneClassEvidence(dataset)
-    elif logit_modifier == "multipleclasses":
-        logit_mod = attributors.SelectedClassesEvidence(dataset)
-    elif logit_modifier == "oneclasslogsumexp":
-        logit_mod = attributors.OneClassLogSumExpEvidence(dataset)
-    else:
-        raise ValueError("")
+    logit_modifier = attributors.OneClassEvidence(dataset)
 
     original_acc = metrics.accuracy_with_subclasses(
         model,
@@ -161,8 +159,8 @@ def main(
     )
 
     dataset_slug = getattr(dataset, "__name")
-    if num_training_samples is not None:
-        dataset_slug = f"{dataset_slug}--n{num_training_samples}-seed{seed}"
+    if training_size is not None:
+        dataset_slug = f"{dataset_slug}--n{training_size}-seed{seed}"
 
     output_dir = (
         Path(output_dir)
@@ -181,26 +179,26 @@ def main(
 
         basis_names_with_mode = list(map(lambda s: f"{s}--{basis_mode}", basis_names))
 
-        non_random_bases = list(
-            filter(lambda s: not "random" in s, basis_names_with_mode)
-        )
-
         extract_activation_and_bases(
             model=model,
             dataset=dataset,
             loader=train_dataloader,
             output_dir=layer_output_dir,
-            basis_names=non_random_bases,
+            basis_names=basis_names_with_mode,
             layer=layer,
             device=device,
-            logit_modifier=logit_mod,
+            logit_modifier=logit_modifier,
+            seed=seed,
         )
 
         dims = models.get_layer_output_dimensions(model, layer)
-        arr_ks = [0, 1, 2, 3] + list(range(4, dims + 2, 4))
+        arr_ks = sorted(np.floor(dims / COMPRESSION_RATIOS).astype(int).tolist())
+        print(
+            f"Computing with arr_ks={arr_ks} (corresponding to compression of {np.flip(COMPRESSION_RATIOS)})"
+        )
 
         for basis_name in basis_names_with_mode:
-            basis = bases.get_basis(basis_name)
+            basis = bases.get_basis(basis_name, seed=seed)
 
             basis.load(layer_output_dir, device=device)
 

@@ -181,7 +181,8 @@ def get_basis(slug, **kwargs) -> Basis:
         ), "Since Sprint S9 (2023-07), we conclude that `centering=True` is the fixed parameter."
 
     if "random" in name_slug:
-        assert "seed"  in  kwargs, "`seed` must be specify for `random` basis."
+        assert "seed" in kwargs, "`seed` must be specify for `random` basis."
+
         basis = BASES["random"](alias=name_slug, centering=centering, **kwargs)
     else:
         assert centering_slug in ["uncentered", "centered"], f"Value `{centering_slug}`"
