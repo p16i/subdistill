@@ -37,7 +37,7 @@ from xaikd.distillation_info import ExperimentConfiguration
 @click.option(
     "--basis-names",
     type=str,
-    default="pca,prca-recon,prca-abs,pcaprca-abs,pcaprca-recon,random1",
+    default="pca,prca-recon,prca-abs,pcaprca-abs,pcaprca-recon,random",
     required=True,
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
