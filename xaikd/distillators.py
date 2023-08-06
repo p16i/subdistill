@@ -38,8 +38,6 @@ class ModelWrapper(pl.LightningModule):
         classification_head: nn.Module,
         lr: float,
         dataset: datasets.Cifar100SuperClassesDataset,
-        train_dataloader: DataLoader,
-        val_dataloader: DataLoader,
         weight_decay: float,
         lambda_mse: float,
         lambda_xent: float,
@@ -73,8 +71,6 @@ class ModelWrapper(pl.LightningModule):
         print(f"Lambda (mse={self.lambda_mse}), (xent={self.lambda_xent})")
 
         # todo: find a better way to do this. Perhaps, via Callback?
-        self._train_dataloader = train_dataloader
-        self._val_dataloader = val_dataloader
         self.weight_decay = weight_decay
 
         self.eval_safeguard()
@@ -84,11 +80,13 @@ class ModelWrapper(pl.LightningModule):
             val=Accuracy(task="multiclass", num_classes=dataset.num_classes),
         )
 
+        self.arr_metrics = dict(train=[], val=[])
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
             self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
-        # return optimizer
+
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
         return [optimizer], [scheduler]
 
@@ -110,6 +108,21 @@ class ModelWrapper(pl.LightningModule):
         _, _, logits = self.forward_with_feats(feat)
         return logits
 
+    def eval_safeguard(self):
+        self.feature_extrator.eval()
+        self.classification_head.eval()
+        self.teacher_module.eval()
+
+    def on_fit_start(self) -> None:
+        self.eval_safeguard()
+
+    def on_train_batch_start(self, batch, batch_idx) -> typing.Union[int, None]:
+        status = super().on_train_batch_start(batch, batch_idx)
+
+        self.eval_safeguard()
+
+        return status
+
     def _compute_loss(self, batch, prefix, batch_idx):
         x, y = batch
 
@@ -121,8 +134,6 @@ class ModelWrapper(pl.LightningModule):
             assert self.approximator.training
         else:
             assert not self.approximator.training
-
-        # self.approximator.eval()
 
         feat_in, feat_out, logits = self.forward_with_feats(x)
 
@@ -154,41 +165,8 @@ class ModelWrapper(pl.LightningModule):
         with torch.no_grad():
             expected_out = self.teacher_module(feat_in)
 
-        _, _, h, w = expected_out.shape
-
-        # feat_out = feat_out * self.adapter.std
-
-        with torch.no_grad():
-            if batch_idx == 0 and prefix == "val":
-                print(
-                    f"max(actual, expected)=({feat_out.max():.4f}, {expected_out.max():.4f})"
-                    + "  |  "
-                    + f"min(actual, expected)=({feat_out.min():.4f}, {expected_out.min():.4f})"
-                )
-                print(
-                    f"max(mse)={F.mse_loss(feat_out, expected_out, reduction='none').max()}"
-                )
-                # bias = self.approximator[-1].bias
-                # print(
-                #     f"max(abs(bias))={bias.abs().max():.4f} ({bias.min():.4f}, {bias.max():.4f})"
-                # )
-
-                v1 = feat_out.flatten(start_dim=2).cpu().numpy()
-                v2 = expected_out.flatten(start_dim=2).cpu().numpy()
-
-                arr_corrs = []
-
-                for dix in range(v1.shape[1]):
-                    f1 = v1[:, dix, :].reshape(-1)
-                    f2 = v2[:, dix, :].reshape(-1)
-                    arr_corrs.append(np.corrcoef(f1, f2)[0, 1])
-                print(
-                    f"min(corr@{np.argmin(arr_corrs)}/{v1.shape[1]})={np.min(arr_corrs):.4f}"
-                )
-
         loss_mse = F.mse_loss(feat_out, expected_out, reduction="none")
         loss_mse = loss_mse.flatten(start_dim=1)
-        # / (h * w)
 
         loss_mse = loss_mse.sum(dim=1)
 
@@ -200,62 +178,18 @@ class ModelWrapper(pl.LightningModule):
     def validation_step(self, val_batch, batch_idx):
         return self._compute_loss(val_batch, "val", batch_idx)
 
-    def on_validation_epoch_end(self) -> None:
-        metric = self.metric["val"]
-
-        acc = metric.compute()
+    def _compute_metric(self, prefix):
+        metric = self.metric[prefix]
+        val = metric.compute()
         metric.reset()
-        print(f">>>>>>>>>>>>>>>>>>>>>> [on_val_end] acc={acc:.4f}")
-        self.log(f"val_acc", acc)
+        self.log(f"{prefix}_acc", val)
+        self.arr_metrics[prefix].append(float(val))
 
-    def eval_safeguard(self):
-        self.feature_extrator.eval()
-        self.classification_head.eval()
-        self.teacher_module.eval()
-
-    def on_fit_start(self) -> None:
-        self.eval_safeguard()
-
-    def on_train_batch_start(self, batch, batch_idx) -> typing.Union[int, None]:
-        status = super().on_train_batch_start(batch, batch_idx)
-
-        self.eval_safeguard()
-
-        return status
+    def on_validation_epoch_end(self) -> None:
+        self._compute_metric("val")
 
     def on_train_epoch_end(self) -> None:
-        metric = self.metric["train"]
-
-        acc = metric.compute()
-        metric.reset()
-
-        print(f">>> [on_train_end] acc={acc:.4f}")
-        self.log(f"train_acc", acc)
-
-        # accs = []
-
-        # for name, loader in list(
-        #     zip(["train", "val"], [self._train_dataloader, self._val_dataloader])
-        # ):
-        #     acc = metrics.accuracy_with_subclasses(
-        #         self,
-        #         loader,
-        #         considered_classes=self.dataset.selected_classes,
-        #         transform_target=self.dataset.transform_target,
-        #         device=self.device,
-        #     )
-
-        #     print(f"[epoch={self.current_epoch}] {name}_acc={acc:.4f}")
-
-        #     self.logger.experiment.add_scalar(
-        #         f"{name}_acc", acc, global_step=self.current_epoch
-        #     )
-
-        #     accs.append(acc)
-
-        # self.arr_metrics.append(accs)
-
-        # self.approximator.train()
+        self._compute_metric("train")
 
 
 class Layerwise:
@@ -289,7 +223,7 @@ class Layerwise:
     def distill(
         self,
         student: nn.Module,
-        approx_mod: nn.Module,
+        approximator: nn.Module,
         distill_info: LayerDistillInfo,
         epochs: int,
         basis: bases.Basis,
@@ -298,7 +232,7 @@ class Layerwise:
         log_dir: Path,
         lambda_mse: float,
         lambda_xent: float,
-    ) -> typing.Tuple[nn.Module, typing.List]:
+    ) -> typing.Tuple[nn.Module, typing.Dict]:
         os.makedirs(str(log_dir), exist_ok=True)
 
         print(f"Distilling layer={distill_info.layer_name} with {epochs} epochs")
@@ -308,8 +242,8 @@ class Layerwise:
             _,
         ) = utils.count_params_in_model(self.teacher)
 
-        self.on_training_layer_start(
-            student, approx_mod=approx_mod, distill_info=distill_info
+        self.setup_student_with_approximator(
+            student, approximator=approximator, distill_info=distill_info
         )
 
         count_total_params, count_trainable_params = utils.count_params_in_model(
@@ -354,12 +288,10 @@ class Layerwise:
                 device=device,
                 mode=bases.AdapterMode.DECODER,
             ),
-            approximator=approx_mod,
+            approximator=approximator,
             classification_head=classification_head,
             lr=lr,
             dataset=self.dataset,
-            train_dataloader=self.train_dataloader,
-            val_dataloader=self.val_dataloader,
             weight_decay=self.weight_decay,
             lambda_mse=lambda_mse,
             lambda_xent=lambda_xent,
@@ -370,7 +302,7 @@ class Layerwise:
         student_acc_before_training = metrics.accuracy_with_subclasses(
             nn.Sequential(
                 feature_extractor,
-                approx_mod,
+                approximator,
                 training_wrapper.adapter,
                 classification_head,
             ),
@@ -398,61 +330,91 @@ class Layerwise:
 
         trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)
 
-        with torch.no_grad():
-            # sanity check!
-            assert getattr(student, distill_info.layer_name) == approx_mod
+        self.finalize_and_verify_student_with_adapter(
+            student=student,
+            distill_info=distill_info,
+            approximator=approximator,
+            adapter=training_wrapper.adapter,
+            device=device,
+            expected_acc=training_wrapper.arr_metrics["val"][-1],
+        )
 
-            setattr(
-                student,
-                distill_info.layer_name,
-                torch.nn.Sequential(
-                    approx_mod,
-                    training_wrapper.adapter,
-                ),
-            )
-            student.eval()
-            student.to(device)
-            # todo(debug): disable for now
-            # _, expected_final_val_acc = training_wrapper.arr_metrics[-1]
-            # actual_final_val_acc = metrics.accuracy_with_subclasses(
-            #     student,
-            #     self.val_dataloader,
-            #     considered_classes=self.dataset.selected_classes,
-            #     transform_target=self.dataset.transform_target,
-            #     device=device,
-            # )
-            # np.testing.assert_allclose(
-            #     actual_final_val_acc,
-            #     expected_final_val_acc,
-            #     err_msg="accuracy computed from modified student should match the last one returned from distillator",
-            # )
+        experiment_stat = dict(
+            layer=distill_info.layer_name,
+            teacher_acc=self.ref_acc,
+            student_acc_before_training=student_acc_before_training,
+            student_trainable_param=count_trainable_params,
+            student_total_params=count_total_params,
+            teacher_total_params=total_teacher_params,
+            arr_metrics=training_wrapper.arr_metrics,
+        )
 
-        arr_metrics = []
-        for epoch, (train_acc, val_acc) in enumerate(training_wrapper.arr_metrics):
-            arr_metrics.append(
-                dict(
-                    layer=distill_info.layer_name,
-                    epoch=epoch,
-                    epoch_val_acc=val_acc,
-                    epoch_train_acc=train_acc,
-                    teacher_acc=self.ref_acc,
-                    student_acc_before_training=student_acc_before_training,
-                    student_trainable_param=count_trainable_params,
-                    student_total_params=count_total_params,
-                    teacher_total_params=total_teacher_params,
-                )
-            )
+        return student, experiment_stat
 
-        return student, arr_metrics
-
-    def on_training_layer_start(
+    def setup_student_with_approximator(
         self,
         student: nn.Module,
-        approx_mod: nn.Module,
+        approximator: nn.Module,
         distill_info: LayerDistillInfo,
-    ) -> nn.Module:
-        utils.deactivate_requires_grad(student)
+    ):
+        utils.freeze_model(student)
 
-        setattr(student, distill_info.layer_name, approx_mod)
+        approx_total_params, approx_learnable_params = utils.count_params_in_model(
+            approximator
+        )
 
-        return approx_mod
+        replaced_module_total_params, _ = utils.count_params_in_model(
+            getattr(student, distill_info.layer_name)
+        )
+
+        before_total_params, _ = utils.count_params_in_model(student)
+
+        # this is the actual logic of the function the rest simply for assertions!
+        setattr(student, distill_info.layer_name, approximator)
+
+        after_total_params, after_learnable_params = utils.count_params_in_model(
+            student
+        )
+
+        np.testing.assert_equal(after_learnable_params, approx_learnable_params)
+        np.testing.assert_equal(
+            before_total_params - replaced_module_total_params + approx_total_params,
+            after_total_params,
+        )
+
+    def finalize_and_verify_student_with_adapter(
+        self,
+        student: nn.Module,
+        distill_info: LayerDistillInfo,
+        approximator: nn.Module,
+        adapter: nn.Module,
+        expected_acc: float,
+        device: str,
+    ):
+        assert getattr(student, distill_info.layer_name) == approximator
+
+        setattr(
+            student,
+            distill_info.layer_name,
+            torch.nn.Sequential(
+                approximator,
+                adapter,
+            ),
+        )
+        student.eval()
+        student.to(device)
+
+        # sanity check: acc from student to should equal to the one we have evaluated!
+        with torch.no_grad():
+            actual_acc = metrics.accuracy_with_subclasses(
+                student,
+                self.val_dataloader,
+                considered_classes=self.dataset.selected_classes,
+                transform_target=self.dataset.transform_target,
+                device=device,
+            )
+            np.testing.assert_allclose(
+                actual_acc,
+                expected_acc,
+                err_msg="accuracy computed from modified student should match the last one returned from distillator",
+            )

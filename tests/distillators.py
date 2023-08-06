@@ -31,7 +31,8 @@ from xaikd.utils import metrics
 @pytest.mark.gpu()
 @pytest.mark.slow()
 @pytest.mark.parametrize("layer", ["layer3", "layer4"])
-def test_distillation_not_alter_batchnorm_and_other_params(layer):
+@pytest.mark.parametrize("compression_ratio", [1.0, 2.0])
+def test_distillation_not_alter_batchnorm_and_other_params(layer, compression_ratio):
     model_name = "cifar100-resnet18-p1"
     teacher_model = models.get_model(model_name)
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
@@ -55,7 +56,6 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
 
     np.random.seed(1)
 
-    compression_ratio = 1.0
     approximator_mode = approximators.ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER
     distill_info = distillation_info.get_distill_infor(
         arch=model_name, layer=layer, compression_ratio=compression_ratio
@@ -136,7 +136,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer):
 
         results = distillator.distill(
             student=student,
-            approx_mod=layer_approximator,
+            approximator=layer_approximator,
             distill_info=distill_info,
             epochs=1,
             basis=basis,
