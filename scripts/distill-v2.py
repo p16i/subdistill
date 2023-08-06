@@ -140,7 +140,7 @@ def main(
     arr_experiment_confs = [
         # todo: make sure that we run this conf only once!
         ExperimentConfiguration(
-            basis_name="identity--uncentered",
+            basis_name="identity--centered",
             compression_ratio=1.0,
             approximator_mode=ApproximatorMode.HOMOGENOUS,
         ),

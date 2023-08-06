@@ -43,7 +43,10 @@ def construct_approximator_for(
     if mode == ApproximatorMode.HOMOGENOUS:
         assert compression_ratio == 1.0, f"`{mode}` only work with `compression_rate=0`"
 
-        last_module = nn.Identity()
+        last_module = nn.BatchNorm2d(
+            num_features=d,
+            affine=True,
+        )
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER:
         last_module = nn.Sequential(
             nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1),
