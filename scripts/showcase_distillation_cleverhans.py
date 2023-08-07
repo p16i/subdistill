@@ -37,16 +37,17 @@ BASIS_MODE = "centered"
 @click.command()
 @click.option("--output-dir", type=Path, default="./tmp/showcase-cleverhans")
 @click.option("--epochs", type=int, default=100)
-@click.option("--lambda-mse", type=float, default=1.0)
-@click.option("--lambda-xent", type=float, default=1.0)
-def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
+@click.option("--contamination-level", type=int, default=0.75)
+@click.option("--alphas", type=str, default="0.0,0.25,0.5,0.75,1.0")
+def main(output_dir: Path, epochs, contamination_level, alphas):
     arguments = locals()
     start_time = datetime.now()
 
-    contamination_levels = [0.75]
     base_lr = 0.0005
     seed = 1
     training_size = 0.1
+
+    arr_alphas = np.array(alphas).astype(float)
 
     lr = base_lr / training_size
     model_name = "cifar100-resnet18-p1"
@@ -75,7 +76,10 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
 
     augmentation = augmentations.get_augmentation_for(dataset=dataset)
 
-    for contamination_level in contamination_levels:
+    for alpha in arr_alphas:
+        lambda_mse = alpha
+        lambda_xent = 1 - alpha
+
         contaminated_train_ds = cleverhans.contaminate_dataset(
             dataset=clean_train_ds, contamination_level=contamination_level, seed=seed
         )
@@ -199,7 +203,7 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
             last_epoch_val_acc = results["arr_metrics"]["val"][-1]
 
             print(
-                f"Result (contamination level={contamination_level}): Student with `{approximator_mode}` and `{basis}` acc={last_epoch_val_acc:.4f}"
+                f"Result (contamination level={contamination_level}, lambda_mse={lambda_mse}, lambda_xent={lambda_xent}): Student with `{approximator_mode}` and `{basis}` acc={last_epoch_val_acc:.4f}"
             )
 
             arr_targets, arr_preds = [], []
