@@ -47,7 +47,7 @@ def main(output_dir: Path, epochs, contamination_level, alphas):
     seed = 1
     training_size = 0.1
 
-    arr_alphas = np.array(alphas).astype(float)
+    arr_alphas = np.array(alphas.split(",")).astype(float)
 
     lr = base_lr / training_size
     model_name = "cifar100-resnet18-p1"
