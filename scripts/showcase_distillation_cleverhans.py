@@ -126,9 +126,10 @@ def main(output_dir: Path, epochs, contamination_level, alphas):
     ]
 
     for basis_name in basis_names:
+        basis_name = f"{basis_name}--{BASIS_MODE}"
         arr_experiment_confs.append(
             ExperimentConfiguration(
-                basis_name=f"{basis_name}--{BASIS_MODE}",
+                basis_name=basis_name,
                 compression_ratio=compression_ratio,
                 approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
             ),
