@@ -7,7 +7,7 @@ from xaikd import datasets
 from xaikd.showcases import cleverhans
 
 
-@pytest.mark.parametrize("contamination_level", [0.1, 0.3])
+@pytest.mark.parametrize("contamination_level", [0.0, 0.1, 0.3])
 @pytest.mark.parametrize("training_size", [0.1, 0.5])
 @pytest.mark.parametrize("dataset_name", ["cifar100-people", "cifar100"])
 def test_contamination_dataset(dataset_name, contamination_level, training_size):
