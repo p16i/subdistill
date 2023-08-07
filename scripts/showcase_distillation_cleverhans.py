@@ -76,67 +76,72 @@ def main(output_dir: Path, epochs, contamination_level, alphas):
 
     augmentation = augmentations.get_augmentation_for(dataset=dataset)
 
+    contaminated_train_ds = cleverhans.contaminate_dataset(
+        dataset=clean_train_ds, contamination_level=contamination_level, seed=seed
+    )
+
+    # todo: this can be abstract away
+    # perhaps, make it a method of `dataset``
+    contaminated_train_ds_with_aug = deepcopy(contaminated_train_ds)
+    contaminated_train_ds_with_aug.dataset.transforms = transforms.Compose(
+        [
+            *augmentation,
+            contaminated_train_ds_with_aug,
+        ]
+    )
+
+    train_loader = datasets.build_dataloader(contaminated_train_ds, shuffle=True)
+    train_loader_with_aug = datasets.build_dataloader(
+        contaminated_train_ds_with_aug, shuffle=True
+    )
+
+    arr_act, arr_ctx = attributors.extract_activation_context(
+        model=teacher_model,
+        layer=layer,
+        data_loader=train_loader,
+        dataset=dataset,
+        logit_modifier=logit_mod,
+        device=device,
+        rng=np.random.default_rng(seed=seed),
+    )
+    mean = np.mean(arr_act, axis=0)
+    os.makedirs(output_dir, exist_ok=True)
+    np.save(output_dir / "act_mean", mean)
+
+    distill_info = distillation_info.get_distill_infor(
+        arch=model_name, layer=layer, compression_ratio=compression_ratio
+    )
+
+    arr_experiment_confs = [
+        ExperimentConfiguration(
+            basis_name="identity--centered",
+            compression_ratio=1.0,
+            approximator_mode=ApproximatorMode.HOMOGENOUS,
+        ),
+        ExperimentConfiguration(
+            basis_name="identity--centered",
+            compression_ratio=compression_ratio,
+            approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
+        ),
+    ]
+
+    for basis_name in basis_names:
+        arr_experiment_confs.append(
+            ExperimentConfiguration(
+                basis_name=f"{basis_name}--{BASIS_MODE}",
+                compression_ratio=compression_ratio,
+                approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
+            ),
+        )
+
+        basis = bases.get_basis(basis_name, seed=seed)
+
+        basis.fit(arr_act, arr_ctx, mean=mean, device=device)
+        basis.save(output_dir)
+
     for alpha in arr_alphas:
         lambda_mse = alpha
         lambda_xent = 1 - alpha
-
-        contaminated_train_ds = cleverhans.contaminate_dataset(
-            dataset=clean_train_ds, contamination_level=contamination_level, seed=seed
-        )
-
-        # todo: this can be abstract away
-        # perhaps, make it a method of `dataset``
-        contaminated_train_ds_with_aug = deepcopy(contaminated_train_ds)
-        contaminated_train_ds_with_aug.dataset.transforms = transforms.Compose(
-            [
-                *augmentation,
-                contaminated_train_ds_with_aug,
-            ]
-        )
-
-        train_loader = datasets.build_dataloader(contaminated_train_ds, shuffle=True)
-        train_loader_with_aug = datasets.build_dataloader(
-            contaminated_train_ds_with_aug, shuffle=True
-        )
-
-        arr_act, arr_ctx = attributors.extract_activation_context(
-            model=teacher_model,
-            layer=layer,
-            data_loader=train_loader,
-            dataset=dataset,
-            logit_modifier=logit_mod,
-            device=device,
-            rng=np.random.default_rng(seed=seed),
-        )
-        mean = np.mean(arr_act, axis=0)
-        os.makedirs(output_dir, exist_ok=True)
-        np.save(output_dir / "act_mean", mean)
-
-        distill_info = distillation_info.get_distill_infor(
-            arch=model_name, layer=layer, compression_ratio=compression_ratio
-        )
-
-        arr_experiment_confs = [
-            ExperimentConfiguration(
-                basis_name="identity--centered",
-                compression_ratio=1.0,
-                approximator_mode=ApproximatorMode.HOMOGENOUS,
-            ),
-            ExperimentConfiguration(
-                basis_name="identity--centered",
-                compression_ratio=compression_ratio,
-                approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
-            ),
-        ]
-
-        for basis_name in basis_names:
-            arr_experiment_confs.append(
-                ExperimentConfiguration(
-                    basis_name=f"{basis_name}--{BASIS_MODE}",
-                    compression_ratio=compression_ratio,
-                    approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
-                ),
-            )
 
         ref_acc = None
 
@@ -181,8 +186,6 @@ def main(output_dir: Path, epochs, contamination_level, alphas):
 
             basis = bases.get_basis(basis_name, seed=seed)
 
-            basis.fit(arr_act, arr_ctx, mean=mean, device=device)
-            basis.save(output_dir)
             basis.load(output_dir)
 
             student = models.get_model(model_name)
