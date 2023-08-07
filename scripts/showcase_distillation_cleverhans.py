@@ -210,7 +210,7 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
             )
 
             arr_targets, arr_preds = [], []
-            with torch.no_grad()
+            with torch.no_grad():
                 for x, y in val_loader:
                     arr_targets.append(y.numpy())
                     logits = student(x.to(device))
