@@ -37,7 +37,7 @@ BASIS_MODE = "centered"
 @click.command()
 @click.option("--output-dir", type=Path, default="./tmp/showcase-cleverhans")
 @click.option("--epochs", type=int, default=100)
-@click.option("--contamination-level", type=int, default=0.75)
+@click.option("--contamination-level", type=float, default=0.75)
 @click.option("--alphas", type=str, default="0.0,0.25,0.5,0.75,1.0")
 def main(output_dir: Path, epochs, contamination_level, alphas):
     arguments = locals()
