@@ -39,7 +39,10 @@ BASIS_MODE = "centered"
 @click.option("--epochs", type=int, default=100)
 @click.option("--contamination-level", type=float, default=0.75)
 @click.option("--alphas", type=str, default="0.0,0.25,0.5,0.75,1.0")
-def main(output_dir: Path, epochs, contamination_level, alphas):
+@click.option(
+    "--basis-names", default="pca,prca-recon,pcaprca-recon,prca-abs,pcaprca-abs,random"
+)
+def main(output_dir: Path, epochs, contamination_level, alphas, basis_names):
     arguments = locals()
     start_time = datetime.now()
 
@@ -62,7 +65,7 @@ def main(output_dir: Path, epochs, contamination_level, alphas):
     )
 
     compression_ratio = 10
-    basis_names = ["pca", "prca-recon", "random"]
+    basis_names = basis_names.split(",")
     device = utils.get_device()
 
     teacher_model = models.get_model(model_name)
