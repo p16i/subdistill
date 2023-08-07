@@ -206,7 +206,7 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
             last_epoch_val_acc = results["arr_metrics"]["val"][-1]
 
             print(
-                f"Result: Student with `{approximator_mode}` and `{basis}` acc={last_epoch_val_acc:.4f}"
+                f"Result (contamination level={contamination_level}): Student with `{approximator_mode}` and `{basis}` acc={last_epoch_val_acc:.4f}"
             )
 
             arr_targets, arr_preds = [], []
