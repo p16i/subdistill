@@ -52,8 +52,10 @@ def main(output_dir: Path, epochs, contamination_level, alphas):
     lr = base_lr / training_size
     model_name = "cifar100-resnet18-p1"
     dataset_name = "cifar100-people"
-
     layer = "layer3"
+
+    output_dir = output_dir / f"{dataset_name}-seed{seed}" / model_name / layer
+
     compression_ratio = 10
     basis_names = ["pca", "prca-recon", "random"]
     device = utils.get_device()
