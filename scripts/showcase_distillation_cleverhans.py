@@ -43,7 +43,7 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
     arguments = locals()
     start_time = datetime.now()
 
-    contamination_levels = [0.0, 0.25, 0.5]
+    contamination_levels = [0.75]
     base_lr = 0.0005
     seed = 1
     training_size = 0.1
@@ -54,7 +54,7 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
 
     layer = "layer3"
     compression_ratio = 10
-    basis_names = ["pca", "prca-recon", "random1"]
+    basis_names = ["pca", "prca-recon", "random"]
     device = utils.get_device()
 
     teacher_model = models.get_model(model_name)
@@ -173,16 +173,9 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
                 / basis_name
             )
 
-            # todo: reenable it when finish prototyping
-            # if os.path.exists(basis_distillation_output_dir):
-            #     click.echo(
-            #         f"Directory `{basis_distillation_output_dir}` already exists! Skipping the task"
-            #     )
-            #     continue
-
             os.makedirs(basis_distillation_output_dir, exist_ok=True)
 
-            basis = bases.get_basis(basis_name)
+            basis = bases.get_basis(basis_name, seed=seed)
 
             basis.fit(arr_act, arr_ctx, mean=mean, device=device)
             basis.save(output_dir)
