@@ -135,6 +135,10 @@ def main(output_dir: Path, epochs, contamination_level, alphas):
             ),
         )
 
+    for basis_name in np.unique(
+        list(map(lambda n: n.basis_name, arr_experiment_confs))
+    ):
+        print(f"Learning {basis_name}")
         basis = bases.get_basis(basis_name, seed=seed)
 
         basis.fit(arr_act, arr_ctx, mean=mean, device=device)
