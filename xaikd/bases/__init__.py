@@ -175,11 +175,6 @@ def get_basis(slug, **kwargs) -> Basis:
     name_slug, centering_slug = slug.split("--")
     centering = True if centering_slug == "centered" else False
 
-    if name_slug != "identity":
-        assert (
-            centering
-        ), "Since Sprint S9 (2023-07), we conclude that `centering=True` is the fixed parameter."
-
     if "random" in name_slug:
         assert "seed" in kwargs, "`seed` must be specify for `random` basis."
 
