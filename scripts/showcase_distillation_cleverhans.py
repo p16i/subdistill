@@ -28,6 +28,7 @@ from xaikd import (
 from xaikd.approximators import ApproximatorMode
 from xaikd.showcases import cleverhans
 from xaikd.distillation_info import ExperimentConfiguration
+from xaikd.utils import metrics
 
 
 BASIS_MODE = "centered"
@@ -43,11 +44,14 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
     start_time = datetime.now()
 
     contamination_levels = [0.0, 0.25, 0.5]
-    lr = 0.001
+    base_lr = 0.0005
     seed = 1
     training_size = 0.1
+
+    lr = base_lr / training_size
     model_name = "cifar100-resnet18-p1"
     dataset_name = "cifar100-people"
+
     layer = "layer3"
     compression_ratio = 10
     basis_names = ["pca", "prca-recon", "random1"]
@@ -55,7 +59,7 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
 
     teacher_model = models.get_model(model_name)
     teacher_model.to(device)
-    dataset = datasets.construct(dataset_name)
+    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(dataset_name)
 
     logit_mod = attributors.OneClassEvidence(dataset)
 
@@ -69,6 +73,8 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
         dataset.create_subset(train_split=False), shuffle=False
     )
 
+    augmentation = augmentations.get_augmentation_for(dataset=dataset)
+
     for contamination_level in contamination_levels:
         contaminated_train_ds = cleverhans.contaminate_dataset(
             dataset=clean_train_ds, contamination_level=contamination_level, seed=seed
@@ -79,7 +85,7 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
         contaminated_train_ds_with_aug = deepcopy(contaminated_train_ds)
         contaminated_train_ds_with_aug.dataset.transforms = transforms.Compose(
             [
-                *augmentations.get_augmentation_for(dataset=dataset),
+                *augmentation,
                 contaminated_train_ds_with_aug,
             ]
         )
@@ -108,12 +114,12 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
 
         arr_experiment_confs = [
             ExperimentConfiguration(
-                basis_name="identity--uncentered",
+                basis_name="identity--centered",
                 compression_ratio=1.0,
                 approximator_mode=ApproximatorMode.HOMOGENOUS,
             ),
             ExperimentConfiguration(
-                basis_name="identity--uncentered",
+                basis_name="identity--centered",
                 compression_ratio=compression_ratio,
                 approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
             ),
@@ -131,13 +137,12 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
         ref_acc = None
 
         for conf in arr_experiment_confs:
-            pl.seed_everything(seed)
-
-            layer_approximator = approximators.construct_approximator_for(
+            approximator = approximators.construct_approximator_for(
                 teacher_model,
                 layer=layer,
                 compression_ratio=conf.compression_ratio,
                 mode=conf.approximator_mode,
+                seed=seed,
             )
 
             distillator = distillators.Layerwise(
@@ -168,14 +173,14 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
                 / basis_name
             )
 
-            if os.path.exists(basis_distillation_output_dir):
-                click.echo(
-                    f"Directory `{basis_distillation_output_dir}` already exists! Skipping the task"
-                )
-                continue
+            # todo: reenable it when finish prototyping
+            # if os.path.exists(basis_distillation_output_dir):
+            #     click.echo(
+            #         f"Directory `{basis_distillation_output_dir}` already exists! Skipping the task"
+            #     )
+            #     continue
 
-            # todo: remove exist_ok=True when doing prototyping
-            os.makedirs(basis_distillation_output_dir)
+            os.makedirs(basis_distillation_output_dir, exist_ok=True)
 
             basis = bases.get_basis(basis_name)
 
@@ -185,9 +190,9 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
 
             student = models.get_model(model_name)
 
-            results = distillator.distill(
+            student, results = distillator.distill(
                 student=student,
-                approx_mod=layer_approximator,
+                approximator=approximator,
                 distill_info=distill_info,
                 epochs=epochs,
                 basis=basis,
@@ -198,21 +203,14 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
                 lambda_xent=lambda_xent,
             )
 
-            df = pd.DataFrame(results)
-            stats = df.epoch_val_acc
+            last_epoch_val_acc = results["arr_metrics"]["val"][-1]
 
-            click.echo(
-                f"[basis={basis_name}] acc (max={stats.max():.4f}): {stats.values[-1]:.4f}"
+            print(
+                f"Result: Student with `{approximator_mode}` and `{basis}` acc={last_epoch_val_acc:.4f}"
             )
 
-            filename = basis_distillation_output_dir / "result.csv"
-
-            df.to_csv(filename, index=False)
-
-            student.to(device)
-            arr_targets = []
-            arr_preds = []
-            with torch.no_grad():
+            arr_targets, arr_preds = [], []
+            with torch.no_grad()
                 for x, y in val_loader:
                     arr_targets.append(y.numpy())
                     logits = student(x.to(device))
@@ -221,6 +219,8 @@ def main(output_dir: Path, epochs, lambda_mse, lambda_xent):
 
             arr_targets = np.concatenate(arr_targets)
             arr_preds = np.concatenate(arr_preds)
+
+            utils.dump_json(basis_distillation_output_dir / "results.json", results)
 
             pd.DataFrame.from_dict(dict(target=arr_targets, pred=arr_preds)).to_csv(
                 basis_distillation_output_dir / "predictions.csv", index=False
