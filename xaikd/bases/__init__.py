@@ -175,10 +175,10 @@ def get_basis(slug, **kwargs) -> Basis:
     name_slug, centering_slug = slug.split("--")
     centering = True if centering_slug == "centered" else False
 
-    if "random" in name_slug:
+    if name_slug in ["random", "randomperm"]:
         assert "seed" in kwargs, "`seed` must be specify for `random` basis."
 
-        basis = BASES["random"](alias=name_slug, centering=centering, **kwargs)
+        basis = BASES[name_slug](alias=name_slug, centering=centering, **kwargs)
     else:
         assert centering_slug in ["uncentered", "centered"], f"Value `{centering_slug}`"
 
@@ -297,8 +297,10 @@ class Identity(Basis):
 class Rel(Basis):
     artifact_keys = ["eigvecs", "std"]
 
-    def _relevance_preprocessing(self, x: npt.NDArray) -> npt.NDArray:
-        return x
+    def _computing_criteria(
+        self, activation: npt.NDArray, context: npt.NDArray
+    ) -> npt.NDArray:
+        return activation * context
 
     def fit(
         self,
@@ -312,8 +314,8 @@ class Rel(Basis):
         if self.centering:
             activation = activation - mean
 
-        relevance: npt.NDArray = self._relevance_preprocessing(activation * context)
-        eigvals = np.mean(relevance, axis=0)
+        criteria: npt.NDArray = self._computing_criteria(activation, context)
+        eigvals = np.mean(criteria, axis=0)
 
         # large relevance first
         indices = np.argsort(-eigvals)
@@ -329,9 +331,26 @@ class Rel(Basis):
 
 @register_basis("rel-abs")
 class RelAbs(Rel):
-    def _relevance_preprocessing(self, x: npt.NDArray) -> npt.NDArray:
-        # todo: add test?
-        return np.abs(x)
+    def _computing_criteria(
+        self, activation: npt.NDArray, context: npt.NDArray
+    ) -> npt.NDArray:
+        return np.abs(activation * context)
+
+
+@register_basis("act-abs")
+class ActAbs(Rel):
+    def _computing_criteria(
+        self, activation: npt.NDArray, context: npt.NDArray
+    ) -> npt.NDArray:
+        return np.abs(activation)
+
+
+@register_basis("act")
+class ActAbs(Rel):
+    def _computing_criteria(
+        self, activation: npt.NDArray, context: npt.NDArray
+    ) -> npt.NDArray:
+        return activation
 
 
 @register_basis("prca")
@@ -393,6 +412,33 @@ class Random(Basis):
         seed = self.kwargs["seed"]
 
         U = ortho_group.rvs(d, random_state=np.random.default_rng(seed))
+
+        std = np.std(activation @ U, axis=0)
+
+        setattr(self, "artifact", dict(eigvecs=U, std=std))
+
+        return U, std
+
+
+@register_basis("randomperm")
+class RandomPerm(Basis):
+    artifact_keys = ["eigvecs", "std"]
+
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        if self.centering:
+            activation = activation - mean
+
+        _, d = activation.shape
+        seed = self.kwargs["seed"]
+
+        indices = np.random.default_rng(seed).permutation(d)
+        U = np.eye(d)[:, indices]
 
         std = np.std(activation @ U, axis=0)
 
