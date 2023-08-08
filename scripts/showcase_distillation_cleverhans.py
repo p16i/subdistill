@@ -62,13 +62,14 @@ def main(
     arr_alphas = np.array(alphas.split(",")).astype(float)
 
     lr = base_lr / training_size
+
     model_name = "cifar100-resnet18-p1"
     dataset_name = "cifar100-people"
     layer = "layer3"
 
     output_dir = (
         output_dir
-        / f"{dataset_name}-clv{contamination_level}-seed{seed}"
+        / f"{dataset_name}-ts{training_size}-clv{contamination_level}-seed{seed}"
         / model_name
         / layer
     )
