@@ -44,7 +44,7 @@ BASIS_MODE = "centered"
 @click.option(
     "--basis-names", default="pca,prca-recon,pcaprca-recon,prca-abs,pcaprca-abs,random"
 )
-@click.option("--compression-ratio", tpye=float, default=10)
+@click.option("--compression-ratio", type=float, default=10)
 def main(
     output_dir: Path,
     epochs,
