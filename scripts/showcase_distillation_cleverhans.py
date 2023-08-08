@@ -39,7 +39,7 @@ BASIS_MODE = "centered"
 @click.option("--contamination-level", type=float, default=0.75)
 @click.option("--alphas", type=str, default="0.0,0.25,0.5,0.75,1.0")
 @click.option("--training-size", type=float, default=0.1)
-@click.option("--seed", type=float, default=1)
+@click.option("--seed", type=int, default=1)
 @click.option("--base-lr", type=float, default=0.0005)
 @click.option(
     "--basis-names", default="pca,prca-recon,pcaprca-recon,prca-abs,pcaprca-abs,random"
