@@ -7,7 +7,7 @@ from torch import nn
 from . import resnet
 
 from torchvision.models.resnet import ResNet18_Weights
-from torchvision.models import vgg
+
 from torchvision import models
 
 from xaikd import constants
@@ -105,8 +105,7 @@ def _resnet18_cifar(num_classes: int) -> nn.Module:
 
 @register_model("cifar-vgg11")
 def _cifar_vgg11(num_classes: int) -> nn.Module:
-    model = vgg.vgg11()
-    model.classifier[6] = nn.Linear(4096, num_classes)
+    model = models.vgg.vgg11(num_classes=num_classes)
 
     model.num_classes = num_classes
 

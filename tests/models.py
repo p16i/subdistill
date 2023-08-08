@@ -45,7 +45,3 @@ def test_split_resnet_model(slug, layer):
         expected = model(input).numpy()
 
         np.testing.assert_allclose(actual, expected)
-
-@pytest.mark.skip("[todo]")
-def test_split_vgg11_model(slug, layer):
-    pass
