@@ -89,7 +89,7 @@ def selected_subset_samples_for_classes(
     verbose=False,
 ) -> npt.NDArray:
     selected = []
-    raise NotImplemented("need to be rewrite with generator!")
+    raise NotImplemented("Obsolete: use the `rng` version")
 
     assert set(classes).intersection(labels.tolist()) == set(classes)
 
@@ -108,7 +108,7 @@ def selected_subset_samples_for_classes(
     return np.array(selected)
 
 
-def selected_subset_samples_for_classes_ver2(
+def selected_subset_samples_for_classes_with_seed(
     labels: npt.NDArray,
     subsampling_ratio: float,
     seed: int,
@@ -140,7 +140,7 @@ def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
     # todo: this might be different across torchvision dataset
     labels = dataset.targets
 
-    indices = selected_subset_samples_for_classes_ver2(
+    indices = selected_subset_samples_for_classes_with_seed(
         labels, subsampling_ratio=ratio, seed=seed
     )
 
@@ -228,7 +228,7 @@ class TwoClassesDataset(DatasetConfiguration):
 
     def loader(
         self,
-        batch_size=64,
+        batch_size=128,
         num_workers=2,
         train_split=False,
         shuffle=False,

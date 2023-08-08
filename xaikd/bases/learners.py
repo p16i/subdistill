@@ -40,7 +40,8 @@ class PRCAGreedyLeaner:
         activation = torch.from_numpy(activation).float().to(device)
         context = torch.from_numpy(context).float().to(device)
 
-        torch.manual_seed(seed)
+        rng = torch.Generator()
+        rng.manual_seed(seed)
 
         U = torch.zeros(d, d)
         U = U.to(device)
@@ -53,7 +54,7 @@ class PRCAGreedyLeaner:
             UUt = U @ U.T
 
             # take a random vector
-            v = torch.randn(d).to(device)
+            v = torch.randn(d, generator=rng).to(device)
 
             v = (I - UUt) @ v
 

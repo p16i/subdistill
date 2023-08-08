@@ -1,5 +1,5 @@
 test:
-	pytest tests/*
+	CUBLAS_WORKSPACE_CONFIG=:4096:8 pytest tests/*
 
 test-data-dir:
 	ASSERT_DATADIR=1 pytest tests/datasets_datadir.py
@@ -9,4 +9,4 @@ test-fast:
 
 
 sync-artifact:
-	rsync --update -rv --max-size=1m ml-slurm-server:~/projects/xai-kd/artifacts/$(name) ./artifacts
+	rsync --update -rv --max-size=2m ml-slurm-server:~/projects/xai-kd/artifacts/$(name) ./artifacts

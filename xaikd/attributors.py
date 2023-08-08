@@ -48,6 +48,9 @@ class LogitModifier(ABC):
     ) -> torch.Tensor:
         raise NotImplemented
 
+    def __str__(self) -> str:
+        raise NotImplemented
+
 
 class OneClassEvidence(LogitModifier):
     def __init__(self, dataset: datasets.DatasetConfiguration) -> None:
@@ -56,6 +59,9 @@ class OneClassEvidence(LogitModifier):
     def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         logits = logits.clone()
         return logits * F.one_hot(targets, self.dataset.num_classes).to(logits.device)
+
+    def __str__(self) -> str:
+        return "oneclass"
 
 
 class OneClassLogSumExpEvidence(LogitModifier):
@@ -71,6 +77,9 @@ class OneClassLogSumExpEvidence(LogitModifier):
             logits.device
         )
 
+    def __str__(self) -> str:
+        return "oneclasslogsum"
+
 
 class SelectedClassesEvidence(LogitModifier):
     def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
@@ -83,6 +92,9 @@ class SelectedClassesEvidence(LogitModifier):
         ]
 
         return output
+
+    def __str__(self) -> str:
+        return "selectedclasses"
 
 
 class LogOddEvidence(LogitModifier):
@@ -101,6 +113,9 @@ class LogOddEvidence(LogitModifier):
         output[:, self.classes[1]] = -logits[:, self.classes[1]]
 
         return output
+
+    def __str__(self) -> str:
+        return "logodd"
 
 
 def extract_activation_context(

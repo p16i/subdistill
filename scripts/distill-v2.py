@@ -4,8 +4,6 @@ import pandas as pd
 
 import pytorch_lightning as pl
 import numpy as np
-import torch
-from torch.utils.data import DataLoader
 
 from datetime import datetime
 
@@ -24,20 +22,12 @@ from xaikd import (
     bases,
     approximators,
     augmentations,
+    distillation_info,
 )
 
 from xaikd.approximators import ApproximatorMode
 
-from tensorboard_logger import configure
-
-from dataclasses import dataclass
-
-
-@dataclass
-class ExperimentConfiguration:
-    basis_name: str
-    compression_ratio: float
-    approximator_mode: ApproximatorMode
+from xaikd.distillation_info import ExperimentConfiguration
 
 
 @click.command()
@@ -47,7 +37,7 @@ class ExperimentConfiguration:
 @click.option(
     "--basis-names",
     type=str,
-    default="pca,prca-recon,prca-abs,pcaprca-abs,pcaprca-recon,random1",
+    default="pca,prca-recon,prca-abs,pcaprca-abs,pcaprca-recon,random",
     required=True,
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
@@ -55,11 +45,12 @@ class ExperimentConfiguration:
 @click.option("--output-dir", type=str, required=True)
 @click.option("--training-size", type=float, default=0.1, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
-@click.option("--lr", type=float, default=0.001, required=True)
+@click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--weight-decay", type=float, default=0.0)
 @click.option("--lambda-mse", type=float, default=1.0)
 @click.option("--lambda-xent", type=float, default=1.0)
+@click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
 def main(
     teacher_model,
     dataset,
@@ -75,6 +66,7 @@ def main(
     weight_decay,
     lambda_mse,
     lambda_xent,
+    skip_if_exist,
 ):
     pl.seed_everything(seed)
 
@@ -83,6 +75,8 @@ def main(
 
     teacher_model = models.get_model(teacher_model)
     model_name = getattr(teacher_model, "__name")
+
+    lr = lr / (training_size)
 
     layer_slug = f"layer-{layer}"
 
@@ -124,7 +118,6 @@ def main(
 
     train_loader_with_aug = datasets.build_dataloader(ds_train_with_aug, shuffle=True)
 
-    # todo: make sure that all bases use the same activation and context vectors
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=teacher_model,
         layer=layer,
@@ -135,9 +128,10 @@ def main(
         rng=np.random.default_rng(seed=seed),
     )
     mean = np.mean(arr_act, axis=0)
+    # todo: add overwriting flag; if exist, not overwrite and assert!
     np.save(output_dir / "act_mean", mean)
 
-    distill_info = distillators.get_distill_infor(
+    distill_info = distillation_info.get_distill_infor(
         arch=model_name, layer=layer, compression_ratio=compression_ratio
     )
 
@@ -146,12 +140,12 @@ def main(
     arr_experiment_confs = [
         # todo: make sure that we run this conf only once!
         ExperimentConfiguration(
-            basis_name="identity--uncentered",
+            basis_name="identity--centered",
             compression_ratio=1.0,
             approximator_mode=ApproximatorMode.HOMOGENOUS,
         ),
         ExperimentConfiguration(
-            basis_name="identity--uncentered",
+            basis_name="identity--centered",
             compression_ratio=compression_ratio,
             approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
         ),
@@ -167,13 +161,12 @@ def main(
         )
 
     for conf in tqdm(arr_experiment_confs):
-        pl.seed_everything(seed)
-
-        layer_approximator = approximators.construct_approximator_for(
+        approximator = approximators.construct_approximator_for(
             teacher_model,
             layer=layer,
             compression_ratio=conf.compression_ratio,
             mode=conf.approximator_mode,
+            seed=seed,
         )
 
         distillator = distillators.Layerwise(
@@ -193,6 +186,7 @@ def main(
             ), "Reference models have different accuracy!"
 
         basis_name = conf.basis_name
+
         approximator_mode = approximators.normalize_mode_name(conf.approximator_mode)
 
         basis_distillation_output_dir = (
@@ -201,16 +195,16 @@ def main(
             / f"{approximator_mode}-comp{conf.compression_ratio}-wd{weight_decay}-ldmse{lambda_mse}-ldxent{lambda_xent}"
             / basis_name
         )
-        if os.path.exists(basis_distillation_output_dir):
+
+        if skip_if_exist and os.path.exists(basis_distillation_output_dir):
             click.echo(
                 f"Directory `{basis_distillation_output_dir}` already exists! Skipping the task"
             )
             continue
 
-        os.makedirs(basis_distillation_output_dir)
+        os.makedirs(basis_distillation_output_dir, exist_ok=True)
 
-        basis = bases.get_basis(basis_name)
-
+        basis = bases.get_basis(basis_name, seed=seed)
         #  todo: only fit if necessary
         basis.fit(arr_act, arr_ctx, mean=mean, device=device)
         basis.save(output_dir)
@@ -218,9 +212,9 @@ def main(
 
         student = models.get_model(model_name)
 
-        results = distillator.distill(
+        student, results = distillator.distill(
             student=student,
-            approx_mod=layer_approximator,
+            approximator=approximator,
             distill_info=distill_info,
             epochs=epochs,
             basis=basis,
@@ -231,16 +225,13 @@ def main(
             lambda_xent=lambda_xent,
         )
 
-        df = pd.DataFrame(results)
-        stats = df.epoch_val_acc
-        # todo: add trainable params
-        click.echo(
-            f"[basis={basis_name}] acc (max={stats.max():.4f}): {stats.values[-1]:.4f}"
+        last_epoch_val_acc = results["arr_metrics"]["val"][-1]
+
+        print(
+            f"Result: Student with `{approximator_mode}` and `{basis}` acc={last_epoch_val_acc:.4f}"
         )
 
-        filename = basis_distillation_output_dir / "result.csv"
-
-        df.to_csv(filename, index=False)
+        utils.dump_json(basis_distillation_output_dir / "results.json", results)
 
     click.echo(f"Check Results at: {output_dir}")
 

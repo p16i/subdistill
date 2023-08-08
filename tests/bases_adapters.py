@@ -64,7 +64,7 @@ def test_trainable_parameters_in_adapter(basis_name):
     seed = 1
     basis_name = f"{basis_name}--centered"
 
-    basis = bases.get_basis(basis_name)
+    basis = bases.get_basis(basis_name, seed=1)
 
     np.random.seed(1)
 
