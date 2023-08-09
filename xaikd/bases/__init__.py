@@ -437,7 +437,8 @@ class ActReconGreedy(CanonicalBasis):
                 u = torch.zeros(d)
                 u[i] = 1
                 u = u.to(device)
-                norm = torch.linalg.norm(a_c - activation.dot(u)[:, None] * u)
+                uut = u.outer(u)
+                norm = torch.linalg.norm(a_c - activation @ uut)
                 stat = float(torch.mean(norm).detach().cpu().numpy())
                 stats.append(stat)
 
