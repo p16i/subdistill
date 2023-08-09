@@ -453,6 +453,19 @@ class ActRecon(CanonicalBasis):
         return -criteria
 
 
+@register_basis("act-reconfixed")
+class ActReconFixed(CanonicalBasis):
+    def _computuing_maximization_objective(self, activation, context):
+        # problem: argmin_i   \| a - (a^\tope_i) e_i \|^2_2
+        #          argmin_i   a^Ta - 2 a^e_i + a_i^2
+        #          argmax_i - (a^T a - 2 a^e_i + a_i^2)
+        norm = np.linalg.norm(activation, axis=1, keepdims=True)
+        criteria = -(activation**2)
+
+        # convert to maximization
+        return -criteria
+
+
 @register_basis("act-recongreedy")
 class ActReconGreedy(CanonicalBasis):
     # def _computuing_maximization_objective(self, activation, context):
