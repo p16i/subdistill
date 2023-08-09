@@ -434,6 +434,7 @@ class RelReconGreedy(CanonicalBasis):
                 stats.append(stat)
 
             _k = np.argmin(stats)
+            indices.append(_k)
             U[_k, step] = 1.0
 
         U = U.cpu().numpy()
