@@ -375,7 +375,7 @@ class ActAbs(CanonicalBasis):
 
 
 @register_basis("act-recon")
-class ActRecon(Rel):
+class ActRecon(CanonicalBasis):
     def _computuing_maximization_objective(self, activation, context):
         # problem: argmin_i   \| a - (a^\tope_i) e_i \|^2_2
         #          argmin_i   a^Ta - 2 a^e_i + a_i^2
@@ -385,6 +385,68 @@ class ActRecon(Rel):
 
         # convert to maximization
         return -criteria
+
+
+@register_basis("act-recongreedy")
+class ActReconGreedy(CanonicalBasis):
+    # def _computuing_maximization_objective(self, activation, context):
+    #     # problem: argmin_i   \| a - (a^\tope_i) e_i \|^2_2
+    #     #          argmin_i   a^Ta - 2 a^e_i + a_i^2
+    #     #          argmax_i - (a^T a - 2 a^e_i + a_i^2)
+    #     norm = np.linalg.norm(activation, axis=1, keepdims=True)
+    #     criteria = norm**2 - 2 * activation + activation**2
+
+    #     # convert to maximization
+    #     return -criteria
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: typing.Union[npt.NDArray, None],
+        device: str,
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        n, d = activation.shape
+
+        if self.centering:
+            activation = activation - mean
+
+        # objective: npt.NDArray = self._computuing_maximization_objective(
+        #     activation, context
+        # )
+        # eigvals = np.mean(objective, axis=0)
+
+        # # argmax_i E[objective]
+        # indices = np.argsort(-eigvals)
+
+        indices = []
+
+        d = activation.shape[1]
+
+        while len(indices) < d:
+            dimensions = list(set(range(d)).difference(indices))
+
+            stats = []
+
+            U = np.eye(d)[:, indices]
+
+            a_c = activation @ (np.eye(d) - U @ U.T)
+            for i in dimensions:
+                u = np.zeros(d)
+                u[i] = 1
+                norm = np.linalg.norm(a_c - activation.dot(u)[:, None] * u)
+                stat = np.mean(norm)
+                stats.append(stat)
+
+            selected_i = dimensions[np.argmin(stats)]
+            indices.append(selected_i)
+
+        eigvecs = np.eye(d)[:, indices]
+
+        std = np.std(activation @ eigvecs, axis=0)
+
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+
+        return eigvecs, std
 
 
 @register_basis("prca")
