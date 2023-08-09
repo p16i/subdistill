@@ -425,7 +425,7 @@ class RelReconGreedy(CanonicalBasis):
                 u = torch.zeros(d)
                 u[i] = 1
                 u = u.to(device)
-                assert torch.allclose((U.T @ u).cpu(), 0)
+                np.testing.assert_allclose((U.T @ u).cpu().numpy(), 0)
                 rel_proj = (a_comp @ u) * (c_comp @ u)
                 norm = (rel_total_left - rel_proj) ** 2
                 stat = float(torch.mean(norm).detach().cpu().numpy())
