@@ -360,6 +360,19 @@ class RelRecon(CanonicalBasis):
         return -recon
 
 
+@register_basis("rel-reconfixed")
+class RelReconFixed(CanonicalBasis):
+    def _computuing_maximization_objective(self, activation, context):
+        # problem: argmin_i   \|r - r_i\|_2^2
+        #       => argmax_i - \|r - r_i\|_2^2
+        rel_per_dim = activation * context
+        rel = np.sum(rel_per_dim, axis=1, keepdims=True)
+
+        recon = (rel - rel_per_dim) ** 2
+
+        return -recon
+
+
 @register_basis("rel-recongreedy")
 class RelReconGreedy(CanonicalBasis):
     def fit(
