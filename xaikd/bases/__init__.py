@@ -243,7 +243,8 @@ class PCA(Basis):
 
         assert not np.isnan(std).any()
         assert not (eigvals < 0).any()
-        np.testing.assert_allclose(std, eigvals**0.5, atol=1e-3)
+        if self.centering:
+            np.testing.assert_allclose(std, eigvals**0.5, atol=1e-3)
 
         self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
 
