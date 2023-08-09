@@ -360,6 +360,72 @@ class RelRecon(CanonicalBasis):
         return -recon
 
 
+@register_basis("rel-recongreedy")
+class RelReconGreedy(CanonicalBasis):
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: typing.Union[npt.NDArray, None],
+        device: str,
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        n, d = activation.shape
+
+        if self.centering:
+            activation = activation - mean
+
+        # objective: npt.NDArray = self._computuing_maximization_objective(
+        #     activation, context
+        # )
+        # eigvals = np.mean(objective, axis=0)
+
+        # # argmax_i E[objective]
+        # indices = np.argsort(-eigvals)
+
+        indices = []
+
+        d = activation.shape[1]
+
+        activation = torch.from_numpy(activation).float().to(device)
+        context = torch.from_numpy(context).float().to(device)
+
+        while len(indices) < d:
+            dimensions = list(set(range(d)).difference(indices))
+
+            stats = []
+
+            U = np.eye(d)[:, indices]
+            U = torch.from_numpy(U).float().to(device)
+
+            a_comp = activation @ (torch.eye(d).float().to(device) - U @ U.T)
+            c_comp = context @ (torch.eye(d).float().to(device) - U @ U.T)
+
+            rel_comp = (a_comp * c_comp).sum(axis=1)
+
+            for i in dimensions:
+                u = torch.zeros(d)
+                u[i] = 1
+                u = u.to(device)
+                norm = (rel_comp - (a_comp @ u) * (c_comp @ u)) ** 2
+                # torch.linalg.norm(a_comp - activation @ uut)
+                # stat
+                stat = float(torch.mean(norm).detach().cpu().numpy())
+                stats.append(stat)
+
+            selected_i = dimensions[np.argmin(stats)]
+            indices.append(selected_i)
+
+        activation = activation.detach().cpu().numpy()
+
+        eigvecs = np.eye(d)[:, indices]
+
+        std = np.std(activation @ eigvecs, axis=0)
+
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+
+        return eigvecs, std
+
+
 @register_basis("act")
 class Act(CanonicalBasis):
     def _computuing_maximization_objective(self, activation, context):
