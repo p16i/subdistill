@@ -407,9 +407,9 @@ class RelReconGreedy(CanonicalBasis):
         U = torch.zeros(d, d)
         U = U.to(device)
 
-        for _ in range(d):
+        indices = []
 
-            indices = np.argmax(U.cpu().numpy(), axis=0)
+        for step in range(d):
             dimensions = list(set(range(d)).difference(indices))
 
             stats = []
@@ -433,7 +433,8 @@ class RelReconGreedy(CanonicalBasis):
                 stat = float(torch.mean(norm).detach().cpu().numpy())
                 stats.append(stat)
 
-            U[np.argmin(stats), len(indices)] = 1.0
+            _k = np.argmin(stats)
+            U[_k, step] = 1.0
 
         U = U.cpu().numpy()
         indices = np.argmax(U, axis=0)
