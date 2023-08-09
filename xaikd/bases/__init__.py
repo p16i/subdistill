@@ -293,14 +293,13 @@ class Identity(Basis):
         return std
 
 
-@register_basis("rel")
-class Rel(Basis):
+class CanonicalBasis(Basis):
     artifact_keys = ["eigvecs", "std"]
 
-    def _computing_criteria(
+    def _computuing_maximization_objective(
         self, activation: npt.NDArray, context: npt.NDArray
     ) -> npt.NDArray:
-        return activation * context
+        raise NotImplementedError("")
 
     def fit(
         self,
@@ -314,10 +313,12 @@ class Rel(Basis):
         if self.centering:
             activation = activation - mean
 
-        criteria: npt.NDArray = self._computing_criteria(activation, context)
-        eigvals = np.mean(criteria, axis=0)
+        objective: npt.NDArray = self._computuing_maximization_objective(
+            activation, context
+        )
+        eigvals = np.mean(objective, axis=0)
 
-        # large relevance first
+        # argmax_i E[objective]
         indices = np.argsort(-eigvals)
 
         eigvecs = np.eye(d)[:, indices]
@@ -329,28 +330,60 @@ class Rel(Basis):
         return eigvecs, std
 
 
+@register_basis("rel")
+class Rel(CanonicalBasis):
+    artifact_keys = ["eigvecs", "std"]
+
+    def _computuing_maximization_objective(self, activation, context):
+        # problem: argmax_i r_i
+        return activation * context
+
+
 @register_basis("rel-abs")
-class RelAbs(Rel):
-    def _computing_criteria(
-        self, activation: npt.NDArray, context: npt.NDArray
-    ) -> npt.NDArray:
+class RelAbs(CanonicalBasis):
+    def _computuing_maximization_objective(self, activation, context):
+        # problem: argmax_i |r_i|
         return np.abs(activation * context)
 
 
-@register_basis("act-abs")
-class ActAbs(Rel):
-    def _computing_criteria(
-        self, activation: npt.NDArray, context: npt.NDArray
-    ) -> npt.NDArray:
-        return np.abs(activation)
+@register_basis("rel-recon")
+class RelRecon(CanonicalBasis):
+    def _computuing_maximization_objective(self, activation, context):
+        # problem: argmin_i   \|r - r_i\|_2^2
+        #       => argmax_i - \|r - r_i\|_2^2
+        rel_per_dim = activation * context
+        rel = np.sum(rel_per_dim, keepdims=True)
+
+        recon = (rel - rel_per_dim) ** 2
+
+        return -recon
 
 
 @register_basis("act")
-class ActAbs(Rel):
-    def _computing_criteria(
-        self, activation: npt.NDArray, context: npt.NDArray
-    ) -> npt.NDArray:
+class Act(CanonicalBasis):
+    def _computuing_maximization_objective(self, activation, context):
+        # problem: argmax_i a_i
         return activation
+
+
+@register_basis("act-abs")
+class ActAbs(CanonicalBasis):
+    def _computuing_maximization_objective(self, activation, context):
+        # problem: argmax_i |a_i|
+        return np.abs(activation)
+
+
+@register_basis("act-recon")
+class ActRecon(Rel):
+    def _computuing_maximization_objective(self, activation, context):
+        # problem: argmin_i   \| a - (a^\tope_i) e_i \|^2_2
+        #          argmin_i   a^Ta - 2 a^e_i + a_i^2
+        #          argmax_i - (a^T a - 2 a^e_i + a_i^2)
+        norm = np.linalg.norm(activation, axis=1, keepdims=True)
+        criteria = norm**2 - 2 * activation + activation**2
+
+        # convert to maximization
+        return -criteria
 
 
 @register_basis("prca")

@@ -215,7 +215,7 @@ def main(
                 dict(
                     arr_acc=arr_acc,
                     arr_ks=arr_ks,
-                    arr_compressions=dims / np.array(arr_ks),
+                    arr_compressions=(dims / np.array(arr_ks)).astype(float).tolist(),
                     dims=dims,
                     original_auroc=original_acc,
                 ),
