@@ -365,10 +365,10 @@ class RelReconFixed(CanonicalBasis):
     def _computuing_maximization_objective(self, activation, context):
         # problem: argmin_i   \|r - r_i\|_2^2
         #       => argmax_i - \|r - r_i\|_2^2
-        n, d = activation.shape[0]
+        n, d = activation.shape
 
         rel_per_dim = activation * context
-        rel = np.sum(rel_per_dim, axis=1, keepdims=True)
+        rel = np.sum(rel_per_dim, axis=1)
         assert rel.shape == (n,)
 
         recon = (rel - rel_per_dim) ** 2
@@ -376,7 +376,7 @@ class RelReconFixed(CanonicalBasis):
         return -recon
 
 
-@register_basis("rel-recongreedyimproved")
+@register_basis("rel-recongreedyscaled")
 class RelReconGreedy(CanonicalBasis):
     def fit(
         self,
@@ -401,6 +401,11 @@ class RelReconGreedy(CanonicalBasis):
         indices = []
 
         n, d = activation.shape
+
+        activation = activation / (
+            (np.mean(activation**2) ** (1 / 2)) * (d ** (1 / 4))
+        )
+        context = context / ((np.mean(context**2) ** (1 / 2)) * (d ** (1 / 4)))
 
         activation = torch.from_numpy(activation).float().to(device)
         context = torch.from_numpy(context).float().to(device)
