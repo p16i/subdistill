@@ -69,7 +69,7 @@ class PRCAGreedyLeaner:
                 A_compt = activation @ (I - UUt)
                 C_compt = context @ (I - UUt)
 
-                obj = self.obj_func(activation, context, v, beta)
+                obj = self.obj_func(A_compt, C_compt, v, beta)
 
                 obj.backward()
 
