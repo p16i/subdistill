@@ -433,7 +433,8 @@ class RelReconGreedy(CanonicalBasis):
                 stat = float(torch.mean(norm).detach().cpu().numpy())
                 stats.append(stat)
 
-            _k = np.argmin(stats)
+            _k = dimensions[np.argmin(stats)]
+
             indices.append(_k)
             U[_k, step] = 1.0
 
