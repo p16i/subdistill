@@ -376,7 +376,7 @@ class RelReconFixed(CanonicalBasis):
         return -recon
 
 
-@register_basis("rel-recongreedyimproved2")
+@register_basis("rel-recongreedyok")
 class RelReconGreedy(CanonicalBasis):
     @torch.no_grad()
     def fit(
@@ -395,18 +395,6 @@ class RelReconGreedy(CanonicalBasis):
 
         n, d = activation.shape
 
-        activation = activation / (
-            (np.mean(activation**2) ** (1 / 2)) * (d ** (1 / 4))
-        )
-        context = context / ((np.mean(context**2) ** (1 / 2)) * (d ** (1 / 4)))
-
-        activation = torch.from_numpy(activation).float().to(device)
-        context = torch.from_numpy(context).float().to(device)
-
-        I = torch.eye(d).float().to(device)
-        U = torch.zeros(d, d)
-        U = U.to(device)
-
         indices = []
 
         for step in range(d):
@@ -414,44 +402,19 @@ class RelReconGreedy(CanonicalBasis):
 
             stats = []
 
-            UUt = U @ U.T
-
-            a_comp = activation @ (I - UUt)
-            c_comp = context @ (I - UUt)
-
-            assert a_comp.shape == c_comp.shape == (n, d)
-
-            rel_total_left = (a_comp * c_comp).sum(axis=1)
-
-            np.testing.assert_allclose(
-                rel_total_left.cpu().numpy(),
-                (activation[:, dimensions] * context[:, dimensions])
-                .sum(axis=1)
-                .cpu()
-                .numpy(),
+            rel_total_left = (activation[:, dimensions] * context[:, dimensions]).sum(
+                axis=1
             )
 
             for i in dimensions:
-                u = torch.zeros(d)
-                u[i] = 1
-                u = u.to(device)
-                np.testing.assert_allclose((U.T @ u).cpu().numpy(), 0)
-                rel_proj = (a_comp @ u) * (c_comp @ u)
+                rel_proj = activation[:, i] * context[:, i]
                 norm = (rel_total_left - rel_proj) ** 2
-                stat = float(torch.mean(norm).detach().cpu().numpy())
+                stat = float(np.mean(norm).numpy())
                 stats.append(stat)
 
-            _k = dimensions[np.argmin(stats)]
-
-            indices.append(_k)
-            U[_k, step] = 1.0
-
-        U = U.cpu().numpy()
-        indices = np.argmax(U, axis=0)
+            indices.append(dimensions[np.argmin(stats)])
 
         assert len(set(indices)) == d
-
-        activation = activation.detach().cpu().numpy()
 
         eigvecs = np.eye(d)[:, indices]
 
