@@ -422,7 +422,7 @@ class ActReconGreedy(CanonicalBasis):
 
         d = activation.shape[1]
 
-        activation = torch.from_numpy(activation).to(device)
+        activation = torch.from_numpy(activation).float().to(device)
 
         while len(indices) < d:
             dimensions = list(set(range(d)).difference(indices))
@@ -430,9 +430,9 @@ class ActReconGreedy(CanonicalBasis):
             stats = []
 
             U = np.eye(d)[:, indices]
-            U = torch.from_numpy(U).to(device)
+            U = torch.from_numpy(U).float().to(device)
 
-            a_c = activation @ (torch.eye(d).to(device) - U @ U.T)
+            a_c = activation @ (torch.eye(d).float().to(device) - U @ U.T)
             for i in dimensions:
                 u = torch.zeros(d)
                 u[i] = 1
