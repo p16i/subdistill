@@ -118,3 +118,14 @@ def query_module_children_with_type(
             basket.extend(query_module_children_with_type(child, module_type))
 
     return basket
+
+
+def logspace(d: int) -> typing.List[int]:
+    total = int(np.ceil(np.log2(d)))
+
+    steps = [1] + np.logspace(1, total, num=total, base=2).astype(int).tolist()
+
+    if steps[-1] > d:
+        steps[-1] = d
+
+    return steps

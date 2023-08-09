@@ -21,9 +21,6 @@ from xaikd.utils import click_types, metrics
 import pytorch_lightning as pl
 
 
-COMPRESSION_RATIOS = np.array([1, 2, 4, 8, 16, 32, 64])
-
-
 def extract_activation_and_bases(
     model: nn.Module,
     dataset: datasets.Cifar100SuperClassesDataset,
@@ -191,10 +188,9 @@ def main(
         )
 
         dims = models.get_layer_output_dimensions(model, layer)
-        arr_ks = sorted(np.floor(dims / COMPRESSION_RATIOS).astype(int).tolist())
-        print(
-            f"Computing with arr_ks={arr_ks} (corresponding to compression of {np.flip(COMPRESSION_RATIOS)})"
-        )
+        arr_ks = utils.logspace(dims)
+
+        print(f"Computing with arr_ks={arr_ks}")
 
         for basis_name in basis_names_with_mode:
             basis = bases.get_basis(basis_name, seed=seed)
@@ -219,6 +215,7 @@ def main(
                 dict(
                     arr_acc=arr_acc,
                     arr_ks=arr_ks,
+                    arr_compressions=dims / np.array(arr_ks),
                     dims=dims,
                     original_auroc=original_acc,
                 ),
