@@ -407,7 +407,9 @@ class RelReconGreedy(CanonicalBasis):
         U = torch.zeros(d, d)
         U = U.to(device)
 
-        while len(indices) < d:
+        for _ in range(d):
+
+            indices = np.argmax(U.cpu().numpy(), axis=0)
             dimensions = list(set(range(d)).difference(indices))
 
             stats = []
