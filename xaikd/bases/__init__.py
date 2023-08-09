@@ -423,7 +423,7 @@ class RelReconGreedy(CanonicalBasis):
 
             rel_total_left = (a_comp * c_comp).sum(axis=1)
 
-            assert np.testing.assert_allclose(
+            np.testing.assert_allclose(
                 rel_total_left.cpu().numpy(),
                 (activation[:, dimensions] * context[:, dimensions])
                 .sum(axis=1)
