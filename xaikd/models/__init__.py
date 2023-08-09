@@ -1,10 +1,13 @@
+import typing
+
 import torch
 
 import torchvision
 
 from torch import nn
 
-from . import resnet
+
+from . import resnet, vgg, interfaces
 
 from torchvision.models.resnet import ResNet18_Weights
 
@@ -38,7 +41,7 @@ def register_model(name):
     return wrapped
 
 
-def get_model(name: str) -> nn.Module:
+def get_model(name: str) -> interfaces.DistillableModel:
     dataset, arch, variant = name.split("-")
 
     # todo: better organizing these if-else structures
@@ -53,14 +56,15 @@ def get_model(name: str) -> nn.Module:
 
     elif name == "imagenet-resnet18-tv":
         model = MODEL_GENERATORS["imagenet-resnet18"]()
+    elif name == "imagenet-vgg16-tv":
+        model = models.vgg16(weights=models.vgg.VGG16_Weights.IMAGENET1K_V1)
+        model.num_classes = 1000
     elif "imagenet-resnet18-random" in name:
         # use regex to parse the number
         seed = int(name.split("-")[-1].replace("random", ""))
         print(f"Using Random `resnet18(seed={seed})` Model")
         torch.manual_seed(seed)
         model = torchvision.models.resnet18()
-    elif name == "imagenet-vgg16-tv":
-        model = models.vgg16(weights=models.vgg.VGG16_Weights.IMAGENET1K_V1)
     elif "imagenet-vgg16-random" in name:
         seed = int(name.split("-")[-1].replace("random", ""))
         print(f"Using Random `vgg16(seed={seed})` Model")
@@ -68,6 +72,18 @@ def get_model(name: str) -> nn.Module:
         model = models.vgg16()
     else:
         raise ValueError(f"Unfortunately, we do NOT have a `{name}` model")
+
+    num_classes = model.num_classes
+
+    # cast native torchvision model to our `DistillableModel`
+    if arch in ["vgg11", "vgg16"]:
+        model = vgg.DistillableVGG.cast(model)
+    elif arch in ["resnet18", "resnet50"]:
+        model = resnet.DistillableResNet.cast(model)
+    else:
+        raise ValueError(f"`{model.__class__}` is NOT distillable!")
+
+    model.num_classes = num_classes
 
     setattr(model, "__name", name)
 

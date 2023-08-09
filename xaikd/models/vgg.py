@@ -1,13 +1,14 @@
 import torch
 
+import typing
 from torch import nn
 
 from torchvision.models import vgg
 
-import numpy as np
+from . import interfaces
 
 
-class VGGFeatureBlocks(nn.Module):
+class DistillableVGG(interfaces.DistillableModel):
     def __init__(self, model: vgg.VGG) -> None:
         super().__init__()
 
@@ -37,3 +38,32 @@ class VGGFeatureBlocks(nn.Module):
         x = self.classifier(x)
 
         return x
+
+    def split_at(self, layer: str):
+        assert hasattr(self, layer)
+
+        layer_ix = int(layer[-1]) - 1
+
+        layers = [self.layer1, self.layer2, self.layer3, self.layer4, self.layer5]
+
+        layers_in_head = layers[:layer_ix] if layer_ix > 0 else []
+        layers_in_classifier = layers[layer_ix + 1 :]
+
+        layer_module = layers[layer_ix]
+
+        head = nn.Sequential(*layers_in_head)
+
+        classifier = nn.Sequential(
+            *layers_in_classifier,
+            self.avgpool,
+            nn.Flatten(start_dim=1),
+            self.classifier,
+        )
+
+        return head, layer_module, classifier
+
+    @classmethod
+    def cast(cls, model: vgg.VGG):
+        assert isinstance(model, vgg.VGG)
+
+        return DistillableVGG(model)
