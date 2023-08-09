@@ -1,4 +1,6 @@
 import typing
+from typing_extensions import Self
+
 from abc import ABC, abstractmethod
 
 from torch import nn
@@ -15,7 +17,7 @@ class DistillableModel(nn.Module, SplitableMixin):
 
     @classmethod
     @abstractmethod
-    def cast(cls, obj) -> typing.Self:
+    def cast(cls, obj) -> Self:
         pass
 
 
