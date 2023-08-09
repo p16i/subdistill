@@ -398,15 +398,14 @@ class RelReconGreedy(CanonicalBasis):
         indices = []
 
         rel_per_dim = activation * context
+        total_rel = rel_per_dim.sum(axis=1)
 
         for step in range(d):
             dimensions = list(set(range(d)).difference(indices))
 
             stats = []
 
-            rel_total_left = rel_per_dim[:, dimensions].sum(
-                axis=1
-            )
+            rel_total_left = total_rel
 
             for i in dimensions:
                 rel_proj = rel_per_dim[:, i]
@@ -692,7 +691,7 @@ class PRCAAbs(PRCAVariant):
     beta = 0.0
 
 
-@register_basis("prca-recon")
+@register_basis("prca-reconimproved")
 class PRCARelRecon(PRCAVariant):
     mode = "recon"
     beta = 0.0
