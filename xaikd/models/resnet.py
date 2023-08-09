@@ -1,32 +1,45 @@
 import typing
 
+import types
+
 from torch import nn
 
 from torchvision.models import resnet
 
+from . import interfaces
 
-def split_resnet_18_at(
-    model: nn.Module, layer: str
-) -> typing.Tuple[nn.Module, nn.Module, nn.Module]:
-    assert len(layer.split(".")) == 1
 
-    assert type(model) == resnet.ResNet
+class DistillableResNet(interfaces.DistillableModel, resnet.ResNet):
+    @classmethod
+    def cast(cls, model: resnet.ResNet):
+        assert isinstance(model, resnet.ResNet)
 
-    layer_ix = int(layer[-1]) - 1
+        model.__class__ = cls
 
-    layers = [model.layer1, model.layer2, model.layer3, model.layer4]
+        assert isinstance(model, DistillableResNet)
 
-    layers_in_head = layers[:layer_ix] if layer_ix > 0 else []
-    layers_in_classifier = layers[layer_ix + 1 :]
+        return model
 
-    head = nn.Sequential(
-        model.conv1, model.bn1, model.relu, model.maxpool, *layers_in_head
-    )
+    def split_at(self, layer: str) -> typing.Tuple[nn.Module, nn.Module, nn.Module]:
+        assert len(layer.split(".")) == 1
 
-    layer_module = layers[layer_ix]
+        assert isinstance(self, resnet.ResNet)
 
-    classifier = nn.Sequential(
-        *layers_in_classifier, model.avgpool, nn.Flatten(start_dim=1), model.fc
-    )
+        layer_ix = int(layer[-1]) - 1
 
-    return head, layer_module, classifier
+        layers = [self.layer1, self.layer2, self.layer3, self.layer4]
+
+        layers_in_head = layers[:layer_ix] if layer_ix > 0 else []
+        layers_in_classifier = layers[layer_ix + 1 :]
+
+        head = nn.Sequential(
+            self.conv1, self.bn1, self.relu, self.maxpool, *layers_in_head
+        )
+
+        layer_module = layers[layer_ix]
+
+        classifier = nn.Sequential(
+            *layers_in_classifier, self.avgpool, nn.Flatten(start_dim=1), self.fc
+        )
+
+        return head, layer_module, classifier

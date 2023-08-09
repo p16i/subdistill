@@ -20,19 +20,20 @@ from tqdm import tqdm
 from xaikd import utils
 from xaikd import datasets
 
+from xaikd.models.interfaces import DistillableModel
+
 
 def make_attributor_for(
     model: nn.Module,
     input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]],
 ) -> Gradient:
-    # remark this only works for cifar10 and cifar100 for now
-    assert type(model) in [models.resnet.ResNet, models.vgg.VGG]
+    assert isinstance(model, DistillableModel)
 
     input_transform = transforms.Normalize(*input_statistics)
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
-    if type(model) == models.resnet.ResNet:
+    if isinstance(model, models.resnet.ResNet):
         canonizers = [ResNetCanonizer()]
     else:
         canonizers = []

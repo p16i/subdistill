@@ -195,7 +195,7 @@ class ModelWrapper(pl.LightningModule):
 class Layerwise:
     def __init__(
         self,
-        teacher: torch.nn.Module,
+        teacher: models.interfaces.DistillableModel,
         dataset: datasets.Cifar100SuperClassesDataset,
         train_dataloader: DataLoader,
         val_dataloader: DataLoader,
@@ -222,7 +222,7 @@ class Layerwise:
 
     def distill(
         self,
-        student: nn.Module,
+        student: models.interfaces.DistillableModel,
         approximator: nn.Module,
         distill_info: LayerDistillInfo,
         epochs: int,
@@ -263,15 +263,13 @@ class Layerwise:
         )
         # todo: this split should be available via the model itself.
         # e.g., self.teacher.split_at(...)
-        _, teacher_module, _ = models.resnet.split_resnet_18_at(
-            self.teacher, distill_info.layer_name
-        )
+        _, teacher_module, _ = self.teacher.split_at(distill_info.layer_name)
 
         (
             feature_extractor,
             _,
             classification_head,
-        ) = models.resnet.split_resnet_18_at(student, distill_info.layer_name)
+        ) = student.split_at(distill_info.layer_name)
 
         training_wrapper = ModelWrapper(
             feature_extractor=feature_extractor,
