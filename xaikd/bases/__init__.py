@@ -409,7 +409,7 @@ class RelReconGreedy(CanonicalBasis):
             for i in dimensions:
                 rel_proj = activation[:, i] * context[:, i]
                 norm = (rel_total_left - rel_proj) ** 2
-                stat = float(np.mean(norm).numpy())
+                stat = float(np.mean(norm))
                 stats.append(stat)
 
             indices.append(dimensions[np.argmin(stats)])
