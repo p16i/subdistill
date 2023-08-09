@@ -376,8 +376,9 @@ class RelReconFixed(CanonicalBasis):
         return -recon
 
 
-@register_basis("rel-recongreedyscaled")
+@register_basis("rel-recongreedyimproved2")
 class RelReconGreedy(CanonicalBasis):
+    @torch.no_grad()
     def fit(
         self,
         activation: npt.NDArray,
@@ -389,14 +390,6 @@ class RelReconGreedy(CanonicalBasis):
 
         if self.centering:
             activation = activation - mean
-
-        # objective: npt.NDArray = self._computuing_maximization_objective(
-        #     activation, context
-        # )
-        # eigvals = np.mean(objective, axis=0)
-
-        # # argmax_i E[objective]
-        # indices = np.argsort(-eigvals)
 
         indices = []
 
@@ -411,17 +404,18 @@ class RelReconGreedy(CanonicalBasis):
         context = torch.from_numpy(context).float().to(device)
 
         I = torch.eye(d).float().to(device)
+        U = torch.zeros(d, d)
+        U = U.to(device)
 
         while len(indices) < d:
             dimensions = list(set(range(d)).difference(indices))
 
             stats = []
 
-            U = np.eye(d)[:, indices]
-            U = torch.from_numpy(U).float().to(device)
+            UUt = U @ U.T
 
-            a_comp = activation @ (I - U @ U.T)
-            c_comp = context @ (I - U @ U.T)
+            a_comp = activation @ (I - UUt)
+            c_comp = context @ (I - UUt)
 
             assert a_comp.shape == c_comp.shape == (n, d)
 
@@ -431,13 +425,16 @@ class RelReconGreedy(CanonicalBasis):
                 u = torch.zeros(d)
                 u[i] = 1
                 u = u.to(device)
+                assert torch.allclose((U.T @ u).cpu(), 0)
                 rel_proj = (a_comp @ u) * (c_comp @ u)
                 norm = (rel_total_left - rel_proj) ** 2
                 stat = float(torch.mean(norm).detach().cpu().numpy())
                 stats.append(stat)
 
-            selected_i = dimensions[np.argmin(stats)]
-            indices.append(selected_i)
+            U[np.argmin(stats), len(indices)] = 1.0
+
+        U = U.cpu().numpy()
+        indices = np.argmax(U, axis=0)
 
         assert len(set(indices)) == d
 
