@@ -365,15 +365,18 @@ class RelReconFixed(CanonicalBasis):
     def _computuing_maximization_objective(self, activation, context):
         # problem: argmin_i   \|r - r_i\|_2^2
         #       => argmax_i - \|r - r_i\|_2^2
+        n, d = activation.shape[0]
+
         rel_per_dim = activation * context
         rel = np.sum(rel_per_dim, axis=1, keepdims=True)
+        assert rel.shape == (n,)
 
         recon = (rel - rel_per_dim) ** 2
 
         return -recon
 
 
-@register_basis("rel-recongreedy")
+@register_basis("rel-recongreedyimproved")
 class RelReconGreedy(CanonicalBasis):
     def fit(
         self,
@@ -397,10 +400,12 @@ class RelReconGreedy(CanonicalBasis):
 
         indices = []
 
-        d = activation.shape[1]
+        n, d = activation.shape
 
         activation = torch.from_numpy(activation).float().to(device)
         context = torch.from_numpy(context).float().to(device)
+
+        I = torch.eye(d).float().to(device)
 
         while len(indices) < d:
             dimensions = list(set(range(d)).difference(indices))
@@ -410,23 +415,26 @@ class RelReconGreedy(CanonicalBasis):
             U = np.eye(d)[:, indices]
             U = torch.from_numpy(U).float().to(device)
 
-            a_comp = activation @ (torch.eye(d).float().to(device) - U @ U.T)
-            c_comp = context @ (torch.eye(d).float().to(device) - U @ U.T)
+            a_comp = activation @ (I - U @ U.T)
+            c_comp = context @ (I - U @ U.T)
 
-            rel_comp = (a_comp * c_comp).sum(axis=1)
+            assert a_comp.shape == c_comp.shape == (n, d)
+
+            rel_total_left = (a_comp * c_comp).sum(axis=1)
 
             for i in dimensions:
                 u = torch.zeros(d)
                 u[i] = 1
                 u = u.to(device)
-                norm = (rel_comp - (a_comp @ u) * (c_comp @ u)) ** 2
-                # torch.linalg.norm(a_comp - activation @ uut)
-                # stat
+                rel_proj = (a_comp @ u) * (c_comp @ u)
+                norm = (rel_total_left - rel_proj) ** 2
                 stat = float(torch.mean(norm).detach().cpu().numpy())
                 stats.append(stat)
 
             selected_i = dimensions[np.argmin(stats)]
             indices.append(selected_i)
+
+        assert len(set(indices)) == d
 
         activation = activation.detach().cpu().numpy()
 
