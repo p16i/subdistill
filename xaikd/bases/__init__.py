@@ -725,3 +725,8 @@ class PCAPRCAVariant(PRCAVariant):
 class PCAPRCARecon(PCAPRCAVariant):
     mode = "recon"
     beta = 0.0
+
+@register_basis("pcaprca-reconnaive")
+class PCAPRCARecon(PCAPRCAVariant):
+    mode = "reconnaive"
+    beta = 0.0
