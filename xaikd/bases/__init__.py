@@ -376,6 +376,7 @@ class RelRecon(CanonicalBasis):
 @register_basis("rel-reconexpsqr")
 class RelReconFixed(CanonicalBasis):
     def _solve_objective(self, activation, context):
+        raise NotImplementedError("This variant performs poorly!")
         # problem: argmin_i   (E[r] - E[r_i])^2
         n, d = activation.shape
 
@@ -684,6 +685,12 @@ class PRCAAbs(PRCAVariant):
 @register_basis("prca-recon")
 class PRCARelRecon(PRCAVariant):
     mode = "recon"
+    beta = 0.0
+
+
+@register_basis("prca-reconnaive")
+class PRCARelRecon(PRCAVariant):
+    mode = "reconnaive"
     beta = 0.0
 
 
