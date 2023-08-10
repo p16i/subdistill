@@ -297,9 +297,9 @@ class Identity(Basis):
 class CanonicalBasis(Basis):
     artifact_keys = ["eigvecs", "std"]
 
-    def _computuing_maximization_objective(
+    def _solve_objective(
         self, activation: npt.NDArray, context: npt.NDArray
-    ) -> npt.NDArray:
+    ) -> npt.NDArray[int]:
         raise NotImplementedError("")
 
     def fit(
@@ -314,13 +314,7 @@ class CanonicalBasis(Basis):
         if self.centering:
             activation = activation - mean
 
-        objective: npt.NDArray = self._computuing_maximization_objective(
-            activation, context
-        )
-        eigvals = np.mean(objective, axis=0)
-
-        # argmax_i E[objective]
-        indices = np.argsort(-eigvals)
+        indices = self._solve_objective(activation, context)
 
         eigvecs = np.eye(d)[:, indices]
 
@@ -335,36 +329,34 @@ class CanonicalBasis(Basis):
 class Rel(CanonicalBasis):
     artifact_keys = ["eigvecs", "std"]
 
-    def _computuing_maximization_objective(self, activation, context):
-        # problem: argmax_i r_i
-        return activation * context
+    def _solve_objective(self, activation, context):
+        # problem: argmax_i E[r_i]
+        _, d = activation.shape
+        rel = np.mean(activation * context, axis=0)
+
+        assert rel.shape == (d,)
+
+        indices = np.argsort(-rel)
+
+        return indices
 
 
 @register_basis("rel-abs")
 class RelAbs(CanonicalBasis):
-    def _computuing_maximization_objective(self, activation, context):
-        # problem: argmax_i |r_i|
-        return np.abs(activation * context)
+    def _solve_objective(self, activation, context):
+        # problem: argmax_i |E[r_i]|
+        rel = np.mean(activation * context, axis=0)
+        abs_rel = np.abs(rel)
+
+        indices = np.argsort(-abs_rel)
+
+        return indices
 
 
-@register_basis("rel-recon")
+@register_basis("rel-reconnaive")
 class RelRecon(CanonicalBasis):
-    def _computuing_maximization_objective(self, activation, context):
-        # problem: argmin_i   \|r - r_i\|_2^2
-        #       => argmax_i - \|r - r_i\|_2^2
-        rel_per_dim = activation * context
-        rel = np.sum(rel_per_dim, keepdims=True)
-
-        recon = (rel - rel_per_dim) ** 2
-
-        return -recon
-
-
-@register_basis("rel-reconfixed")
-class RelReconFixed(CanonicalBasis):
-    def _computuing_maximization_objective(self, activation, context):
-        # problem: argmin_i   \|r - r_i\|_2^2
-        #       => argmax_i - \|r - r_i\|_2^2
+    def _solve_objective(self, activation, context):
+        # problem: argmin_i   E[(r - r_i)^2]
         n, d = activation.shape
 
         rel_per_dim = activation * context
@@ -373,24 +365,36 @@ class RelReconFixed(CanonicalBasis):
 
         recon = (rel - rel_per_dim) ** 2
 
-        return -recon
+        criteria = np.mean(recon, axis=0)
+        assert criteria.shape == (d,)
+
+        indices = np.argsort(criteria)
+
+        return indices
 
 
-@register_basis("rel-recongreedyok")
-class RelReconGreedy(CanonicalBasis):
-    @torch.no_grad()
-    def fit(
-        self,
-        activation: npt.NDArray,
-        context: npt.NDArray,
-        mean: typing.Union[npt.NDArray, None],
-        device: str,
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+@register_basis("rel-reconexpsqr")
+class RelReconFixed(CanonicalBasis):
+    def _solve_objective(self, activation, context):
+        # problem: argmin_i   (E[r] - E[r_i])^2
         n, d = activation.shape
 
-        if self.centering:
-            activation = activation - mean
+        rel_per_dim = activation * context
+        avg_rel_per_dim = rel_per_dim.mean(axis=0)
+        assert avg_rel_per_dim.shape == (d,)
 
+        avg_rel_global = np.mean(rel_per_dim).mean()
+
+        criteria = (avg_rel_global - avg_rel_per_dim) ** 2
+
+        indices = np.argsort(criteria)
+
+        return indices
+
+
+@register_basis("rel-reconcorrection")
+class RelReconGreedy(CanonicalBasis):
+    def _solve_objective(self, activation, context):
         indices = []
 
         n, d = activation.shape
@@ -399,14 +403,14 @@ class RelReconGreedy(CanonicalBasis):
 
         rel_per_dim = activation * context
 
-        for step in range(d):
-            dimensions = list(set(range(d)).difference(indices))
+        possible_dimensions = set(list(range(d)))
+
+        for _ in range(d):
+            dimensions = list(possible_dimensions.difference(indices))
 
             stats = []
 
-            rel_total_left = rel_per_dim[:, dimensions].sum(
-                axis=1
-            )
+            rel_total_left = rel_per_dim[:, dimensions].sum(axis=1)
 
             for i in dimensions:
                 rel_proj = rel_per_dim[:, i]
@@ -418,53 +422,35 @@ class RelReconGreedy(CanonicalBasis):
 
         assert len(set(indices)) == d
 
-        eigvecs = np.eye(d)[:, indices]
-
-        std = np.std(activation @ eigvecs, axis=0)
-
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
-
-        return eigvecs, std
+        return indices
 
 
 @register_basis("act")
 class Act(CanonicalBasis):
-    def _computuing_maximization_objective(self, activation, context):
-        # problem: argmax_i a_i
-        return activation
+    def _solve_objective(self, activation, context):
+        # problem: argmax_i E[a_i]
+        criteria = np.mean(activation, axis=0)
 
+        indices = np.argsort(-criteria)
 
-@register_basis("act-abs")
-class ActAbs(CanonicalBasis):
-    def _computuing_maximization_objective(self, activation, context):
-        # problem: argmax_i |a_i|
-        return np.abs(activation)
+        return indices
 
 
 @register_basis("act-recon")
-class ActRecon(CanonicalBasis):
-    def _computuing_maximization_objective(self, activation, context):
-        # problem: argmin_i   \| a - (a^\tope_i) e_i \|^2_2
-        #          argmin_i   a^Ta - 2 a^e_i + a_i^2
-        #          argmax_i - (a^T a - 2 a^e_i + a_i^2)
-        norm = np.linalg.norm(activation, axis=1, keepdims=True)
-        criteria = norm**2 - 2 * activation + activation**2
+class ActReconF(CanonicalBasis):
+    def _solve_objective(self, activation, context):
+        # problem: argmin_i  E[ \| a - (a^\tope_i) e_i \|^2_2 ]
+        #          argmin_i  E[ a^Ta - 2 a_i^2 + a_i^2        ]
+        #          argmin_i  E[      - 2 a_i^2 + a_i^2        ]
+        #          argmin_i  E[      -   a_i^2                ]
 
-        # convert to maximization
-        return -criteria
+        _, d = activation.shape
+        criteria = -np.mean((activation**2), axis=0)
+        assert criteria.shape == (d,)
 
+        indices = np.argsort(criteria)
 
-@register_basis("act-reconfixed")
-class ActReconFixed(CanonicalBasis):
-    def _computuing_maximization_objective(self, activation, context):
-        # problem: argmin_i   \| a - (a^\tope_i) e_i \|^2_2
-        #          argmin_i   a^Ta - 2 a^e_i + a_i^2
-        #          argmax_i - (a^T a - 2 a^e_i + a_i^2)
-        norm = np.linalg.norm(activation, axis=1, keepdims=True)
-        criteria = -(activation**2)
-
-        # convert to maximization
-        return -criteria
+        return indices
 
 
 @register_basis("act-recongreedy")
@@ -485,10 +471,13 @@ class ActReconGreedy(CanonicalBasis):
         mean: typing.Union[npt.NDArray, None],
         device: str,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        raise NotImplementedError("")
         n, d = activation.shape
 
         if self.centering:
             activation = activation - mean
+
+        # todo: this can be removed or speedup the calculation
 
         # objective: npt.NDArray = self._computuing_maximization_objective(
         #     activation, context
