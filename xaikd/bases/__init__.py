@@ -360,8 +360,8 @@ class RelRecon(CanonicalBasis):
         n, d = activation.shape
 
         rel_per_dim = activation * context
-        rel = np.sum(rel_per_dim, axis=1)
-        assert rel.shape == (n,)
+        rel = np.sum(rel_per_dim, axis=1, keepdims=True)
+        assert rel.shape == (n, 1)
 
         recon = (rel - rel_per_dim) ** 2
 
