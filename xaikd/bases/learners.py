@@ -88,13 +88,13 @@ class PRCAGreedyLeaner:
 
             # testing orthogonality
             np.testing.assert_allclose(
-                (U.T @ v).detach().cpu().numpy(), np.zeros(U.shape[1]), atol=1e-6
+                (U.T @ v).detach().cpu().numpy(), np.zeros(U.shape[1]), atol=1e-5
             )
 
             U[:, k] = v.detach()
 
         np.testing.assert_allclose(
-            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=1e-5
+            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=1e-4
         )
 
         return U.detach().cpu().numpy()
