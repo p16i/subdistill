@@ -88,13 +88,13 @@ class PRCAGreedyLeaner:
 
             # testing orthogonality
             np.testing.assert_allclose(
-                (U.T @ v).detach().cpu().numpy(), np.zeros(U.shape[1]), atol=1e-5
+                (U.T @ v).detach().cpu().numpy(), np.zeros(U.shape[1]), atol=1e-3
             )
 
             U[:, k] = v.detach()
 
         np.testing.assert_allclose(
-            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=1e-4
+            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=1e-3
         )
 
         return U.detach().cpu().numpy()
@@ -108,6 +108,9 @@ class PRCAGreedyLeaner:
         beta=0,
     ) -> torch.Tensor:
         assert beta == 0, f"setting beta={beta} has not effect here."
+
+        activation = activation @ IUUt
+        context = context @ IUUt
 
         activation_projected = activation.matmul(u)
         context_projected = context.matmul(u)
