@@ -191,7 +191,7 @@ def main(
 
         dims = models.get_layer_output_dimensions(model, layer)
         arr_ks = (
-            np.unique(np.array(*utils.logspace(dims), *list(range(1, 20 + 1))))
+            np.unique(np.array(utils.logspace(dims) + list(range(1, 20 + 1))))
             .astype(int)
             .tolist()
         )
