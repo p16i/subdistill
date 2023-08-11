@@ -109,7 +109,7 @@ def estimate_acc_for_basis(
 @click.option(
     "--basis-names",
     type=click_types.List(),
-    default="pca,prca-abs,prca-recon,pcaprca-abs,pcaprca-recon,rel-abs,rel,random",
+    default="pca,prca-abs,prca-recon,prca-reconnaive,pcaprca-abs,pcaprca-recon,act-raw,act-recon,rel-raw,rel-abs,rel-recon,rel-reconnaive,random",
 )
 @click.option("--seed", default=1, type=int)
 @click.option("--training-size", default=1.0, type=float)
@@ -188,7 +188,7 @@ def main(
         )
 
         dims = models.get_layer_output_dimensions(model, layer)
-        arr_ks = utils.logspace(dims)
+        arr_ks = sorted(list(set(utils.logspace(dims) + list(np.arange(1, 20 + 1)))))
 
         print(f"Computing with arr_ks={arr_ks}")
 
