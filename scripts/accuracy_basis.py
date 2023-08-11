@@ -57,6 +57,8 @@ def extract_activation_and_bases(
 
         basis.save(output_dir)
 
+    return arr_act, arr_ctx
+
 
 @torch.no_grad()
 def estimate_acc_for_basis(
@@ -175,7 +177,7 @@ def main(
 
         basis_names_with_mode = list(map(lambda s: f"{s}--{basis_mode}", basis_names))
 
-        extract_activation_and_bases(
+        arr_act, arr_ctx = extract_activation_and_bases(
             model=model,
             dataset=dataset,
             loader=train_dataloader,
@@ -188,8 +190,10 @@ def main(
         )
 
         dims = models.get_layer_output_dimensions(model, layer)
-        arr_ks = sorted(
-            list(set(utils.logspace(dims) + list(np.arange(1, 20 + 1).astype(int))))
+        arr_ks = (
+            np.unique(np.array(*utils.logspace(dims), *list(range(1, 20 + 1))))
+            .astype(int)
+            .tolist()
         )
 
         print(f"Computing with arr_ks={arr_ks}")
@@ -218,6 +222,9 @@ def main(
                     arr_acc=arr_acc,
                     arr_ks=arr_ks,
                     arr_compressions=(dims / np.array(arr_ks)).astype(float).tolist(),
+                    unexplained_relevance=metrics.unexplained_relevance(
+                        arr_act, arr_ctx, basis.artifact["eigvec"]
+                    ),
                     dims=dims,
                     original_auroc=original_acc,
                 ),
