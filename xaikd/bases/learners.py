@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 def atol(mode):
     if mode == "reconnaive":
-        return 1e-3
+        return 1e-2
     else:
         return 1e-5
 
