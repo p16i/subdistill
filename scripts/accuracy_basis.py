@@ -223,7 +223,7 @@ def main(
                     arr_ks=arr_ks,
                     arr_compressions=(dims / np.array(arr_ks)).astype(float).tolist(),
                     unexplained_relevance=metrics.unexplained_relevance(
-                        arr_act, arr_ctx, basis.artifact["eigvecs"].numpy()
+                        arr_act, arr_ctx, basis.artifact["eigvecs"].cpu().numpy()
                     ),
                     dims=dims,
                     original_auroc=original_acc,
