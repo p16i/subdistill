@@ -391,10 +391,6 @@ class RelReconNaive(CanonicalBasis):
 
         recon = (rel - rel_per_dim) ** 2
 
-        print("rel_per_dim", rel_per_dim)
-        print("total_rel", rel)
-        print("recon", recon)
-
         criteria = np.mean(recon, axis=0)
         assert criteria.shape == (d,)
 
