@@ -188,7 +188,9 @@ def main(
         )
 
         dims = models.get_layer_output_dimensions(model, layer)
-        arr_ks = sorted(list(set(utils.logspace(dims) + list(np.arange(1, 20 + 1)))))
+        arr_ks = sorted(
+            list(set(utils.logspace(dims) + list(np.arange(1, 20 + 1).astype(int))))
+        )
 
         print(f"Computing with arr_ks={arr_ks}")
 
