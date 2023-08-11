@@ -1,5 +1,6 @@
 import typing
 import numpy as np
+import numpy.typing as npt
 
 import torch
 
@@ -10,7 +11,7 @@ from torch import nn
 from torchmetrics import Accuracy
 from torchmetrics.classification import BinaryAUROC, BinaryAccuracy
 
-from xaikd import attributors, bases
+from xaikd import bases
 
 
 def auroc(
@@ -111,3 +112,31 @@ def auroc_with_basis(
             hook.remove()
 
     return arr_aurocs
+
+
+def unexplained_relevance(
+    activation: npt.NDArray, context: npt.NDArray, U: npt.NDArray
+) -> typing.List[float]:
+    n, d = activation.shape
+    total_relevance = (activation * context).sum(axis=1)
+    print(total_relevance)
+    assert total_relevance.shape == (n,)
+
+    relevance_per_dim = (activation @ U) * (context @ U)
+
+    assert relevance_per_dim.shape == (n, d)
+
+    stats = [float(np.mean(total_relevance**2))]
+
+    for k in range(1, d + 1):
+        explained_relevance_sofar = relevance_per_dim[:, :k]
+        np.testing.assert_equal(explained_relevance_sofar.shape, (n, k))
+        unexplained_relevance = (
+            total_relevance - explained_relevance_sofar.sum(axis=1)
+        ) ** 2
+
+        assert unexplained_relevance.shape == (n,)
+
+        stats.append(float(np.mean(unexplained_relevance)))
+
+    return stats

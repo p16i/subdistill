@@ -1,4 +1,6 @@
+import pytest
 import torch
+import numpy as np
 from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 from xaikd.utils import metrics
@@ -42,6 +44,21 @@ def test_accuracy_with_subclasses():
     )
 
     assert acc == 0.75
+
+
+@pytest.mark.parametrize(
+    "order,expected", [([0, 2, 1], [0.01, 0.04, 0]), ([0, 1, 2], [0.01, 0.01, 0.0])]
+)
+def test_unexplained_relevance(order, expected):
+    activation = np.array([[1, -1, 1]])
+    context = np.array([[1, 0.2, 0.1]])
+
+    U = np.eye(3)[:, order]
+
+    stats = metrics.unexplained_relevance(activation, context, U)
+
+    total = (activation * context).sum()
+    np.testing.assert_allclose(stats, [total**2] + expected, atol=1e-6)
 
 
 # todo: all metrics should not change batch norm stats
