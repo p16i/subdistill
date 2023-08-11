@@ -129,3 +129,14 @@ def logspace(d: int) -> typing.List[int]:
         steps[-1] = d
 
     return steps
+
+
+def is_permuation_matrix(x: npt.NDArray) -> bool:
+    # ref: https://stackoverflow.com/a/28896366
+    return (
+        x.ndim == 2
+        and x.shape[0] == x.shape[1]
+        and (x.sum(axis=0) == 1).all()
+        and (x.sum(axis=1) == 1).all()
+        and ((x == 1) | (x == 0)).all()
+    )

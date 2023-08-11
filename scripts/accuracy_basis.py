@@ -57,6 +57,8 @@ def extract_activation_and_bases(
 
         basis.save(output_dir)
 
+    return arr_act, arr_ctx
+
 
 @torch.no_grad()
 def estimate_acc_for_basis(
@@ -109,7 +111,7 @@ def estimate_acc_for_basis(
 @click.option(
     "--basis-names",
     type=click_types.List(),
-    default="pca,prca-abs,prca-recon,pcaprca-abs,pcaprca-recon,rel-abs,rel,random",
+    default="pca,prca-abs,prca-recon,prca-reconnaive,pcaprca-abs,pcaprca-recon,act-raw,act-recon,rel-raw,rel-abs,rel-recon,rel-reconnaive,random",
 )
 @click.option("--seed", default=1, type=int)
 @click.option("--training-size", default=1.0, type=float)
@@ -175,7 +177,7 @@ def main(
 
         basis_names_with_mode = list(map(lambda s: f"{s}--{basis_mode}", basis_names))
 
-        extract_activation_and_bases(
+        arr_act, arr_ctx = extract_activation_and_bases(
             model=model,
             dataset=dataset,
             loader=train_dataloader,
@@ -188,7 +190,11 @@ def main(
         )
 
         dims = models.get_layer_output_dimensions(model, layer)
-        arr_ks = utils.logspace(dims)
+        arr_ks = (
+            np.unique(np.array(utils.logspace(dims) + list(range(1, 20 + 1))))
+            .astype(int)
+            .tolist()
+        )
 
         print(f"Computing with arr_ks={arr_ks}")
 
@@ -216,6 +222,9 @@ def main(
                     arr_acc=arr_acc,
                     arr_ks=arr_ks,
                     arr_compressions=(dims / np.array(arr_ks)).astype(float).tolist(),
+                    unexplained_relevance=metrics.unexplained_relevance(
+                        arr_act, arr_ctx, basis.artifact["eigvecs"].cpu().numpy()
+                    ),
                     dims=dims,
                     original_auroc=original_acc,
                 ),
