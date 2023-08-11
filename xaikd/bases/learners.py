@@ -7,6 +7,13 @@ import numpy.typing as npt
 from tqdm import tqdm
 
 
+def atol(mode):
+    if mode == "reconnaive":
+        return 1e-3
+    else:
+        return 1e-5
+
+
 class PRCAGreedyLeaner:
     def __init__(self, mode: str) -> None:
         if mode == "abs":
@@ -53,12 +60,12 @@ class PRCAGreedyLeaner:
         for k in tqdm(
             range(d), total=d, desc=f"[mode={self.mode},beta={beta},device={device}]"
         ):
-            UUt = U @ U.T
+            U_complement = I - U @ U.T
 
             # take a random vector
             v = torch.randn(d, generator=rng).to(device)
 
-            v = (I - UUt) @ v
+            v = U_complement @ v
 
             v = v / torch.linalg.norm(v)
             v = v.to(device)
@@ -67,11 +74,7 @@ class PRCAGreedyLeaner:
                 v.requires_grad_(True)
                 v.grad = None
 
-                # projected out previous component
-                # A_compt = activation @ (I - UUt)
-                # C_compt = context @ (I - UUt)
-
-                obj = self.obj_func(activation, context, I - UUt, v, beta)
+                obj = self.obj_func(activation, context, U_complement, v, beta)
 
                 obj.backward()
 
@@ -80,7 +83,7 @@ class PRCAGreedyLeaner:
 
                     # update v with gradient `ascent`.
                     v = v + v.grad
-                    v = (I - UUt) @ v
+                    v = U_complement @ v
                     v = v / torch.linalg.norm(v)
 
                     if (v @ ov).abs() > (1 - eps):
@@ -88,13 +91,15 @@ class PRCAGreedyLeaner:
 
             # testing orthogonality
             np.testing.assert_allclose(
-                (U.T @ v).detach().cpu().numpy(), np.zeros(U.shape[1]), atol=1e-3
+                (U.T @ v).detach().cpu().numpy(),
+                np.zeros(U.shape[1]),
+                atol=atol(self.mode),
             )
 
             U[:, k] = v.detach()
 
         np.testing.assert_allclose(
-            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=1e-3
+            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=atol(self.mode)
         )
 
         return U.detach().cpu().numpy()
@@ -103,14 +108,14 @@ class PRCAGreedyLeaner:
     def _obj_abs(
         activation: torch.Tensor,
         context: torch.Tensor,
-        IUUt: torch.Tensor,
+        U_complement: torch.Tensor,
         u: torch.Tensor,
         beta=0,
     ) -> torch.Tensor:
         assert beta == 0, f"setting beta={beta} has not effect here."
 
-        activation = activation @ IUUt
-        context = context @ IUUt
+        activation = activation @ U_complement
+        context = context @ U_complement
 
         activation_projected = activation.matmul(u)
         context_projected = context.matmul(u)
