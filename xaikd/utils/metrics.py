@@ -119,7 +119,6 @@ def unexplained_relevance(
 ) -> typing.List[float]:
     n, d = activation.shape
     total_relevance = (activation * context).sum(axis=1)
-    print(total_relevance)
     assert total_relevance.shape == (n,)
 
     relevance_per_dim = (activation @ U) * (context @ U)
