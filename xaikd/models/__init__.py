@@ -27,6 +27,7 @@ MODEL_CHECKPOINT_MAPPING = {
     "cifar100-resnet18-wb5": "https://tubcloud.tu-berlin.de/s/CctcgcY489z86Nc/download/resnet18-cifar100-pretty-dust-5-adam.pth",
     "cifar100-resnet18-wb8": "https://tubcloud.tu-berlin.de/s/NfPMGt4fwA2mTxq/download/resnet18-cifar100-fragrant-frog-8.pth",
     "cifar100-resnet18-wb11": "https://tubcloud.tu-berlin.de/s/DpzZpcynKtWqgSj/download/resnet18-cifar100-devoted-music-11.pth",
+    "cifar100-resnet18-wb15": "https://tubcloud.tu-berlin.de/s/Bm5AwmtGiYgD8Jx/download/cifar100-resnet18-whole-planet-15.pth",
     "cifar100-resnet50-p1": "https://tubcloud.tu-berlin.de/s/FCefnjtD3KyRFRs/download/resnet50-cifar100-seed1.pth",
     "cifar100-vgg11-p1": "https://tubcloud.tu-berlin.de/s/xDbi6DsjyPppi3B/download/vgg11-cifar100-seed1.pth",
 }
