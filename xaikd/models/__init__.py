@@ -34,6 +34,7 @@ MODEL_CHECKPOINT_MAPPING = {
     "cifar100-resnet18-wb15e61": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v9.pth",
     "cifar100-resnet18-wb15e23": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v6.pth",
     "cifar100-resnet18-wb15e1": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v0.pth",
+    "cifar100-resnet18-wb22": "https://tubcloud.tu-berlin.de/s/wXy5HdfsT3CLRQN/download/cifar100-resnet18-wb22.pth",
     "cifar100-resnet50-p1": "https://tubcloud.tu-berlin.de/s/FCefnjtD3KyRFRs/download/resnet50-cifar100-seed1.pth",
     "cifar100-vgg11-p1": "https://tubcloud.tu-berlin.de/s/xDbi6DsjyPppi3B/download/vgg11-cifar100-seed1.pth",
 }
@@ -62,7 +63,9 @@ def get_model(name: str) -> interfaces.DistillableModel:
 
         url = MODEL_CHECKPOINT_MAPPING[name]
 
-        model.load_state_dict(torch.hub.load_state_dict_from_url(url, file_name=f"{name}.pth"))
+        model.load_state_dict(
+            torch.hub.load_state_dict_from_url(url, file_name=f"{name}.pth")
+        )
 
     elif name == "imagenet-resnet18-tv":
         model = MODEL_GENERATORS["imagenet-resnet18"]()
