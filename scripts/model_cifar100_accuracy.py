@@ -2,6 +2,7 @@ import click
 from datetime import datetime
 
 from torch import nn
+from torch.nn import functional as F
 from torchmetrics import Accuracy, MeanMetric
 from torch.utils.data import DataLoader
 
@@ -52,7 +53,7 @@ def main(model_name):
         dataset.create_subset(train_split=True), shuffle=False
     )
 
-    print(f"Model={model}")
+    print(f"Model={model_name}")
     for prefix, dl in [("train", train_dl), ("val", val_dl)]:
         xent, acc = compute_xent_and_accuracy(model, dl, device=device)
         print(f" > [{prefix:5s}] xent={xent:.4f} acc={acc:.4f}")
