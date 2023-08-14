@@ -50,7 +50,7 @@ def main(model_name):
     )
 
     val_dl = datasets.build_dataloader(
-        dataset.create_subset(train_split=True), shuffle=False
+        dataset.create_subset(train_split=False), shuffle=False
     )
 
     print(f"Model={model_name}")
