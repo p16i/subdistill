@@ -180,7 +180,8 @@ def main(
         arr_act, arr_ctx = extract_activation_and_bases(
             model=model,
             dataset=dataset,
-            loader=train_dataloader,
+            # loader=train_dataloader,
+            loader=val_dataloader,
             output_dir=layer_output_dir,
             basis_names=basis_names_with_mode,
             layer=layer,
