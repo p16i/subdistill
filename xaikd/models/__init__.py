@@ -30,7 +30,7 @@ MODEL_CHECKPOINT_MAPPING = {
     "cifar100-resnet18-wb15": "https://tubcloud.tu-berlin.de/s/Bm5AwmtGiYgD8Jx/download/cifar100-resnet18-whole-planet-15.pth",
     "cifar100-resnet18-wb15e197": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v24.pth",
     "cifar100-resnet18-wb15e151": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v19.pth",
-    "cifar100-resnet18-wb15e121": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v10.pth",
+    "cifar100-resnet18-wb15e121": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo%3Av10.pth",
     "cifar100-resnet18-wb15e61": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v9.pth",
     "cifar100-resnet18-wb15e23": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v6.pth",
     "cifar100-resnet18-wb15e1": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v0.pth",
@@ -62,7 +62,7 @@ def get_model(name: str) -> interfaces.DistillableModel:
 
         url = MODEL_CHECKPOINT_MAPPING[name]
 
-        model.load_state_dict(torch.hub.load_state_dict_from_url(url))
+        model.load_state_dict(torch.hub.load_state_dict_from_url(url, file_name=f"{name}.pth"))
 
     elif name == "imagenet-resnet18-tv":
         model = MODEL_GENERATORS["imagenet-resnet18"]()
