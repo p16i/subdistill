@@ -80,9 +80,11 @@ def main(model_names, output_dir):
 
         stats.append(model_stat)
 
+    output_path = output_dir / "cifar100-models-accuracy.csv"
     df = pd.DataFrame(stats)
-    df.to_csv(output_dir / "cifar100-models-accuracy.csv", index=False)
+    df.to_csv(output_path, index=False)
 
+    click.echo(f"Check output at {output_path}")
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
 
