@@ -306,6 +306,8 @@ class CIFAR100(CIFAR10):
 @register_dataset("imagenet")
 @dataclass(init=False)
 class ImageNet(DatasetConfiguration):
+    selected_classes = list(range(1000))
+
     def __init__(self):
         self.num_classes = 1000
         # Ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L91
@@ -325,6 +327,9 @@ class ImageNet(DatasetConfiguration):
             split="train" if train_split else "val",
             transform=self.transformation,
         )
+
+    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        return target
 
 
 @dataclass
