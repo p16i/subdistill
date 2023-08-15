@@ -309,7 +309,7 @@ class ImageNet(DatasetConfiguration):
     selected_classes = list(range(1000))
 
     def __init__(self):
-        self.num_classes = 1000
+        self.num_classes = len(self.selected_classes)
         # Ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L91
         self.input_statistics = (
             (0.43216, 0.394666, 0.37645),
@@ -330,6 +330,44 @@ class ImageNet(DatasetConfiguration):
 
     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
         return target
+
+
+@register_dataset("imagenet-butterfly")
+class ImageNetButterfly:
+    selected_classes = [321, 322, 323, 324, 325, 326]
+
+    def __init__(self):
+        super().__init__()
+
+        self.target_transform_dict = dict(
+            zip(self.selected_classes, range(len(self.selected_classes)))
+        )
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = ImageNet(
+            root=DATADIR / "imagenet", split="train" if train_split else "val"
+        )
+
+        indices = np.argwhere(np.isin(ds.targets, self.selected_classes)).reshape(-1)
+
+        print(f"We have {len(indices)} images in classes {self.selected_classes}")
+
+        ds.imgs = np.array(ds.imgs)[indices].tolist()
+        ds.samples = np.array(ds.samples)[indices].tolist()
+
+        ds.targets = np.array(ds.targets)[indices].tolist()
+
+        assert np.isin(ds.targets, self.selected_classes).all()
+
+        return ds
+
+    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        new_target = []
+
+        for t in target:
+            new_target.append(self.target_transform_dict[int(t.detach().cpu())])
+
+        return torch.Tensor(new_target).long().to(target.device)
 
 
 @dataclass
