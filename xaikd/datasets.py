@@ -179,7 +179,9 @@ def construct(name: str) -> DatasetConfiguration:
 
     dataset_cls = DATASETS[dataset_name]
 
-    if variant is not None:
+    if name in DATASETS:
+        dataset = dataset_cls()
+    elif variant is not None:
         # 55vs33
         match = re.match(r"(\d+)vs(\d+)", variant)
         if match:
@@ -193,7 +195,7 @@ def construct(name: str) -> DatasetConfiguration:
         else:
             raise ValueError(f"{dataset_name} has no variant `{variant}`")
     else:
-        dataset = dataset_cls()
+        raise ValueError(f"We do NOT have `{name}` dataset.")
 
     setattr(dataset, "__name", name)
 
@@ -338,6 +340,8 @@ class ImageNetButterfly:
 
     def __init__(self):
         super().__init__()
+
+        # todo: add unit tests  but mark.as.on server
 
         self.target_transform_dict = dict(
             zip(self.selected_classes, range(len(self.selected_classes)))
