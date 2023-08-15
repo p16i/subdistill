@@ -175,27 +175,24 @@ class DatasetConfiguration(ABC):
 
 
 def construct(name: str) -> DatasetConfiguration:
-    dataset_name, variant = _parse_dataset_name(name)
-
-    dataset_cls = DATASETS[dataset_name]
-
     if name in DATASETS:
-        dataset = dataset_cls()
-    elif variant is not None:
-        # 55vs33
-        match = re.match(r"(\d+)vs(\d+)", variant)
-        if match:
-            selected_classes = [int(match.group(1)), int(match.group(2))]
-            dataset = TwoClassesDataset(dataset_cls(), selected_classes)
-        elif dataset_name == "cifar100" and variant in CIFAR100_SUPER_CLASSES:
-            dataset = Cifar100SuperClassesDataset(
-                dataset_cls(),
-                super_class=variant,
-            )
-        else:
-            raise ValueError(f"{dataset_name} has no variant `{variant}`")
+        dataset = DATASETS[name]()
     else:
-        raise ValueError(f"We do NOT have `{name}` dataset.")
+        dataset_name, variant = _parse_dataset_name(name)
+        if variant is not None:
+            dataset_cls = DATASETS[dataset_name]
+            # 55vs33
+            match = re.match(r"(\d+)vs(\d+)", variant)
+            if match:
+                selected_classes = [int(match.group(1)), int(match.group(2))]
+                dataset = TwoClassesDataset(dataset_cls(), selected_classes)
+            elif dataset_name == "cifar100" and variant in CIFAR100_SUPER_CLASSES:
+                dataset = Cifar100SuperClassesDataset(
+                    dataset_cls(),
+                    super_class=variant,
+                )
+        else:
+            raise ValueError(f"{dataset_name} has no variant `{variant}` (name={name})")
 
     setattr(dataset, "__name", name)
 
