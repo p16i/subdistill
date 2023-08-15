@@ -8,7 +8,8 @@ from tqdm import tqdm
 
 from torch.utils.data import DataLoader
 from torch import nn
-from torchmetrics import Accuracy
+from torch.nn import functional as F
+from torchmetrics import Accuracy, MeanMetric
 from torchmetrics.classification import BinaryAUROC, BinaryAccuracy
 
 from xaikd import bases
@@ -64,18 +65,20 @@ def accuracy_with_subclasses(
     considered_classes: typing.List[int],
     transform_target: typing.Callable[[torch.Tensor], torch.Tensor],
     device: str,
-) -> float:
+) -> typing.Tuple[float, float]:
     model.eval()
 
-    metric = Accuracy(task="multiclass", num_classes=len(considered_classes))
+    metric_acc = Accuracy(task="multiclass", num_classes=len(considered_classes))
+    metric_xent = MeanMetric()
 
     for x, y in dl:
         logits = model(x.to(device)).cpu()
         selected_logits = logits[:, considered_classes]
         transformed_y = transform_target(y)
-        metric.update(selected_logits, transformed_y)
+        metric_acc.update(selected_logits, transformed_y)
+        metric_xent.update(F.cross_entropy(selected_logits, transformed_y))
 
-    return float(metric.compute())
+    return float(metric_acc.compute()), float(metric_xent.compute())
 
 
 def auroc_with_basis(
