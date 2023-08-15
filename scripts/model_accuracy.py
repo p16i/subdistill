@@ -24,7 +24,7 @@ def compute_xent_and_accuracy(
     model.eval()
     metric = Accuracy(task="multiclass", num_classes=num_classes)
     metric_xent = MeanMetric()
-    for x, y in dl:
+    for x, y in tqdm(dl):
         logits = model(x.to(device)).cpu()
 
         metric_xent.update(F.cross_entropy(logits, y))
