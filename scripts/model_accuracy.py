@@ -8,6 +8,7 @@ from xaikd.utils import metrics
 import pandas as pd
 
 from tqdm import tqdm
+from xaikd import utils
 
 
 @click.command()
