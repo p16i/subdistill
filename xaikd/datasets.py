@@ -345,8 +345,8 @@ class ImageNetButterfly:
         )
 
     def create_subset(self, train_split=False) -> Dataset:
-        ds = ImageNet(
-            root=DATADIR / "imagenet", split="train" if train_split else "val"
+        ds = tvd.ImageNet(
+            root=str(DATADIR / "imagenet"), split="train" if train_split else "val"
         )
 
         indices = np.argwhere(np.isin(ds.targets, self.selected_classes)).reshape(-1)
