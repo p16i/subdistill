@@ -14,6 +14,8 @@ from torchmetrics.classification import BinaryAUROC, BinaryAccuracy
 
 from xaikd import bases
 
+from tqdm import tqdm
+
 
 def auroc(
     model: nn.Module,
@@ -71,7 +73,7 @@ def accuracy_with_subclasses(
     metric_acc = Accuracy(task="multiclass", num_classes=len(considered_classes))
     metric_xent = MeanMetric()
 
-    for x, y in dl:
+    for x, y in tqdm(dl, desc="Computing accuracy for selected claseses"):
         logits = model(x.to(device)).cpu()
         selected_logits = logits[:, considered_classes]
         transformed_y = transform_target(y)
