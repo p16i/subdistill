@@ -15,7 +15,6 @@ from datetime import datetime
 from pathlib import Path
 
 from xaikd import utils, datasets, attributors, bases, constants, models
-from xaikd.showcases import cleverhans
 
 from xaikd.utils import click_types, metrics
 
@@ -116,7 +115,6 @@ def estimate_acc_for_basis(
 )
 @click.option("--seed", default=1, type=int)
 @click.option("--training-size", default=1.0, type=float)
-@click.option("--contamination-level", default=0.0, type=float)
 def main(
     model: nn.Module,
     dataset: str,
@@ -126,7 +124,6 @@ def main(
     basis_mode: str,
     basis_names: typing.List[str],
     training_size: float,
-    contamination_level: float,
 ):
     pl.seed_everything(seed)
     arguments = locals()
@@ -141,11 +138,7 @@ def main(
         dataset.create_subset(train_split=True), ratio=training_size, seed=seed
     )
 
-    contaminated_train_ds = cleverhans.contaminate_dataset(
-        train_ds, contamination_level=contamination_level, seed=seed
-    )
-
-    train_dataloader = datasets.build_dataloader(contaminated_train_ds, shuffle=False)
+    train_dataloader = datasets.build_dataloader(train_ds, shuffle=False)
 
     val_dataloader = datasets.build_dataloader(
         dataset.create_subset(train_split=False), shuffle=False, batch_size=128
@@ -165,9 +158,7 @@ def main(
     )
 
     dataset_slug = getattr(dataset, "__name")
-    dataset_slug = (
-        f"{dataset_slug}--ts{training_size}-clv{contamination_level}-seed{seed}"
-    )
+    dataset_slug = f"{dataset_slug}--ts{training_size}-seed{seed}"
 
     output_dir = (
         Path(output_dir)
