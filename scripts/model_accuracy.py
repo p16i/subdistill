@@ -50,7 +50,6 @@ def main(dataset_name, model_names, output_dir):
         print(f"Model={model_name}")
         model_stat = dict(model=model_name)
         for prefix, dl in [("train", train_dl), ("val", val_dl)]:
-            xent, acc = compute_xent_and_accuracy(model, dataset, dl, device=device)
             acc, xent = metrics.accuracy_with_subclasses(
                 model,
                 dl,
