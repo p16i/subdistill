@@ -310,7 +310,9 @@ class ImageNet(DatasetConfiguration):
     selected_classes = list(range(1000))
 
     def __init__(self):
-        self.num_classes = len(self.selected_classes)
+        # remark: we need to set this manually.
+
+        self.num_classes = 1000
         # Ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L91
         self.input_statistics = (
             (0.43216, 0.394666, 0.37645),
