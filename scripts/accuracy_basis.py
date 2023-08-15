@@ -93,7 +93,7 @@ def estimate_acc_for_basis(
             hook.remove()
 
         arr_accs.append(acc)
-        arr_xent.append(xnt)
+        arr_xent.append(xent)
 
     return arr_accs, arr_xent
 
