@@ -69,10 +69,11 @@ def estimate_acc_for_basis(
     basis: bases.Basis,
     device: str,
     arr_ks: typing.List[int],
-) -> typing.List[float]:
+) -> typing.Tuple[typing.List[float], typing.List[float]]:
     module = utils.interceptor.get_module(model, layer)
 
     arr_accs = []
+    arr_xent = []
 
     for k in tqdm(arr_ks, desc=f"[layer={layer}: basis={basis}]"):
         try:
@@ -80,7 +81,7 @@ def estimate_acc_for_basis(
                 basis.construct_fh_rank_k_projection(k, device)
             )
 
-            acc = metrics.accuracy_with_subclasses(
+            acc, xent = metrics.accuracy_with_subclasses(
                 model,
                 dataloader,
                 dataset.selected_classes,
@@ -92,8 +93,9 @@ def estimate_acc_for_basis(
             hook.remove()
 
         arr_accs.append(acc)
+        arr_xent.append(xnt)
 
-    return arr_accs
+    return arr_accs, arr_xent
 
 
 @click.command()
@@ -149,7 +151,7 @@ def main(
 
     logit_modifier = attributors.OneClassEvidence(dataset)
 
-    original_acc = metrics.accuracy_with_subclasses(
+    original_acc, original_xent = metrics.accuracy_with_subclasses(
         model,
         val_dataloader,
         dataset.selected_classes,
@@ -203,7 +205,7 @@ def main(
 
             basis.load(layer_output_dir, device=device)
 
-            arr_acc = estimate_acc_for_basis(
+            arr_acc, arr_xent = estimate_acc_for_basis(
                 model=model,
                 layer=layer,
                 dataset=dataset,
@@ -220,13 +222,15 @@ def main(
                 basis_output_dir / "stats.json",
                 dict(
                     arr_acc=arr_acc,
+                    arr_xent=arr_xent,
                     arr_ks=arr_ks,
                     arr_compressions=(dims / np.array(arr_ks)).astype(float).tolist(),
                     unexplained_relevance=metrics.unexplained_relevance(
                         arr_act, arr_ctx, basis.artifact["eigvecs"].cpu().numpy()
                     ),
                     dims=dims,
-                    original_auroc=original_acc,
+                    original_acc=original_acc,
+                    original_xent=original_xent,
                 ),
             )
 
