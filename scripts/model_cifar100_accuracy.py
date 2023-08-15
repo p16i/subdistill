@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 import click
 from datetime import datetime
 
@@ -10,11 +12,15 @@ from xaikd import models, datasets
 from xaikd import utils
 
 import typing
+import pandas as pd
+
+from tqdm import tqdm
 
 
 def compute_xent_and_accuracy(
     model: nn.Module, dl: DataLoader, num_classes=100, device="cpu"
 ) -> typing.Tuple[float, float]:
+    # todo: move this to `utils`
     model.eval()
     metric = Accuracy(task="multiclass", num_classes=num_classes)
     metric_xent = MeanMetric()
@@ -31,32 +37,51 @@ def compute_xent_and_accuracy(
 
 
 @click.command()
-@click.option("--model-name", type=str)
-def main(model_name):
+@click.option("--model-names", type=str)
+@click.option("--output-dir", type=str, default="./tmp")
+def main(model_names, output_dir):
     arguments = locals()
     start_time = datetime.now()
 
-    click.echo("Hello, main!")
+    model_names = model_names.split(",")
+
+    click.echo(f"Computing accuracy for these `{len(model_names)}` models")
 
     device = utils.get_device()
 
-    model = models.get_model(model_name)
-    model.to(device=device)
+    output_dir = Path(output_dir)
 
-    dataset = datasets.construct("cifar100")
+    os.makedirs(output_dir, exist_ok=True)
 
-    train_dl = datasets.build_dataloader(
-        dataset.create_subset(train_split=True), shuffle=False
-    )
+    stats = []
 
-    val_dl = datasets.build_dataloader(
-        dataset.create_subset(train_split=False), shuffle=False
-    )
+    for model_name in tqdm(model_names):
+        model = models.get_model(model_name)
+        model.to(device)
 
-    print(f"Model={model_name}")
-    for prefix, dl in [("train", train_dl), ("val", val_dl)]:
-        xent, acc = compute_xent_and_accuracy(model, dl, device=device)
-        print(f" > [{prefix:5s}] xent={xent:.4f} acc={acc:.4f}")
+        dataset = datasets.construct("cifar100")
+
+        train_dl = datasets.build_dataloader(
+            dataset.create_subset(train_split=True), shuffle=False
+        )
+
+        val_dl = datasets.build_dataloader(
+            dataset.create_subset(train_split=False), shuffle=False
+        )
+
+        print(f"Model={model_name}")
+        model_stat = dict(model=model_name)
+        for prefix, dl in [("train", train_dl), ("val", val_dl)]:
+            xent, acc = compute_xent_and_accuracy(model, dl, device=device)
+            print(f" > [{prefix:5s}] xent={xent:.4f} acc={acc:.4f}")
+
+            model_stat[f"{prefix}_xent"] = xent
+            model_stat[f"{prefix}_acc"] = acc
+
+        stats.append(model_stat)
+
+    df = pd.DataFrame(stats)
+    df.to_csv(output_dir / "cifar100-models-accuracy.csv", index=False)
 
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
