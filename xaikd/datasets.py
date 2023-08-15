@@ -332,22 +332,19 @@ class ImageNet(DatasetConfiguration):
 
 
 @register_dataset("imagenet-butterfly")
-class ImageNetButterfly:
+class ImageNetButterfly(ImageNet):
     selected_classes = [321, 322, 323, 324, 325, 326]
 
     def __init__(self):
         super().__init__()
 
         # todo: add unit tests  but mark.as.on server
-
         self.target_transform_dict = dict(
             zip(self.selected_classes, range(len(self.selected_classes)))
         )
 
     def create_subset(self, train_split=False) -> Dataset:
-        ds = tvd.ImageNet(
-            root=str(DATADIR / "imagenet"), split="train" if train_split else "val"
-        )
+        ds = super().create_subset(train_split=train_split)
 
         indices = np.argwhere(np.isin(ds.targets, self.selected_classes)).reshape(-1)
 
