@@ -25,6 +25,8 @@ from torchvision import datasets as tvd
 
 from torchvision.models import ResNet18_Weights
 
+from tqdm import tqdm
+
 from xaikd import constants
 
 
@@ -350,10 +352,16 @@ class ImageNetButterfly(ImageNet):
 
         print(f"We have {len(indices)} images in classes {self.selected_classes}")
 
-        ds.imgs = np.array(ds.imgs)[indices].tolist()
-        ds.samples = np.array(ds.samples)[indices].tolist()
+        new_samples = []
+        new_targets = []
 
-        ds.targets = np.array(ds.targets)[indices].tolist()
+        for six in tqdm(indices, desc="preparing `butterfly` samples"):
+            new_samples.append(ds.samples[six])
+            new_targets.append(ds.targets[six])
+
+        ds.imgs = new_samples
+        ds.samples = new_samples
+        ds.targets = new_targets
 
         assert np.isin(ds.targets, self.selected_classes).all()
 
