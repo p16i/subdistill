@@ -78,7 +78,7 @@ def accuracy_with_subclasses(
         selected_logits = logits[:, considered_classes]
         transformed_y = transform_target(y)
         metric_acc.update(selected_logits, transformed_y)
-        metric_xent.update(F.cross_entropy(selected_logits, transformed_y))
+        metric_xent.update(F.cross_entropy(selected_logits, transformed_y, reduce=None))
 
     return float(metric_acc.compute()), float(metric_xent.compute())
 
