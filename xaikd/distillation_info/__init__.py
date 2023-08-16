@@ -19,7 +19,7 @@ class LayerDistillInfo:
 def get_distill_infor(
     arch: str, layer: str, compression_ratio: float
 ) -> LayerDistillInfo:
-    assert arch == "cifar100-resnet18-p1" or arch == "imagenet-resnet18-tv"
+    assert "cifar100-resnet18" in arch  or arch == "imagenet-resnet18-tv"
     assert compression_ratio >= 1.0
 
     info = dict(
