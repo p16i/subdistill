@@ -32,7 +32,7 @@ from xaikd import constants
 
 DATASETS = dict()
 
-DATADIR = Path("./datasets")
+DATADIR = Path(os.getenv("DATASET_ROOT", "./datasets"))
 TORCHVISION_DATASET_DOWNLOAD = int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0"))
 CIFAR100_SUPER_CLASSES = (
     pd.read_csv(constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv")[
