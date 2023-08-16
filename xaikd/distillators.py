@@ -314,7 +314,7 @@ class Layerwise:
         )
 
         print(
-            f"[before training] metrics: student (teacher) | acc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f}) ({self.ref_xent:.4f})"
+            f"[before training] metrics: student (teacher) | acc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
         )
 
         print(f"Training log is saved to `{log_dir}`")
