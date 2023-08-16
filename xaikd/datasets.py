@@ -25,12 +25,14 @@ from torchvision import datasets as tvd
 
 from torchvision.models import ResNet18_Weights
 
+from tqdm import tqdm
+
 from xaikd import constants
 
 
 DATASETS = dict()
 
-DATADIR = Path("./datasets")
+DATADIR = Path(os.getenv("DATASET_ROOT", "./datasets"))
 TORCHVISION_DATASET_DOWNLOAD = int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0"))
 CIFAR100_SUPER_CLASSES = (
     pd.read_csv(constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv")[
@@ -175,25 +177,24 @@ class DatasetConfiguration(ABC):
 
 
 def construct(name: str) -> DatasetConfiguration:
-    dataset_name, variant = _parse_dataset_name(name)
-
-    dataset_cls = DATASETS[dataset_name]
-
-    if variant is not None:
-        # 55vs33
-        match = re.match(r"(\d+)vs(\d+)", variant)
-        if match:
-            selected_classes = [int(match.group(1)), int(match.group(2))]
-            dataset = TwoClassesDataset(dataset_cls(), selected_classes)
-        elif dataset_name == "cifar100" and variant in CIFAR100_SUPER_CLASSES:
-            dataset = Cifar100SuperClassesDataset(
-                dataset_cls(),
-                super_class=variant,
-            )
-        else:
-            raise ValueError(f"{dataset_name} has no variant `{variant}`")
+    if name in DATASETS:
+        dataset = DATASETS[name]()
     else:
-        dataset = dataset_cls()
+        dataset_name, variant = _parse_dataset_name(name)
+        if variant is not None:
+            dataset_cls = DATASETS[dataset_name]
+            # 55vs33
+            match = re.match(r"(\d+)vs(\d+)", variant)
+            if match:
+                selected_classes = [int(match.group(1)), int(match.group(2))]
+                dataset = TwoClassesDataset(dataset_cls(), selected_classes)
+            elif dataset_name == "cifar100" and variant in CIFAR100_SUPER_CLASSES:
+                dataset = Cifar100SuperClassesDataset(
+                    dataset_cls(),
+                    super_class=variant,
+                )
+        else:
+            raise ValueError(f"{dataset_name} has no variant `{variant}` (name={name})")
 
     setattr(dataset, "__name", name)
 
@@ -306,7 +307,11 @@ class CIFAR100(CIFAR10):
 @register_dataset("imagenet")
 @dataclass(init=False)
 class ImageNet(DatasetConfiguration):
+    selected_classes = list(range(1000))
+
     def __init__(self):
+        # remark: we need to set this manually.
+
         self.num_classes = 1000
         # Ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L91
         self.input_statistics = (
@@ -325,6 +330,52 @@ class ImageNet(DatasetConfiguration):
             split="train" if train_split else "val",
             transform=self.transformation,
         )
+
+    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        return target
+
+
+@register_dataset("imagenet-butterfly")
+class ImageNetButterfly(ImageNet):
+    selected_classes = [321, 322, 323, 324, 325, 326]
+
+    def __init__(self):
+        super().__init__()
+
+        # todo: add unit tests  but mark.as.on server
+        self.target_transform_dict = dict(
+            zip(self.selected_classes, range(len(self.selected_classes)))
+        )
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = super().create_subset(train_split=train_split)
+
+        indices = np.argwhere(np.isin(ds.targets, self.selected_classes)).reshape(-1)
+
+        print(f"We have {len(indices)} images in classes {self.selected_classes}")
+
+        new_samples = []
+        new_targets = []
+
+        for six in tqdm(indices, desc="preparing `butterfly` samples"):
+            new_samples.append(ds.samples[six])
+            new_targets.append(ds.targets[six])
+
+        ds.imgs = new_samples
+        ds.samples = new_samples
+        ds.targets = new_targets
+
+        assert np.isin(ds.targets, self.selected_classes).all()
+
+        return ds
+
+    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        new_target = []
+
+        for t in target:
+            new_target.append(self.target_transform_dict[int(t.detach().cpu())])
+
+        return torch.Tensor(new_target).long().to(target.device)
 
 
 @dataclass

@@ -210,7 +210,7 @@ class Layerwise:
 
         self.device = device
 
-        self.ref_acc = metrics.accuracy_with_subclasses(
+        self.ref_acc, self.ref_xent = metrics.accuracy_with_subclasses(
             self.teacher.to(device),
             val_dataloader,
             considered_classes=self.dataset.selected_classes,
@@ -297,7 +297,10 @@ class Layerwise:
 
         student.to(device)
 
-        student_acc_before_training = metrics.accuracy_with_subclasses(
+        (
+            student_acc_before_training,
+            student_xent_before_training,
+        ) = metrics.accuracy_with_subclasses(
             nn.Sequential(
                 feature_extractor,
                 approximator,
@@ -311,7 +314,7 @@ class Layerwise:
         )
 
         print(
-            f"Student ACC Before Training: {student_acc_before_training:.4f} (teacher={self.ref_acc:.4f})"
+            f"[before training] metrics: student (teacher) | acc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f}) ({self.ref_xent:.4f})"
         )
 
         print(f"Training log is saved to `{log_dir}`")
@@ -404,7 +407,7 @@ class Layerwise:
 
         # sanity check: acc from student to should equal to the one we have evaluated!
         with torch.no_grad():
-            actual_acc = metrics.accuracy_with_subclasses(
+            actual_acc, _ = metrics.accuracy_with_subclasses(
                 student,
                 self.val_dataloader,
                 considered_classes=self.dataset.selected_classes,

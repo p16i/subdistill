@@ -2,6 +2,7 @@ import pytest
 import torch
 import numpy as np
 from torch import nn
+from torch.nn import functional as F
 from torch.utils.data import TensorDataset, DataLoader
 from xaikd.utils import metrics
 
@@ -22,7 +23,7 @@ def test_accuracy_with_subclasses():
 
     ds = TensorDataset(x, y)
 
-    dl = DataLoader(ds)
+    dl = DataLoader(ds, batch_size=3, shuffle=True)
 
     def transform_target(target: torch.Tensor) -> torch.Tensor:
         target_transform_dict = dict(
@@ -33,9 +34,21 @@ def test_accuracy_with_subclasses():
         for t in target:
             new_target.append(target_transform_dict[int(t.detach().cpu())])
 
-        return torch.Tensor(new_target).to(target.device)
+        return torch.Tensor(new_target).long().to(target.device)
 
-    acc = metrics.accuracy_with_subclasses(
+    acc, xent = metrics.accuracy_with_subclasses(
+        model,
+        dl,
+        considered_classes=considered_classes,
+        transform_target=transform_target,
+        device="cpu",
+    )
+    np.testing.assert_allclose(acc, 0.75)
+    np.testing.assert_allclose(
+        xent, F.cross_entropy(x[:, considered_classes], transform_target(y))
+    )
+
+    acc2, xent2 = metrics.accuracy_with_subclasses(
         model,
         dl,
         considered_classes=considered_classes,
@@ -43,7 +56,8 @@ def test_accuracy_with_subclasses():
         device="cpu",
     )
 
-    assert acc == 0.75
+    np.testing.assert_allclose(acc2, acc, err_msg="shuffle should NOT affect metric!")
+    np.testing.assert_allclose(xent2, xent, err_msg="shuffle should NOT affect metric!")
 
 
 @pytest.mark.parametrize(
