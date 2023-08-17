@@ -43,7 +43,7 @@ BASIS_MODE = "centered"
 @click.option("--seed", type=int, default=1)
 @click.option("--lr", type=float, default=0.0005)
 @click.option("--basis-names", default="pca,prca-recon,pcaprca-recon,random")
-@click.option("--compression-ratio", type=float, default=10)
+@click.option("--compression-ratio", type=float, default=8)
 def main(
     output_dir: Path,
     epochs,
