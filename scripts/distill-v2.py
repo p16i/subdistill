@@ -124,7 +124,7 @@ def main(
     )
 
     train_loader_with_aug = datasets.build_dataloader(
-        ds_train_with_aug, shuffle=True, batch_size=int(np.floor(64 * training_size))
+        ds_train_with_aug, shuffle=True, batch_size=int(np.ceil(64 * training_size))
     )
 
     arr_act, arr_ctx = attributors.extract_activation_context(
