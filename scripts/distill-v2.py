@@ -174,6 +174,7 @@ def main(
         )
 
     for conf in tqdm(arr_experiment_confs):
+        conf: ExperimentConfiguration
         approximator = approximators.construct_approximator_for(
             teacher_model,
             layer=layer,
@@ -232,9 +233,9 @@ def main(
             config={
                 **arguments,
                 "approximator_mode": approximator_mode,
-                "compression_ratio": compression_ratio,
+                "compression_ratio": conf.compression_ratio,
                 "basis_name": basis_name,
-                "approximator": f"{approximator_mode}-{basis_name}-compr{compression_ratio}",
+                "approximator": f"{conf}",
                 "output_dir": output_dir,
             },
         )
