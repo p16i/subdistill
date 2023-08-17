@@ -4,6 +4,7 @@ import click
 from datetime import datetime
 
 import pytorch_lightning as pl
+from pytorch_lightning.loggers import TensorBoardLogger
 import torch
 
 from copy import deepcopy
@@ -40,10 +41,8 @@ BASIS_MODE = "centered"
 @click.option("--alphas", type=str, default="0.0,0.25,0.5,0.75,1.0")
 @click.option("--training-size", type=float, default=0.1)
 @click.option("--seed", type=int, default=1)
-@click.option("--base-lr", type=float, default=0.0005)
-@click.option(
-    "--basis-names", default="pca,prca-recon,pcaprca-recon,prca-abs,pcaprca-abs,random"
-)
+@click.option("--lr", type=float, default=0.0005)
+@click.option("--basis-names", default="pca,prca-recon,pcaprca-recon,random")
 @click.option("--compression-ratio", type=float, default=10)
 def main(
     output_dir: Path,
@@ -53,15 +52,13 @@ def main(
     basis_names,
     seed,
     training_size,
-    base_lr,
+    lr,
     compression_ratio,
 ):
     arguments = locals()
     start_time = datetime.now()
 
     arr_alphas = np.array(alphas.split(",")).astype(float)
-
-    lr = base_lr / training_size
 
     model_name = "cifar100-resnet18-p1"
     dataset_name = "cifar100-people"
@@ -111,7 +108,9 @@ def main(
 
     train_loader = datasets.build_dataloader(contaminated_train_ds, shuffle=True)
     train_loader_with_aug = datasets.build_dataloader(
-        contaminated_train_ds_with_aug, shuffle=True
+        contaminated_train_ds_with_aug,
+        shuffle=True,
+        batch_size=int(np.ceil(64 * training_size)),
     )
 
     arr_act, arr_ctx = attributors.extract_activation_context(
@@ -214,6 +213,8 @@ def main(
 
             student = models.get_model(model_name)
 
+            log_dir = basis_distillation_output_dir / "log"
+
             student, results = distillator.distill(
                 student=student,
                 approximator=approximator,
@@ -222,7 +223,8 @@ def main(
                 basis=basis,
                 device=device,
                 lr=lr,
-                log_dir=basis_distillation_output_dir / "log",
+                logger=TensorBoardLogger(log_dir),
+                log_dir=log_dir,
                 lambda_mse=lambda_mse,
                 lambda_xent=lambda_xent,
             )
