@@ -230,6 +230,7 @@ def main(
             project=WANDB_PROJECT,
             group=arguments["output_dir"],
             job_type="distillation",
+            name=f"{conf.basis_name}-compr{conf.compression_ratio}-seed{seed}",
             config={
                 **arguments,
                 "approximator_mode": approximator_mode,
