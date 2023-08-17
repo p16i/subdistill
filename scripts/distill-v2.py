@@ -51,9 +51,9 @@ WANDB_PROJECT = "xaikd-distilllation"
 @click.option("--output-dir", type=str, required=True)
 @click.option("--training-size", type=float, default=0.1, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
-@click.option("--lr", type=float, default=0.1, required=True)
+@click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--seed", type=int, default=1)
-@click.option("--weight-decay", type=float, default=1e-4)
+@click.option("--weight-decay", type=float, default=0.0)
 @click.option("--lambda-mse", type=float, default=1.0)
 @click.option("--lambda-xent", type=float, default=1.0)
 @click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
@@ -123,7 +123,9 @@ def main(
         ]
     )
 
-    train_loader_with_aug = datasets.build_dataloader(ds_train_with_aug, shuffle=True)
+    train_loader_with_aug = datasets.build_dataloader(
+        ds_train_with_aug, shuffle=True, batch_size=int(np.floor(64 * training_size))
+    )
 
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=teacher_model,
