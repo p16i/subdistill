@@ -3,7 +3,7 @@ import os
 import typing
 
 
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, Logger
 
 
 import pytorch_lightning as pl
@@ -230,6 +230,7 @@ class Layerwise:
         device: str,
         lr: float,
         log_dir: Path,
+        logger: Logger,
         lambda_mse: float,
         lambda_xent: float,
     ) -> typing.Tuple[nn.Module, typing.Dict]:
@@ -322,7 +323,7 @@ class Layerwise:
         trainer = pl.Trainer(
             accelerator=device,
             max_epochs=epochs,
-            logger=TensorBoardLogger(log_dir),
+            logger=logger,
             log_every_n_steps=1,
             enable_checkpointing=False,
             deterministic=True,

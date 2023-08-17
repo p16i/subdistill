@@ -12,6 +12,7 @@ from copy import deepcopy
 
 from torchvision import transforms
 from tqdm import tqdm
+import wandb
 
 from xaikd import (
     datasets,
@@ -28,6 +29,11 @@ from xaikd import (
 from xaikd.approximators import ApproximatorMode
 
 from xaikd.distillation_info import ExperimentConfiguration
+
+from pytorch_lightning.loggers import WandbLogger
+
+
+WANDB_PROJECT = "xaikd-distilllation"
 
 
 @click.command()
@@ -51,6 +57,7 @@ from xaikd.distillation_info import ExperimentConfiguration
 @click.option("--lambda-mse", type=float, default=1.0)
 @click.option("--lambda-xent", type=float, default=1.0)
 @click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
+@click.option("--skip-baselines", type=bool, default=False, is_flag=True)
 def main(
     teacher_model,
     dataset,
@@ -66,17 +73,19 @@ def main(
     weight_decay,
     lambda_mse,
     lambda_xent,
+    skip_baselines,
     skip_if_exist,
 ):
-    pl.seed_everything(seed)
+    lr = lr / (training_size)
 
     arguments = locals()
+
+    pl.seed_everything(seed)
+
     start_time = datetime.now()
 
     teacher_model = models.get_model(teacher_model)
     model_name = getattr(teacher_model, "__name")
-
-    lr = lr / (training_size)
 
     layer_slug = f"layer-{layer}"
 
@@ -137,19 +146,7 @@ def main(
 
     ref_acc = None
 
-    arr_experiment_confs = [
-        # todo: make sure that we run this conf only once!
-        ExperimentConfiguration(
-            basis_name="identity--centered",
-            compression_ratio=1.0,
-            approximator_mode=ApproximatorMode.HOMOGENOUS,
-        ),
-        ExperimentConfiguration(
-            basis_name="identity--centered",
-            compression_ratio=compression_ratio,
-            approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
-        ),
-    ]
+    arr_experiment_confs = []
 
     for basis_name in basis_names.split(","):
         arr_experiment_confs.append(
@@ -158,6 +155,22 @@ def main(
                 compression_ratio=compression_ratio,
                 approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK,
             ),
+        )
+
+    if not skip_baselines:
+        arr_experiment_confs.extend(
+            [
+                ExperimentConfiguration(
+                    basis_name="identity--centered",
+                    compression_ratio=1.0,
+                    approximator_mode=ApproximatorMode.HOMOGENOUS,
+                ),
+                ExperimentConfiguration(
+                    basis_name="identity--centered",
+                    compression_ratio=compression_ratio,
+                    approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
+                ),
+            ]
         )
 
     for conf in tqdm(arr_experiment_confs):
@@ -212,6 +225,19 @@ def main(
 
         student = models.get_model(model_name)
 
+        logger = WandbLogger(
+            project=WANDB_PROJECT,
+            group=arguments["output_dir"],
+            job_type="distillation",
+            config={
+                **arguments,
+                "approximator_mode": approximator_mode,
+                "compression_ratio": compression_ratio,
+                "basis_name": basis_name,
+                "approximator": f"{approximator_mode}-{basis_name}-compr{compression_ratio}",
+                "output_dir": output_dir,
+            },
+        )
         student, results = distillator.distill(
             student=student,
             approximator=approximator,
@@ -220,6 +246,7 @@ def main(
             basis=basis,
             device=device,
             lr=lr,
+            logger=logger,
             log_dir=basis_distillation_output_dir / "log",
             lambda_mse=lambda_mse,
             lambda_xent=lambda_xent,
@@ -232,6 +259,7 @@ def main(
         )
 
         utils.dump_json(basis_distillation_output_dir / "results.json", results)
+        wandb.finish()
 
     click.echo(f"Check Results at: {output_dir}")
 

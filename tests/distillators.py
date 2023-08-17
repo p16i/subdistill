@@ -13,6 +13,8 @@ from pathlib import Path
 
 from copy import deepcopy
 
+from pytorch_lightning.loggers import TensorBoardLogger
+
 from xaikd import (
     approximators,
     bases,
@@ -142,6 +144,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer, compression_ra
             basis=basis,
             device=device,
             lr=0.001,
+            logger=TensorBoardLogger(log_dir),
             log_dir=log_dir,
             lambda_mse=1.0,
             lambda_xent=1.0,
