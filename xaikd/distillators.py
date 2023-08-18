@@ -83,11 +83,18 @@ class ModelWrapper(pl.LightningModule):
         self.arr_metrics = dict(train=[], val=[])
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(
-            self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        # optimizer = torch.optim.Adam(
+        #     self.approximator.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        # )
+
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+        optimizer = torch.optim.SGD(
+            self.approximator.parameters(), 0.1, momentum=0.9, weight_decay=1e-4
         )
 
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+        """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+
         return [optimizer], [scheduler]
 
     def forward_with_feats(
