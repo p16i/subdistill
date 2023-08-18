@@ -22,7 +22,6 @@ from xaikd import (
     attributors,
     bases,
     approximators,
-    augmentations,
     distillation_info,
 )
 
@@ -116,12 +115,7 @@ def main(
     )
 
     ds_train_with_aug = deepcopy(ds_train)
-    ds_train_with_aug.dataset.transform = transforms.Compose(
-        [
-            *augmentations.get_augmentation_for(dataset=dataset),
-            ds_train_with_aug.dataset.transform,
-        ]
-    )
+    ds_train_with_aug.dataset.transform = dataset.input_training_transformation
 
     train_loader_with_aug = datasets.build_dataloader(
         ds_train_with_aug, shuffle=True, batch_size=int(np.ceil(64 * training_size))
@@ -240,6 +234,7 @@ def main(
                 "output_dir": output_dir,
             },
         )
+
         student, results = distillator.distill(
             student=student,
             approximator=approximator,
@@ -259,6 +254,8 @@ def main(
         print(
             f"Result: Student with `{approximator_mode}` and `{basis}` acc={last_epoch_val_acc:.4f}"
         )
+
+        # add `results` to wandlogger
 
         utils.dump_json(basis_distillation_output_dir / "results.json", results)
         wandb.finish()

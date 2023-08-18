@@ -9,8 +9,6 @@ import torch
 
 from copy import deepcopy
 
-from torchvision import transforms
-
 from pathlib import Path
 
 import pandas as pd
@@ -20,7 +18,6 @@ from xaikd import (
     datasets,
     attributors,
     distillators,
-    augmentations,
     approximators,
     distillation_info,
     utils,
@@ -90,20 +87,13 @@ def main(
         dataset.create_subset(train_split=False), shuffle=False
     )
 
-    augmentation = augmentations.get_augmentation_for(dataset=dataset)
-
     contaminated_train_ds = cleverhans.contaminate_dataset(
         dataset=clean_train_ds, contamination_level=contamination_level, seed=seed
     )
 
-    # todo: this can be abstract away
-    # perhaps, make it a method of `dataset``
     contaminated_train_ds_with_aug = deepcopy(contaminated_train_ds)
-    contaminated_train_ds_with_aug.dataset.transforms = transforms.Compose(
-        [
-            *augmentation,
-            contaminated_train_ds_with_aug,
-        ]
+    contaminated_train_ds_with_aug.dataset.transform = (
+        dataset.input_training_transformation
     )
 
     train_loader = datasets.build_dataloader(contaminated_train_ds, shuffle=True)
