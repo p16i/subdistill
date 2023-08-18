@@ -7,6 +7,7 @@ from xaikd import datasets
 def get_augmentation_for(
     dataset: datasets.DatasetConfiguration,
 ) -> typing.List[typing.Callable]:
+    raise NotImplementedError("obsolete")
     if isinstance(dataset, datasets.CIFAR10) or isinstance(
         dataset, datasets.Cifar100SuperClassesDataset
     ):
