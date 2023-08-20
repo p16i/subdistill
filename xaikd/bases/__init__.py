@@ -196,60 +196,6 @@ def get_basis(slug, **kwargs) -> Basis:
     return basis
 
 
-@register_basis("pca")
-class PCA(Basis):
-    artifact_keys = ["eigvecs", "std"]
-
-    def fit(
-        self,
-        activation: npt.NDArray,
-        context: npt.NDArray,
-        mean: npt.NDArray,
-        device: str,
-    ):
-        """_summary_
-
-        Args:
-            activation (npt.NDArray): _description_
-            context (npt.NDArray): We do NOT use this here!
-        """
-
-        n, d = activation.shape
-
-        if self.centering:
-            activation = activation - mean
-
-        assert not np.isnan(activation).any()
-
-        cov = activation.T @ activation / n
-
-        eigvals, eigvecs = np.linalg.eigh(cov)
-
-        indices = np.argsort(eigvals)[::-1]
-
-        eigvals = eigvals[indices]
-        eigvecs = eigvecs[:, indices]
-
-        std = np.std(activation @ eigvecs, axis=0)
-
-        cond = eigvals < 0
-
-        if cond.sum() > 0:
-            print("[warning]: some eigenvalues are of PCA smaller than zero!")
-            print(
-                "Because this seems to be numerical issue, we set eigvals[eigvals < 0] = 0"
-            )
-            eigvals[cond] = 0
-
-        assert not np.isnan(std).any()
-        assert not (eigvals < 0).any()
-        np.testing.assert_allclose(std, eigvals**0.5, atol=1e-3)
-
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
-
-        return eigvecs, std
-
-
 @register_basis("identity")
 class Identity(Basis):
     artifact_keys = ["std"]
@@ -291,107 +237,6 @@ class Identity(Basis):
         setattr(self, "artifact", dict(zip(self.artifact_keys, [std])))
 
         return std
-
-
-@register_basis("rel")
-class Rel(Basis):
-    artifact_keys = ["eigvecs", "std"]
-
-    def _computing_criteria(
-        self, activation: npt.NDArray, context: npt.NDArray
-    ) -> npt.NDArray:
-        return activation * context
-
-    def fit(
-        self,
-        activation: npt.NDArray,
-        context: npt.NDArray,
-        mean: typing.Union[npt.NDArray, None],
-        device: str,
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-        n, d = activation.shape
-
-        if self.centering:
-            activation = activation - mean
-
-        criteria: npt.NDArray = self._computing_criteria(activation, context)
-        eigvals = np.mean(criteria, axis=0)
-
-        # large relevance first
-        indices = np.argsort(-eigvals)
-
-        eigvecs = np.eye(d)[:, indices]
-
-        std = np.std(activation @ eigvecs, axis=0)
-
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
-
-        return eigvecs, std
-
-
-@register_basis("rel-abs")
-class RelAbs(Rel):
-    def _computing_criteria(
-        self, activation: npt.NDArray, context: npt.NDArray
-    ) -> npt.NDArray:
-        return np.abs(activation * context)
-
-
-@register_basis("act-abs")
-class ActAbs(Rel):
-    def _computing_criteria(
-        self, activation: npt.NDArray, context: npt.NDArray
-    ) -> npt.NDArray:
-        return np.abs(activation)
-
-
-@register_basis("act")
-class ActAbs(Rel):
-    def _computing_criteria(
-        self, activation: npt.NDArray, context: npt.NDArray
-    ) -> npt.NDArray:
-        return activation
-
-
-@register_basis("prca")
-class PRCA(Basis):
-    artifact_keys = ["eigvecs", "std"]
-
-    def fit(
-        self,
-        activation: npt.NDArray,
-        context: npt.NDArray,
-        mean: npt.NDArray,
-        device: str,
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-        """_summary_ Summary
-
-        Args:
-            activation (npt.NDArray): _description_
-            context (npt.NDArray): _description_
-
-        Returns:
-            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
-        """
-        n, d = activation.shape
-
-        if self.centering:
-            activation = activation - mean
-
-        eigvals, eigvecs = np.linalg.eigh(
-            ((activation.T @ context + context.T @ activation)) / n
-        )
-
-        indices = np.argsort(eigvals)[::-1]
-
-        eigvals = eigvals[indices]
-        eigvecs = eigvecs[:, indices]
-
-        std = np.std(activation @ eigvecs, axis=0)
-
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
-
-        return eigvecs, std
 
 
 @register_basis("random")
@@ -447,6 +292,245 @@ class RandomPerm(Basis):
         return U, std
 
 
+class CanonicalBasis(Basis):
+    artifact_keys = ["eigvecs", "std"]
+
+    def _solve_objective(
+        self, activation: npt.NDArray, context: npt.NDArray
+    ) -> npt.NDArray[int]:
+        raise NotImplementedError("")
+
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: typing.Union[npt.NDArray, None],
+        device: str,
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        n, d = activation.shape
+
+        if self.centering:
+            activation = activation - mean
+
+        indices = self._solve_objective(activation, context)
+
+        eigvecs = np.eye(d)[:, indices]
+
+        std = np.std(activation @ eigvecs, axis=0)
+
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+
+        return eigvecs, std
+
+
+@register_basis("act-raw")
+class ActRaw(CanonicalBasis):
+    def _solve_objective(self, activation, context):
+        # problem: argmax_i E[a_i]
+        criteria = np.mean(activation, axis=0)
+
+        indices = np.argsort(-criteria)
+
+        return indices
+
+
+@register_basis("act-recon")
+class ActRecon(CanonicalBasis):
+    def _solve_objective(self, activation, context):
+        # problem: argmin_i  E[ \| a - (a^\tope_i) e_i \|^2_2 ]
+        #          argmin_i  E[ a^Ta - 2 a_i^2 + a_i^2        ] where a^\top e_i = a_i
+        #          argmin_i  E[      - 2 a_i^2 + a_i^2        ]
+        #          argmin_i  E[      -   a_i^2                ]
+
+        _, d = activation.shape
+        criteria = -np.mean((activation**2), axis=0)
+        assert criteria.shape == (d,)
+
+        indices = np.argsort(criteria)
+
+        return indices
+
+
+@register_basis("rel-raw")
+class RelRaw(CanonicalBasis):
+    artifact_keys = ["eigvecs", "std"]
+
+    def _solve_objective(self, activation, context):
+        # problem: argmax_i E[r_i]
+        _, d = activation.shape
+        rel = np.mean(activation * context, axis=0)
+
+        assert rel.shape == (d,)
+
+        indices = np.argsort(-rel)
+
+        return indices
+
+
+@register_basis("rel-abs")
+class RelAbs(CanonicalBasis):
+    def _solve_objective(self, activation, context):
+        # problem: argmax_i |E[r_i]|
+        rel = np.mean(activation * context, axis=0)
+        abs_rel = np.abs(rel)
+
+        indices = np.argsort(-abs_rel)
+
+        return indices
+
+
+@register_basis("rel-reconnaive")
+class RelReconNaive(CanonicalBasis):
+    def _solve_objective(self, activation, context):
+        # problem: argmin_i   E[(r - r_i)^2]
+        n, d = activation.shape
+
+        rel_per_dim = activation * context
+        rel = np.sum(rel_per_dim, axis=1, keepdims=True)
+        assert rel.shape == (n, 1)
+
+        recon = (rel - rel_per_dim) ** 2
+
+        criteria = np.mean(recon, axis=0)
+        assert criteria.shape == (d,)
+
+        indices = np.argsort(criteria)
+
+        return indices
+
+
+@register_basis("rel-recon")
+class RelRecon(CanonicalBasis):
+    def _solve_objective(self, activation, context):
+        indices = []
+
+        n, d = activation.shape
+
+        indices = []
+
+        rel_per_dim = activation * context
+
+        assert rel_per_dim.shape == (n, d)
+
+        possible_dimensions = set(list(range(d)))
+
+        for _ in range(d):
+            dimensions = list(possible_dimensions.difference(indices))
+
+            stats = np.zeros(len(dimensions))
+            stats = []
+
+            rel_total_left = rel_per_dim[:, dimensions].sum(axis=1)
+            assert rel_total_left.shape == (n,)
+
+            for k in dimensions:
+                rel_proj = rel_per_dim[:, k]
+                norm = (rel_total_left - rel_proj) ** 2
+                stats.append(np.mean(norm))
+
+            indices.append(dimensions[np.argmin(stats)])
+
+        assert len(set(indices)) == d
+
+        return indices
+
+
+@register_basis("pca")
+class PCA(Basis):
+    artifact_keys = ["eigvecs", "std"]
+
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
+    ):
+        """_summary_
+
+        Args:
+            activation (npt.NDArray): _description_
+            context (npt.NDArray): We do NOT use this here!
+        """
+
+        n, d = activation.shape
+
+        if self.centering:
+            activation = activation - mean
+
+        assert not np.isnan(activation).any()
+
+        cov = activation.T @ activation / n
+
+        eigvals, eigvecs = np.linalg.eigh(cov)
+
+        indices = np.argsort(eigvals)[::-1]
+
+        eigvals = eigvals[indices]
+        eigvecs = eigvecs[:, indices]
+
+        std = np.std(activation @ eigvecs, axis=0)
+
+        cond = eigvals < 0
+
+        if cond.sum() > 0:
+            print("[warning]: some eigenvalues are of PCA smaller than zero!")
+            print(
+                "Because this seems to be numerical issue, we set eigvals[eigvals < 0] = 0"
+            )
+            eigvals[cond] = 0
+
+        assert not np.isnan(std).any()
+        assert not (eigvals < 0).any()
+        if self.centering:
+            np.testing.assert_allclose(std, eigvals**0.5, atol=1e-3)
+
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+
+        return eigvecs, std
+
+
+@register_basis("prca")
+class PRCA(Basis):
+    artifact_keys = ["eigvecs", "std"]
+
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
+    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+        """_summary_ Summary
+
+        Args:
+            activation (npt.NDArray): _description_
+            context (npt.NDArray): _description_
+
+        Returns:
+            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
+        """
+        n, d = activation.shape
+
+        if self.centering:
+            activation = activation - mean
+
+        eigvals, eigvecs = np.linalg.eigh(
+            ((activation.T @ context + context.T @ activation)) / n
+        )
+
+        indices = np.argsort(eigvals)[::-1]
+
+        eigvals = eigvals[indices]
+        eigvecs = eigvecs[:, indices]
+
+        std = np.std(activation @ eigvecs, axis=0)
+
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+
+        return eigvecs, std
+
+
 class PRCAVariant(Basis):
     artifact_keys = ["eigvecs", "std"]
     mode: str
@@ -469,10 +553,8 @@ class PRCAVariant(Basis):
         """
         _, d = activation.shape
 
-        if not self.centering:
-            mean = np.zeros(d)
-
-        activation = activation - mean
+        if self.centering:
+            activation = activation - mean
 
         precondition_mat = self.precondition_matrix(activation)
 
@@ -510,13 +592,19 @@ class PRCAAbs(PRCAVariant):
 
 
 @register_basis("prca-recon")
-class PRCARelRecon(PRCAVariant):
+class PRCARecon(PRCAVariant):
     mode = "recon"
     beta = 0.0
 
 
+@register_basis("prca-reconnaive")
+class PRCAReconNaive(PRCAVariant):
+    mode = "reconnaive"
+    beta = 0.0
+
+
 @register_basis("prca-reconreg")
-class PRCARelReconReg(PRCAVariant):
+class PRCAReconReg(PRCAVariant):
     mode = "recon"
 
     def __init__(self, beta=0.0, *args, **kwargs):
@@ -524,12 +612,7 @@ class PRCARelReconReg(PRCAVariant):
         self.beta = beta
 
 
-@register_basis("pcaprca-abs")
 class PCAPRCAVariant(PRCAVariant):
-    artifact_keys = ["eigvecs", "std"]
-    mode = "abs"
-    beta = 0.0
-
     def precondition_matrix(self, activation: npt.NDArray) -> npt.NDArray:
         # remarks:
         # - we assume `activation` is processed accordingly to the mode (centered or uncentered)
@@ -540,6 +623,12 @@ class PCAPRCAVariant(PRCAVariant):
         E = np.flip(E, axis=1)
 
         return E
+
+
+@register_basis("pcaprca-abs")
+class PCAPRCAAbs(PCAPRCAVariant):
+    mode = "abs"
+    beta = 0.0
 
 
 @register_basis("pcaprca-recon")

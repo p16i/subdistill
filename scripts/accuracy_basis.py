@@ -21,9 +21,6 @@ from xaikd.utils import click_types, metrics
 import pytorch_lightning as pl
 
 
-COMPRESSION_RATIOS = np.array([1, 2, 4, 8, 16, 32, 64])
-
-
 def extract_activation_and_bases(
     model: nn.Module,
     dataset: datasets.Cifar100SuperClassesDataset,
@@ -60,6 +57,8 @@ def extract_activation_and_bases(
 
         basis.save(output_dir)
 
+    return arr_act, arr_ctx
+
 
 @torch.no_grad()
 def estimate_acc_for_basis(
@@ -70,10 +69,11 @@ def estimate_acc_for_basis(
     basis: bases.Basis,
     device: str,
     arr_ks: typing.List[int],
-) -> typing.List[float]:
+) -> typing.Tuple[typing.List[float], typing.List[float]]:
     module = utils.interceptor.get_module(model, layer)
 
     arr_accs = []
+    arr_xent = []
 
     for k in tqdm(arr_ks, desc=f"[layer={layer}: basis={basis}]"):
         try:
@@ -81,7 +81,7 @@ def estimate_acc_for_basis(
                 basis.construct_fh_rank_k_projection(k, device)
             )
 
-            acc = metrics.accuracy_with_subclasses(
+            acc, xent = metrics.accuracy_with_subclasses(
                 model,
                 dataloader,
                 dataset.selected_classes,
@@ -93,8 +93,9 @@ def estimate_acc_for_basis(
             hook.remove()
 
         arr_accs.append(acc)
+        arr_xent.append(xent)
 
-    return arr_accs
+    return arr_accs, arr_xent
 
 
 @click.command()
@@ -112,7 +113,7 @@ def estimate_acc_for_basis(
 @click.option(
     "--basis-names",
     type=click_types.List(),
-    default="pca,prca-abs,prca-recon,pcaprca-abs,pcaprca-recon,rel-abs,rel,random",
+    default="pca,prca-abs,prca-recon,prca-reconnaive,pcaprca-abs,pcaprca-recon,act-raw,act-recon,rel-raw,rel-abs,rel-recon,rel-reconnaive,random",
 )
 @click.option("--seed", default=1, type=int)
 @click.option("--training-size", default=1.0, type=float)
@@ -150,7 +151,7 @@ def main(
 
     logit_modifier = attributors.OneClassEvidence(dataset)
 
-    original_acc = metrics.accuracy_with_subclasses(
+    original_acc, original_xent = metrics.accuracy_with_subclasses(
         model,
         val_dataloader,
         dataset.selected_classes,
@@ -178,7 +179,7 @@ def main(
 
         basis_names_with_mode = list(map(lambda s: f"{s}--{basis_mode}", basis_names))
 
-        extract_activation_and_bases(
+        arr_act, arr_ctx = extract_activation_and_bases(
             model=model,
             dataset=dataset,
             loader=train_dataloader,
@@ -191,17 +192,20 @@ def main(
         )
 
         dims = models.get_layer_output_dimensions(model, layer)
-        arr_ks = sorted(np.floor(dims / COMPRESSION_RATIOS).astype(int).tolist())
-        print(
-            f"Computing with arr_ks={arr_ks} (corresponding to compression of {np.flip(COMPRESSION_RATIOS)})"
+        arr_ks = (
+            np.unique(np.array(utils.logspace(dims) + list(range(1, 31 + 1))))
+            .astype(int)
+            .tolist()
         )
+
+        print(f"Computing with arr_ks={arr_ks}")
 
         for basis_name in basis_names_with_mode:
             basis = bases.get_basis(basis_name, seed=seed)
 
             basis.load(layer_output_dir, device=device)
 
-            arr_acc = estimate_acc_for_basis(
+            arr_acc, arr_xent = estimate_acc_for_basis(
                 model=model,
                 layer=layer,
                 dataset=dataset,
@@ -218,9 +222,15 @@ def main(
                 basis_output_dir / "stats.json",
                 dict(
                     arr_acc=arr_acc,
+                    arr_xent=arr_xent,
                     arr_ks=arr_ks,
+                    arr_compressions=(dims / np.array(arr_ks)).astype(float).tolist(),
+                    unexplained_relevance=metrics.unexplained_relevance(
+                        arr_act, arr_ctx, basis.artifact["eigvecs"].cpu().numpy()
+                    ),
                     dims=dims,
-                    original_auroc=original_acc,
+                    original_acc=original_acc,
+                    original_xent=original_xent,
                 ),
             )
 

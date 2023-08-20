@@ -169,3 +169,7 @@ artifacts
 logs
 
 notebooks/*/lightning_logs
+notebooks/figures
+notebooks/*/dev*
+
+wandb

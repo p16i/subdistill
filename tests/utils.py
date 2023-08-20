@@ -58,3 +58,17 @@ def test_query_module_with_types_resnet18_cifar100():
     arr_batchnorm = utils.query_module_children_with_type(module, nn.BatchNorm2d)
 
     assert len(arr_batchnorm) == 20
+
+
+def test_logspace():
+    d = 512
+
+    np.testing.assert_equal(
+        [1] + np.logspace(1, 9, num=9, base=2).tolist(), utils.logspace(d)
+    )
+
+    d = 530
+
+    np.testing.assert_equal(
+        [1] + np.logspace(1, 9, num=9, base=2).tolist() + [d], utils.logspace(d)
+    )

@@ -25,12 +25,14 @@ from torchvision import datasets as tvd
 
 from torchvision.models import ResNet18_Weights
 
+from tqdm import tqdm
+
 from xaikd import constants
 
 
 DATASETS = dict()
 
-DATADIR = Path("./datasets")
+DATADIR = Path(os.getenv("DATASET_ROOT", "./datasets"))
 TORCHVISION_DATASET_DOWNLOAD = int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0"))
 CIFAR100_SUPER_CLASSES = (
     pd.read_csv(constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv")[
@@ -150,50 +152,46 @@ def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
 @dataclass
 class DatasetConfiguration(ABC):
     num_classes: int
-    input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]]
-    transformation: typing.Callable
+    # input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]]
+    _normalizer: transforms.Normalize
+    input_transformation: typing.Callable
+    input_training_transformation: typing.Callable
     dataclass: typing.Callable
-
-    # todo: init method already instatitate dataset
 
     @abstractmethod
     def create_subset(self, train_split=False) -> Dataset:
         pass
 
-    # # todo: add new method get_dataset to get the dataset from dict
-
-    # def loader(self, batch_size=64, num_workers=2, train_split=False, shuffle=False):
-    #     return DataLoader(
-    #         self.create_dataset(train_split=train_split),
-    #         num_workers=num_workers,
-    #         batch_size=batch_size,
-    #         shuffle=shuffle,
-    #     )
+    @property
+    def input_statistics(self) -> typing.Tuple[typing.List[float], typing.List[float]]:
+        return [
+            self._normalizer.mean,
+            self._normalizer.std,
+        ]
 
     def __str__(self) -> str:
         return getattr(self, "__name")
 
 
 def construct(name: str) -> DatasetConfiguration:
-    dataset_name, variant = _parse_dataset_name(name)
-
-    dataset_cls = DATASETS[dataset_name]
-
-    if variant is not None:
-        # 55vs33
-        match = re.match(r"(\d+)vs(\d+)", variant)
-        if match:
-            selected_classes = [int(match.group(1)), int(match.group(2))]
-            dataset = TwoClassesDataset(dataset_cls(), selected_classes)
-        elif dataset_name == "cifar100" and variant in CIFAR100_SUPER_CLASSES:
-            dataset = Cifar100SuperClassesDataset(
-                dataset_cls(),
-                super_class=variant,
-            )
-        else:
-            raise ValueError(f"{dataset_name} has no variant `{variant}`")
+    if name in DATASETS:
+        dataset = DATASETS[name]()
     else:
-        dataset = dataset_cls()
+        dataset_name, variant = _parse_dataset_name(name)
+        if variant is not None:
+            dataset_cls = DATASETS[dataset_name]
+            # 55vs33
+            match = re.match(r"(\d+)vs(\d+)", variant)
+            if match:
+                selected_classes = [int(match.group(1)), int(match.group(2))]
+                dataset = TwoClassesDataset(dataset_cls(), selected_classes)
+            elif dataset_name == "cifar100" and variant in CIFAR100_SUPER_CLASSES:
+                dataset = Cifar100SuperClassesDataset(
+                    dataset_cls(),
+                    super_class=variant,
+                )
+        else:
+            raise ValueError(f"{dataset_name} has no variant `{variant}` (name={name})")
 
     setattr(dataset, "__name", name)
 
@@ -218,8 +216,9 @@ class TwoClassesDataset(DatasetConfiguration):
         # remark: this might be a bit confusing
         self.num_classes = base.num_classes
 
-        self.input_statistics = self.base.input_statistics
-        self.transformation = self.base.transformation
+        self._normalizer = self.base._normalizer
+        self.input_transformation = self.base.input_transformation
+        self.input_training_transformation = self.base.input_training_transformation
 
         self.num_train_samples = num_train_samples
 
@@ -259,10 +258,23 @@ class TwoClassesDataset(DatasetConfiguration):
 class CIFAR10(DatasetConfiguration):
     def __init__(self):
         self.num_classes = 10
-        self.input_statistics = ((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010))
 
-        self.transformation = transforms.Compose(
-            [transforms.ToTensor(), transforms.Normalize(*self.input_statistics)]
+        self._normalizer = transforms.Normalize(
+            mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010)
+        )
+
+        self.input_transformation = transforms.Compose(
+            [transforms.ToTensor(), self._normalizer]
+        )
+
+        # ref: https://github.com/zju-vipa/NetGraft/blob/main/utils/data.py#L35
+        self.input_training_transformation = transforms.Compose(
+            [
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                self._normalizer,
+            ]
         )
 
         self.dataclass = tvd.CIFAR10
@@ -273,26 +285,36 @@ class CIFAR10(DatasetConfiguration):
         return self.dataclass(
             root=self.root,
             train=train_split,
-            transform=self.transformation,
+            transform=self.input_transformation,
             download=TORCHVISION_DATASET_DOWNLOAD,
         )
 
 
-# @register_dataset("cifar10all")
-# class CIFAR10All(CIFAR10):
-#     selected_classes = list(range(10))
-
-#     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
-#         return target
-
-
 @register_dataset("cifar100")
 @dataclass
-class CIFAR100(CIFAR10):
+class CIFAR100(DatasetConfiguration):
     selected_classes = list(range(100))
 
     def __init__(self):
-        super().__init__()
+        # todo: important: use statistic from cifar100 training itself to construct normalize
+        # ref: https://github.com/zju-vipa/NetGraft/blob/main/utils/data.py#L10
+        self._normalizer = transforms.Normalize(
+            mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010)
+        )
+
+        self.input_transformation = transforms.Compose(
+            [transforms.ToTensor(), self._normalizer]
+        )
+
+        # # ref: https://github.com/zju-vipa/NetGraft/blob/main/utils/data.py#L35
+        self.input_training_transformation = transforms.Compose(
+            [
+                transforms.RandomCrop(32, padding=4),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                self._normalizer,
+            ]
+        )
 
         self.num_classes = 100
         # remark: we use the transformation (Normalization) of CIFAR10 here!
@@ -302,19 +324,45 @@ class CIFAR100(CIFAR10):
     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
         return target
 
+    def create_subset(self, train_split=False) -> Dataset:
+        return self.dataclass(
+            root=self.root,
+            train=train_split,
+            transform=self.input_transformation,
+            download=TORCHVISION_DATASET_DOWNLOAD,
+        )
+
 
 @register_dataset("imagenet")
 @dataclass(init=False)
 class ImageNet(DatasetConfiguration):
+    selected_classes = list(range(1000))
+
     def __init__(self):
+        # remark: we need to set this manually.
+
         self.num_classes = 1000
-        # Ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L91
-        self.input_statistics = (
-            (0.43216, 0.394666, 0.37645),
-            (0.22803, 0.22145, 0.216989),
+
+        self._normalizer = transforms.Normalize(
+            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
         )
 
-        self.transformation = ResNet18_Weights.IMAGENET1K_V1.transforms()
+        # ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L38
+        self.input_transformation = ResNet18_Weights.IMAGENET1K_V1.transforms()
+
+        # ref: https://github.com/pytorch/examples/blob/main/imagenet/main.py#L238
+        self.input_training_transformation = transforms.Compose(
+            [
+                transforms.RandomResizedCrop(224),
+                transforms.RandomHorizontalFlip(),
+                transforms.ToTensor(),
+                self._normalizer,
+            ]
+        )
+
+        np.testing.assert_allclose(
+            self.input_transformation.mean, self._normalizer.mean
+        )
 
         self.dataclass = tvd.ImageNet
         self.root = DATADIR / "imagenet"
@@ -323,8 +371,54 @@ class ImageNet(DatasetConfiguration):
         return self.dataclass(
             root=self.root,
             split="train" if train_split else "val",
-            transform=self.transformation,
+            transform=self.input_transformation,
         )
+
+    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        return target
+
+
+@register_dataset("imagenet-butterfly")
+class ImageNetButterfly(ImageNet):
+    selected_classes = [321, 322, 323, 324, 325, 326]
+
+    def __init__(self):
+        super().__init__()
+
+        # todo: add unit tests  but mark.as.on server
+        self.target_transform_dict = dict(
+            zip(self.selected_classes, range(len(self.selected_classes)))
+        )
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = super().create_subset(train_split=train_split)
+
+        indices = np.argwhere(np.isin(ds.targets, self.selected_classes)).reshape(-1)
+
+        print(f"We have {len(indices)} images in classes {self.selected_classes}")
+
+        new_samples = []
+        new_targets = []
+
+        for six in tqdm(indices, desc="preparing `butterfly` samples"):
+            new_samples.append(ds.samples[six])
+            new_targets.append(ds.targets[six])
+
+        ds.imgs = new_samples
+        ds.samples = new_samples
+        ds.targets = new_targets
+
+        assert np.isin(ds.targets, self.selected_classes).all()
+
+        return ds
+
+    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        new_target = []
+
+        for t in target:
+            new_target.append(self.target_transform_dict[int(t.detach().cpu())])
+
+        return torch.Tensor(new_target).long().to(target.device)
 
 
 @dataclass
@@ -355,8 +449,9 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         # todo: when do we use this?
         self.num_classes = 100
 
-        self.input_statistics = self.base.input_statistics
-        self.transformation = self.base.transformation
+        self._normalizer = self.base._normalizer
+        self.input_transformation = self.base.input_transformation
+        self.input_training_transformation = self.base.input_training_transformation
 
         self.target_transform_dict = dict(
             zip(self.selected_classes, range(len(self.selected_classes)))

@@ -3,7 +3,7 @@ import os
 import typing
 
 
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers import TensorBoardLogger, Logger
 
 
 import pytorch_lightning as pl
@@ -165,7 +165,9 @@ class ModelWrapper(pl.LightningModule):
         with torch.no_grad():
             expected_out = self.teacher_module(feat_in)
 
-        loss_mse = F.mse_loss(feat_out, expected_out, reduction="none")
+        _, _, w, h = expected_out.shape
+
+        loss_mse = F.mse_loss(feat_out, expected_out, reduction="none") / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
         loss_mse = loss_mse.sum(dim=1)
@@ -195,7 +197,7 @@ class ModelWrapper(pl.LightningModule):
 class Layerwise:
     def __init__(
         self,
-        teacher: torch.nn.Module,
+        teacher: models.interfaces.DistillableModel,
         dataset: datasets.Cifar100SuperClassesDataset,
         train_dataloader: DataLoader,
         val_dataloader: DataLoader,
@@ -210,7 +212,7 @@ class Layerwise:
 
         self.device = device
 
-        self.ref_acc = metrics.accuracy_with_subclasses(
+        self.ref_acc, self.ref_xent = metrics.accuracy_with_subclasses(
             self.teacher.to(device),
             val_dataloader,
             considered_classes=self.dataset.selected_classes,
@@ -222,7 +224,7 @@ class Layerwise:
 
     def distill(
         self,
-        student: nn.Module,
+        student: models.interfaces.DistillableModel,
         approximator: nn.Module,
         distill_info: LayerDistillInfo,
         epochs: int,
@@ -230,6 +232,7 @@ class Layerwise:
         device: str,
         lr: float,
         log_dir: Path,
+        logger: Logger,
         lambda_mse: float,
         lambda_xent: float,
     ) -> typing.Tuple[nn.Module, typing.Dict]:
@@ -263,15 +266,13 @@ class Layerwise:
         )
         # todo: this split should be available via the model itself.
         # e.g., self.teacher.split_at(...)
-        _, teacher_module, _ = models.resnet.split_resnet_18_at(
-            self.teacher, distill_info.layer_name
-        )
+        _, teacher_module, _ = self.teacher.split_at(distill_info.layer_name)
 
         (
             feature_extractor,
             _,
             classification_head,
-        ) = models.resnet.split_resnet_18_at(student, distill_info.layer_name)
+        ) = student.split_at(distill_info.layer_name)
 
         training_wrapper = ModelWrapper(
             feature_extractor=feature_extractor,
@@ -299,7 +300,10 @@ class Layerwise:
 
         student.to(device)
 
-        student_acc_before_training = metrics.accuracy_with_subclasses(
+        (
+            student_acc_before_training,
+            student_xent_before_training,
+        ) = metrics.accuracy_with_subclasses(
             nn.Sequential(
                 feature_extractor,
                 approximator,
@@ -313,7 +317,7 @@ class Layerwise:
         )
 
         print(
-            f"Student ACC Before Training: {student_acc_before_training:.4f} (teacher={self.ref_acc:.4f})"
+            f"[before training] metrics: student (teacher) | acc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
         )
 
         print(f"Training log is saved to `{log_dir}`")
@@ -321,7 +325,7 @@ class Layerwise:
         trainer = pl.Trainer(
             accelerator=device,
             max_epochs=epochs,
-            logger=TensorBoardLogger(log_dir),
+            logger=logger,
             log_every_n_steps=1,
             enable_checkpointing=False,
             deterministic=True,
@@ -406,7 +410,7 @@ class Layerwise:
 
         # sanity check: acc from student to should equal to the one we have evaluated!
         with torch.no_grad():
-            actual_acc = metrics.accuracy_with_subclasses(
+            actual_acc, _ = metrics.accuracy_with_subclasses(
                 student,
                 self.val_dataloader,
                 considered_classes=self.dataset.selected_classes,

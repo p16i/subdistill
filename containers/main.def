@@ -1,0 +1,31 @@
+Bootstrap: docker
+From: python:3.10
+
+%environment
+    export PATH="/root/.local/bin:$PATH"
+    export POETRY_VIRTUALENVS_CREATE=false
+
+    export CUBLAS_WORKSPACE_CONFIG=:4096:8
+    export DATASET_ROOT=/datasets 
+    export PYTHONDONTWRITEBYTECODE=1
+    export PYTHONPATH=.
+
+
+%files
+    $PWD/pyproject.toml  pyproject.toml
+
+%post
+    export PATH="/root/.local/bin:$PATH"
+    python3 -m pip install --user pipx && pipx install poetry==1.4.1
+    export POETRY_VIRTUALENVS_CREATE=false
+    poetry install --with dev
+    poetry env info
+
+
+%test
+    echo "Sanity Check"
+    poetry env info
+    poetry config list
+    poetry run which python
+
+

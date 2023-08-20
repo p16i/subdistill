@@ -118,3 +118,25 @@ def query_module_children_with_type(
             basket.extend(query_module_children_with_type(child, module_type))
 
     return basket
+
+
+def logspace(d: int) -> typing.List[int]:
+    total = int(np.ceil(np.log2(d)))
+
+    steps = [1] + np.logspace(1, total, num=total, base=2).astype(int).tolist()
+
+    if steps[-1] > d:
+        steps[-1] = d
+
+    return steps
+
+
+def is_permuation_matrix(x: npt.NDArray) -> bool:
+    # ref: https://stackoverflow.com/a/28896366
+    return (
+        x.ndim == 2
+        and x.shape[0] == x.shape[1]
+        and (x.sum(axis=0) == 1).all()
+        and (x.sum(axis=1) == 1).all()
+        and ((x == 1) | (x == 0)).all()
+    )

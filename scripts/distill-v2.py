@@ -12,6 +12,7 @@ from copy import deepcopy
 
 from torchvision import transforms
 from tqdm import tqdm
+import wandb
 
 from xaikd import (
     datasets,
@@ -21,13 +22,17 @@ from xaikd import (
     attributors,
     bases,
     approximators,
-    augmentations,
     distillation_info,
 )
 
 from xaikd.approximators import ApproximatorMode
 
 from xaikd.distillation_info import ExperimentConfiguration
+
+from pytorch_lightning.loggers import WandbLogger
+
+
+WANDB_PROJECT = "xaikd-distilllation"
 
 
 @click.command()
@@ -45,12 +50,13 @@ from xaikd.distillation_info import ExperimentConfiguration
 @click.option("--output-dir", type=str, required=True)
 @click.option("--training-size", type=float, default=0.1, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
-@click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--seed", type=int, default=1)
+@click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--weight-decay", type=float, default=0.0)
 @click.option("--lambda-mse", type=float, default=1.0)
 @click.option("--lambda-xent", type=float, default=1.0)
 @click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
+@click.option("--skip-baselines", type=bool, default=False, is_flag=True)
 def main(
     teacher_model,
     dataset,
@@ -66,17 +72,17 @@ def main(
     weight_decay,
     lambda_mse,
     lambda_xent,
+    skip_baselines,
     skip_if_exist,
 ):
+    arguments = locals()
+
     pl.seed_everything(seed)
 
-    arguments = locals()
     start_time = datetime.now()
 
     teacher_model = models.get_model(teacher_model)
     model_name = getattr(teacher_model, "__name")
-
-    lr = lr / (training_size)
 
     layer_slug = f"layer-{layer}"
 
@@ -109,14 +115,11 @@ def main(
     )
 
     ds_train_with_aug = deepcopy(ds_train)
-    ds_train_with_aug.dataset.transform = transforms.Compose(
-        [
-            *augmentations.get_augmentation_for(dataset=dataset),
-            ds_train_with_aug.dataset.transform,
-        ]
-    )
+    ds_train_with_aug.dataset.transform = dataset.input_training_transformation
 
-    train_loader_with_aug = datasets.build_dataloader(ds_train_with_aug, shuffle=True)
+    train_loader_with_aug = datasets.build_dataloader(
+        ds_train_with_aug, shuffle=True, batch_size=int(np.ceil(64 * training_size))
+    )
 
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=teacher_model,
@@ -137,19 +140,7 @@ def main(
 
     ref_acc = None
 
-    arr_experiment_confs = [
-        # todo: make sure that we run this conf only once!
-        ExperimentConfiguration(
-            basis_name="identity--centered",
-            compression_ratio=1.0,
-            approximator_mode=ApproximatorMode.HOMOGENOUS,
-        ),
-        ExperimentConfiguration(
-            basis_name="identity--centered",
-            compression_ratio=compression_ratio,
-            approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
-        ),
-    ]
+    arr_experiment_confs = []
 
     for basis_name in basis_names.split(","):
         arr_experiment_confs.append(
@@ -160,7 +151,24 @@ def main(
             ),
         )
 
+    if not skip_baselines:
+        arr_experiment_confs.extend(
+            [
+                ExperimentConfiguration(
+                    basis_name="identity--centered",
+                    compression_ratio=1.0,
+                    approximator_mode=ApproximatorMode.HOMOGENOUS,
+                ),
+                ExperimentConfiguration(
+                    basis_name="identity--centered",
+                    compression_ratio=compression_ratio,
+                    approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
+                ),
+            ]
+        )
+
     for conf in tqdm(arr_experiment_confs):
+        conf: ExperimentConfiguration
         approximator = approximators.construct_approximator_for(
             teacher_model,
             layer=layer,
@@ -212,6 +220,21 @@ def main(
 
         student = models.get_model(model_name)
 
+        logger = WandbLogger(
+            project=WANDB_PROJECT,
+            group=arguments["output_dir"],
+            job_type="distillation",
+            name=f"{conf.basis_name}-compr{conf.compression_ratio}-seed{seed}",
+            config={
+                **arguments,
+                "approximator_mode": approximator_mode,
+                "compression_ratio": conf.compression_ratio,
+                "basis_name": basis_name,
+                "approximator": f"{conf}",
+                "output_dir": output_dir,
+            },
+        )
+
         student, results = distillator.distill(
             student=student,
             approximator=approximator,
@@ -220,6 +243,7 @@ def main(
             basis=basis,
             device=device,
             lr=lr,
+            logger=logger,
             log_dir=basis_distillation_output_dir / "log",
             lambda_mse=lambda_mse,
             lambda_xent=lambda_xent,
@@ -231,7 +255,10 @@ def main(
             f"Result: Student with `{approximator_mode}` and `{basis}` acc={last_epoch_val_acc:.4f}"
         )
 
+        # add `results` to wandlogger
+
         utils.dump_json(basis_distillation_output_dir / "results.json", results)
+        wandb.finish()
 
     click.echo(f"Check Results at: {output_dir}")
 

@@ -13,6 +13,8 @@ from pathlib import Path
 
 from copy import deepcopy
 
+from pytorch_lightning.loggers import TensorBoardLogger
+
 from xaikd import (
     approximators,
     bases,
@@ -84,7 +86,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer, compression_ra
             before_feature_extractor,
             before_approx,
             before_classification_head,
-        ) = models.resnet.split_resnet_18_at(student, layer=layer)
+        ) = student.split_at(layer)
 
         np.testing.assert_allclose(
             metrics.accuracy_with_subclasses(
@@ -142,6 +144,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer, compression_ra
             basis=basis,
             device=device,
             lr=0.001,
+            logger=TensorBoardLogger(log_dir),
             log_dir=log_dir,
             lambda_mse=1.0,
             lambda_xent=1.0,
@@ -151,7 +154,7 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer, compression_ra
             after_feature_extractor,
             after_approx,
             after_classification_head,
-        ) = models.resnet.split_resnet_18_at(student, layer=layer)
+        ) = student.split_at(layer)
 
         after_modules = [
             teacher_model,

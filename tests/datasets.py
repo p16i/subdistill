@@ -18,12 +18,16 @@ DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
 )
 
 
-@pytest.mark.parametrize("name", ["cifar10", "cifar100", "imagenet"])
+@pytest.mark.parametrize("name", ["cifar10", "cifar100", "cifar100-people", "imagenet"])
 def test_construct_dataset(name):
     dataset = datasets.construct(name)
 
+    # todo: find a way to use @property to automatically validate these attributes
+    # instead of do this manually
     assert hasattr(dataset, "num_classes")
-    assert hasattr(dataset, "transformation")
+    assert hasattr(dataset, "input_transformation")
+    assert hasattr(dataset, "input_training_transformation")
+    assert hasattr(dataset, "_normalizer")
 
 
 @pytest.mark.skip("obsolete")
