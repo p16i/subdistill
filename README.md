@@ -18,3 +18,15 @@ Activative env `peotry shell` or run commands via `peotry run ....`
 - implement generator
 - implement attributors
    - check attributor
+
+
+
+## Apptainer
+
+Unittests
+```
+apptainer run --bind /home/space/datasets/cifar100:/datasets  --nv containers/main.sif poetry run pytest tests/*
+```
+
+todo:
+- Figure out how to run the script with apptainers!
