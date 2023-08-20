@@ -1,13 +1,16 @@
+import typing
+
 import torch
 
 import torchvision
 
 from torch import nn
 
-from . import resnet
+
+from . import resnet, vgg, interfaces
 
 from torchvision.models.resnet import ResNet18_Weights
-from torchvision.models import vgg
+
 from torchvision import models
 
 from xaikd import constants
@@ -21,6 +24,17 @@ MODEL_CHECKPOINT_MAPPING = {
     "cifar100-resnet18-p1": "https://tubcloud.tu-berlin.de/s/xZ29d76Sz29M9Qa/download/resnet18-cifar100.pth",
     "cifar100-resnet18-p2": "https://tubcloud.tu-berlin.de/s/82DSTLJppJfGesc/download/resnet18-cifar100-seed2.pth",
     "cifar100-resnet18-p3": "https://tubcloud.tu-berlin.de/s/E2KLikTmZCsbEqK/download/resnet18-cifar100-seed3.pth",
+    "cifar100-resnet18-wb5": "https://tubcloud.tu-berlin.de/s/CctcgcY489z86Nc/download/resnet18-cifar100-pretty-dust-5-adam.pth",
+    "cifar100-resnet18-wb8": "https://tubcloud.tu-berlin.de/s/NfPMGt4fwA2mTxq/download/resnet18-cifar100-fragrant-frog-8.pth",
+    "cifar100-resnet18-wb11": "https://tubcloud.tu-berlin.de/s/DpzZpcynKtWqgSj/download/resnet18-cifar100-devoted-music-11.pth",
+    "cifar100-resnet18-wb15": "https://tubcloud.tu-berlin.de/s/Bm5AwmtGiYgD8Jx/download/cifar100-resnet18-whole-planet-15.pth",
+    "cifar100-resnet18-wb15e197": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v24.pth",
+    "cifar100-resnet18-wb15e151": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v19.pth",
+    "cifar100-resnet18-wb15e121": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo%3Av10.pth",
+    "cifar100-resnet18-wb15e61": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v9.pth",
+    "cifar100-resnet18-wb15e23": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v6.pth",
+    "cifar100-resnet18-wb15e1": "https://tubcloud.tu-berlin.de/s/aSz6NJnear5CNHE/download?path=%2F&files=model-lwnx8qeo:v0.pth",
+    "cifar100-resnet18-wb22": "https://tubcloud.tu-berlin.de/s/wXy5HdfsT3CLRQN/download/cifar100-resnet18-wb22.pth",
     "cifar100-resnet50-p1": "https://tubcloud.tu-berlin.de/s/FCefnjtD3KyRFRs/download/resnet50-cifar100-seed1.pth",
     "cifar100-vgg11-p1": "https://tubcloud.tu-berlin.de/s/xDbi6DsjyPppi3B/download/vgg11-cifar100-seed1.pth",
 }
@@ -38,7 +52,7 @@ def register_model(name):
     return wrapped
 
 
-def get_model(name: str) -> nn.Module:
+def get_model(name: str) -> interfaces.DistillableModel:
     dataset, arch, variant = name.split("-")
 
     # todo: better organizing these if-else structures
@@ -49,18 +63,21 @@ def get_model(name: str) -> nn.Module:
 
         url = MODEL_CHECKPOINT_MAPPING[name]
 
-        model.load_state_dict(torch.hub.load_state_dict_from_url(url))
+        model.load_state_dict(
+            torch.hub.load_state_dict_from_url(url, file_name=f"{name}.pth")
+        )
 
     elif name == "imagenet-resnet18-tv":
         model = MODEL_GENERATORS["imagenet-resnet18"]()
+    elif name == "imagenet-vgg16-tv":
+        model = models.vgg16(weights=models.vgg.VGG16_Weights.IMAGENET1K_V1)
+        model.num_classes = 1000
     elif "imagenet-resnet18-random" in name:
         # use regex to parse the number
         seed = int(name.split("-")[-1].replace("random", ""))
         print(f"Using Random `resnet18(seed={seed})` Model")
         torch.manual_seed(seed)
         model = torchvision.models.resnet18()
-    elif name == "imagenet-vgg16-tv":
-        model = models.vgg16(weights=models.vgg.VGG16_Weights.IMAGENET1K_V1)
     elif "imagenet-vgg16-random" in name:
         seed = int(name.split("-")[-1].replace("random", ""))
         print(f"Using Random `vgg16(seed={seed})` Model")
@@ -69,11 +86,25 @@ def get_model(name: str) -> nn.Module:
     else:
         raise ValueError(f"Unfortunately, we do NOT have a `{name}` model")
 
+    num_classes = model.num_classes
+
+    # cast native torchvision model to our `DistillableModel`
+    if arch in ["vgg11", "vgg16"]:
+        model = vgg.DistillableVGG.cast(model)
+    elif arch in ["resnet18", "resnet50"]:
+        model = resnet.DistillableResNet.cast(model)
+    else:
+        raise ValueError(f"`{model.__class__}` is NOT distillable!")
+
+    model.num_classes = num_classes
+
     setattr(model, "__name", name)
 
     setattr(model, "__layer_dimension", constants.ARCH_LAYER_DIMENSIONS[arch])
 
     model.eval()
+
+    assert getattr(model, "num_classes")
 
     # todo: disable grad
     # perhaps, check whether disable grad improve inference speed?
@@ -81,7 +112,7 @@ def get_model(name: str) -> nn.Module:
     return model
 
 
-def get_layer_dimensions(model: nn.Module, layer: str) -> int:
+def get_layer_output_dimensions(model: nn.Module, layer: str) -> int:
     return getattr(model, "__layer_dimension")[layer]
 
 
@@ -103,8 +134,7 @@ def _resnet18_cifar(num_classes: int) -> nn.Module:
 
 @register_model("cifar-vgg11")
 def _cifar_vgg11(num_classes: int) -> nn.Module:
-    model = vgg.vgg11()
-    model.classifier[6] = nn.Linear(4096, num_classes)
+    model = models.vgg.vgg11(num_classes=num_classes)
 
     model.num_classes = num_classes
 
@@ -129,4 +159,7 @@ def _resnet50_cifar(num_classes: int) -> nn.Module:
 
 @register_model("imagenet-resnet18")
 def _resnet18_imagenet() -> nn.Module:
-    return torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    model = torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    model.num_classes = 1000
+
+    return model

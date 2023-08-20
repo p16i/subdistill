@@ -1,5 +1,6 @@
 import typing
 import numpy as np
+import numpy.typing as npt
 
 import torch
 
@@ -7,10 +8,13 @@ from tqdm import tqdm
 
 from torch.utils.data import DataLoader
 from torch import nn
-from torchmetrics import Accuracy
+from torch.nn import functional as F
+from torchmetrics import Accuracy, MeanMetric
 from torchmetrics.classification import BinaryAUROC, BinaryAccuracy
 
-from xaikd import attributors, bases
+from xaikd import bases
+
+from tqdm import tqdm
 
 
 def auroc(
@@ -20,6 +24,7 @@ def auroc(
     device: str,
     should_convert_auroc=False,
 ) -> typing.Tuple[float, float]:
+    model.eval()
     c1, c2 = classes
 
     metric_auroc = BinaryAUROC()
@@ -46,6 +51,7 @@ def auroc(
 
 
 def accuracy(model: nn.Module, dl: DataLoader, num_classes: int, device: str) -> float:
+    model.eval()
     metric = Accuracy(task="multiclass", num_classes=num_classes)
 
     for x, y in dl:
@@ -61,16 +67,21 @@ def accuracy_with_subclasses(
     considered_classes: typing.List[int],
     transform_target: typing.Callable[[torch.Tensor], torch.Tensor],
     device: str,
-) -> float:
-    metric = Accuracy(task="multiclass", num_classes=len(considered_classes))
+) -> typing.Tuple[float, float]:
+    model.eval()
 
-    for x, y in dl:
+    metric_acc = Accuracy(task="multiclass", num_classes=len(considered_classes))
+    metric_xent = MeanMetric()
+
+    for x, y in tqdm(dl, desc="Computing accuracy for selected claseses"):
         logits = model(x.to(device)).cpu()
         selected_logits = logits[:, considered_classes]
         transformed_y = transform_target(y)
-        metric.update(selected_logits, transformed_y)
+        metric_acc.update(selected_logits, transformed_y)
+        xent = F.cross_entropy(selected_logits, transformed_y, reduction="none")
+        metric_xent.update(xent)
 
-    return float(metric.compute())
+    return float(metric_acc.compute()), float(metric_xent.compute())
 
 
 def auroc_with_basis(
@@ -83,6 +94,8 @@ def auroc_with_basis(
     arr_ks: typing.List[int],
     should_convert_auroc: bool,
 ) -> typing.List[float]:
+    model.eval()
+
     arr_aurocs = []
 
     for k in tqdm(arr_ks, desc=f"[basis={basis}]"):
@@ -105,3 +118,30 @@ def auroc_with_basis(
             hook.remove()
 
     return arr_aurocs
+
+
+def unexplained_relevance(
+    activation: npt.NDArray, context: npt.NDArray, U: npt.NDArray
+) -> typing.List[float]:
+    n, d = activation.shape
+    total_relevance = (activation * context).sum(axis=1)
+    assert total_relevance.shape == (n,)
+
+    relevance_per_dim = (activation @ U) * (context @ U)
+
+    assert relevance_per_dim.shape == (n, d)
+
+    stats = [float(np.mean(total_relevance**2))]
+
+    for k in range(1, d + 1):
+        explained_relevance_sofar = relevance_per_dim[:, :k]
+        np.testing.assert_equal(explained_relevance_sofar.shape, (n, k))
+        unexplained_relevance = (
+            total_relevance - explained_relevance_sofar.sum(axis=1)
+        ) ** 2
+
+        assert unexplained_relevance.shape == (n,)
+
+        stats.append(float(np.mean(unexplained_relevance)))
+
+    return stats

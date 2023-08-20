@@ -188,7 +188,7 @@ def main(
             device=device,
         )
 
-        dims = models.get_layer_dimensions(model, layer)
+        dims = models.get_layer_output_dimensions(model, layer)
         arr_ks = [0, 1, 2, 3] + list(range(4, dims + 2, 4))
 
         for basis_name in basis_names_with_mode:

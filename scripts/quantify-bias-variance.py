@@ -119,7 +119,7 @@ def construction_model(
         compr_rate = float(mode.split("compr")[-1])
 
         dist_info = distillators.get_distill_infor(
-            "cifar100-resnet18-p1", layer, compression_rate=compr_rate
+            "cifar100-resnet18-p1", layer, compression_ratio=compr_rate
         )
 
         block = distillators.get_approximator_for_resnet18(

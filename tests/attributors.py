@@ -15,7 +15,7 @@ NUMBER_OF_SPATIAL_LOCATIONS = 8
 
 class CIFAR100VerySmall(datasets.CIFAR100):
     def loader(self, batch_size=64, num_workers=2, train_split=False):
-        ds = self.create_dataset(train_split=train_split)
+        ds = self.create_subset(train_split=train_split)
 
         np.random.seed(1)
 
@@ -35,7 +35,7 @@ def test_extract_activation_context(layer):
 
     dataset = CIFAR100VerySmall()
 
-    output_dims = models.get_layer_dimensions(model, layer)
+    output_dims = models.get_layer_output_dimensions(model, layer)
 
     train_dl = dataset.loader(train_split=True)
 
@@ -47,6 +47,7 @@ def test_extract_activation_context(layer):
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
         logit_modifier=attributors.OneClassEvidence(dataset),
+        rng=np.random.default_rng(seed=1),
     )
 
     assert arr_act.shape == (
@@ -55,6 +56,41 @@ def test_extract_activation_context(layer):
     )
 
     assert arr_act.shape == arr_ctx.shape
+
+
+@pytest.mark.parametrize("seed", [1, 2])
+def test_extract_activation_context_with_same_seed_different_run(seed):
+    model = models.get_model("cifar100-resnet18-p1").to(DEVICE)
+
+    dataset = CIFAR100VerySmall()
+
+    train_dl = dataset.loader(train_split=True)
+
+    arr_act, arr_ctx = attributors.extract_activation_context(
+        model=model,
+        data_loader=train_dl,
+        dataset=dataset,
+        layer="layer3",
+        device=DEVICE,
+        number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
+        logit_modifier=attributors.OneClassEvidence(dataset),
+        rng=np.random.default_rng(seed=1),
+    )
+
+    expected_arr_act, expected_arr_ctx = attributors.extract_activation_context(
+        model=model,
+        data_loader=train_dl,
+        dataset=dataset,
+        layer="layer3",
+        device=DEVICE,
+        number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
+        logit_modifier=attributors.OneClassEvidence(dataset),
+        rng=np.random.default_rng(seed=1),
+    )
+
+    np.testing.assert_allclose(arr_act, expected_arr_act, atol=1e-6)
+
+    np.testing.assert_allclose(arr_ctx, expected_arr_ctx, atol=1e-6)
 
 
 def test_logit_modifier_oneclass():

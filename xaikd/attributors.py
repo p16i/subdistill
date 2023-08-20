@@ -20,19 +20,20 @@ from tqdm import tqdm
 from xaikd import utils
 from xaikd import datasets
 
+from xaikd.models.interfaces import DistillableModel
+
 
 def make_attributor_for(
     model: nn.Module,
     input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]],
 ) -> Gradient:
-    # remark this only works for cifar10 and cifar100 for now
-    assert type(model) in [models.resnet.ResNet, models.vgg.VGG]
+    assert isinstance(model, DistillableModel)
 
     input_transform = transforms.Normalize(*input_statistics)
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
-    if type(model) == models.resnet.ResNet:
+    if isinstance(model, models.resnet.ResNet):
         canonizers = [ResNetCanonizer()]
     else:
         canonizers = []
@@ -48,6 +49,9 @@ class LogitModifier(ABC):
     ) -> torch.Tensor:
         raise NotImplemented
 
+    def __str__(self) -> str:
+        raise NotImplemented
+
 
 class OneClassEvidence(LogitModifier):
     def __init__(self, dataset: datasets.DatasetConfiguration) -> None:
@@ -56,6 +60,9 @@ class OneClassEvidence(LogitModifier):
     def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         logits = logits.clone()
         return logits * F.one_hot(targets, self.dataset.num_classes).to(logits.device)
+
+    def __str__(self) -> str:
+        return "oneclass"
 
 
 class OneClassLogSumExpEvidence(LogitModifier):
@@ -71,6 +78,9 @@ class OneClassLogSumExpEvidence(LogitModifier):
             logits.device
         )
 
+    def __str__(self) -> str:
+        return "oneclasslogsum"
+
 
 class SelectedClassesEvidence(LogitModifier):
     def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
@@ -83,6 +93,9 @@ class SelectedClassesEvidence(LogitModifier):
         ]
 
         return output
+
+    def __str__(self) -> str:
+        return "selectedclasses"
 
 
 class LogOddEvidence(LogitModifier):
@@ -102,6 +115,9 @@ class LogOddEvidence(LogitModifier):
 
         return output
 
+    def __str__(self) -> str:
+        return "logodd"
+
 
 def extract_activation_context(
     model: nn.Module,
@@ -109,6 +125,7 @@ def extract_activation_context(
     dataset: datasets.DatasetConfiguration,
     data_loader: DataLoader,
     logit_modifier: LogitModifier,
+    rng: np.random.Generator,
     device="cpu",
     number_of_selected_spatial_locations=20,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
@@ -143,7 +160,10 @@ def extract_activation_context(
                 ctx = ctx.detach().cpu().numpy()
 
                 selected_act, selected_ctx = utils.subsample_tensors(
-                    act, ctx, num_locations=number_of_selected_spatial_locations
+                    act,
+                    ctx,
+                    num_locations=number_of_selected_spatial_locations,
+                    rng=rng,
                 )
                 arr_act.append(selected_act)
                 arr_ctx.append(selected_ctx)
@@ -164,11 +184,11 @@ def extract_activation(
     layer: str,
     dataset: datasets.DatasetConfiguration,
     data_loader: DataLoader,
+    rng: np.random.Generator,
     device="cpu",
     number_of_selected_spatial_locations=20,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
     arr_act = []
-    arr_ctx = []
 
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
@@ -187,7 +207,10 @@ def extract_activation(
                 act = act.detach().cpu().numpy()
 
                 selected_act, _ = utils.subsample_tensors(
-                    act, act, num_locations=number_of_selected_spatial_locations
+                    act,
+                    act,
+                    num_locations=number_of_selected_spatial_locations,
+                    rng=rng,
                 )
                 arr_act.append(selected_act)
 

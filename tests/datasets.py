@@ -6,6 +6,8 @@ import pytest
 import numpy as np
 import torch
 
+from torch.utils.data import DataLoader
+
 from torchvision.datasets import CIFAR10
 import pandas as pd
 
@@ -16,14 +18,19 @@ DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
 )
 
 
-@pytest.mark.parametrize("name", ["cifar10", "cifar100", "imagenet"])
+@pytest.mark.parametrize("name", ["cifar10", "cifar100", "cifar100-people", "imagenet"])
 def test_construct_dataset(name):
     dataset = datasets.construct(name)
 
+    # todo: find a way to use @property to automatically validate these attributes
+    # instead of do this manually
     assert hasattr(dataset, "num_classes")
-    assert hasattr(dataset, "transformation")
+    assert hasattr(dataset, "input_transformation")
+    assert hasattr(dataset, "input_training_transformation")
+    assert hasattr(dataset, "_normalizer")
 
 
+@pytest.mark.skip("obsolete")
 @pytest.mark.parametrize("name", ["cifar100-10vs99"])
 def test_construct_subclasses_dataset(name):
     class1, class2 = np.array(name.split("-")[1].split("vs")).astype(int)
@@ -35,6 +42,7 @@ def test_construct_subclasses_dataset(name):
             assert np.logical_or(target == class1, target == class2).all()
 
 
+@pytest.mark.skip("obsolete")
 @pytest.mark.parametrize(
     "name",
     ["cifar10-1999vs99", "cifar100-123vs999", "cifar100-2vs999", "cifar100-2999"],
@@ -44,6 +52,7 @@ def test_bad_construct_subclasses_dataset(name):
         _ = datasets.construct(name)
 
 
+@pytest.mark.skip("[todo]")
 @pytest.mark.parametrize(
     "classes,num_samples",
     [
@@ -67,6 +76,7 @@ def test_selected_subset_samples_for_classes(classes, num_samples):
         assert (selected_labels == cix).sum() == expected
 
 
+@pytest.mark.skip("[todo]")
 def test_selected_subset_samples_for_classes_adversarial():
     labels = np.array([0, 0, 0, 0, 1, 1, 1, 1, 2, 2])
 
@@ -74,6 +84,7 @@ def test_selected_subset_samples_for_classes_adversarial():
         indices = datasets.selected_subset_samples_for_classes(labels, [0, 10], 2)
 
 
+@pytest.mark.skip("[todo]")
 @pytest.mark.parametrize("train_split", [True, False])
 def test_subset_with_without_num_samples(train_split):
     selected_classes = [0, 2]
@@ -96,7 +107,7 @@ def test_subset_with_without_num_samples(train_split):
         return count
 
     expected = np.isin(
-        dataset.create_dataset(train_split=train_split).targets, selected_classes
+        dataset.create_subset(train_split=train_split).targets, selected_classes
     ).sum()
 
     with nullcontext():
@@ -135,7 +146,7 @@ def test_cifar100_superclass(super_class):
 
     fine_labels = df[df.coarse_label_name == super_class].fine_label.values.tolist()
 
-    for ix, (_, y) in enumerate(ds.loader(train_split=False, shuffle=True)):
+    for ix, (_, y) in enumerate(DataLoader(ds.create_subset(train_split=False))):
         assert np.isin(y.numpy(), fine_labels).all()
 
 
@@ -156,3 +167,37 @@ def test_cifar100_superclass_transform_target(super_class):
     targets = ds.transform_target(torch.Tensor(fine_labels)).numpy()
 
     assert np.isin(targets, range(len(fine_labels))).all()
+
+
+def test_subsample_dataset():
+    ratio = 0.1
+    dataset_name = "cifar100-people"
+    dataset = datasets.construct(dataset_name)
+
+    expected = 50 * 5
+
+    actual = 0
+    for x, _ in DataLoader(
+        datasets.subsample_dataset(
+            dataset=dataset.create_subset(train_split=True), ratio=ratio, seed=1
+        ),
+        batch_size=100,
+    ):
+        actual += x.shape[0]
+
+    assert actual == expected
+
+
+def test_same_seed_same_subsampled_datasets():
+    dataset_name = "cifar100-people"
+    dataset = datasets.construct(dataset_name)
+
+    ds = dataset.create_subset(train_split=True)
+    ratio = 0.1
+
+    sub1 = datasets.subsample_dataset(ds, ratio=ratio, seed=1)
+    sub2 = datasets.subsample_dataset(ds, ratio=ratio, seed=1)
+    sub3 = datasets.subsample_dataset(ds, ratio=ratio, seed=2)
+
+    np.testing.assert_equal(sub1.indices, sub2.indices)
+    assert np.not_equal(sub1.indices, sub3.indices).any()

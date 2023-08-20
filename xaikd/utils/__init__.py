@@ -3,12 +3,16 @@ import numpy.typing as npt
 
 import json
 import torch
+from torch import nn
 import numpy as np
 
 from pathlib import Path
 
 
 from . import interceptor
+
+
+T = typing.TypeVar("T")
 
 
 def get_device() -> str:
@@ -40,7 +44,10 @@ def dump_json(dest: Path, data: dict):
 
 
 def subsample_tensors(
-    act: npt.NDArray, ctx: npt.NDArray, num_locations=20
+    act: npt.NDArray,
+    ctx: npt.NDArray,
+    num_locations=20,
+    rng=np.random.default_rng(),
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
     assert len(act.shape) == 4
 
@@ -56,7 +63,7 @@ def subsample_tensors(
 
         assert _a.shape == (nc, h, w)
 
-        selected = np.random.permutation(total_spatial_locations)[:num_locations]
+        selected = rng.permutation(total_spatial_locations)[:num_locations]
         flattened_act = _a.reshape((nc, -1))
         flattened_ctx = _c.reshape((nc, -1))
         selected_act = flattened_act[:, selected]
@@ -91,3 +98,45 @@ def deactivate_requires_grad(model: torch.nn.Module):
     # remark: https://github.com/lightly-ai/lightly/blob/master/lightly/models/utils.py#L166
     for param in model.parameters():
         param.requires_grad = False
+
+
+def freeze_model(model: torch.nn.Module) -> torch.nn.Module:
+    deactivate_requires_grad(model)
+    model.eval()
+
+    return model
+
+
+def query_module_children_with_type(
+    module: nn.Module, module_type: typing.Type[T]
+) -> typing.List[T]:
+    basket = []
+    for child in module.children():
+        if isinstance(child, module_type):
+            basket.append(child)
+        else:
+            basket.extend(query_module_children_with_type(child, module_type))
+
+    return basket
+
+
+def logspace(d: int) -> typing.List[int]:
+    total = int(np.ceil(np.log2(d)))
+
+    steps = [1] + np.logspace(1, total, num=total, base=2).astype(int).tolist()
+
+    if steps[-1] > d:
+        steps[-1] = d
+
+    return steps
+
+
+def is_permuation_matrix(x: npt.NDArray) -> bool:
+    # ref: https://stackoverflow.com/a/28896366
+    return (
+        x.ndim == 2
+        and x.shape[0] == x.shape[1]
+        and (x.sum(axis=0) == 1).all()
+        and (x.sum(axis=1) == 1).all()
+        and ((x == 1) | (x == 0)).all()
+    )

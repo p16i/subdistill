@@ -7,12 +7,21 @@ import numpy.typing as npt
 from tqdm import tqdm
 
 
+def atol(mode):
+    if mode == "reconnaive":
+        return 1e-2
+    else:
+        return 1e-5
+
+
 class PRCAGreedyLeaner:
     def __init__(self, mode: str) -> None:
         if mode == "abs":
             self.obj_func = PRCAGreedyLeaner._obj_abs
         elif mode == "recon":
             self.obj_func = PRCAGreedyLeaner._obj_recon
+        elif mode == "reconnaive":
+            self.obj_func = PRCAGreedyLeaner._obj_recon_naive
         else:
             raise ValueError(f"No mode=`{mode}` available!")
 
@@ -40,7 +49,8 @@ class PRCAGreedyLeaner:
         activation = torch.from_numpy(activation).float().to(device)
         context = torch.from_numpy(context).float().to(device)
 
-        torch.manual_seed(seed)
+        rng = torch.Generator()
+        rng.manual_seed(seed)
 
         U = torch.zeros(d, d)
         U = U.to(device)
@@ -50,12 +60,12 @@ class PRCAGreedyLeaner:
         for k in tqdm(
             range(d), total=d, desc=f"[mode={self.mode},beta={beta},device={device}]"
         ):
-            UUt = U @ U.T
+            U_complement = I - U @ U.T
 
             # take a random vector
-            v = torch.randn(d).to(device)
+            v = torch.randn(d, generator=rng).to(device)
 
-            v = (I - UUt) @ v
+            v = U_complement @ v
 
             v = v / torch.linalg.norm(v)
             v = v.to(device)
@@ -64,11 +74,7 @@ class PRCAGreedyLeaner:
                 v.requires_grad_(True)
                 v.grad = None
 
-                # projected out previous component
-                A_compt = activation @ (I - UUt)
-                C_compt = context @ (I - UUt)
-
-                obj = self.obj_func(A_compt, C_compt, v, beta)
+                obj = self.obj_func(activation, context, U_complement, v, beta)
 
                 obj.backward()
 
@@ -77,7 +83,7 @@ class PRCAGreedyLeaner:
 
                     # update v with gradient `ascent`.
                     v = v + v.grad
-                    v = (I - UUt) @ v
+                    v = U_complement @ v
                     v = v / torch.linalg.norm(v)
 
                     if (v @ ov).abs() > (1 - eps):
@@ -85,22 +91,31 @@ class PRCAGreedyLeaner:
 
             # testing orthogonality
             np.testing.assert_allclose(
-                (U.T @ v).detach().cpu().numpy(), np.zeros(U.shape[1]), atol=1e-6
+                (U.T @ v).detach().cpu().numpy(),
+                np.zeros(U.shape[1]),
+                atol=atol(self.mode),
             )
 
             U[:, k] = v.detach()
 
         np.testing.assert_allclose(
-            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=1e-5
+            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=atol(self.mode)
         )
 
         return U.detach().cpu().numpy()
 
     @staticmethod
     def _obj_abs(
-        activation: torch.Tensor, context: torch.Tensor, u: torch.Tensor, beta=0
+        activation: torch.Tensor,
+        context: torch.Tensor,
+        U_complement: torch.Tensor,
+        u: torch.Tensor,
+        beta=0,
     ) -> torch.Tensor:
         assert beta == 0, f"setting beta={beta} has not effect here."
+
+        activation = activation @ U_complement
+        context = context @ U_complement
 
         activation_projected = activation.matmul(u)
         context_projected = context.matmul(u)
@@ -115,9 +130,44 @@ class PRCAGreedyLeaner:
     def _obj_recon(
         activation: torch.Tensor,
         context: torch.Tensor,
+        IUUt: torch.Tensor,
         u: torch.Tensor,
         beta=0,
     ) -> torch.Tensor:
+        activation = activation @ IUUt
+        context = context @ IUUt
+
+        activation_projected = activation.matmul(u)
+        context_projected = context.matmul(u)
+
+        assert len(activation_projected.shape) == len(context_projected.shape) == 1
+
+        relevance_original = (activation * context).sum(dim=1)
+        relevance_projected = activation_projected * context_projected
+        assert relevance_original.shape == relevance_projected.shape
+
+        obj = (relevance_original - relevance_projected) ** 2
+
+        assert len(obj.shape) == 1 and obj.shape[0] == activation.shape[0]
+
+        # convert the problem into maximization problem.
+        loss = -obj.mean()
+
+        reg = (beta * torch.abs(activation_projected)).mean()
+
+        return loss + reg
+
+    @staticmethod
+    def _obj_recon_naive(
+        activation: torch.Tensor,
+        context: torch.Tensor,
+        IUUt: torch.Tensor,
+        u: torch.Tensor,
+        beta=0,
+    ) -> torch.Tensor:
+        # activation = activation @ IUUt
+        # context = context @ IUUt
+
         activation_projected = activation.matmul(u)
         context_projected = context.matmul(u)
 

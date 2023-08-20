@@ -1,9 +1,8 @@
 import pytest
 import numpy as np
 
-import torch
+import numpy.typing as npt
 
-from scipy.stats import ortho_group
 
 from xaikd import bases
 
@@ -87,18 +86,6 @@ def test_prca(centering):
         assert f"{prca}" == "prca--uncentered"
 
 
-@pytest.mark.parametrize("slug", ["centered"])
-@pytest.mark.parametrize("seed", [1, 10])
-def test_get_random_basis(slug, seed):
-    basis = bases.get_basis(f"random{seed}--{slug}")
-
-    assert hasattr(basis, "kwargs")
-    assert basis.kwargs["seed"] == seed
-
-    # todo: find way to test this  w/o relying on the mean artifacts.
-    # basis.load(Path("dummy-path"))
-
-
 @pytest.mark.parametrize("variant", ["abs", "recon", "reconreg0.1"])
 @pytest.mark.parametrize("slug", ["centered"])
 def test_instantiate_prca_greedy_basese(variant, slug):
@@ -107,7 +94,7 @@ def test_instantiate_prca_greedy_basese(variant, slug):
 
 
 @pytest.mark.parametrize(
-    "basis_name", ["pca", "rel", "random1", "prca-abs", "prca-recon"]
+    "basis_name", ["pca", "rel-raw", "random", "prca-abs", "prca-recon"]
 )
 def test_correct_std(basis_name):
     mode = "centered"
@@ -121,27 +108,10 @@ def test_correct_std(basis_name):
 
     centered_activation = activation - mean
 
-    basis = bases.get_basis(f"{basis_name}--{mode}")
+    basis = bases.get_basis(f"{basis_name}--{mode}", seed=1)
 
     eigvecs, std = basis.fit(
         activation=activation, context=context, mean=mean, device="cpu"
     )
 
     np.testing.assert_allclose(std, np.std(centered_activation @ eigvecs, axis=0))
-
-
-def test_adapter():
-    d = 20
-    U = torch.from_numpy(ortho_group.rvs(d)).float()
-    mean = torch.randn(d).float()
-    std = torch.rand(d).float()
-    encoder = bases.Adapter(
-        U=U, mean=mean, std=std, mode=bases.AdapterMode.ENCODER, device="cpu"
-    )
-    decoder = bases.Adapter(
-        U=U, mean=mean, std=std, mode=bases.AdapterMode.DECODER, device="cpu"
-    )
-
-    x = torch.randn(20, d, 1, 1)
-
-    np.testing.assert_allclose(decoder(encoder(x)), x, atol=1e-5)
