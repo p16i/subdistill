@@ -104,7 +104,11 @@ def main(
 
     # for contaminate all classes for `validation set``
     val_ds = cleverhans.contaminate_dataset(
-        dataset=dataset.create_subset(train_split=False),
+        # remark: we have to do it this way because the current version of
+        #  `contaminate_dataset` function only work with `Subset.
+        dataset=datasets.subsample_dataset(
+            dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
+        ),
         contamination_level=contamination_level,
         seed=seed,
         victim_class_indices=dataset.selected_classes,
