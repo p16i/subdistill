@@ -1,8 +1,10 @@
+import typing
+
 import numpy as np
 from torch.utils.data import Subset
 from torchvision.datasets import CIFAR100
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw
 
 from copy import deepcopy
 
@@ -21,7 +23,10 @@ def add_cleverhan_symbol(img):
 
 
 def contaminate_dataset(
-    dataset: Subset, contamination_level: float, seed: int
+    dataset: Subset,
+    contamination_level: float,
+    seed: int,
+    victim_class_indices: typing.List[int],
 ) -> Subset:
     """_summary_
 
@@ -48,15 +53,12 @@ def contaminate_dataset(
     if isinstance(targets, list):
         targets = np.array(targets)
 
-    # we use the convention that the class whose label index is smallest is the victim target.
-    victim_class_idx = np.min(targets)
-
     print(
-        f"Victim Class for Contamination(level={contamination_level}): {victim_class_idx}"
+        f"Victim Classes for Contamination(level={contamination_level}): {victim_class_indices}"
     )
 
     all_possible_victim_sample_indices = np.argwhere(
-        targets == victim_class_idx
+        np.isin(targets, victim_class_indices)
     ).reshape(-1)
 
     potential_victim_sample_indices = np.array(
@@ -72,7 +74,7 @@ def contaminate_dataset(
     ]
 
     num_samples_belong_victim_class = (
-        targets[subsampled_indices] == victim_class_idx
+        np.isin(targets[subsampled_indices], victim_class_indices)
     ).sum()
 
     assert (
