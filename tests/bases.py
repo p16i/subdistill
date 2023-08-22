@@ -48,42 +48,43 @@ def test_pca(centering):
         assert f"{pca}" == "pca--uncentered"
 
 
-@pytest.mark.parametrize("centering", [True])
-def test_prca(centering):
+@pytest.mark.parametrize("basis_mode", ["centered", "uncentered"])
+@pytest.mark.parametrize(
+    "basis_name,criteria",
+    [
+        ("prca", lambda eigvals: eigvals),
+        ("prca-sortabs", lambda eigvals: np.abs(eigvals)),
+    ],
+)
+def test_prca(basis_name, basis_mode, criteria):
     np.random.seed(1)
     n, d = 10, 5
 
-    if centering:
-        # remark: here, mean is zero!
-        activation = np.random.randn(n, d)
-    else:
-        # this adjustment makes sure that the mean is NOT zero
-        activation = np.random.randn(n, d) + 2
-
-    mean = activation.mean(axis=0)
-
+    activation = np.random.randn(n, d) + 2
     context = np.random.rand(n, d)
 
-    if centering:
-        centered_activation = activation - mean
-        expected_cov = (
-            (centered_activation.T @ context) + context.T @ centered_activation
-        ) / n
-
-    suffix = "centered" if centering else "uncentered"
-
-    prca = bases.get_basis(f"prca--{suffix}")
-
-    eigvecs, std = prca.fit(
-        activation, context, mean=mean if centering else None, device="cpu"
-    )
-
-    np.testing.assert_allclose(std, np.std(centered_activation @ eigvecs, axis=0))
-
-    if centering:
-        assert f"{prca}" == "prca--centered"
+    if basis_mode == "centered":
+        mean = activation.mean(axis=0)
     else:
-        assert f"{prca}" == "prca--uncentered"
+        mean = np.zeros(d)
+
+    centered_activation = activation - mean
+
+    crosscov = ((centered_activation.T @ context) + context.T @ centered_activation) / n
+
+    eigvals, eigvecs = np.linalg.eigh(crosscov)
+
+    basis = bases.get_basis(f"{basis_name}--{basis_mode}")
+
+    U, std = basis.fit(activation, context, mean=mean, device="cpu")
+
+    expected_U = eigvecs[:, np.argsort(-criteria(eigvals))]
+
+    np.testing.assert_allclose(U, expected_U)
+
+    np.testing.assert_allclose(std, np.std(centered_activation @ U, axis=0))
+
+    assert f"{basis}" == f"{basis_name}--{basis_mode}"
 
 
 @pytest.mark.parametrize("variant", ["abs", "recon", "reconreg0.1"])

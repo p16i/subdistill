@@ -519,7 +519,8 @@ class PRCA(Basis):
             ((activation.T @ context + context.T @ activation)) / n
         )
 
-        indices = np.argsort(eigvals)[::-1]
+        # sorted by descending of `criteria(eigvals)`
+        indices = np.argsort(-self._criteria(eigvals))
 
         eigvals = eigvals[indices]
         eigvecs = eigvecs[:, indices]
@@ -530,46 +531,14 @@ class PRCA(Basis):
 
         return eigvecs, std
 
+    def _criteria(self, eigvals: npt.NDArray) -> npt.NDArray:
+        return eigvals
 
-@register_basis("prca-v2")
-class PRCAv2(Basis):
-    artifact_keys = ["eigvecs", "std"]
 
-    def fit(
-        self,
-        activation: npt.NDArray,
-        context: npt.NDArray,
-        mean: npt.NDArray,
-        device: str,
-    ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-        """_summary_ Summary
-
-        Args:
-            activation (npt.NDArray): _description_
-            context (npt.NDArray): _description_
-
-        Returns:
-            typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]: _description_
-        """
-        n, d = activation.shape
-
-        if self.centering:
-            activation = activation - mean
-
-        eigvals, eigvecs = np.linalg.eigh(
-            ((activation.T @ context + context.T @ activation)) / n
-        )
-
-        indices = np.argsort(np.abs(eigvals))[::-1]
-
-        eigvals = eigvals[indices]
-        eigvecs = eigvecs[:, indices]
-
-        std = np.std(activation @ eigvecs, axis=0)
-
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
-
-        return eigvecs, std
+@register_basis("prca-sortabs")
+class PRCASortAbs(PRCA):
+    def _criteria(self, eigvals: npt.NDArray) -> npt.NDArray:
+        return np.abs(eigvals)
 
 
 class PRCAVariant(Basis):
