@@ -18,10 +18,10 @@ def test_adapter():
     mean = torch.randn(d).float()
     std = torch.rand(d).float()
     encoder = bases.Adapter(
-        U=U, mean=mean, std=std, mode=bases.AdapterMode.ENCODER, device="cpu"
+        U=U, mean=mean, scale=std, mode=bases.AdapterMode.ENCODER, device="cpu"
     )
     decoder = bases.Adapter(
-        U=U, mean=mean, std=std, mode=bases.AdapterMode.DECODER, device="cpu"
+        U=U, mean=mean, scale=std, mode=bases.AdapterMode.DECODER, device="cpu"
     )
 
     x = torch.randn(20, d, 1, 1)

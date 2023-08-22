@@ -99,7 +99,7 @@ def test_learner_trainable(mode):
     np.testing.assert_allclose(U1, U2)
 
 
-@pytest.mark.parametrize("mode", ["centered"])
+@pytest.mark.parametrize("mode", ["centered", "uncentered"])
 @pytest.mark.parametrize(
     "basis_name",
     [
@@ -110,7 +110,7 @@ def test_learner_trainable(mode):
         "pcaprca-recon",
     ],
 )
-def test_calling_learner_from_basis(basis_name, mode):
+def test_learner(basis_name, mode):
     np.random.seed(1)
 
     act = np.random.randn(10, 2)
@@ -118,13 +118,17 @@ def test_calling_learner_from_basis(basis_name, mode):
 
     mean = act.mean(axis=0)
 
-    prca1 = bases.get_basis(f"{basis_name}--{mode}", seed=1)
-    U1, std1 = prca1.fit(act, ctx, mean=mean, device="cpu")
+    modified_activation = act - mean if mode == "centered" else act
 
-    np.testing.assert_allclose(std1, np.std(act @ U1, axis=0))
+    prca1 = bases.get_basis(f"{basis_name}--{mode}", seed=1)
+    U1, scale1 = prca1.fit(act, ctx, mean=mean, device="cpu")
+
+    # scale should be computed correctly.
+    np.testing.assert_allclose(scale1, np.mean((modified_activation @ U1) ** 2, axis=0))
 
     prca2 = bases.get_basis(f"{basis_name}--{mode}", seed=1)
-    U2, std2 = prca2.fit(act, ctx, mean=mean, device="cpu")
+    U2, scale2 = prca2.fit(act, ctx, mean=mean, device="cpu")
 
+    # results from same seed should be the same
     np.testing.assert_allclose(U1, U2)
-    np.testing.assert_allclose(std1, std2)
+    np.testing.assert_allclose(scale1, scale2)
