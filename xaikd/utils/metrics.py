@@ -67,7 +67,7 @@ def accuracy_with_subclasses(
     considered_classes: typing.List[int],
     transform_target: typing.Callable[[torch.Tensor], torch.Tensor],
     device: str,
-    verbose: False,
+    verbose=False,
 ) -> typing.Tuple[float, float]:
     model.eval()
 
