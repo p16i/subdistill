@@ -33,6 +33,16 @@ def normalize_mode_name(mode: ApproximatorMode) -> str:
 #         return (self.scale**2) * x
 
 
+class Bias(nn.Module):
+    def __init__(self, d: int) -> None:
+        super().__init__()
+
+        self.bias = nn.Parameter(torch.ones(d).reshape(1, d, 1, 1))
+
+    def forward(self, x):
+        return x + self.bias
+
+
 def construct_approximator_for(
     model: nn.Module,
     layer: str,
@@ -56,7 +66,8 @@ def construct_approximator_for(
             compression_ratio == 1.0
         ), f"`{mode}` only work with `compression_rate=1.0`"
 
-        last_module = nn.BatchNorm2d(num_features=k)
+        # last_module = nn.BatchNorm2d(num_features=k, track_running_stats=False)
+        last_module = Bias(d=k)
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER:
         last_module = nn.Sequential(
             # todo(bug): here, we have to make sure that the weight is non negative.
@@ -64,7 +75,7 @@ def construct_approximator_for(
             nn.Identity(),
         )
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK:
-        last_module = nn.BatchNorm2d(num_features=k)
+        last_module = Bias(d=k)
 
     return nn.Sequential(backbone_approximator, last_module)
 
