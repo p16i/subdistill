@@ -140,22 +140,23 @@ class ModelWrapper(pl.LightningModule):
         feat_in, feat_out, logits = self.forward_with_feats(x)
 
         # remark: here we transform `y` (from original dataset) to a new index set
-        # selected_logits = logits[:, self.dataset.selected_classes]
-        # transformed_y = self.dataset.transform_target(y)
+        if prefix == "val":
+            selected_logits = logits[:, self.dataset.selected_classes]
+            transformed_y = self.dataset.transform_target(y)
 
-        # loss_xent = self._compute_xent_loss(selected_logits, transformed_y)
-        loss_xent = 0
+            loss_xent = self._compute_xent_loss(selected_logits, transformed_y)
+            self.metric[prefix].update(
+                torch.argmax(selected_logits, dim=1).detach().cpu(),
+                transformed_y.detach().cpu(),
+            )
+        else:
+            loss_xent = 0
         loss_mse = self._compute_mse_loss(feat_in, feat_out, batch_idx, prefix)
         loss = loss_xent + loss_mse
 
         self.log(f"{prefix}_loss_xent", loss_xent, on_epoch=True)
         self.log(f"{prefix}_loss_mse", loss_mse, on_epoch=True)
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
-
-        self.metric[prefix].update(
-            torch.argmax(selected_logits, dim=1).detach().cpu(),
-            transformed_y.detach().cpu(),
-        )
 
         return loss
 
