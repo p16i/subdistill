@@ -116,7 +116,11 @@ def main(
 
     # todo(dev)
     # ds_train_with_aug = deepcopy(ds_train)
-    ds_train_with_aug = datasets.construct("cifar100").create_subset(train_split=True)
+    ds_train_with_aug = datasets.subsample_dataset(
+        datasets.construct("cifar100").create_subset(train_split=True),
+        ratio=training_size,
+        seed=seed,
+    )
     ds_train_with_aug.dataset.transform = dataset.input_training_transformation
 
     train_loader_with_aug = datasets.build_dataloader(
