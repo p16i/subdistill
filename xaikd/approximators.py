@@ -27,7 +27,7 @@ class Scale2D(nn.Module):
         super().__init__()
 
         # this mimics BatchNorm2d only its scaling functionality
-        self.scale = nn.Parameter(torch.zeros(d).reshape(1, d, 1, 1))
+        self.scale = nn.Parameter(torch.ones(d).reshape(1, d, 1, 1))
 
     def forward(self, x):
         return (self.scale**2) * x
