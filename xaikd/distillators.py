@@ -140,10 +140,11 @@ class ModelWrapper(pl.LightningModule):
         feat_in, feat_out, logits = self.forward_with_feats(x)
 
         # remark: here we transform `y` (from original dataset) to a new index set
-        selected_logits = logits[:, self.dataset.selected_classes]
-        transformed_y = self.dataset.transform_target(y)
+        # selected_logits = logits[:, self.dataset.selected_classes]
+        # transformed_y = self.dataset.transform_target(y)
 
-        loss_xent = self._compute_xent_loss(selected_logits, transformed_y)
+        # loss_xent = self._compute_xent_loss(selected_logits, transformed_y)
+        loss_xent = 0
         loss_mse = self._compute_mse_loss(feat_in, feat_out, batch_idx, prefix)
         loss = loss_xent + loss_mse
 
