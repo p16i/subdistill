@@ -269,7 +269,7 @@ class Random(Basis):
 
         scale = self._compute_scale(activation, U)
 
-        setattr(self, "artifact", dict(eigvecs=U, std=scale))
+        setattr(self, "artifact", dict(eigvecs=U, scale=scale))
 
         return U, scale
 
@@ -296,7 +296,7 @@ class RandomPerm(Basis):
 
         scale = self._compute_scale(activation, U)
 
-        setattr(self, "artifact", dict(eigvecs=U, std=scale))
+        setattr(self, "artifact", dict(eigvecs=U, scale=scale))
 
         return U, scale
 
@@ -362,7 +362,7 @@ class ActRecon(CanonicalBasis):
 
 @register_basis("rel-raw")
 class RelRaw(CanonicalBasis):
-    artifact_keys = ["eigvecs", "std"]
+    artifact_keys = ["eigvecs", "scale"]
 
     def _solve_objective(self, activation, context):
         # problem: argmax_i E[r_i]
