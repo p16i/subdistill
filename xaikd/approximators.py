@@ -22,6 +22,17 @@ def normalize_mode_name(mode: ApproximatorMode) -> str:
     return f"{mode}".split(".")[-1].lower()
 
 
+class Scale2D(nn.Module):
+    def __init__(self, d: int) -> None:
+        super().__init__()
+
+        # this mimics BatchNorm2d only its scaling functionality
+        self.scale = nn.Parameter(torch.zeros(d).reshape(1, d, 1, 1))
+
+    def forward(self, x):
+        return (self.scale**2) * x
+
+
 def construct_approximator_for(
     model: nn.Module,
     layer: str,
@@ -45,13 +56,13 @@ def construct_approximator_for(
             compression_ratio == 1.0
         ), f"`{mode}` only work with `compression_rate=1.0`"
 
-        last_module = nn.Identity()
+        last_module = Scale2D(d=d)
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER:
         last_module = nn.Sequential(
-            nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1), nn.Identity()
+            nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1), Scale2D(d=d)
         )
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK:
-        last_module = nn.Identity()
+        last_module = Scale2D(d=k)
 
     return nn.Sequential(backbone_approximator, last_module)
 
