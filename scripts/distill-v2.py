@@ -114,7 +114,9 @@ def main(
         shuffle=False,
     )
 
-    ds_train_with_aug = deepcopy(ds_train)
+    # todo(dev)
+    # ds_train_with_aug = deepcopy(ds_train)
+    ds_train_with_aug = datasets.construct("cifar100").create_subset(train_split=True)
     ds_train_with_aug.dataset.transform = dataset.input_training_transformation
 
     train_loader_with_aug = datasets.build_dataloader(
@@ -159,11 +161,12 @@ def main(
                     compression_ratio=1.0,
                     approximator_mode=ApproximatorMode.HOMOGENOUS,
                 ),
-                ExperimentConfiguration(
-                    basis_name="identity--centered",
-                    compression_ratio=compression_ratio,
-                    approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
-                ),
+                # todo(dev):
+                # ExperimentConfiguration(
+                #     basis_name="identity--centered",
+                #     compression_ratio=compression_ratio,
+                #     approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
+                # ),
             ]
         )
 
