@@ -41,25 +41,17 @@ def construct_approximator_for(
     )
 
     if mode == ApproximatorMode.HOMOGENOUS:
-        assert compression_ratio == 1.0, f"`{mode}` only work with `compression_rate=0`"
+        assert (
+            compression_ratio == 1.0
+        ), f"`{mode}` only work with `compression_rate=1.0`"
 
-        last_module = nn.BatchNorm2d(
-            num_features=d,
-            affine=True,
-        )
+        last_module = nn.Identity()
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER:
         last_module = nn.Sequential(
-            nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1),
-            nn.BatchNorm2d(
-                num_features=d,
-                affine=True,
-            ),
+            nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1), nn.Identity()
         )
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK:
-        last_module = nn.BatchNorm2d(
-            num_features=k,
-            affine=True,
-        )
+        last_module = nn.Identity()
 
     return nn.Sequential(backbone_approximator, last_module)
 
