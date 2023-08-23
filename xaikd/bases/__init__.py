@@ -49,6 +49,8 @@ class Adapter(torch.nn.Module):
         # also, if it is used again, be aware that the value is refactored
         # to be `variance` (when basis_mode=centered). So, one might need `\sqrt{}`.
         self.squared_root_scale = (scale[:k] ** 0.5).reshape((1, -1, 1, 1)).to(device)
+        # (to be changed): this temporaly ignore the influence of the quantity.
+        self.squared_root_scale = 1.0
 
         self.mode = mode
 
