@@ -48,7 +48,7 @@ class Adapter(torch.nn.Module):
         # todo: perhaps, at some point, we should remove it!
         # also, if it is used again, be aware that the value is refactored
         # to be `variance` (when basis_mode=centered). So, one might need `\sqrt{}`.
-        self.scale = scale.reshape((1, -1, 1, 1)).to(device)
+        self.squared_root_scale = (scale[:k] ** 0.5).reshape((1, -1, 1, 1)).to(device)
 
         self.mode = mode
 
@@ -62,11 +62,11 @@ class Adapter(torch.nn.Module):
 
     def encode(self, x):
         x = x - self.mean
-        x = F.conv2d(x, self.mat_encoder)
+        x = F.conv2d(x, self.mat_encoder) / (self.squared_root_scale + EPS)
         return x
 
     def decode(self, x):
-        x = F.conv2d(x, self.mat_decoder)
+        x = F.conv2d(x * (self.squared_root_scale + EPS), self.mat_decoder)
         x = x + self.mean
         return x
 
