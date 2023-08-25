@@ -161,13 +161,13 @@ def main(
         arr_experiment_confs.extend(
             [
                 ExperimentConfiguration(
-                    basis_name="identity--centered",
+                    basis_name=f"identity--{basis_mode}",
                     compression_ratio=1.0,
                     approximator_mode=ApproximatorMode.HOMOGENOUS,
                 ),
                 # todo(dev):
                 # ExperimentConfiguration(
-                #     basis_name="identity--centered",
+                #     basis_name=f"identity--{basis_mode}",
                 #     compression_ratio=compression_ratio,
                 #     approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
                 # ),
