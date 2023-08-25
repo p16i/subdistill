@@ -67,6 +67,7 @@ def construct_approximator_for(
         ), f"`{mode}` only work with `compression_rate=1.0`"
 
         last_module = nn.BatchNorm2d(num_features=k)
+        last_module = nn.Identity()
     elif mode == ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER:
         # todo:
         print("[warning]: Conv2D has to output only positive weight!")
