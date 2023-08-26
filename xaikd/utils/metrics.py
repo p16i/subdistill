@@ -67,13 +67,16 @@ def accuracy_with_subclasses(
     considered_classes: typing.List[int],
     transform_target: typing.Callable[[torch.Tensor], torch.Tensor],
     device: str,
+    verbose=False,
 ) -> typing.Tuple[float, float]:
     model.eval()
 
     metric_acc = Accuracy(task="multiclass", num_classes=len(considered_classes))
     metric_xent = MeanMetric()
 
-    for x, y in tqdm(dl, desc="Computing accuracy for selected claseses"):
+    for x, y in tqdm(
+        dl, desc="Computing accuracy for selected claseses", disable=not verbose
+    ):
         logits = model(x.to(device)).cpu()
         selected_logits = logits[:, considered_classes]
         transformed_y = transform_target(y)

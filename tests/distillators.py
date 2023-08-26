@@ -33,8 +33,18 @@ from xaikd.utils import metrics
 @pytest.mark.gpu()
 @pytest.mark.slow()
 @pytest.mark.parametrize("layer", ["layer3", "layer4"])
+@pytest.mark.parametrize("basis_mode", ["centered", "uncentered"])
+@pytest.mark.parametrize(
+    "basis_name,approximator_mode",
+    [
+        ("random", approximators.ApproximatorMode.HOMOGENOUS_LOWRANK),
+        ("identity", approximators.ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER),
+    ],
+)
 @pytest.mark.parametrize("compression_ratio", [1.0, 2.0])
-def test_distillation_not_alter_batchnorm_and_other_params(layer, compression_ratio):
+def test_distillation_not_alter_batchnorm_and_other_params(
+    layer, compression_ratio, basis_name, basis_mode, approximator_mode
+):
     model_name = "cifar100-resnet18-p1"
     teacher_model = models.get_model(model_name)
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
@@ -54,11 +64,10 @@ def test_distillation_not_alter_batchnorm_and_other_params(layer, compression_ra
     train_loader = datasets.build_dataloader(ds_training, shuffle=True)
     val_loader = datasets.build_dataloader(ds_val, shuffle=False)
 
-    basis = bases.get_basis("identity--centered")
+    basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=1)
 
     np.random.seed(1)
 
-    approximator_mode = approximators.ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER
     distill_info = distillation_info.get_distill_infor(
         arch=model_name, layer=layer, compression_ratio=compression_ratio
     )

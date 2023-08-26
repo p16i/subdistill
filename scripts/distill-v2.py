@@ -32,7 +32,7 @@ from xaikd.distillation_info import ExperimentConfiguration
 from pytorch_lightning.loggers import WandbLogger
 
 
-WANDB_PROJECT = "xaikd-distilllation"
+WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distilllation")
 
 
 @click.command()
@@ -155,12 +155,12 @@ def main(
         arr_experiment_confs.extend(
             [
                 ExperimentConfiguration(
-                    basis_name="identity--centered",
+                    basis_name=f"identity--{basis_mode}",
                     compression_ratio=1.0,
                     approximator_mode=ApproximatorMode.HOMOGENOUS,
                 ),
                 ExperimentConfiguration(
-                    basis_name="identity--centered",
+                    basis_name=f"identity--{basis_mode}",
                     compression_ratio=compression_ratio,
                     approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
                 ),
@@ -255,7 +255,9 @@ def main(
             f"Result: Student with `{approximator_mode}` and `{basis}` acc={last_epoch_val_acc:.4f}"
         )
 
-        # add `results` to wandlogger
+        # dumps results to wandb
+        for k, v in results.items():
+            logger.experiment.summary[k] = v
 
         utils.dump_json(basis_distillation_output_dir / "results.json", results)
         wandb.finish()
