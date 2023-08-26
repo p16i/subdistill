@@ -29,7 +29,7 @@ class Adapter(torch.nn.Module):
         self,
         U: torch.Tensor,
         mean: torch.Tensor,
-        std: torch.Tensor,
+        scale: torch.Tensor,
         device: str,
         mode: AdapterMode,
     ) -> None:
@@ -37,7 +37,7 @@ class Adapter(torch.nn.Module):
 
         d, k = U.shape
 
-        assert std.shape[0] == k
+        assert scale.shape[0] == k
         assert mean.shape[0] == d
 
         self.mat_encoder = U.T.unsqueeze(2).unsqueeze(3).to(device)
@@ -46,7 +46,9 @@ class Adapter(torch.nn.Module):
         self.mean = mean.reshape((1, -1, 1, 1)).to(device)
         # remark: we don't use any `std` here.
         # todo: perhaps, at some point, we should remove it!
-        self.std = std.reshape((1, -1, 1, 1)).to(device)
+        # also, if it is used again, be aware that the value is refactored
+        # to be `variance` (when basis_mode=centered). So, one might need `\sqrt{}`.
+        self.scale = scale.reshape((1, -1, 1, 1)).to(device)
 
         self.mode = mode
 
@@ -108,6 +110,11 @@ class Basis(ABC):
 
         return "--".join([prefix, suffix])
 
+    def _compute_scale(self, activation: npt.NDArray, U: npt.NDArray) -> npt.NDArray:
+        # remark: if centering (i.e., `mean(activation)=0`), then
+        # this expresssion is `standard deviation`
+        return np.mean((activation @ U) ** 2, axis=0)
+
     def save(self, output_dir: Path):
         if hasattr(self, "artifact") is None:
             raise ValueError("Artifact is NONE! Please fit first.")
@@ -153,9 +160,9 @@ class Basis(ABC):
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         U: torch.Tensor = self.artifact["eigvecs"][:, :k]
-        std = self.artifact["std"][:k]
+        scale = self.artifact["scale"][:k]
 
-        return Adapter(U=U, mean=self.mean, std=std, mode=mode, device=device)
+        return Adapter(U=U, mean=self.mean, scale=scale, mode=mode, device=device)
 
     def construct_fh_rank_k_projection(self, k: int, device: str) -> typing.Callable:
         encoder = self.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device)
@@ -198,11 +205,11 @@ def get_basis(slug, **kwargs) -> Basis:
 
 @register_basis("identity")
 class Identity(Basis):
-    artifact_keys = ["std"]
+    artifact_keys = ["scale"]
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
-        std = self.artifact["std"]
-        d = std.shape[0]
+        scale = self.artifact["scale"]
+        d = scale.shape[0]
 
         print(
             f"[basis=identity] setting k={k} has no effect. The following forces k=d={d}!"
@@ -210,7 +217,7 @@ class Identity(Basis):
 
         return Adapter(
             U=torch.eye(d),
-            std=std,
+            scale=scale,
             mean=self.mean,
             device=device,
             mode=mode,
@@ -232,16 +239,18 @@ class Identity(Basis):
         if self.centering:
             activation = activation - mean
 
-        std = np.std(activation, axis=0)
+        _, d = activation.shape
 
-        setattr(self, "artifact", dict(zip(self.artifact_keys, [std])))
+        scale = self._compute_scale(activation, np.eye(d))
 
-        return std
+        setattr(self, "artifact", dict(zip(self.artifact_keys, [scale])))
+
+        return scale
 
 
 @register_basis("random")
 class Random(Basis):
-    artifact_keys = ["eigvecs", "std"]
+    artifact_keys = ["eigvecs", "scale"]
 
     def fit(
         self,
@@ -258,16 +267,16 @@ class Random(Basis):
 
         U = ortho_group.rvs(d, random_state=np.random.default_rng(seed))
 
-        std = np.std(activation @ U, axis=0)
+        scale = self._compute_scale(activation, U)
 
-        setattr(self, "artifact", dict(eigvecs=U, std=std))
+        setattr(self, "artifact", dict(eigvecs=U, scale=scale))
 
-        return U, std
+        return U, scale
 
 
 @register_basis("randomperm")
 class RandomPerm(Basis):
-    artifact_keys = ["eigvecs", "std"]
+    artifact_keys = ["eigvecs", "scale"]
 
     def fit(
         self,
@@ -285,15 +294,15 @@ class RandomPerm(Basis):
         indices = np.random.default_rng(seed).permutation(d)
         U = np.eye(d)[:, indices]
 
-        std = np.std(activation @ U, axis=0)
+        scale = self._compute_scale(activation, U)
 
-        setattr(self, "artifact", dict(eigvecs=U, std=std))
+        setattr(self, "artifact", dict(eigvecs=U, scale=scale))
 
-        return U, std
+        return U, scale
 
 
 class CanonicalBasis(Basis):
-    artifact_keys = ["eigvecs", "std"]
+    artifact_keys = ["eigvecs", "scale"]
 
     def _solve_objective(
         self, activation: npt.NDArray, context: npt.NDArray
@@ -316,11 +325,11 @@ class CanonicalBasis(Basis):
 
         eigvecs = np.eye(d)[:, indices]
 
-        std = np.std(activation @ eigvecs, axis=0)
+        scale = self._compute_scale(activation, eigvecs)
 
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, scale)))
 
-        return eigvecs, std
+        return eigvecs, scale
 
 
 @register_basis("act-raw")
@@ -353,7 +362,7 @@ class ActRecon(CanonicalBasis):
 
 @register_basis("rel-raw")
 class RelRaw(CanonicalBasis):
-    artifact_keys = ["eigvecs", "std"]
+    artifact_keys = ["eigvecs", "scale"]
 
     def _solve_objective(self, activation, context):
         # problem: argmax_i E[r_i]
@@ -437,7 +446,7 @@ class RelRecon(CanonicalBasis):
 
 @register_basis("pca")
 class PCA(Basis):
-    artifact_keys = ["eigvecs", "std"]
+    artifact_keys = ["eigvecs", "scale"]
 
     def fit(
         self,
@@ -469,7 +478,7 @@ class PCA(Basis):
         eigvals = eigvals[indices]
         eigvecs = eigvecs[:, indices]
 
-        std = np.std(activation @ eigvecs, axis=0)
+        scale = self._compute_scale(activation, eigvecs)
 
         cond = eigvals < 0
 
@@ -480,19 +489,19 @@ class PCA(Basis):
             )
             eigvals[cond] = 0
 
-        assert not np.isnan(std).any()
+        assert not np.isnan(scale).any()
         assert not (eigvals < 0).any()
-        if self.centering:
-            np.testing.assert_allclose(std, eigvals**0.5, atol=1e-3)
 
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+        np.testing.assert_allclose(scale**0.5, eigvals**0.5, atol=1e-3)
 
-        return eigvecs, std
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, scale)))
+
+        return eigvecs, scale
 
 
 @register_basis("prca")
 class PRCA(Basis):
-    artifact_keys = ["eigvecs", "std"]
+    artifact_keys = ["eigvecs", "scale"]
 
     def fit(
         self,
@@ -519,20 +528,30 @@ class PRCA(Basis):
             ((activation.T @ context + context.T @ activation)) / n
         )
 
-        indices = np.argsort(eigvals)[::-1]
+        # sorted by descending of `criteria(eigvals)`
+        indices = np.argsort(-self._criteria(eigvals))
 
         eigvals = eigvals[indices]
         eigvecs = eigvecs[:, indices]
 
-        std = np.std(activation @ eigvecs, axis=0)
+        scale = self._compute_scale(activation, eigvecs)
 
-        self.artifact = dict(zip(self.artifact_keys, (eigvecs, std)))
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, scale)))
 
-        return eigvecs, std
+        return eigvecs, scale
+
+    def _criteria(self, eigvals: npt.NDArray) -> npt.NDArray:
+        return eigvals
+
+
+@register_basis("prca-sortabs")
+class PRCASortAbs(PRCA):
+    def _criteria(self, eigvals: npt.NDArray) -> npt.NDArray:
+        return np.abs(eigvals)
 
 
 class PRCAVariant(Basis):
-    artifact_keys = ["eigvecs", "std"]
+    artifact_keys = ["eigvecs", "scale"]
     mode: str
 
     def fit(
@@ -574,11 +593,11 @@ class PRCAVariant(Basis):
         #      U = Precondition Mat @ U
         U = precondition_mat @ U
 
-        std = np.std(activation @ U, axis=0)
+        scale = self._compute_scale(activation, U)
 
-        self.artifact = dict(zip(self.artifact_keys, (U, std)))
+        self.artifact = dict(zip(self.artifact_keys, (U, scale)))
 
-        return U, std
+        return U, scale
 
     def precondition_matrix(self, activation: npt.NDArray) -> npt.NDArray:
         d = activation.shape[1]
