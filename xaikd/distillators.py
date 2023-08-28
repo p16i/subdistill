@@ -193,6 +193,11 @@ class ModelWrapper(pl.LightningModule):
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")
 
+    def on_save_checkpoint(self, checkpoint):
+        checkpoint["approximator"] = self.approximator
+        checkpoint["adapter"] = self.adapter
+        return checkpoint
+
 
 class Layerwise:
     def __init__(
@@ -235,6 +240,8 @@ class Layerwise:
         logger: Logger,
         lambda_mse: float,
         lambda_xent: float,
+        enable_checkpointing=False,
+        callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
         os.makedirs(str(log_dir), exist_ok=True)
 
@@ -327,9 +334,9 @@ class Layerwise:
             max_epochs=epochs,
             logger=logger,
             log_every_n_steps=1,
-            enable_checkpointing=False,
+            enable_checkpointing=enable_checkpointing,
             deterministic=True,
-            callbacks=[LearningRateMonitor(logging_interval="step")],
+            callbacks=[LearningRateMonitor(logging_interval="step"), *callbacks],
         )
 
         trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)

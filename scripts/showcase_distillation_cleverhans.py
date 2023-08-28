@@ -3,15 +3,17 @@ import numpy as np
 import click
 from datetime import datetime
 
-import pytorch_lightning as pl
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
 
 from copy import deepcopy
 
 from pathlib import Path
 
+import wandb
 import pandas as pd
+
+from pytorch_lightning.loggers import WandbLogger
 
 from xaikd import (
     models,
@@ -28,10 +30,13 @@ from xaikd.showcases import cleverhans
 from xaikd.distillation_info import ExperimentConfiguration
 
 
-BASIS_MODE = "centered"
+WANDB_PROJECT = os.getenv(
+    "WANDB_PROJECT", "xaikd-showcase-distillation-under-cleverhans"
+)
 
 
 @click.command()
+@click.option("--model-name", default="cifar100-resnet18-p1")
 @click.option("--output-dir", type=Path, default="./tmp/showcase-cleverhans")
 @click.option("--epochs", type=int, default=100)
 @click.option("--contamination-level", type=float, default=0.75)
@@ -41,7 +46,9 @@ BASIS_MODE = "centered"
 @click.option("--lr", type=float, default=0.0005)
 @click.option("--basis-names", default="pca,prca-recon,pcaprca-recon,random")
 @click.option("--compression-ratio", type=float, default=8)
+@click.option("--basis-mode", type=str, default="centered")
 def main(
+    model_name,
     output_dir: Path,
     epochs,
     contamination_level,
@@ -51,13 +58,14 @@ def main(
     training_size,
     lr,
     compression_ratio,
+    basis_mode,
 ):
     arguments = locals()
     start_time = datetime.now()
 
     arr_alphas = np.array(alphas.split(",")).astype(float)
 
-    model_name = "cifar100-resnet18-p1"
+    # model_name = "cifar100-resnet18-p1"
     dataset_name = "cifar100-people"
     layer = "layer3"
 
@@ -87,7 +95,11 @@ def main(
         dataset=clean_train_ds,
         contamination_level=contamination_level,
         seed=seed,
-        victim_class_indices=[min(dataset.selected_classes)],
+        victim_class_indices=[
+            # remark: here, we assume that, in the training data for distillation,
+            # only the training samples of only one class has spuriour correlation.
+            min(dataset.selected_classes)
+        ],
     )
 
     contaminated_train_ds_with_aug = deepcopy(contaminated_train_ds)
@@ -111,6 +123,8 @@ def main(
         ),
         contamination_level=contamination_level,
         seed=seed,
+        # remark: here, we assume that, in the validation data for distillation,
+        # all validaiton samples of only one class has spuriour correlation.
         victim_class_indices=dataset.selected_classes,
     )
     val_loader = datasets.build_dataloader(
@@ -137,19 +151,19 @@ def main(
 
     arr_experiment_confs = [
         ExperimentConfiguration(
-            basis_name="identity--centered",
+            basis_name=f"identity--{basis_mode}",
             compression_ratio=1.0,
             approximator_mode=ApproximatorMode.HOMOGENOUS,
         ),
         ExperimentConfiguration(
-            basis_name="identity--centered",
+            basis_name=f"identity--{basis_mode}",
             compression_ratio=compression_ratio,
             approximator_mode=ApproximatorMode.HOMOGENOUS_LOWRANK_ADAPTER,
         ),
     ]
 
     for basis_name in basis_names:
-        basis_name = f"{basis_name}--{BASIS_MODE}"
+        basis_name = f"{basis_name}--{basis_mode}"
         arr_experiment_confs.append(
             ExperimentConfiguration(
                 basis_name=basis_name,
@@ -220,6 +234,28 @@ def main(
 
             log_dir = basis_distillation_output_dir / "log"
 
+            group = arguments["output_dir"]
+            print(f"group: `{group}`")
+
+            logger = WandbLogger(
+                project=WANDB_PROJECT,
+                group=str(arguments["output_dir"]),
+                name=f"{conf.basis_name}-compr{conf.compression_ratio}-seed{seed}",
+                config={
+                    **arguments,
+                    "approximator_mode": approximator_mode,
+                    "compression_ratio": conf.compression_ratio,
+                    "basis_name": basis_name,
+                    "approximator": f"{conf}",
+                    "output_dir": output_dir,
+                    "alpha": alpha,
+                    "lambda_mse": lambda_mse,
+                    "lambda_xent": lambda_xent,
+                    "ref_acc": ref_acc,
+                },
+                log_model=True,
+            )
+
             student, results = distillator.distill(
                 student=student,
                 approximator=approximator,
@@ -228,10 +264,16 @@ def main(
                 basis=basis,
                 device=device,
                 lr=lr,
-                logger=TensorBoardLogger(log_dir),
+                logger=logger,
                 log_dir=log_dir,
                 lambda_mse=lambda_mse,
                 lambda_xent=lambda_xent,
+                enable_checkpointing=True,
+                callbacks=[
+                    # remark: `monitored attribute` should be macthed
+                    # the one set in the `distillator` module.
+                    ModelCheckpoint(monitor="val_acc", mode="max")
+                ],
             )
 
             last_epoch_val_acc = results["arr_metrics"]["val"][-1]
@@ -251,11 +293,16 @@ def main(
             arr_targets = np.concatenate(arr_targets)
             arr_preds = np.concatenate(arr_preds)
 
+            # dumps results to wandb
+            for k, v in results.items():
+                logger.experiment.summary[k] = v
+
             utils.dump_json(basis_distillation_output_dir / "results.json", results)
 
-            pd.DataFrame.from_dict(dict(target=arr_targets, pred=arr_preds)).to_csv(
-                basis_distillation_output_dir / "predictions.csv", index=False
-            )
+            df = pd.DataFrame.from_dict(dict(target=arr_targets, pred=arr_preds))
+            df.to_csv(basis_distillation_output_dir / "predictions.csv", index=False)
+            logger.log_table("predictions", dataframe=df)
+            wandb.finish()
 
     print(f"Artifact save at: {output_dir}")
     time_took = datetime.now() - start_time
