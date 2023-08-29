@@ -165,9 +165,9 @@ class ModelWrapper(pl.LightningModule):
         with torch.no_grad():
             expected_out = self.teacher_module(feat_in)
 
-        _, d, w, h = expected_out.shape
+        _, d, _, _ = expected_out.shape
 
-        loss_mse = F.mse_loss(feat_out, expected_out, reduction="none") / (w * h * d)
+        loss_mse = F.mse_loss(feat_out, expected_out, reduction="none") / d
         loss_mse = loss_mse.flatten(start_dim=1)
 
         loss_mse = loss_mse.sum(dim=1)
