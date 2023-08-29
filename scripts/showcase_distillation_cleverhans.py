@@ -3,6 +3,7 @@ import numpy as np
 import click
 from datetime import datetime
 
+import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
 import torch
 
@@ -61,11 +62,12 @@ def main(
     basis_mode,
 ):
     arguments = locals()
+    pl.seed_everything(seed)
+
     start_time = datetime.now()
 
     arr_alphas = np.array(alphas.split(",")).astype(float)
 
-    # model_name = "cifar100-resnet18-p1"
     dataset_name = "cifar100-people"
     layer = "layer3"
 
