@@ -165,9 +165,9 @@ class ModelWrapper(pl.LightningModule):
         with torch.no_grad():
             expected_out = self.teacher_module(feat_in)
 
-        _, d, w, h = expected_out.shape
+        _, _, w, h = expected_out.shape
 
-        loss_mse = F.mse_loss(feat_out, expected_out, reduction="none") / (w * h * d)
+        loss_mse = F.mse_loss(feat_out, expected_out, reduction="none") / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
         loss_mse = loss_mse.sum(dim=1)
@@ -192,6 +192,11 @@ class ModelWrapper(pl.LightningModule):
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")
+
+    def on_save_checkpoint(self, checkpoint):
+        checkpoint["approximator"] = self.approximator
+        checkpoint["adapter"] = self.adapter
+        return checkpoint
 
 
 class Layerwise:
@@ -235,6 +240,8 @@ class Layerwise:
         logger: Logger,
         lambda_mse: float,
         lambda_xent: float,
+        enable_checkpointing=False,
+        callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
         os.makedirs(str(log_dir), exist_ok=True)
 
@@ -327,9 +334,9 @@ class Layerwise:
             max_epochs=epochs,
             logger=logger,
             log_every_n_steps=1,
-            enable_checkpointing=False,
+            enable_checkpointing=enable_checkpointing,
             deterministic=True,
-            callbacks=[LearningRateMonitor(logging_interval="step")],
+            callbacks=[LearningRateMonitor(logging_interval="step"), *callbacks],
         )
 
         trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)
