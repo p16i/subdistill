@@ -24,8 +24,8 @@ thop = "^0.1.1.post2209072238"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.3.1"
 black = "^23.3.0"
-jupyter = "^1.0.0"
 wandb = "^0.15.8"
+notebook = "6.5.5"
 
 
 [tool.poetry.group.addon.dependencies]
