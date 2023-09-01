@@ -90,15 +90,14 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         # previous optimizer
         optimizer = torch.optim.Adam(parameters, lr=self.lr, weight_decay=0.0)
-        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
-        # return [optimizer], [scheduler]
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+        return [optimizer], [scheduler]
 
         # ref: https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L273
         # optimizer = torch.optim.SGD(
         #     parameters, lr=0.01, momentum=0.9, weight_decay=5e-4
         # )
-
-        return optimizer
+        # return optimizer
 
     def eval_safeguard(self):
         self.teacher.eval()
@@ -181,6 +180,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self._compute_metric("train")
 
     def on_save_checkpoint(self, checkpoint):
+        raise NotImplemented("to be update; we should only save student")
         checkpoint["approximator"] = self.approximator
         checkpoint["adapter"] = self.adapter
         return checkpoint
