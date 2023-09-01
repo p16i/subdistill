@@ -196,7 +196,9 @@ def _pat_resnet(num_classes: int) -> nn.Module:
             # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L78
             dilate=False,
         )
-        layers.append((f"layer{i+1}", layer))
+        layers.append(
+            (f"layer{i+1}", nn.Sequential(layer, nn.BatchNorm2d(num_features=dims)))
+        )
 
     layers.extend(
         [
