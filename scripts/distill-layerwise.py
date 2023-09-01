@@ -127,16 +127,16 @@ def main(
 
     STUDENT_MODEL_NAME = "resnet18-xs"
 
-    ARR_LAYERS = ["layer1", "layer2", "layer3", "layer4"][2:3]
-    ARR_DIMS = [32, 64, 128, 256][2:3]
+    ARR_LAYERS = ["layer1", "layer2", "layer3", "layer4"][2:]
+    ARR_DIMS = [32, 64, 128, 256][2:]
 
     # todo: to be remove
-    model_student = models._pat_resnet(num_classes=dataset.num_classes)
-    dummy_input = torch.randn(64, 3, 32, 32)
-    model_student(dummy_input)
+    # model_student = models._pat_resnet(num_classes=dataset.num_classes)
+    # dummy_input = torch.randn(64, 3, 32, 32)
+    # model_student(dummy_input)
 
-    print(teacher_model)
-    print(model_student)
+    # print(teacher_model)
+    # print(model_student)
 
     # prepare teacher to have the logit equal to num classes
 

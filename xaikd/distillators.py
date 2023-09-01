@@ -48,7 +48,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         self.layer_names = list(map(lambda t: t[0], layerwise_policies))
 
-        self.last_layer_policy = criteria.KL(temperature=1.0)
+        # ref: temperature value from
+        # https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L78
+        self.last_layer_policy = criteria.KL(temperature=4.0)
 
         # sanity check
         for module in [
