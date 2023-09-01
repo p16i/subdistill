@@ -31,10 +31,10 @@ from xaikd.approximators import ApproximatorMode
 
 from xaikd.distillation_info import ExperimentConfiguration
 
-from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
+from pytorch_lightning.loggers import WandbLogger
 
 
-WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distilllation")
+WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 LAYERS = ["layer1", "layer2", "layer3", "layer4"]
 
 
@@ -77,6 +77,8 @@ def main(
     skip_baselines,
     skip_if_exist,
 ):
+    arguments = locals()
+
     pl.seed_everything(seed)
 
     start_time = datetime.now()
@@ -184,7 +186,17 @@ def main(
         )
 
         log_dir = output_dir / "distilled-models" / STUDENT_MODEL_NAME
-        logger = TensorBoardLogger(save_dir=log_dir)
+        logger = WandbLogger(
+            project=WANDB_PROJECT,
+            group=arguments["output_dir"],
+            job_type="distillation",
+            name=f"{basis_name}-seed{seed}",
+            config={
+                **arguments,
+                "basis_name": basis_name,
+                "output_dir": output_dir,
+            },
+        )
 
         student, results = distillator.distill(
             student=models._pat_resnet(num_classes=dataset.num_classes),
@@ -201,9 +213,12 @@ def main(
 
         last_epoch_val_acc = results["arr_metrics"]["val"][-1]
 
-        print(
-            f"Result: Student with  `{basis}` acc={last_epoch_val_acc:.4f}"
-        )
+        print(f"Result: Student with  `{basis_name}` acc={last_epoch_val_acc:.4f}")
+
+        for k, v in results.items():
+            logger.experiment.summary[k] = v
+
+        wandb.finish()
 
         """
         Distillator(layer_policies=[
@@ -377,7 +392,6 @@ def main(
             logger.experiment.summary[k] = v
 
         utils.dump_json(basis_distillation_output_dir / "results.json", results)
-        wandb.finish()
 
 
 if __name__ == "__main__":
