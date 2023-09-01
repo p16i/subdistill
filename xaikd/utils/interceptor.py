@@ -60,6 +60,8 @@ def get_output(module: nn.Module) -> torch.Tensor:
 def forward_and_intercept_intermediate_layers(
     model: nn.Module, inp: torch.Tensor, layers: typing.List[str]
 ) -> typing.Tuple[torch.Tensor, typing.List[torch.Tensor]]:
+    # todo: add unit tests
+    # - all outputs we get are correct
     arr_hooks: typing.List[hooks.RemovableHandle] = []
     arr_modules = []
 
