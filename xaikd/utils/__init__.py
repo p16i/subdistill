@@ -140,3 +140,12 @@ def is_permuation_matrix(x: npt.NDArray) -> bool:
         and (x.sum(axis=1) == 1).all()
         and ((x == 1) | (x == 0)).all()
     )
+
+
+def modify_last_layer_for_subclasses(
+    layer: nn.Linear, selected_classes: typing.List[int]
+):
+    assert isinstance(layer, nn.Linear)
+
+    layer.weight = nn.Parameter(layer.weight[selected_classes, :])
+    layer.bias = nn.Parameter(layer.bias[selected_classes])

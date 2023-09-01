@@ -10,7 +10,7 @@ from datetime import datetime
 from pathlib import Path
 from copy import deepcopy
 
-from torchvision import transforms
+import torch
 from tqdm import tqdm
 import wandb
 
@@ -25,36 +25,39 @@ from xaikd import (
     distillation_info,
 )
 
+from xaikd import criteria
+
 from xaikd.approximators import ApproximatorMode
 
 from xaikd.distillation_info import ExperimentConfiguration
 
-from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 
 
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distilllation")
+LAYERS = ["layer1", "layer2", "layer3", "layer4"]
 
 
 @click.command()
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
-@click.option("--teacher-model", default="cifar100-resnet18-p1", required=True)
+@click.option("--teacher-model", default="cifar100-resnet18-wb15", required=True)
 @click.option("--layer", default="layer3", type=str, required=True)
 @click.option(
     "--basis-names",
     type=str,
-    default="pca,prca-recon,prca-abs,pcaprca-abs,pcaprca-recon,random",
+    default="pca,prca-recon,prca-sortabs",
     required=True,
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
-@click.option("--compression-ratio", type=float, default=4.0, required=True)
+# @click.option("--compression-ratio", type=float, default=4.0, required=True)
 @click.option("--output-dir", type=str, required=True)
 @click.option("--training-size", type=float, default=0.1, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--lr", type=float, default=0.0005, required=True)
-@click.option("--weight-decay", type=float, default=0.0)
-@click.option("--lambda-mse", type=float, default=1.0)
-@click.option("--lambda-xent", type=float, default=1.0)
+@click.option("--lambda-layer", type=float, default=1.0)
+@click.option("--lambda-kd", type=float, default=1.0)
+@click.option("--lambda-task", type=float, default=0.0)
 @click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
 @click.option("--skip-baselines", type=bool, default=False, is_flag=True)
 def main(
@@ -62,35 +65,30 @@ def main(
     dataset,
     basis_names,
     output_dir,
-    compression_ratio,
     seed,
     epochs,
     lr,
     training_size,
     layer,
     basis_mode,
-    weight_decay,
-    lambda_mse,
-    lambda_xent,
+    lambda_task,
+    lambda_kd,
+    lambda_layer,
     skip_baselines,
     skip_if_exist,
 ):
-    arguments = locals()
-
     pl.seed_everything(seed)
 
     start_time = datetime.now()
 
     teacher_model = models.get_model(teacher_model)
+
     model_name = getattr(teacher_model, "__name")
 
-    layer_slug = f"layer-{layer}"
+    basis_names = basis_names.split(",")
 
     output_dir = (
-        Path(output_dir)
-        / f"{dataset}-tz{training_size}-seed{seed}"
-        / model_name
-        / layer_slug
+        Path(output_dir) / f"{dataset}-tz{training_size}-seed{seed}" / model_name
     )
 
     os.makedirs(output_dir, exist_ok=True)
@@ -102,7 +100,7 @@ def main(
 
     teacher_model.to(device)
 
-    logit_mod = attributors.OneClassEvidence(dataset=dataset)
+    logit_mod = attributors.OneClassEvidence(num_classes=dataset.num_classes)
 
     ds_train = datasets.subsample_dataset(
         dataset.create_subset(train_split=True), ratio=training_size, seed=seed
@@ -120,6 +118,125 @@ def main(
     train_loader_with_aug = datasets.build_dataloader(
         ds_train_with_aug, shuffle=True, batch_size=int(np.ceil(64 * training_size))
     )
+
+    utils.modify_last_layer_for_subclasses(
+        teacher_model.fc, selected_classes=dataset.selected_classes
+    )
+
+    STUDENT_MODEL_NAME = "resnet18-xs"
+
+    ARR_LAYERS = ["layer1", "layer2", "layer3", "layer4"][2:3]
+    ARR_DIMS = [32, 64, 128, 256][2:3]
+
+    # todo: to be remove
+    model_student = models._pat_resnet(num_classes=dataset.num_classes)
+    dummy_input = torch.randn(64, 3, 32, 32)
+    model_student(dummy_input)
+
+    print(teacher_model)
+    print(model_student)
+
+    # prepare teacher to have the logit equal to num classes
+
+    for layer in ARR_LAYERS:
+        layer_output_dir = output_dir / f"layer-{layer}"
+        os.makedirs(layer_output_dir, exist_ok=True)
+        arr_act, arr_ctx = attributors.extract_activation_context(
+            model=teacher_model,
+            layer=layer,
+            data_loader=train_loader,
+            dataset=dataset,
+            logit_modifier=logit_mod,
+            device=device,
+            rng=np.random.default_rng(seed=seed),
+        )
+
+        mean = np.mean(arr_act, axis=0)
+        np.save(layer_output_dir / "act_mean", mean)
+
+        for basis_name in basis_names:
+            click.echo(f"[layer={layer}] fitting basis={basis_name}--{basis_mode}")
+            basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
+            basis.fit(arr_act, arr_ctx, mean=mean, device=device)
+            basis.save(layer_output_dir)
+
+    for basis_name in tqdm(basis_names, desc="Distillation"):
+        layer_policies = []
+        for dim, layer in zip(ARR_DIMS, ARR_LAYERS):
+            basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
+            layer_output_dir = output_dir / f"layer-{layer}"
+            basis.load(layer_output_dir)
+
+            layer_policies.append(
+                (
+                    layer,
+                    criteria.BasisL2Loss(basis, dim, device),
+                )
+            )
+
+        distillator = distillators.Layerwise(
+            teacher=teacher_model,
+            dataset=dataset,
+            train_dataloader=train_loader,
+            val_dataloader=val_loader,
+            device=device,
+            weight_decay=0.0,
+        )
+
+        log_dir = output_dir / "distilled-models" / STUDENT_MODEL_NAME
+        logger = TensorBoardLogger(save_dir=log_dir)
+
+        student, results = distillator.distill(
+            student=models._pat_resnet(num_classes=dataset.num_classes),
+            layer_policies=layer_policies,
+            epochs=epochs,
+            lambda_task=lambda_task,
+            lambda_kd=lambda_kd,
+            lambda_layer=lambda_layer,
+            device=device,
+            lr=lr,
+            log_dir=log_dir,
+            logger=logger,
+        )
+
+        last_epoch_val_acc = results["arr_metrics"]["val"][-1]
+
+        print(
+            f"Result: Student with  `{basis}` acc={last_epoch_val_acc:.4f}"
+        )
+
+        """
+        Distillator(layer_policies=[
+            ('layer3', criteria(teacher_feat, student_feat)),
+        ])
+
+        Distllator.distill(
+            epochs,
+            logger=...
+            lambda_task,
+            lambda_kd,
+            lambda_layer
+        )
+
+        tests:
+        - teacher remain the same
+        - distill same seed twice give same results.
+        """
+        # g
+        # lambda_task, lambda_
+
+    # for each layer, we learn basis
+
+    # for each basis
+    # we do distillation
+    # get student model
+
+    click.echo(f"Check Results at: {output_dir}")
+
+    time_took = datetime.now() - start_time
+    click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
+
+    return
 
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=teacher_model,
@@ -245,8 +362,8 @@ def main(
             lr=lr,
             logger=logger,
             log_dir=basis_distillation_output_dir / "log",
-            lambda_layer=lambda_mse,
-            lambda_task=lambda_xent,
+            lambda_mse=lambda_mse,
+            lambda_xent=lambda_xent,
         )
 
         last_epoch_val_acc = results["arr_metrics"]["val"][-1]
@@ -261,11 +378,6 @@ def main(
 
         utils.dump_json(basis_distillation_output_dir / "results.json", results)
         wandb.finish()
-
-    click.echo(f"Check Results at: {output_dir}")
-
-    time_took = datetime.now() - start_time
-    click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
 
 
 if __name__ == "__main__":

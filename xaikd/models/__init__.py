@@ -1,6 +1,9 @@
 import typing
+from typing import Callable, List, Optional, Type, Union
+from collections import OrderedDict
 
 import torch
+import torch.nn as nn
 
 import torchvision
 
@@ -9,7 +12,7 @@ from torch import nn
 
 from . import resnet, vgg, interfaces
 
-from torchvision.models.resnet import ResNet18_Weights
+from torchvision.models.resnet import BasicBlock, Bottleneck, ResNet18_Weights
 
 from torchvision import models
 
@@ -163,3 +166,44 @@ def _resnet18_imagenet() -> nn.Module:
     model.num_classes = 1000
 
     return model
+
+
+def _pat_resnet(num_classes: int) -> nn.Module:
+    # todo: hard-corded everything for now.
+    resnet18 = torchvision.models.resnet.resnet18()
+
+    resnet18.inplanes = 32
+
+    # why we use this? (ask Florian?)
+    layers = [
+        # todo: find reference ofr this 3x3 kernel modification
+        ("conv1", nn.Conv2d(3, resnet18.inplanes, 3, 1, 1, bias=False)),
+        ("bn1", nn.BatchNorm2d(num_features=resnet18.inplanes)),
+        ("relu1", nn.ReLU()),
+        ("maxpool", nn.Identity()),
+    ]
+
+    arr_num_blocks = [2, 2, 2, 2]
+    arr_dims = [32, 64, 128, 256]
+
+    for i, (dims, num_blocks) in enumerate(zip(arr_dims, arr_num_blocks)):
+        layer = resnet18._make_layer(
+            torchvision.models.resnet.BasicBlock,
+            dims,
+            num_blocks,
+            # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L202
+            stride=2 if i > 0 else 1,
+            # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L78
+            dilate=False,
+        )
+        layers.append((f"layer{i+1}", layer))
+
+    layers.extend(
+        [
+            ("avgpool", nn.AdaptiveAvgPool2d((1, 1))),
+            ("flatten", nn.Flatten(start_dim=1)),
+            ("fc", nn.Linear(in_features=arr_dims[-1], out_features=num_classes)),
+        ]
+    )
+
+    return nn.Sequential(OrderedDict(layers))

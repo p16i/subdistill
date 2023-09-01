@@ -155,8 +155,8 @@ def test_distillation_not_alter_batchnorm_and_other_params(
             lr=0.001,
             logger=TensorBoardLogger(log_dir),
             log_dir=log_dir,
-            lambda_mse=1.0,
-            lambda_xent=1.0,
+            lambda_layer=1.0,
+            lambda_task=1.0,
         )
 
         (

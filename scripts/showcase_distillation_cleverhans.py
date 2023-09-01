@@ -268,8 +268,8 @@ def main(
                 lr=lr,
                 logger=logger,
                 log_dir=log_dir,
-                lambda_mse=lambda_mse,
-                lambda_xent=lambda_xent,
+                lambda_layer=lambda_mse,
+                lambda_task=lambda_xent,
                 enable_checkpointing=True,
                 callbacks=[
                     # remark: `monitored attribute` should be macthed

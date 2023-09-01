@@ -50,15 +50,27 @@ def auroc(
     return float(auroc), float(bin_accuracy)
 
 
-def accuracy(model: nn.Module, dl: DataLoader, num_classes: int, device: str) -> float:
+def accuracy(
+    model: nn.Module,
+    dl: DataLoader,
+    num_classes: int,
+    device: str,
+    verbose=False,
+) -> typing.Tuple[float, float]:
     model.eval()
-    metric = Accuracy(task="multiclass", num_classes=num_classes)
 
-    for x, y in dl:
+    metric_acc = Accuracy(task="multiclass", num_classes=num_classes)
+    metric_xent = MeanMetric()
+
+    for x, y in tqdm(
+        dl, desc="computing accuracy for selected claseses", disable=not verbose
+    ):
         logits = model(x.to(device)).cpu()
-        metric.update(logits, y)
+        metric_acc.update(logits, y)
+        xent = F.cross_entropy(logits, y, reduction="none")
+        metric_xent.update(xent)
 
-    return float(metric.compute())
+    return float(metric_acc.compute()), float(metric_xent.compute())
 
 
 def accuracy_with_subclasses(

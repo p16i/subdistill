@@ -447,13 +447,15 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
 
         # remark: Attention! this is `num_classes` of CIFAR100.
         # todo: when do we use this?
-        self.num_classes = 100
+        self.num_classes = len(self.selected_classes)
 
         self._normalizer = self.base._normalizer
         self.input_transformation = self.base.input_transformation
         self.input_training_transformation = self.base.input_training_transformation
 
-        self.target_transform_dict = dict(
+        # change name to mapping_old_and_new_target_indices
+        # converting from old target (original dataset) to new target {0, 1,...})
+        self._target_mapping = dict(
             zip(self.selected_classes, range(len(self.selected_classes)))
         )
 
@@ -466,17 +468,24 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         ).reshape(-1)
 
         ds.data = ds.data[selected_data_indices, :]
-        ds.targets = np.array(ds.targets)[selected_data_indices].tolist()
 
-        assert np.isin(ds.targets, self.selected_classes).all()
+        targets = np.array(ds.targets)[selected_data_indices].tolist()
+        assert np.isin(targets, self.selected_classes).all()
+
+        new_targets = []
+        for target in targets:
+            new_targets.append(self._target_mapping[target])
+
+        ds.targets = new_targets
 
         return ds
 
     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+        raise
         new_target = []
 
         for t in target:
-            new_target.append(self.target_transform_dict[int(t.detach().cpu())])
+            new_target.append(self._target_mapping[int(t.detach().cpu())])
 
         return torch.Tensor(new_target).long().to(target.device)
 
