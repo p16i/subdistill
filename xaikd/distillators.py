@@ -88,10 +88,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         for layer, criteria in self.policies:
             parameters.extend(criteria.parameters())
 
+        # previous optimizer
         # optimizer = torch.optim.Adam(parameters, lr=self.lr, weight_decay=0.0)
-
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
-
         # return [optimizer], [scheduler]
 
         # ref: https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L273
@@ -144,7 +143,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         )
 
         loss_layer = 0
-        for lix, (_, policy) in enumerate(self.policies):
+        for lix, (layer, policy) in enumerate(self.policies):
             loss_layer += self.lambda_layer * policy(
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )

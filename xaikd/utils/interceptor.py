@@ -66,6 +66,7 @@ def forward_and_intercept_intermediate_layers(
     arr_intermediate_feats = []
 
     try:
+        # attach hooks to those layers
         for layer in layers:
             module, hook = attach_hook_intercept_layer_output(
                 model=model, layer=layer, should_retain_grad=False
@@ -73,9 +74,12 @@ def forward_and_intercept_intermediate_layers(
             arr_modules.append(module)
             arr_hooks.append(hook)
 
-            logits = model(inp)
-            for module in arr_modules:
-                arr_intermediate_feats.append(get_output(module))
+        # one forward pass
+        logits = model(inp)
+
+        # extract output of those layers
+        for module in arr_modules:
+            arr_intermediate_feats.append(get_output(module))
 
     finally:
         for module, hook in zip(arr_modules, arr_hooks):
@@ -83,5 +87,7 @@ def forward_and_intercept_intermediate_layers(
 
             if hasattr(module, ATTRIBUTE_INTERCEPTED_OUTPUT):
                 delattr(module, ATTRIBUTE_INTERCEPTED_OUTPUT)
+
+    assert len(layers) == len(arr_intermediate_feats)
 
     return logits, arr_intermediate_feats
