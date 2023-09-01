@@ -86,11 +86,18 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         for layer, criteria in self.policies:
             parameters.extend(criteria.parameters())
 
-        optimizer = torch.optim.Adam(parameters, lr=self.lr, weight_decay=0.0)
+        # optimizer = torch.optim.Adam(parameters, lr=self.lr, weight_decay=0.0)
 
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
 
-        return [optimizer], [scheduler]
+        # return [optimizer], [scheduler]
+
+        # ref: https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L273
+        optimizer = torch.optim.SGD(
+            parameters, lr=0.01, momentum=0.9, weight_decay=5e-4
+        )
+
+        return optimizer
 
     def eval_safeguard(self):
         self.teacher.eval()
