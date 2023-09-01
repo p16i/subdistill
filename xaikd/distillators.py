@@ -148,7 +148,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
         self.metric[prefix].update(
-            torch.argmax(student_logits, dim=1).detach().cpu(), y
+            torch.argmax(student_logits, dim=1).detach().cpu(), y.cpu()
         )
 
         return loss
