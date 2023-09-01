@@ -125,7 +125,7 @@ def main(
         teacher_model.fc, selected_classes=dataset.selected_classes
     )
 
-    STUDENT_MODEL_NAME = "resnet18-xs"
+    STUDENT_MODEL_NAME = "resnet18-2"
 
     ARR_LAYERS = ["layer1", "layer2", "layer3", "layer4"][2:]
     ARR_DIMS = [32, 64, 128, 256][2:]
@@ -190,7 +190,7 @@ def main(
             project=WANDB_PROJECT,
             group=arguments["output_dir"],
             job_type="distillation",
-            name=f"{basis_name}-seed{seed}",
+            name=f"{STUDENT_MODEL_NAME}-{basis_name}-seed{seed}",
             config={
                 **arguments,
                 "basis_name": basis_name,
