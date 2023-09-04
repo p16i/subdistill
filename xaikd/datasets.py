@@ -380,6 +380,7 @@ class ImageNet(DatasetConfiguration):
 
 @register_dataset("imagenet-butterfly")
 class ImageNetButterfly(ImageNet):
+    # remark: the targets are defined in the ImageNet dataset.
     selected_classes = [321, 322, 323, 324, 325, 326]
 
     def __init__(self):
@@ -443,6 +444,7 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         for row in df_selected.to_dict("records"):
             print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
 
+        # remark: the targets are defined in the CIFAR100 dataset.
         self.selected_classes = df_selected.fine_label.values.tolist()
 
         # remark: Attention! this is `num_classes` of CIFAR100.
