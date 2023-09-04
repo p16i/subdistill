@@ -45,27 +45,12 @@ class Teacher(object):
         return self.model(*args)
 
 
-class LayerPolicyCollection(nn.ModuleList):
-    def __init__(
-        self, layers: typing.List[str], policies: Iterable[distillation_policies.Policy]
-    ) -> None:
-        super().__init__(policies)
-
-        assert len(layers) == len(policies)
-
-        self.layers = layers
-        self.policies = policies
-
-    def forward(self, x):
-        pass
-
-
 class LayerwiseKDModelWrapper(pl.LightningModule):
     def __init__(
         self,
         teacher: nn.Module,
         student: nn.Module,
-        layerwise_policies: LayerPolicyCollection,
+        layerwise_policies: distillation_policies.LayerPolicyCollection,
         lr: float,
         lambda_layer: float,
         lambda_task: float,
@@ -229,7 +214,7 @@ class Layerwise:
     def distill(
         self,
         student: nn.Module,
-        layer_policies: LayerPolicyCollection,
+        layer_policies: distillation_policies.LayerPolicyCollection,
         epochs: int,
         device: str,
         lr: float,

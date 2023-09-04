@@ -26,6 +26,7 @@ from xaikd import (
 )
 
 from xaikd.utils import metrics
+from xaikd.distillation_policies import LayerPolicyCollection
 
 
 def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.Tensor]:
@@ -80,9 +81,7 @@ def test_distillation_not_alter_teacher():
             )
         )
 
-    layer_policies = distillators.LayerPolicyCollection(
-        layers=layers, policies=arr_adapters
-    )
+    layer_policies = LayerPolicyCollection(layers=layers, policies=arr_adapters)
 
     teacher_model_before = deepcopy(teacher_model)
     before_batch_norm_stats = get_batchnorm_statistics_from_model(teacher_model_before)
@@ -188,9 +187,7 @@ def test_get_parameters(layers):
             )
         )
 
-    layer_policy_colleciton = distillators.LayerPolicyCollection(
-        layers=layers, policies=adapters
-    )
+    layer_policy_colleciton = LayerPolicyCollection(layers=layers, policies=adapters)
 
     model_training_wrapper = distillators.LayerwiseKDModelWrapper(
         teacher=teacher_model,

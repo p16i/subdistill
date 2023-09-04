@@ -1,4 +1,5 @@
 import torch
+import typing
 
 from abc import ABC
 
@@ -26,6 +27,21 @@ class Policy(nn.Module, ABC):
         assert transformed_student_feats.shape == transformed_teacher_feats.shape
 
         return self.criterion(transformed_teacher_feats, transformed_student_feats)
+
+
+class LayerPolicyCollection(nn.ModuleList):
+    def __init__(
+        self, layers: typing.List[str], policies: typing.Iterable[Policy]
+    ) -> None:
+        super().__init__(policies)
+
+        assert len(layers) == len(policies)
+
+        self.layers = layers
+        self.policies = policies
+
+    def forward(self, x):
+        pass
 
 
 class KLPolicy(Policy):

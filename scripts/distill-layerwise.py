@@ -198,7 +198,7 @@ def main(
 
         trained_student, results = distillator.distill(
             student=student_model,
-            layer_policies=distillators.LayerPolicyCollection(
+            layer_policies=distillation_policies.LayerPolicyCollection(
                 layers=layers, policies=layer_policies
             ),
             epochs=epochs,
