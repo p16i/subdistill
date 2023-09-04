@@ -31,7 +31,7 @@ class CIFAR100VerySmall(datasets.CIFAR100):
 @pytest.mark.gpu()
 @pytest.mark.parametrize("layer", ["layer1", "layer2", "layer3", "layer4"])
 def test_extract_activation_context(layer):
-    model = models.get_model("cifar100-resnet18-p1").to(DEVICE)
+    model = models.get_trained_model("cifar100-resnet18-p1").to(DEVICE)
 
     dataset = CIFAR100VerySmall()
 
@@ -60,7 +60,7 @@ def test_extract_activation_context(layer):
 
 @pytest.mark.parametrize("seed", [1, 2])
 def test_extract_activation_context_with_same_seed_different_run(seed):
-    model = models.get_model("cifar100-resnet18-p1").to(DEVICE)
+    model = models.get_trained_model("cifar100-resnet18-p1").to(DEVICE)
 
     dataset = CIFAR100VerySmall()
 

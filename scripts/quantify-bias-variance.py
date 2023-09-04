@@ -104,7 +104,7 @@ class Lenet5(nn.Module):
 def construction_model(
     teacher: str, layer: str, mode: str, num_classes: int
 ) -> typing.Tuple[nn.Module, nn.Module]:
-    model = models.get_model(teacher)
+    model = models.get_trained_model(teacher)
 
     utils.deactivate_requires_grad(model)
 
@@ -238,7 +238,7 @@ class ModelWrapper(pl.LightningModule):
 
     def _compute_loss_xent(self, logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         logits = logits[:, self.dataset.selected_classes]
-        ynew = self.dataset.transform_target(y)
+        ynew = self.dataset._transform_target(y)
 
         return self.lambda_xent * F.cross_entropy(logits, ynew)
 
@@ -276,7 +276,7 @@ class ModelWrapper(pl.LightningModule):
                 ),
                 loader,
                 considered_classes=self.dataset.selected_classes,
-                transform_target=self.dataset.transform_target,
+                transform_target=self.dataset._transform_target,
                 device=self.device,
             )
 
@@ -349,7 +349,7 @@ def main(
             )
 
             arr_act = attributors.extract_activation(
-                models.get_model(teacher),
+                models.get_trained_model(teacher),
                 layer,
                 dataset,
                 dataset.loader(train_split=True),

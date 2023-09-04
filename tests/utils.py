@@ -53,7 +53,7 @@ def test_query_module_with_types():
 
 
 def test_query_module_with_types_resnet18_cifar100():
-    module = models.get_model("cifar100-resnet18-p1")
+    module = models.get_trained_model("cifar100-resnet18-p1")
 
     arr_batchnorm = utils.query_module_children_with_type(module, nn.BatchNorm2d)
 

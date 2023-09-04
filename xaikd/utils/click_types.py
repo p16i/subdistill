@@ -7,7 +7,7 @@ from xaikd import models, datasets
 
 class Model(click.ParamType):
     def convert(self, value, param, ctx):
-        return models.get_model(value)
+        return models.get_trained_model(value)
 
 
 class DatasetConfiguration(click.ParamType):

@@ -81,7 +81,7 @@ def main(
 
     start_time = datetime.now()
 
-    teacher_model = models.get_model(teacher_model)
+    teacher_model = models.get_trained_model(teacher_model)
     model_name = getattr(teacher_model, "__name")
 
     layer_slug = f"layer-{layer}"
@@ -178,7 +178,7 @@ def main(
         )
 
         distillator = distillators.Layerwise(
-            teacher=models.get_model(model_name),
+            teacher=models.get_trained_model(model_name),
             dataset=dataset,
             train_dataloader=train_loader_with_aug,
             val_dataloader=val_loader,
@@ -218,7 +218,7 @@ def main(
         basis.save(output_dir)
         basis.load(output_dir)
 
-        student = models.get_model(model_name)
+        student = models.get_trained_model(model_name)
 
         logger = WandbLogger(
             project=WANDB_PROJECT,
