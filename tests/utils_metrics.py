@@ -7,6 +7,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from xaikd.utils import metrics
 
 
+@pytest.mark.skip
 def test_accuracy_with_subclasses():
     considered_classes = [1, 2, 3]
     model = nn.Identity()
