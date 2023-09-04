@@ -1,12 +1,34 @@
 import torch
 
+from abc import ABC
+
 from torch import nn
 from torch.nn import functional as F
 
 from xaikd.bases import Basis, AdapterMode
 
 
-class KL(nn.Module):
+class Policy(nn.Module, ABC):
+    transformer_teacher_feats: nn.Module
+    transformer_student_feats: nn.Module
+
+    def criterion(
+        self,
+        transformed_teacher_feats: torch.Tensor,
+        transformed_student_feats: torch.Tensor,
+    ) -> torch.Tensor:
+        raise NotImplementedError
+
+    def forward(self, teacher_feats, student_feats) -> torch.Tensor:
+        transformed_teacher_feats = self.transformer_teacher_feats(teacher_feats)
+        transformed_student_feats = self.transformer_student_feats(student_feats)
+
+        assert transformed_student_feats.shape == transformed_teacher_feats.shape
+
+        return self.criterion(transformed_teacher_feats, transformed_student_feats)
+
+
+class KLPolicy(Policy):
     # refs:
     # - https://github.com/yoshitomo-matsubara/torchdistill/blob/45ba679d4649512b520eb4ef7f97b757abf841ee/torchdistill/losses/mid_level.py#L100
     # - https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/distiller_zoo/KD.py
@@ -15,13 +37,12 @@ class KL(nn.Module):
         super().__init__()
 
         self.T = temperature
+        self.transformer_teacher_feats = nn.Identity()
+        self.transformer_student_feats = nn.Identity()
 
-    def forward(
+    def criterion(
         self, teacher_logits: torch.Tensor, student_logits: torch.Tensor
     ) -> torch.Tensor:
-        assert len(teacher_logits.shape) == 2
-        assert teacher_logits.shape == student_logits.shape
-
         kl = F.kl_div(
             torch.log_softmax(student_logits / self.T, dim=1),
             torch.softmax(teacher_logits / self.T, dim=1),
@@ -33,24 +54,24 @@ class KL(nn.Module):
         return (self.T**2) * kl
 
 
-class BasisL2Loss(nn.Module):
+class OrthogonalBasisPolicy(Policy):
     def __init__(self, basis: Basis, k: int, device: str) -> None:
         super().__init__()
 
         self.basis = basis
-        self.transform_teacher = basis.construct_adapter(
+        self.transformer_teacher_feats = basis.construct_adapter(
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-    def forward(self, teacher_feats: torch.Tensor, student_feats) -> torch.Tensor:
-        transformed_teacher_feats = self.transform_teacher(teacher_feats)
+        self.transformer_student_feats = nn.Identity()
 
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
         b, _, w, h = transformed_teacher_feats.shape
 
-        assert transformed_teacher_feats.shape == student_feats.shape
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
 
         loss_mse = F.mse_loss(
-            student_feats, transformed_teacher_feats, reduction="none"
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
@@ -65,25 +86,25 @@ class BasisL2Loss(nn.Module):
         return loss_mse
 
 
-class LearnableLinL2Loss(nn.Module):
+class LearnableAdapterPolicy(Policy):
     def __init__(self, teacher_dims: int, student_dims: int, device: str) -> None:
         super().__init__()
 
-        self.transform_teacher = nn.Conv2d(
+        self.transformer_teacher_feats = nn.Conv2d(
             in_channels=teacher_dims,
             out_channels=student_dims,
             kernel_size=1,
         ).to(device)
 
-    def forward(self, teacher_feats: torch.Tensor, student_feats) -> torch.Tensor:
-        transformed_teacher_feats = self.transform_teacher(teacher_feats)
+        self.transformer_student_feats = nn.Identity()
 
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
         b, _, w, h = transformed_teacher_feats.shape
 
-        assert transformed_teacher_feats.shape == student_feats.shape
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
 
         loss_mse = F.mse_loss(
-            student_feats, transformed_teacher_feats, reduction="none"
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 

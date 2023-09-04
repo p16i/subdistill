@@ -21,7 +21,7 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 
 
-from xaikd import utils, datasets, bases, models, criteria
+from xaikd import distillation_policies, utils, datasets, bases, models
 from xaikd.utils import metrics
 from xaikd.distillation_info import LayerDistillInfo
 
@@ -83,7 +83,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         # ref: temperature value from
         # https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L78
-        self.last_layer_policy = criteria.KL(temperature=4.0)
+        self.last_layer_policy = distillation_policies.KLPolicy(temperature=4.0)
         self.lr = lr
 
         self.arr_metrics = []

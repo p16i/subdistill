@@ -24,7 +24,7 @@ from xaikd import (
     constants,
 )
 
-from xaikd import criteria
+from xaikd import distillation_policies
 
 
 from pytorch_lightning.loggers import WandbLogger
@@ -157,7 +157,7 @@ def main(
             # todo: refactor to remove this if-else condition
             if basis_name == "learnlin":
                 layer_policies.append(
-                    criteria.LearnableLinL2Loss(
+                    distillation_policies.LearnableAdapterPolicy(
                         teacher_dims=models.get_layer_output_dimensions(
                             teacher_model, layer
                         ),
@@ -171,7 +171,7 @@ def main(
                 basis.load(layer_output_dir)
 
                 layer_policies.append(
-                    criteria.BasisL2Loss(basis, dim, device),
+                    distillation_policies.OrthogonalBasisPolicy(basis, dim, device),
                 )
 
         distillator = distillators.Layerwise(

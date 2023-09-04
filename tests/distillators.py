@@ -17,7 +17,7 @@ from copy import deepcopy
 from pytorch_lightning.loggers import TensorBoardLogger
 
 from xaikd import (
-    criteria,
+    distillation_policies,
     distillators,
     models,
     datasets,
@@ -73,7 +73,7 @@ def test_distillation_not_alter_teacher():
     arr_adapters = []
     for layer in layers:
         arr_adapters.append(
-            criteria.LearnableLinL2Loss(
+            distillation_policies.LearnableAdapterPolicy(
                 teacher_dims=constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer],
                 student_dims=constants.ARCH_LAYER_DIMENSIONS[student_model_name][layer],
                 device=device,
@@ -181,7 +181,7 @@ def test_get_parameters(layers):
     for layer in layers:
         dim = constants.ARCH_LAYER_DIMENSIONS["resnet18compr2"][layer]
         adapters.append(
-            criteria.LearnableLinL2Loss(
+            distillation_policies.LearnableAdapterPolicy(
                 teacher_dims=constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer],
                 student_dims=dim,
                 device=device,
