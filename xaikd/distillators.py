@@ -83,10 +83,21 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
     def configure_optimizers(self):
         parameters = list(self.student.parameters())
+        num_total, num_trainable = utils.count_params_in_list_params(parameters)
+        print(f"[student]  Total Parameters: {num_total} ({num_trainable} trainable)")
 
         # get parameters from student and transformation in criteria
         for layer, criteria in self.policies:
-            parameters.extend(criteria.parameters())
+            print(
+                f"> [layer={layer}] criteria parameters {utils.count_params_in_model(criteria)} (len={len(list(criteria.parameters()))})"
+            )
+            parameters.extend(list(criteria.parameters()))
+
+        num_total, num_trainable = utils.count_params_in_list_params(parameters)
+        # todo(important): this number parameters require testing
+        print(
+            f"[student+projectors]  Total Parameters: {num_total} ({num_trainable} trainable)"
+        )
 
         # previous optimizer
         optimizer = torch.optim.Adam(parameters, lr=self.lr, weight_decay=0.0)
@@ -101,6 +112,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
     def eval_safeguard(self):
         self.teacher.eval()
+        pass
 
     def on_fit_start(self) -> None:
         self.eval_safeguard()
@@ -235,7 +247,7 @@ class Layerwise:
             student_xent_before_training,
         ) = metrics.accuracy(
             student,
-            dl=self.val_dataloader,
+            dataloader=self.val_dataloader,
             num_classes=self.dataset.num_classes,
             device=self.device,
         )
@@ -270,14 +282,11 @@ class Layerwise:
         trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)
 
         # todo: to activate
-        # self.finalize_and_verify_student_with_adapter(
-        #     student=student,
-        #     distill_info=distill_info,
-        #     approximator=approximator,
-        #     adapter=training_wrapper.adapter,
-        #     device=device,
-        #     expected_acc=training_wrapper.arr_metrics["val"][-1],
-        # )
+        self.post_training_sanitycheck(
+            student=student,
+            device=device,
+            expected_acc=training_wrapper.arr_metrics["val"][-1],
+        )
 
         experiment_stat = dict(
             teacher_acc=self.ref_acc,
@@ -318,37 +327,21 @@ class Layerwise:
     #         after_total_params,
     #     )
 
-    def finalize_and_verify_student_with_adapter(
+    def post_training_sanitycheck(
         self,
         student: nn.Module,
-        distill_info: LayerDistillInfo,
-        approximator: nn.Module,
-        adapter: nn.Module,
         expected_acc: float,
         device: str,
     ):
-        assert getattr(student, distill_info.layer_name) == approximator
-
-        setattr(
-            student,
-            distill_info.layer_name,
-            torch.nn.Sequential(
-                approximator,
-                adapter,
-            ),
-        )
-        student.eval()
-        student.to(device)
-
         # sanity check: acc from student to should equal to the one we have evaluated!
         with torch.no_grad():
-            actual_acc, _ = metrics.accuracy_with_subclasses(
+            actual_acc, _ = metrics.accuracy(
                 student,
                 self.val_dataloader,
-                considered_classes=self.dataset.selected_classes,
-                transform_target=self.dataset.transform_target,
+                num_classes=self.dataset.num_classes,
                 device=device,
             )
+
             np.testing.assert_allclose(
                 actual_acc,
                 expected_acc,
