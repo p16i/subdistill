@@ -35,7 +35,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 
 @click.command()
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
-@click.option("--teacher", default="cifar100-resnet18-p1", required=True)
+@click.option("--teacher", default="cifar100-resnet18-wb15", required=True)
 @click.option("--student", default="resnet18compr2", required=True)
 @click.option("--layers", default="layer3,layer4", type=str, required=True)
 @click.option(
