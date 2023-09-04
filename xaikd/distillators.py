@@ -46,7 +46,9 @@ class Teacher(object):
 
 
 class LayerPolicyCollection(nn.ModuleList):
-    def __init__(self, layers: typing.List[str], policies: Iterable[Module]) -> None:
+    def __init__(
+        self, layers: typing.List[str], policies: Iterable[distillation_policies.Policy]
+    ) -> None:
         super().__init__(policies)
 
         assert len(layers) == len(policies)
