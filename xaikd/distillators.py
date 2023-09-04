@@ -296,6 +296,7 @@ class Layerwise:
         expected_acc: float,
         device: str,
     ):
+        student.to(device)
         # sanity check: acc from student to should equal to the one we have evaluated!
         with torch.no_grad():
             actual_acc, _ = metrics.accuracy(
