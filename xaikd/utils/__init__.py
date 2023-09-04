@@ -81,10 +81,16 @@ def subsample_tensors(
 
 
 def count_params_in_model(model: torch.nn.Module) -> typing.Tuple[int, int]:
+    return count_params_in_list_params(model.parameters())
+
+
+def count_params_in_list_params(
+    params: typing.Iterable[torch.nn.Parameter],
+) -> typing.Tuple[int, int]:
     # ref: https://stackoverflow.com/a/49201237
 
     total, trainable = 0, 0
-    for param in model.parameters():
+    for param in params:
         n = param.numel()
         total += n
 
