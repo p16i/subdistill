@@ -46,7 +46,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
 @click.option("--output-dir", type=str, required=True)
-@click.option("--training-size", type=float, default=0.1, required=True)
+@click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--lr", type=float, default=0.0005, required=True)
@@ -113,7 +113,7 @@ def main(
 
     # prepare teacher
     teacher_model = models.get_trained_model(teacher)
-    # convert
+    # use only teacher's logits corresponding to selected classes
     utils.modify_last_layer_for_subclasses(
         teacher_model.fc, selected_classes=dataset.selected_classes
     )
