@@ -63,3 +63,36 @@ class BasisL2Loss(nn.Module):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+class LearnableLinL2Loss(nn.Module):
+    def __init__(self, teacher_dims: int, student_dims: int, device: str) -> None:
+        super().__init__()
+
+        self.transform_teacher = nn.Conv2d(
+            in_channels=teacher_dims,
+            out_channels=student_dims,
+            kernel_size=1,
+        ).to(device)
+
+    def forward(self, teacher_feats: torch.Tensor, student_feats) -> torch.Tensor:
+        transformed_teacher_feats = self.transform_teacher(teacher_feats)
+
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == student_feats.shape
+
+        loss_mse = F.mse_loss(
+            student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
