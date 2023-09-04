@@ -1,6 +1,7 @@
 import copy
 import os
 import typing
+from typing import Any
 
 
 from pytorch_lightning.loggers import TensorBoardLogger, Logger
@@ -28,6 +29,21 @@ from torchmetrics import Accuracy
 from pytorch_lightning.callbacks import LearningRateMonitor
 
 
+class Teacher(object):
+    """The class is a wrapper to a PyTorch model.
+    Its purpose is to prevent Lightning to set the wrapped model to training mode.
+
+    Args:
+        model (nn.Module):
+    """
+
+    def __init__(self, model: torch.nn.Module):
+        self.model = utils.freeze_model(model)
+
+    def __call__(self, *args: Any) -> torch.Tensor:
+        return self.model(*args)
+
+
 class LayerwiseKDModelWrapper(pl.LightningModule):
     def __init__(
         self,
@@ -42,7 +58,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     ):
         super().__init__()
 
-        self.teacher = utils.freeze_model(teacher)
+        # We wrap teacher to a non-PyTorch Module class
+        # in order to prevents Lightning to set the teacher to training mode.
+        self.teacher = Teacher(teacher)
+
         self.student = student
         self.policies = layerwise_policies
 
@@ -51,15 +70,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         # ref: temperature value from
         # https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L78
         self.last_layer_policy = criteria.KL(temperature=4.0)
-
-        # sanity check
-        for module in [
-            self.teacher,
-        ]:
-            _, trainable_param = utils.count_params_in_model(module)
-            assert trainable_param == 0
-            assert not module.training
-
         self.lr = lr
 
         self.arr_metrics = []
@@ -72,8 +82,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} )"
         )
 
-        self.eval_safeguard()
-
         self.metric = dict(
             train=Accuracy(task="multiclass", num_classes=num_classes),
             val=Accuracy(task="multiclass", num_classes=num_classes),
@@ -81,25 +89,23 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         self.arr_metrics = dict(train=[], val=[])
 
-    def configure_optimizers(self):
-        parameters = list(self.student.parameters())
-        num_total, num_trainable = utils.count_params_in_list_params(parameters)
-        print(f"[student]  Total Parameters: {num_total} ({num_trainable} trainable)")
-
+    def _get_parameters(self) -> typing.List[nn.Parameter]:
         # get parameters from student and transformation in criteria
+        parameters = list(self.student.parameters())
+
+        print("Critierial parameters: ")
         for layer, criteria in self.policies:
-            print(
-                f"> [layer={layer}] criteria parameters {utils.count_params_in_model(criteria)} (len={len(list(criteria.parameters()))})"
-            )
-            parameters.extend(list(criteria.parameters()))
+            _parameters = list(criteria.parameters())
+            num_total, num_trainable = utils.count_params_in_list_params(_parameters)
+            print(f"> [layer={layer}] total={num_total} (trainable={num_trainable})")
+            parameters.extend(_parameters)
 
-        num_total, num_trainable = utils.count_params_in_list_params(parameters)
-        # todo(important): this number parameters require testing
-        print(
-            f"[student+projectors]  Total Parameters: {num_total} ({num_trainable} trainable)"
-        )
+        return parameters
 
-        # previous optimizer
+    def configure_optimizers(self):
+        parameters = self._get_parameters()
+
+        # pat's optimizer (used in S11, 12)
         optimizer = torch.optim.Adam(parameters, lr=self.lr, weight_decay=0.0)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
         return [optimizer], [scheduler]
@@ -110,31 +116,15 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         # )
         # return optimizer
 
-    def eval_safeguard(self):
-        self.teacher.eval()
-        pass
-
-    def on_fit_start(self) -> None:
-        self.eval_safeguard()
-
-    def on_train_batch_start(self, batch, batch_idx) -> typing.Union[int, None]:
-        status = super().on_train_batch_start(batch, batch_idx)
-
-        self.eval_safeguard()
-
-        return status
-
     def _compute_loss(self, batch, prefix, batch_idx):
         x, y = batch
-
-        assert not self.teacher.training
 
         with torch.no_grad():
             (
                 teacher_logits,
                 teacher_arr_intermediate_feats,
             ) = utils.interceptor.forward_and_intercept_intermediate_layers(
-                self.teacher,
+                self.teacher.model,
                 x,
                 layers=self.layer_names,
             )
@@ -295,37 +285,6 @@ class Layerwise:
         )
 
         return student, experiment_stat
-
-    # def setup_student_with_approximator(
-    #     self,
-    #     student: nn.Module,
-    #     approximator: nn.Module,
-    #     distill_info: LayerDistillInfo,
-    # ):
-    #     utils.freeze_model(student)
-
-    #     approx_total_params, approx_learnable_params = utils.count_params_in_model(
-    #         approximator
-    #     )
-
-    #     replaced_module_total_params, _ = utils.count_params_in_model(
-    #         getattr(student, distill_info.layer_name)
-    #     )
-
-    #     before_total_params, _ = utils.count_params_in_model(student)
-
-    #     # this is the actual logic of the function the rest simply for assertions!
-    #     setattr(student, distill_info.layer_name, approximator)
-
-    #     after_total_params, after_learnable_params = utils.count_params_in_model(
-    #         student
-    #     )
-
-    #     np.testing.assert_equal(after_learnable_params, approx_learnable_params)
-    #     np.testing.assert_equal(
-    #         before_total_params - replaced_module_total_params + approx_total_params,
-    #         after_total_params,
-    #     )
 
     def post_training_sanitycheck(
         self,
