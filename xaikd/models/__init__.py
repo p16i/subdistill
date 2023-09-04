@@ -200,7 +200,6 @@ def _generate_resnet18_compressed(
     arr_dims = inplanes * np.power(2, np.arange(4))
 
     for i, (dims, num_blocks) in enumerate(zip(arr_dims, arr_num_blocks)):
-        print(f"[i={i}]: inplanes={dims}")
         layer = resnet18._make_layer(
             torchvision.models.resnet.BasicBlock,
             dims,
