@@ -70,19 +70,19 @@ def test_distillation_not_alter_teacher():
 
     layer_policies = []
 
+    arr_adapters = []
     for layer in layers:
-        layer_policies.append(
-            (
-                layer,
-                criteria.LearnableLinL2Loss(
-                    teacher_dims=constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer],
-                    student_dims=constants.ARCH_LAYER_DIMENSIONS[student_model_name][
-                        layer
-                    ],
-                    device=device,
-                ),
+        arr_adapters.append(
+            criteria.LearnableLinL2Loss(
+                teacher_dims=constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer],
+                student_dims=constants.ARCH_LAYER_DIMENSIONS[student_model_name][layer],
+                device=device,
             )
         )
+
+    layer_policies = distillators.LayerPolicyCollection(
+        layers=layers, policies=arr_adapters
+    )
 
     teacher_model_before = deepcopy(teacher_model)
     before_batch_norm_stats = get_batchnorm_statistics_from_model(teacher_model_before)
@@ -177,24 +177,25 @@ def test_get_parameters(layers):
         "resnet18compr2", num_classes=dataset.num_classes
     )
 
-    arr_criteria = []
+    adapters = []
     for layer in layers:
         dim = constants.ARCH_LAYER_DIMENSIONS["resnet18compr2"][layer]
-        arr_criteria.append(
-            (
-                layer,
-                criteria.LearnableLinL2Loss(
-                    teacher_dims=constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer],
-                    student_dims=dim,
-                    device=device,
-                ),
+        adapters.append(
+            criteria.LearnableLinL2Loss(
+                teacher_dims=constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer],
+                student_dims=dim,
+                device=device,
             )
         )
+
+    layer_policy_colleciton = distillators.LayerPolicyCollection(
+        layers=layers, policies=adapters
+    )
 
     model_training_wrapper = distillators.LayerwiseKDModelWrapper(
         teacher=teacher_model,
         student=student,
-        layerwise_policies=arr_criteria,
+        layerwise_policies=layer_policy_colleciton,
         lambda_kd=1,
         lambda_layer=1,
         lambda_task=1,
@@ -207,8 +208,8 @@ def test_get_parameters(layers):
     )
 
     expected_params = list(student.parameters())
-    for layer, c in arr_criteria:
-        expected_params.extend(list(c.parameters()))
+    for adapter in adapters:
+        expected_params.extend(list(adapter.parameters()))
 
     expected_num_params = utils.count_params_in_list_params(expected_params)
 

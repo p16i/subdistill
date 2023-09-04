@@ -1,7 +1,7 @@
 import copy
 import os
 import typing
-from typing import Any
+from typing import Any, Iterable, Optional
 
 
 from pytorch_lightning.loggers import TensorBoardLogger, Logger
@@ -14,6 +14,7 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torch.nn.modules.module import Module
 from torch.utils.data import DataLoader
 
 
@@ -44,12 +45,25 @@ class Teacher(object):
         return self.model(*args)
 
 
+class LayerPolicyCollection(nn.ModuleList):
+    def __init__(self, layers: typing.List[str], policies: Iterable[Module]) -> None:
+        super().__init__(policies)
+
+        assert len(layers) == len(policies)
+
+        self.layers = layers
+        self.policies = policies
+
+    def forward(self, x):
+        pass
+
+
 class LayerwiseKDModelWrapper(pl.LightningModule):
     def __init__(
         self,
         teacher: nn.Module,
         student: nn.Module,
-        layerwise_policies: typing.List[typing.Tuple[str, nn.Module]],
+        layerwise_policies: LayerPolicyCollection,
         lr: float,
         lambda_layer: float,
         lambda_task: float,
@@ -63,9 +77,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.teacher = Teacher(teacher)
 
         self.student = student
-        self.policies = layerwise_policies
+        self.layer_policy_collection = layerwise_policies
 
-        self.layer_names = list(map(lambda t: t[0], layerwise_policies))
+        # self.layer_names = list(map(lambda t: t[0], layerwise_policies))
 
         # ref: temperature value from
         # https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L78
@@ -93,12 +107,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         # get parameters from student and transformation in criteria
         parameters = list(self.student.parameters())
 
-        print("Critierial parameters: ")
-        for layer, criteria in self.policies:
-            _parameters = list(criteria.parameters())
-            num_total, num_trainable = utils.count_params_in_list_params(_parameters)
-            print(f"> [layer={layer}] total={num_total} (trainable={num_trainable})")
-            parameters.extend(_parameters)
+        parameters = parameters + list(self.layer_policy_collection.parameters())
 
         return parameters
 
@@ -126,7 +135,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             ) = utils.interceptor.forward_and_intercept_intermediate_layers(
                 self.teacher.model,
                 x,
-                layers=self.layer_names,
+                layers=self.layer_policy_collection.layers,
             )
 
         (
@@ -135,7 +144,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         ) = utils.interceptor.forward_and_intercept_intermediate_layers(
             self.student,
             x,
-            layers=self.layer_names,
+            layers=self.layer_policy_collection.layers,
         )
 
         loss_task = self.lambda_task * F.cross_entropy(student_logits, y)
@@ -144,7 +153,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         )
 
         loss_layer = 0
-        for lix, (layer, policy) in enumerate(self.policies):
+        for lix, policy in enumerate(self.layer_policy_collection.policies):
+            print("policy", policy)
             loss_layer += self.lambda_layer * policy(
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
@@ -218,7 +228,7 @@ class Layerwise:
     def distill(
         self,
         student: nn.Module,
-        layer_policies: typing.List[typing.Tuple[str, nn.Module]],
+        layer_policies: LayerPolicyCollection,
         epochs: int,
         device: str,
         lr: float,
