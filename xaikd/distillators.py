@@ -154,7 +154,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         loss_layer = 0
         for lix, policy in enumerate(self.layer_policy_collection.policies):
-            print("policy", policy)
             loss_layer += self.lambda_layer * policy(
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
