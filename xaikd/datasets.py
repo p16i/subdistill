@@ -472,22 +472,35 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         targets = np.array(ds.targets)[selected_data_indices].tolist()
         assert np.isin(targets, self.selected_classes).all()
 
-        new_targets = []
-        for target in targets:
-            new_targets.append(self._target_mapping[target])
+        new_targets = self._transform_target(targets)
 
         ds.targets = new_targets
 
         return ds
 
-    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
-        raise
+    def _transform_target(self, targets: typing.List[int]) -> typing.List[int]:
+        """
+        The function transforms the `original` target (as in the original dataset)
+        to a new zero-indexing target.
+
+        Suppose we consider `cifar100-people` whose associated targets are {2, 11, 35, 46, 98}.
+        Then, these targets are transformed to {0, 1, 2, 3, 4}.
+
+
+        Args:
+            targets (typing.List[int]): _description_
+
+        Returns:
+            typing.List[int]: _description_
+        """
         new_target = []
 
-        for t in target:
-            new_target.append(self._target_mapping[int(t.detach().cpu())])
+        for target in targets:
+            new_target.append(self._target_mapping[target])
 
-        return torch.Tensor(new_target).long().to(target.device)
+        return new_target
+
+        # return torch.Tensor(new_target).long().to(target.device)
 
     # def loader(
     #     self,
