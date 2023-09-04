@@ -54,7 +54,7 @@ class LogitModifier(ABC):
 
 
 class OneClassEvidence(LogitModifier):
-    def __init__(self, num_classes) -> None:
+    def __init__(self, num_classes: int) -> None:
         self.num_classes = num_classes
 
     def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
@@ -83,14 +83,12 @@ class OneClassLogSumExpEvidence(LogitModifier):
 
 
 class SelectedClassesEvidence(LogitModifier):
-    def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
-        self.dataset = dataset
+    def __init__(self, selected_classes=typing.List[int]) -> None:
+        self.selected_classes = selected_classes
 
     def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         output = torch.zeros_like(logits)
-        output[:, self.dataset.selected_classes] = logits[
-            :, self.dataset.selected_classes
-        ]
+        output[:, self.selected_classes] = logits[:, self.selected_classes]
 
         return output
 
