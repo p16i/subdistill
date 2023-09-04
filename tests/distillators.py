@@ -119,7 +119,7 @@ def test_distillation_not_alter_teacher():
             num_classes=dataset.num_classes,
             device=device,
         )
-        expected_acc = results["arr_metrics"]["val"][-1]
+        expected_acc = results["arr_metrics"]["val_acc"][-1]
         np.testing.assert_allclose(actual_acc, expected_acc)
 
         # check teacher parameters not get updated!

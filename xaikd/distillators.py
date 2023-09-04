@@ -66,8 +66,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.student = student
         self.layer_policy_collection = layerwise_policies
 
-        # self.layer_names = list(map(lambda t: t[0], layerwise_policies))
-
         # ref: temperature value from
         # https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L78
         self.last_layer_policy = distillation_policies.KLPolicy(temperature=4.0)
@@ -84,11 +82,15 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         )
 
         self.metric = dict(
-            train=Accuracy(task="multiclass", num_classes=num_classes),
-            val=Accuracy(task="multiclass", num_classes=num_classes),
+            train_acc=Accuracy(task="multiclass", num_classes=num_classes),
+            val_acc=Accuracy(task="multiclass", num_classes=num_classes),
+            train_agreement=Accuracy(task="multiclass", num_classes=num_classes),
+            val_agreement=Accuracy(task="multiclass", num_classes=num_classes),
         )
 
-        self.arr_metrics = dict(train=[], val=[])
+        self.arr_metrics = dict(
+            train_acc=[], val_acc=[], train_agreement=[], val_agreement=[]
+        )
 
     def _get_parameters(self) -> typing.List[nn.Parameter]:
         # get parameters from student and transformation in criteria
@@ -152,9 +154,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.log(f"{prefix}_loss_layer", loss_layer, on_epoch=True)
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
-        self.metric[prefix].update(
-            torch.argmax(student_logits, dim=1).detach().cpu(), y.cpu()
-        )
+        teacher_y_pred = torch.argmax(teacher_logits, dim=1).detach().cpu()
+        student_y_pred = torch.argmax(student_logits, dim=1).detach().cpu()
+
+        self.metric[f"{prefix}_acc"].update(student_y_pred, y.cpu())
+        self.metric[f"{prefix}_agreement"].update(student_y_pred, teacher_y_pred.cpu())
 
         return loss
 
@@ -165,11 +169,15 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         return self._compute_loss(val_batch, "val", batch_idx)
 
     def _compute_metric(self, prefix):
-        metric = self.metric[prefix]
-        val = metric.compute()
-        metric.reset()
-        self.log(f"{prefix}_acc", val)
-        self.arr_metrics[prefix].append(float(val))
+        for suffix in ["acc", "agreement"]:
+            slug = f"{prefix}_{suffix}"
+
+            metric = self.metric[slug]
+            value = metric.compute()
+            metric.reset()
+
+            self.log(slug, value)
+            self.arr_metrics[slug].append(float(value))
 
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")
@@ -271,7 +279,7 @@ class Layerwise:
         self.post_training_sanitycheck(
             student=student,
             device=device,
-            expected_acc=training_wrapper.arr_metrics["val"][-1],
+            expected_acc=training_wrapper.arr_metrics["val_acc"][-1],
         )
 
         experiment_stat = dict(

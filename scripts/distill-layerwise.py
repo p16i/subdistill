@@ -213,9 +213,12 @@ def main(
 
         # todo: save student to artifacts!
 
-        last_epoch_val_acc = results["arr_metrics"]["val"][-1]
+        last_epoch_val_acc = results["arr_metrics"]["val_acc"][-1]
+        last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
 
-        print(f"Result: Student with  `{basis_name}` acc={last_epoch_val_acc:.4f}")
+        print(
+            f"Result: [distill with:  `{basis_name}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
+        )
 
         for k, v in results.items():
             logger.experiment.summary[k] = v
