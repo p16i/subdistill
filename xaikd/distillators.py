@@ -275,7 +275,6 @@ class Layerwise:
 
         trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)
 
-        # todo: to activate
         self.post_training_sanitycheck(
             student=student,
             device=device,
