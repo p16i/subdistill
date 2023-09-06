@@ -133,3 +133,36 @@ class LearnableAdapterPolicy(Policy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+class LearnableAdapterStudentPolicy(Policy):
+    def __init__(self, teacher_dims: int, student_dims: int, device: str) -> None:
+        super().__init__()
+
+        self.transformer_student_feats = nn.Conv2d(
+            out_channels=teacher_dims,
+            in_channels=student_dims,
+            kernel_size=1,
+        ).to(device)
+
+        self.transformer_teacher_feats = nn.Identity()
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse

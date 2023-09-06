@@ -143,7 +143,9 @@ def main(
             basis.save(layer_output_dir)
 
     # do distillation
-    for basis_name in tqdm(basis_names + ["learnlin"], desc="Distillation"):
+    for basis_name in tqdm(
+        basis_names + ["learnlin", "learnlinstudent"], desc="Distillation"
+    ):
         pl.seed_everything(seed)
 
         student_model = models.get_untrained_model(
@@ -158,6 +160,16 @@ def main(
             if basis_name == "learnlin":
                 layer_policies.append(
                     distillation_policies.LearnableAdapterPolicy(
+                        teacher_dims=models.get_layer_output_dimensions(
+                            teacher_model, layer
+                        ),
+                        student_dims=dim,
+                        device=device,
+                    ),
+                )
+            elif basis_name == "learnlinstudent":
+                layer_policies.append(
+                    distillation_policies.LearnableAdapterStudentPolicy(
                         teacher_dims=models.get_layer_output_dimensions(
                             teacher_model, layer
                         ),
