@@ -191,7 +191,9 @@ class VIDPolicy(Policy):
                 stride=stride,
             )
 
-        # ref: https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L223
+        # refs:
+        # - https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L223
+        # - https://github.com/yoshitomo-matsubara/torchdistill/blob/e615746172f653ebb59a29b396effba5aa766942/configs/sample/ilsvrc2012/vid/resnet18_from_resnet50.yaml#L123
         num_input_channels = student_dims
         num_mid_channel = num_target_channels = teacher_dims
 
