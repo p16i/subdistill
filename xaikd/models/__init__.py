@@ -231,3 +231,13 @@ def _generate_resnet18_compressed(
 @register_model("resnet18compr2")
 def _resnet18c2(num_classes: int):
     return _generate_resnet18_compressed(compression_ratio=2, num_classes=num_classes)
+
+
+@register_model("resnet18compr4")
+def _resnet18c4(num_classes: int):
+    return _generate_resnet18_compressed(compression_ratio=4, num_classes=num_classes)
+
+
+@register_model("resnet18compr8")
+def _resnet18c8(num_classes: int):
+    return _generate_resnet18_compressed(compression_ratio=8, num_classes=num_classes)
