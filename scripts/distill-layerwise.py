@@ -144,7 +144,13 @@ def main(
 
     # do distillation
     for basis_name in tqdm(
-        basis_names + ["learnlin", "learnlinstudent"], desc="Distillation"
+        basis_names
+        + [
+            "vid",
+            "learnlinstudent",
+            "learnlin",
+        ],
+        desc="Distillation",
     ):
         pl.seed_everything(seed)
 
@@ -154,37 +160,40 @@ def main(
 
         layer_policies = []
         for layer in layers:
-            dim = constants.ARCH_LAYER_DIMENSIONS[student][layer]
+            student_layer_dims = constants.ARCH_LAYER_DIMENSIONS[student][layer]
+            teacher_layer_dims = models.get_layer_output_dimensions(
+                teacher_model, layer
+            )
 
             # todo: refactor to remove this if-else condition
             if basis_name == "learnlin":
-                layer_policies.append(
-                    distillation_policies.LearnableAdapterPolicy(
-                        teacher_dims=models.get_layer_output_dimensions(
-                            teacher_model, layer
-                        ),
-                        student_dims=dim,
-                        device=device,
-                    ),
+                policy = distillation_policies.LearnableAdapterPolicy(
+                    teacher_dims=teacher_layer_dims,
+                    student_dims=student_layer_dims,
+                    device=device,
                 )
             elif basis_name == "learnlinstudent":
-                layer_policies.append(
-                    distillation_policies.LearnableAdapterStudentPolicy(
-                        teacher_dims=models.get_layer_output_dimensions(
-                            teacher_model, layer
-                        ),
-                        student_dims=dim,
-                        device=device,
-                    ),
+                policy = distillation_policies.LearnableAdapterStudentPolicy(
+                    teacher_dims=teacher_layer_dims,
+                    student_dims=student_layer_dims,
+                    device=device,
+                )
+            elif basis_name == "vid":
+                policy = distillation_policies.VIDPolicy(
+                    teacher_dims=teacher_layer_dims,
+                    student_dims=student_layer_dims,
+                    device=device,
                 )
             else:
                 basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
                 layer_output_dir = output_dir / f"layer-{layer}"
                 basis.load(layer_output_dir)
 
-                layer_policies.append(
-                    distillation_policies.OrthogonalBasisPolicy(basis, dim, device),
+                policy = distillation_policies.OrthogonalBasisPolicy(
+                    basis, student_layer_dims, device
                 )
+
+            layer_policies.append(policy)
 
         distillator = distillators.Layerwise(
             teacher=teacher_model,
