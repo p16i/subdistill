@@ -10,6 +10,8 @@ from torch.nn import functional as F
 
 from xaikd.bases import Basis, AdapterMode
 
+LAYER_POLICY = dict()
+
 
 class Policy(nn.Module, ABC):
     transformer_teacher_feats: nn.Module
@@ -29,6 +31,22 @@ class Policy(nn.Module, ABC):
         assert transformed_student_feats.shape == transformed_teacher_feats.shape
 
         return self.criterion(transformed_teacher_feats, transformed_student_feats)
+
+
+def register_layer_policy(name):
+    """Decorator to register a layer policy"""
+
+    def wrapped(fn):
+        """Wrapped function to register a layer policy provider with`name`"""
+        LAYER_POLICY[name] = fn
+
+        return fn
+
+    return wrapped
+
+
+def get_layer_policy(name: str, **kwargs) -> Policy:
+    return LAYER_POLICY[name](**kwargs)
 
 
 class LayerPolicyCollection(nn.ModuleList):
@@ -72,9 +90,14 @@ class KLPolicy(Policy):
         return (self.T**2) * kl
 
 
+@register_layer_policy("basis")
 class OrthogonalBasisPolicy(Policy):
-    def __init__(self, basis: Basis, k: int, device: str) -> None:
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
         super().__init__()
+
+        k = student_dims
 
         self.basis = basis
         self.transformer_teacher_feats = basis.construct_adapter(
@@ -104,7 +127,8 @@ class OrthogonalBasisPolicy(Policy):
         return loss_mse
 
 
-class LearnableAdapterPolicy(Policy):
+@register_layer_policy("linteacher")
+class LearnableAdapterTeacherPolicy(Policy):
     def __init__(self, teacher_dims: int, student_dims: int, device: str) -> None:
         super().__init__()
 
@@ -137,6 +161,7 @@ class LearnableAdapterPolicy(Policy):
         return loss_mse
 
 
+@register_layer_policy("linstudent")
 class LearnableAdapterStudentPolicy(Policy):
     def __init__(self, teacher_dims: int, student_dims: int, device: str) -> None:
         super().__init__()
@@ -170,6 +195,7 @@ class LearnableAdapterStudentPolicy(Policy):
         return loss_mse
 
 
+@register_layer_policy("vid")
 class VIDPolicy(Policy):
     """Variational Information Distillation for Knowledge Transfer (CVPR 2019),
     Adapted from https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/distiller_zoo/VID.py#L9C1-L54C20
@@ -219,11 +245,15 @@ class VIDPolicy(Policy):
         target = transformed_teacher_feats
         pred_mean = transformed_student_feats
 
+        # Paragraph after eq. 5
         pred_var = torch.log(1.0 + torch.exp(self.log_scale)) + self.eps
         pred_var = pred_var.view(1, -1, 1, 1)
+
+        # eq. 6
         neg_log_prob = 0.5 * (
             (pred_mean - target) ** 2 / pred_var + torch.log(pred_var)
         )
+
         loss = torch.mean(neg_log_prob)
 
         return loss

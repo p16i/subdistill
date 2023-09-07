@@ -39,9 +39,9 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 @click.option("--student", default="resnet18compr2", required=True)
 @click.option("--layers", default="layer3,layer4", type=str, required=True)
 @click.option(
-    "--basis-names",
+    "--layer-policies",
     type=str,
-    default="pca,prca-recon,prca-sortabs",
+    default="basis:pca,basis:prca-sortabs,basis:random,vid,linstudent,linteacher",
     required=True,
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
@@ -59,7 +59,7 @@ def main(
     teacher,
     student,
     dataset,
-    basis_names,
+    layer_policies,
     output_dir,
     seed,
     epochs,
@@ -80,7 +80,7 @@ def main(
     start_time = datetime.now()
 
     layers = layers.split(",")
-    basis_names = basis_names.split(",")
+    layer_policies = layer_policies.split(",")
 
     output_dir = Path(output_dir) / f"{dataset}-tz{training_size}-seed{seed}" / teacher
 
@@ -136,6 +136,15 @@ def main(
         mean = np.mean(arr_act, axis=0)
         np.save(layer_output_dir / "act_mean", mean)
 
+        basis_names = list(
+            map(
+                lambda p: p.split(":")[1],
+                filter(lambda p: "basis" in p, layer_policies),
+            )
+        )
+
+        print(f"we learn {len(basis_names)} bases: {basis_names}")
+
         for basis_name in basis_names:
             click.echo(f"[layer={layer}] fitting basis={basis_name}--{basis_mode}")
             basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
@@ -143,16 +152,12 @@ def main(
             basis.save(layer_output_dir)
 
     # do distillation
-    for basis_name in tqdm(
-        basis_names
-        + [
-            "vid",
-            "learnlinstudent",
-            "learnlin",
-        ],
-        desc="Distillation",
-    ):
+    for policy_name_with_args in tqdm(layer_policies, desc="Distillation"):
         pl.seed_everything(seed)
+
+        policy_slugs = policy_name_with_args.split(":")
+
+        policy_name = policy_slugs[0]
 
         student_model = models.get_untrained_model(
             student, num_classes=dataset.num_classes
@@ -165,33 +170,21 @@ def main(
                 teacher_model, layer
             )
 
-            # todo: refactor to remove this if-else condition
-            if basis_name == "learnlin":
-                policy = distillation_policies.LearnableAdapterPolicy(
-                    teacher_dims=teacher_layer_dims,
-                    student_dims=student_layer_dims,
-                    device=device,
-                )
-            elif basis_name == "learnlinstudent":
-                policy = distillation_policies.LearnableAdapterStudentPolicy(
-                    teacher_dims=teacher_layer_dims,
-                    student_dims=student_layer_dims,
-                    device=device,
-                )
-            elif basis_name == "vid":
-                policy = distillation_policies.VIDPolicy(
-                    teacher_dims=teacher_layer_dims,
-                    student_dims=student_layer_dims,
-                    device=device,
-                )
-            else:
+            kwargs = dict(
+                teacher_dims=teacher_layer_dims,
+                student_dims=student_layer_dims,
+                device=device,
+            )
+
+            if policy_name == "basis":
+                basis_name = policy_slugs[-1]
                 basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
                 layer_output_dir = output_dir / f"layer-{layer}"
                 basis.load(layer_output_dir)
 
-                policy = distillation_policies.OrthogonalBasisPolicy(
-                    basis, student_layer_dims, device
-                )
+                kwargs["basis"] = basis
+
+            policy = distillation_policies.get_layer_policy(policy_name, **kwargs)
 
             layer_policies.append(policy)
 
@@ -204,15 +197,23 @@ def main(
             weight_decay=0.0,
         )
 
-        log_dir = output_dir / "distilled-models" / student
+        student_slug = "--".join(
+            [
+                student,
+                "-".join(policy_slugs),
+                f"lmd_task{lambda_task}-lmd_kd{lambda_kd}-lmd_layer{lambda_layer}",
+            ]
+        )
+
+        log_dir = output_dir / "distilled-models" / student_slug
         logger = WandbLogger(
             project=WANDB_PROJECT,
             group=arguments["output_dir"],
             job_type="distillation",
-            name=f"{student}-{basis_name}-seed{seed}",
+            name=f"{student}-{policy_name_with_args}-seed{seed}",
             config={
                 **arguments,
-                "basis_name": basis_name,
+                "policy": policy_name_with_args,
                 "output_dir": output_dir,
             },
         )
@@ -238,7 +239,7 @@ def main(
         last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
 
         print(
-            f"Result: [distill with:  `{basis_name}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
+            f"Result: [distill with:  `{policy_name}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
         )
 
         for k, v in results.items():
