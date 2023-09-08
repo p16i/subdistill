@@ -39,6 +39,12 @@ ARCH_LAYER_DIMENSIONS = dict(
             "layer3": 256 // 8,
             "layer4": 512 // 8,
         },
+        resnet18customized={
+            "layer1": 32,
+            "layer2": 32,
+            "layer3": 48,
+            "layer4": 64,
+        },
         resnet50={
             "layer1": 256,
             "layer2": 512,
