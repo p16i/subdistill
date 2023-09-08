@@ -25,6 +25,7 @@ from xaikd import (
 )
 
 from xaikd import distillation_policies
+from xaikd.utils import click_types
 
 
 from pytorch_lightning.loggers import WandbLogger
@@ -50,9 +51,9 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--lr", type=float, default=0.0005, required=True)
-@click.option("--lambda-layer", type=float, default=1.0)
 @click.option("--lambda-kd", type=float, default=1.0)
 @click.option("--lambda-task", type=float, default=0.0)
+@click.option("--lambda-layer", type=click_types.SmartFloat(), required=True)
 @click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
 @click.option("--skip-baselines", type=bool, default=False, is_flag=True)
 def main(
@@ -108,7 +109,10 @@ def main(
     ds_train_with_aug.dataset.transform = dataset.input_training_transformation
 
     train_loader_with_aug = datasets.build_dataloader(
-        ds_train_with_aug, shuffle=True, batch_size=int(np.ceil(64 * training_size))
+        ds_train_with_aug,
+        shuffle=True,
+        # why do we scale batch_size like this?
+        batch_size=int(np.ceil(64 * training_size)),
     )
 
     # prepare teacher
