@@ -201,6 +201,7 @@ class VIDPolicy(Policy):
     Adapted from https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/distiller_zoo/VID.py#L9C1-L54C20
     """
 
+    # See Supplement  (P4330), the line before the last paragraph.
     init_pred_var = 5.0
     eps = 1e-5
 
