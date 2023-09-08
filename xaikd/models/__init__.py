@@ -244,7 +244,7 @@ def _resnet18c8(num_classes: int):
 
 
 @register_model("resnet18customized")
-def _generate_resnet18_compressed(num_classes: int) -> nn.Module:
+def _generate_resnet18_customized(num_classes: int) -> nn.Module:
     # todo: hard-corded everything for now.
     resnet18 = torchvision.models.resnet.resnet18()
 
