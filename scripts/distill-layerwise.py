@@ -34,6 +34,9 @@ from pytorch_lightning.loggers import WandbLogger
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 
 
+BATCHSIZE = 128
+
+
 @click.command()
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
 @click.option("--teacher", default="cifar100-resnet18-wb15", required=True)
@@ -48,7 +51,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 @click.option("--basis-mode", type=str, default="centered", required=True)
 @click.option("--output-dir", type=str, required=True)
 @click.option("--training-size", type=float, default=1.0, required=True)
-@click.option("--epochs", type=int, default=100, required=True)
+@click.option("--epochs", type=int, default=200, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--lambda-kd", type=click_types.SmartFloat(), default=1.0)
@@ -112,7 +115,7 @@ def main(
         ds_train_with_aug,
         shuffle=True,
         # why do we scale batch_size like this?
-        batch_size=int(np.ceil(64 * training_size)),
+        batch_size=int(np.ceil(BATCHSIZE * training_size)),
     )
 
     # prepare teacher
