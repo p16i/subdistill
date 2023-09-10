@@ -25,7 +25,7 @@ from xaikd import distillation_policies, utils, datasets, bases, models
 from xaikd.utils import metrics
 from xaikd.distillation_info import LayerDistillInfo
 
-from torchmetrics import Accuracy
+from torchmetrics import Accuracy, MeanMetric
 
 from pytorch_lightning.callbacks import LearningRateMonitor
 
@@ -84,8 +84,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.metric = dict(
             train_acc=Accuracy(task="multiclass", num_classes=num_classes),
             val_acc=Accuracy(task="multiclass", num_classes=num_classes),
-            train_agreement=Accuracy(task="multiclass", num_classes=num_classes),
-            val_agreement=Accuracy(task="multiclass", num_classes=num_classes),
+            train_agreement=MeanMetric(),
+            val_agreement=MeanMetric(),
         )
 
         self.arr_metrics = dict(
@@ -162,7 +162,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         student_y_pred = torch.argmax(student_logits, dim=1).detach().cpu()
 
         self.metric[f"{prefix}_acc"].update(student_y_pred, y.cpu())
-        self.metric[f"{prefix}_agreement"].update(student_y_pred, teacher_y_pred.cpu())
+        self.metric[f"{prefix}_agreement"].update(student_y_pred == teacher_y_pred)
 
         return loss
 
