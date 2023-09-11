@@ -190,8 +190,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             value = metric.compute()
             metric.reset()
 
-            print(f"[{prefix}] {suffix}={value:.4f}")
-
             self.log(slug, value)
             self.arr_metrics[slug].append(float(value))
 
