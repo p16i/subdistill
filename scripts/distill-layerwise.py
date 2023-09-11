@@ -254,7 +254,7 @@ def main(
 
         # log prediction
         with torch.no_grad():
-            teacher.to(device)
+            teacher_model.to(device)
             trained_student.to(device)
 
             rows = []
