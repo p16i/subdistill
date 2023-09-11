@@ -220,12 +220,13 @@ class Layerwise:
 
         self.device = device
 
-        self.ref_acc, self.ref_xent = metrics.accuracy(
-            self.teacher.to(device),
-            val_dataloader,
-            num_classes=dataset.num_classes,
-            device=self.device,
-        )
+        with torch.no_grad():
+            self.ref_acc, self.ref_xent = metrics.accuracy(
+                self.teacher.to(device),
+                val_dataloader,
+                num_classes=dataset.num_classes,
+                device=self.device,
+            )
 
         self.weight_decay = weight_decay
 
@@ -247,15 +248,16 @@ class Layerwise:
     ) -> typing.Tuple[nn.Module, typing.Dict]:
         student.to(device)
 
-        (
-            student_acc_before_training,
-            student_xent_before_training,
-        ) = metrics.accuracy(
-            student,
-            dataloader=self.val_dataloader,
-            num_classes=self.dataset.num_classes,
-            device=self.device,
-        )
+        with torch.no_grad():
+            (
+                student_acc_before_training,
+                student_xent_before_training,
+            ) = metrics.accuracy(
+                student,
+                dataloader=self.val_dataloader,
+                num_classes=self.dataset.num_classes,
+                device=self.device,
+            )
 
         print(
             f"[before training] metrics: student (teacher) | acc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
