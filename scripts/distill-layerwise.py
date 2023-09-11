@@ -166,21 +166,13 @@ def main(
 
         policy_name = policy_slugs[0]
 
-        student_model = models.get_trained_model(teacher)
-        utils.modify_last_layer_for_subclasses(
-            student_model.fc, dataset.selected_classes
+        student_model = models.get_untrained_model(
+            student, num_classes=dataset.num_classes
         )
-
-        # student_model = models.get_untrained_model(
-        #     student, num_classes=dataset.num_classes
-        # )
 
         layer_policies = []
         for layer in layers:
-            # student_layer_dims = constants.ARCH_LAYER_DIMENSIONS[student][layer]
-            student_layer_dims = models.get_layer_output_dimensions(
-                teacher_model, layer
-            )
+            student_layer_dims = constants.ARCH_LAYER_DIMENSIONS[student][layer]
             teacher_layer_dims = models.get_layer_output_dimensions(
                 teacher_model, layer
             )
