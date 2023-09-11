@@ -387,9 +387,11 @@ class ImageNetButterfly(ImageNet):
         super().__init__()
 
         # todo: add unit tests  but mark.as.on server
-        self.target_transform_dict = dict(
+        self._target_mapping = dict(
             zip(self.selected_classes, range(len(self.selected_classes)))
         )
+
+        self.num_classes = len(self.selected_classes)
 
     def create_subset(self, train_split=False) -> Dataset:
         ds = super().create_subset(train_split=train_split)
@@ -398,28 +400,41 @@ class ImageNetButterfly(ImageNet):
 
         print(f"We have {len(indices)} images in classes {self.selected_classes}")
 
-        new_samples = []
-        new_targets = []
+        selected_samples = []
+        selected_targets = []
 
         for six in tqdm(indices, desc="preparing `butterfly` samples"):
-            new_samples.append(ds.samples[six])
-            new_targets.append(ds.targets[six])
+            selected_samples.append(ds.samples[six])
+            selected_targets.append(ds.targets[six])
 
-        ds.imgs = new_samples
-        ds.samples = new_samples
-        ds.targets = new_targets
+        ds.imgs = selected_samples
+        ds.samples = selected_samples
 
-        assert np.isin(ds.targets, self.selected_classes).all()
+        ds.targets = self._transform_target(selected_targets)
 
         return ds
 
-    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+    def _transform_target(self, targets: typing.List[int]) -> typing.List[int]:
+        """
+        The function transforms the `original` target (as in the original dataset)
+        to a new zero-indexing target.
+
+        Suppose we consider `cifar100-people` whose associated targets are {2, 11, 35, 46, 98}.
+        Then, these targets are transformed to {0, 1, 2, 3, 4}.
+
+
+        Args:
+            targets (typing.List[int]): _description_
+
+        Returns:
+            typing.List[int]: _description_
+        """
         new_target = []
 
-        for t in target:
-            new_target.append(self.target_transform_dict[int(t.detach().cpu())])
+        for target in targets:
+            new_target.append(self._target_mapping[target])
 
-        return torch.Tensor(new_target).long().to(target.device)
+        return new_target
 
 
 @dataclass
@@ -499,35 +514,3 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
             new_target.append(self._target_mapping[target])
 
         return new_target
-
-        # return torch.Tensor(new_target).long().to(target.device)
-
-    # def loader(
-    #     self,
-    #     batch_size=64,
-    #     num_workers=2,
-    #     train_split=False,
-    #     shuffle=False,
-    # ):
-    #     ds = self.create_subset(train_split=train_split)
-    #     labels = ds.targets
-
-    #     if train_split and self.num_train_samples is not None:
-    #         # for training split: select training samples for those classes and subsample
-    #         selected_data_indices = selected_subset_samples_for_classes(
-    #             np.array(labels),
-    #             self.selected_classes,
-    #             samples_per_class=self.num_train_samples,
-    #         )
-    #     else:
-    #         # for validation split: select samples for those classes only
-    #         selected_data_indices = np.argwhere(
-    #             np.isin(labels, self.selected_classes)
-    #         ).reshape(-1)
-
-    #     ds.data = ds.data[selected_data_indices, :]
-    #     ds.targets = np.array(ds.targets)[selected_data_indices].tolist()
-
-    #     assert np.isin(ds.targets, self.selected_classes).all()
-
-    #     return
