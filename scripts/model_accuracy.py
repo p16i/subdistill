@@ -44,7 +44,7 @@ def main(dataset_name, model_names, output_dir):
     stats = []
 
     for model_name in tqdm(model_names):
-        model = models.get_model(model_name)
+        model = models.get_trained_model(model_name)
         model.to(device)
 
         print(f"Model={model_name}")

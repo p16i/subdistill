@@ -36,8 +36,8 @@ def _overriden_resnet18_forward_impl(self, x):
 def test_resnet_layer_interception(slug, layer):
     print(f"Testing on {DEVICE}")
 
-    model1 = models.get_model(slug).to(DEVICE)
-    model2 = models.get_model(slug).to(DEVICE)
+    model1 = models.get_trained_model(slug).to(DEVICE)
+    model2 = models.get_trained_model(slug).to(DEVICE)
 
     dummy_input = torch.randn((10, 3, 32, 32)).to(DEVICE)
 
@@ -46,7 +46,9 @@ def test_resnet_layer_interception(slug, layer):
     expected_logit, layers_output = model2(dummy_input)
 
     try:
-        module, hook = interceptor.attach_hook_intercept_layer_output(model1, layer)
+        module, hook = interceptor.attach_hook_intercept_layer_output(
+            model1, layer, should_retain_grad=False
+        )
 
         logits = model1(dummy_input)
         output = getattr(module, "__output")

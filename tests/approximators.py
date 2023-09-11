@@ -14,7 +14,7 @@ from xaikd.utils import count_params_in_model
     ],
 )
 def test_approximator_homogenous_mode(model, layer):
-    model = models.get_model(model)
+    model = models.get_trained_model(model)
 
     approx = approximators.construct_approximator_for(
         model=model,
@@ -49,7 +49,7 @@ def test_approximator_homogenous_mode(model, layer):
     ],
 )
 def test_approximator_homogenous_lowrank_modes(model, layer):
-    model = models.get_model(model)
+    model = models.get_trained_model(model)
     compression_rate = 4.0
 
     approx_lowrank = approximators.construct_approximator_for(
@@ -91,7 +91,7 @@ def test_approximator_homogenous_lowrank_modes(model, layer):
     ],
 )
 def test_approximator_homogenous_low_rank_have_same_inits_(model, layer):
-    model = models.get_model(model)
+    model = models.get_trained_model(model)
 
     approx1 = approximators.construct_approximator_for(
         model=model,

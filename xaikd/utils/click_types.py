@@ -7,7 +7,7 @@ from xaikd import models, datasets
 
 class Model(click.ParamType):
     def convert(self, value, param, ctx):
-        return models.get_model(value)
+        return models.get_trained_model(value)
 
 
 class DatasetConfiguration(click.ParamType):
@@ -23,3 +23,9 @@ class Path(click.ParamType):
 class List(click.ParamType):
     def convert(self, value, param, ctx):
         return value.split(",")
+
+
+class SmartFloat(click.ParamType):
+    def convert(self, value, param, ctx):
+        # the type provides a way to specify Float with expression, e.g., 1-0.1
+        return eval(value)

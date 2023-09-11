@@ -15,12 +15,13 @@ from xaikd import models
     ],
 )
 def test_get_models(slug):
-    model = models.get_model(slug)
+    model = models.get_trained_model(slug)
     assert not model.training
     assert model is not None
     assert getattr(model, "__name") == slug
     assert len(getattr(model, "__layer_dimension").keys()) > 0
 
     # todo: check num class
+
 
 # todo: che

@@ -90,9 +90,9 @@ def construction_model(name: str, dataset_name: str, num_classes: int) -> nn.Mod
 
         if "pretrain" in name:
             if "cifar100" in dataset_name:
-                model = models.get_model("cifar100-resnet18-p1")
+                model = models.get_trained_model("cifar100-resnet18-p1")
             elif "imagenet" in dataset_name:
-                model = models.get_model("imagenet-resnet18-tv")
+                model = models.get_trained_model("imagenet-resnet18-tv")
             utils.deactivate_requires_grad(model)
         else:
             if "cifar100" in dataset_name:
@@ -167,7 +167,7 @@ class ModelWrapper(pl.LightningModule):
 
     def _compute_loss(self, logits: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
         logits = logits[:, self.dataset.selected_classes]
-        ynew = self.dataset.transform_target(y)
+        ynew = self.dataset._transform_target(y)
 
         return F.cross_entropy(logits, ynew)
 
@@ -185,7 +185,7 @@ class ModelWrapper(pl.LightningModule):
                 self,
                 loader,
                 considered_classes=self.dataset.selected_classes,
-                transform_target=self.dataset.transform_target,
+                transform_target=self.dataset._transform_target,
                 device=self.device,
             )
 

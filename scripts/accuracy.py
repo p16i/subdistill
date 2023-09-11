@@ -50,7 +50,7 @@ def main(model_name, layer, basis_names, artifact_dir):
 
     device = utils.get_device()
 
-    model = models.get_model(model_name).to(device)
+    model = models.get_trained_model(model_name).to(device)
 
     dataset_name, arch, variant = model_name.split("-")
 
