@@ -195,6 +195,11 @@ def main(
 
             layer_policies.append(policy)
 
+        # we set the seed here again because to make sure that the state of random generator for
+        # training is the same for all policies.
+        # Said differently, some policies also contain random initialization of nn.Module
+        # which then alter state of randomization.
+        pl.seed_everything(seed)
         distillator = distillators.Layerwise(
             teacher=teacher_model,
             dataset=dataset,
