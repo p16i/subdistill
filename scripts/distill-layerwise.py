@@ -257,21 +257,28 @@ def main(
             teacher_model.to(device)
             trained_student.to(device)
 
-            rows = []
+            arr_targets = []
+            arr_student_pred = []
+            arr_teacher_pred = []
 
             for x, y in val_loader:
                 x = x.to(device)
                 teacher_pred = torch.argmax(teacher_model(x), dim=1).cpu()
                 student_pred = torch.argmax(trained_student(x), dim=1).cpu()
-                rows.append(
-                    dict(
-                        target=y,
-                        teacher_pred=teacher_pred,
-                        student_pred=student_pred,
-                    )
-                )
+                arr_targets.extend(y.numpy().tolist())
+                arr_teacher_pred.extend(teacher_pred.numpy().tolist())
+                arr_student_pred.extend(student_pred.numpy().tolist())
 
-            logger.log_table("prediction", dataframe=pd.DataFrame(rows))
+            logger.log_table(
+                "prediction",
+                dataframe=pd.DataFrame.from_dict(
+                    dict(
+                        target=arr_targets,
+                        student_pred=arr_student_pred,
+                        teacher_pred=arr_teacher_pred,
+                    )
+                ),
+            )
 
         wandb.finish()
 
