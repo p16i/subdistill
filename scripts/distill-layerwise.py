@@ -261,7 +261,7 @@ def main(
 
             for x, y in val_loader:
                 x = x.to(device)
-                teacher_pred = torch.argmax(teacher(x), dim=1).cpu()
+                teacher_pred = torch.argmax(teacher_model(x), dim=1).cpu()
                 student_pred = torch.argmax(trained_student(x), dim=1).cpu()
                 rows.append(
                     dict(
