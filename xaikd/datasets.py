@@ -367,11 +367,12 @@ class ImageNet(DatasetConfiguration):
         self.dataclass = tvd.ImageNet
         self.root = DATADIR / "imagenet"
 
-    def create_subset(self, train_split=False) -> Dataset:
+    def create_subset(self, train_split=False, **kwargs) -> Dataset:
         return self.dataclass(
             root=self.root,
             split="train" if train_split else "val",
             transform=self.input_transformation,
+            **kwargs,
         )
 
     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
@@ -394,7 +395,9 @@ class ImageNetButterfly(ImageNet):
         self.num_classes = len(self.selected_classes)
 
     def create_subset(self, train_split=False) -> Dataset:
-        ds = super().create_subset(train_split=train_split)
+        ds = super().create_subset(
+            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
+        )
 
         indices = np.argwhere(np.isin(ds.targets, self.selected_classes)).reshape(-1)
 
@@ -410,7 +413,7 @@ class ImageNetButterfly(ImageNet):
         ds.imgs = selected_samples
         ds.samples = selected_samples
 
-        ds.targets = self._transform_target(selected_targets)
+        ds.targets = selected_targets
 
         return ds
 
