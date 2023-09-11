@@ -27,6 +27,14 @@ ARCH_LAYER_DIMENSIONS = dict(
             "layer4.0": 512 // 2,
             "layer4.1": 512 // 2,
         },
+        resnet18imagenetcompr2={
+            "layer1": 64 // 2,
+            "layer2": 128 // 2,
+            "layer3": 256 // 2,
+            "layer4": 512 // 2,
+            "layer4.0": 512 // 2,
+            "layer4.1": 512 // 2,
+        },
         resnet18compr4={
             "layer1": 64 // 4,
             "layer2": 128 // 4,
