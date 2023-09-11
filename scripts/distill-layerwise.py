@@ -160,6 +160,7 @@ def main(
 
     # do distillation
     for policy_name_with_args in tqdm(layer_policies, desc="Distillation"):
+        # this make sure that we use the same initial student model for all policy.
         pl.seed_everything(seed)
 
         policy_slugs = policy_name_with_args.split(":")
@@ -195,11 +196,6 @@ def main(
 
             layer_policies.append(policy)
 
-        # we set the seed here again because to make sure that the state of random generator for
-        # training is the same for all policies.
-        # Said differently, some policies also contain random initialization of nn.Module
-        # which then alter state of randomization.
-        pl.seed_everything(seed)
         distillator = distillators.Layerwise(
             teacher=teacher_model,
             dataset=dataset,
@@ -243,6 +239,7 @@ def main(
             lr=lr,
             log_dir=log_dir,
             logger=logger,
+            seed=seed,
         )
 
         # todo: save student to artifacts!

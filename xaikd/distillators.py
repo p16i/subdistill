@@ -247,6 +247,7 @@ class Layerwise:
         lambda_task: float,
         lambda_kd: float,
         lambda_layer: float,
+        seed: int,
         # enable_checkpointing=False,
         # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
@@ -265,6 +266,12 @@ class Layerwise:
         print(
             f"[before training] metrics: student (teacher) | acc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
         )
+
+        # we set the seed here again because to make sure that the state of random generator for
+        # training is the same for all policies.
+        # Said differently, some policies also contain random initialization of nn.Module
+        # which then alter state of randomization.
+        pl.seed_everything(seed)
 
         training_wrapper = LayerwiseKDModelWrapper(
             teacher=self.teacher,
