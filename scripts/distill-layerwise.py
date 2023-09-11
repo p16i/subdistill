@@ -255,6 +255,8 @@ def main(
             logger.experiment.summary[k] = v
 
         # log prediction
+        # remark: this prediction is the of the latest model, which is NOT necesseary
+        # the best.
         with torch.no_grad():
             teacher_model.to(device)
             trained_student.to(device)
