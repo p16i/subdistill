@@ -167,7 +167,9 @@ def main(
         policy_name = policy_slugs[0]
 
         student_model = models.get_trained_model(teacher)
-        utils.modify_last_layer_for_subclasses(student_model.fc, dataset.selected_classes)
+        utils.modify_last_layer_for_subclasses(
+            student_model.fc, dataset.selected_classes
+        )
 
         # student_model = models.get_untrained_model(
         #     student, num_classes=dataset.num_classes
@@ -257,6 +259,27 @@ def main(
 
         for k, v in results.items():
             logger.experiment.summary[k] = v
+
+        # log prediction
+        with torch.no_grad():
+            teacher.to(device)
+            trained_student.to(device)
+
+            rows = []
+
+            for x, y in val_loader:
+                x = x.to(device)
+                teacher_pred = torch.argmax(teacher(x), dim=1).cpu()
+                student_pred = torch.argmax(trained_student(x), dim=1).cpu()
+                rows.append(
+                    dict(
+                        target=y,
+                        teacher_pred=teacher_pred,
+                        student_pred=student_pred,
+                    )
+                )
+
+            logger.log_table("prediction", dataframe=pd.DataFrame(rows))
 
         wandb.finish()
 
