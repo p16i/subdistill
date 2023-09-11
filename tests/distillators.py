@@ -109,6 +109,7 @@ def test_distillation_not_alter_teacher():
             lr=1e-4,
             log_dir=Path(tmpdirname),
             logger=TensorBoardLogger(tmpdirname),
+            seed=1,
         )
 
     # post-training assertions
