@@ -447,8 +447,6 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         # remark: the targets are defined in the CIFAR100 dataset.
         self.selected_classes = df_selected.fine_label.values.tolist()
 
-        # remark: Attention! this is `num_classes` of CIFAR100.
-        # todo: when do we use this?
         self.num_classes = len(self.selected_classes)
 
         self._normalizer = self.base._normalizer
