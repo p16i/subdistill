@@ -258,6 +258,8 @@ def main(
             teacher_model.to(device)
             trained_student.to(device)
 
+            assert teacher_model.training == trained_student.training == False
+
             arr_targets = []
             arr_student_pred = []
             arr_teacher_pred = []
