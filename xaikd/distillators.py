@@ -25,7 +25,7 @@ from xaikd import distillation_policies, utils, datasets, bases, models
 from xaikd.utils import metrics
 from xaikd.distillation_info import LayerDistillInfo
 
-from torchmetrics import Accuracy
+from torchmetrics import Accuracy, MeanMetric
 
 from pytorch_lightning.callbacks import LearningRateMonitor
 
@@ -84,12 +84,19 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.metric = dict(
             train_acc=Accuracy(task="multiclass", num_classes=num_classes),
             val_acc=Accuracy(task="multiclass", num_classes=num_classes),
-            train_agreement=Accuracy(task="multiclass", num_classes=num_classes),
-            val_agreement=Accuracy(task="multiclass", num_classes=num_classes),
+            train_agreement=MeanMetric(),
+            val_agreement=MeanMetric(),
+            train_agreement_on_teacher_correct=MeanMetric(),
+            val_agreement_on_teacher_correct=MeanMetric(),
         )
 
         self.arr_metrics = dict(
-            train_acc=[], val_acc=[], train_agreement=[], val_agreement=[]
+            train_acc=[],
+            val_acc=[],
+            train_agreement=[],
+            val_agreement=[],
+            train_agreement_on_teacher_correct=[],
+            val_agreement_on_teacher_correct=[],
         )
 
     def _get_parameters(self) -> typing.List[nn.Parameter]:
@@ -158,7 +165,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         student_y_pred = torch.argmax(student_logits, dim=1).detach().cpu()
 
         self.metric[f"{prefix}_acc"].update(student_y_pred, y.cpu())
-        self.metric[f"{prefix}_agreement"].update(student_y_pred, teacher_y_pred.cpu())
+        self.metric[f"{prefix}_agreement"].update(student_y_pred == teacher_y_pred)
+        self.metric[f"{prefix}_agreement_on_teacher_correct"].update(
+            (teacher_y_pred == y.cpu()) * (student_y_pred == teacher_y_pred)
+        )
 
         return loss
 
@@ -169,7 +179,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         return self._compute_loss(val_batch, "val", batch_idx)
 
     def _compute_metric(self, prefix):
-        for suffix in ["acc", "agreement"]:
+        for suffix in ["acc", "agreement", "agreement_on_teacher_correct"]:
             slug = f"{prefix}_{suffix}"
 
             metric = self.metric[slug]
@@ -231,6 +241,7 @@ class Layerwise:
         lambda_task: float,
         lambda_kd: float,
         lambda_layer: float,
+        seed: int,
         # enable_checkpointing=False,
         # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
@@ -249,6 +260,12 @@ class Layerwise:
         print(
             f"[before training] metrics: student (teacher) | acc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
         )
+
+        # we set the seed here again because to make sure that the state of random generator for
+        # training is the same for all policies.
+        # Said differently, some policies also contain random initialization of nn.Module
+        # which then alter state of randomization.
+        pl.seed_everything(seed)
 
         training_wrapper = LayerwiseKDModelWrapper(
             teacher=self.teacher,

@@ -25,6 +25,7 @@ from xaikd import (
 )
 
 from xaikd import distillation_policies
+from xaikd.utils import click_types
 
 
 from pytorch_lightning.loggers import WandbLogger
@@ -39,9 +40,9 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 @click.option("--student", default="resnet18compr2", required=True)
 @click.option("--layers", default="layer3,layer4", type=str, required=True)
 @click.option(
-    "--basis-names",
+    "--layer-policies",
     type=str,
-    default="pca,prca-recon,prca-sortabs",
+    default="basis:pca,basis:prca-sortabs,basis:random,vid,linstudent,linteacher",
     required=True,
 )
 @click.option("--basis-mode", type=str, default="centered", required=True)
@@ -50,16 +51,16 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--lr", type=float, default=0.0005, required=True)
-@click.option("--lambda-layer", type=float, default=1.0)
-@click.option("--lambda-kd", type=float, default=1.0)
+@click.option("--lambda-kd", type=click_types.SmartFloat(), default=1.0)
 @click.option("--lambda-task", type=float, default=0.0)
+@click.option("--lambda-layer", type=click_types.SmartFloat(), required=True)
 @click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
 @click.option("--skip-baselines", type=bool, default=False, is_flag=True)
 def main(
     teacher,
     student,
     dataset,
-    basis_names,
+    layer_policies,
     output_dir,
     seed,
     epochs,
@@ -80,7 +81,7 @@ def main(
     start_time = datetime.now()
 
     layers = layers.split(",")
-    basis_names = basis_names.split(",")
+    layer_policies = layer_policies.split(",")
 
     output_dir = Path(output_dir) / f"{dataset}-tz{training_size}-seed{seed}" / teacher
 
@@ -108,7 +109,10 @@ def main(
     ds_train_with_aug.dataset.transform = dataset.input_training_transformation
 
     train_loader_with_aug = datasets.build_dataloader(
-        ds_train_with_aug, shuffle=True, batch_size=int(np.ceil(64 * training_size))
+        ds_train_with_aug,
+        shuffle=True,
+        # why do we scale batch_size like this?
+        batch_size=int(np.ceil(64 * training_size)),
     )
 
     # prepare teacher
@@ -136,6 +140,15 @@ def main(
         mean = np.mean(arr_act, axis=0)
         np.save(layer_output_dir / "act_mean", mean)
 
+        basis_names = list(
+            map(
+                lambda p: p.split(":")[1],
+                filter(lambda p: "basis" in p, layer_policies),
+            )
+        )
+
+        print(f"we learn {len(basis_names)} bases: {basis_names}")
+
         for basis_name in basis_names:
             click.echo(f"[layer={layer}] fitting basis={basis_name}--{basis_mode}")
             basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
@@ -143,8 +156,13 @@ def main(
             basis.save(layer_output_dir)
 
     # do distillation
-    for basis_name in tqdm(basis_names + ["learnlin"], desc="Distillation"):
+    for policy_name_with_args in tqdm(layer_policies, desc="Distillation"):
+        # this make sure that we use the same initial student model for all policy.
         pl.seed_everything(seed)
+
+        policy_slugs = policy_name_with_args.split(":")
+
+        policy_name = policy_slugs[0]
 
         student_model = models.get_untrained_model(
             student, num_classes=dataset.num_classes
@@ -152,27 +170,28 @@ def main(
 
         layer_policies = []
         for layer in layers:
-            dim = constants.ARCH_LAYER_DIMENSIONS[student][layer]
+            student_layer_dims = constants.ARCH_LAYER_DIMENSIONS[student][layer]
+            teacher_layer_dims = models.get_layer_output_dimensions(
+                teacher_model, layer
+            )
 
-            # todo: refactor to remove this if-else condition
-            if basis_name == "learnlin":
-                layer_policies.append(
-                    distillation_policies.LearnableAdapterPolicy(
-                        teacher_dims=models.get_layer_output_dimensions(
-                            teacher_model, layer
-                        ),
-                        student_dims=dim,
-                        device=device,
-                    ),
-                )
-            else:
+            kwargs = dict(
+                teacher_dims=teacher_layer_dims,
+                student_dims=student_layer_dims,
+                device=device,
+            )
+
+            if policy_name == "basis":
+                basis_name = policy_slugs[-1]
                 basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
                 layer_output_dir = output_dir / f"layer-{layer}"
                 basis.load(layer_output_dir)
 
-                layer_policies.append(
-                    distillation_policies.OrthogonalBasisPolicy(basis, dim, device),
-                )
+                kwargs["basis"] = basis
+
+            policy = distillation_policies.get_layer_policy(policy_name, **kwargs)
+
+            layer_policies.append(policy)
 
         distillator = distillators.Layerwise(
             teacher=teacher_model,
@@ -183,15 +202,23 @@ def main(
             weight_decay=0.0,
         )
 
-        log_dir = output_dir / "distilled-models" / student
+        student_slug = "--".join(
+            [
+                student,
+                "-".join(policy_slugs),
+                f"lmd_task{lambda_task}-lmd_kd{lambda_kd}-lmd_layer{lambda_layer}",
+            ]
+        )
+
+        log_dir = output_dir / "distilled-models" / student_slug
         logger = WandbLogger(
             project=WANDB_PROJECT,
             group=arguments["output_dir"],
             job_type="distillation",
-            name=f"{student}-{basis_name}-seed{seed}",
+            name=f"{student}-{policy_name_with_args}-seed{seed}",
             config={
                 **arguments,
-                "basis_name": basis_name,
+                "policy": policy_name_with_args,
                 "output_dir": output_dir,
             },
         )
@@ -209,6 +236,7 @@ def main(
             lr=lr,
             log_dir=log_dir,
             logger=logger,
+            seed=seed,
         )
 
         # todo: save student to artifacts!
@@ -217,11 +245,41 @@ def main(
         last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
 
         print(
-            f"Result: [distill with:  `{basis_name}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
+            f"Result: [distill with:  `{policy_name}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
         )
 
         for k, v in results.items():
             logger.experiment.summary[k] = v
+
+        # log prediction
+        # remark: this prediction is the of the latest model, which is NOT necesseary
+        # the best.
+        with torch.no_grad():
+            teacher_model.to(device)
+            trained_student.to(device)
+
+            arr_targets = []
+            arr_student_pred = []
+            arr_teacher_pred = []
+
+            for x, y in val_loader:
+                x = x.to(device)
+                teacher_pred = torch.argmax(teacher_model(x), dim=1).cpu()
+                student_pred = torch.argmax(trained_student(x), dim=1).cpu()
+                arr_targets.extend(y.numpy().tolist())
+                arr_teacher_pred.extend(teacher_pred.numpy().tolist())
+                arr_student_pred.extend(student_pred.numpy().tolist())
+
+            logger.log_table(
+                "prediction",
+                dataframe=pd.DataFrame.from_dict(
+                    dict(
+                        target=arr_targets,
+                        student_pred=arr_student_pred,
+                        teacher_pred=arr_teacher_pred,
+                    )
+                ),
+            )
 
         wandb.finish()
 
