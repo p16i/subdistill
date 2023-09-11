@@ -86,10 +86,17 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             val_acc=Accuracy(task="multiclass", num_classes=num_classes),
             train_agreement=MeanMetric(),
             val_agreement=MeanMetric(),
+            train_agreement_on_teacher_correct=MeanMetric(),
+            val_agreement_on_teacher_correct=MeanMetric(),
         )
 
         self.arr_metrics = dict(
-            train_acc=[], val_acc=[], train_agreement=[], val_agreement=[]
+            train_acc=[],
+            val_acc=[],
+            train_agreement=[],
+            val_agreement=[],
+            train_agreement_on_teacher_correct=[],
+            val_agreement_on_teacher_correct=[],
         )
 
     def _get_parameters(self) -> typing.List[nn.Parameter]:
@@ -163,6 +170,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         self.metric[f"{prefix}_acc"].update(student_y_pred, y.cpu())
         self.metric[f"{prefix}_agreement"].update(student_y_pred == teacher_y_pred)
+        self.metric[f"{prefix}_agreement_on_teacher_correct"].update(
+            (teacher_y_pred == y.cpu()) * (student_y_pred == teacher_y_pred)
+        )
 
         return loss
 
@@ -173,7 +183,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         return self._compute_loss(val_batch, "val", batch_idx)
 
     def _compute_metric(self, prefix):
-        for suffix in ["acc", "agreement"]:
+        for suffix in ["acc", "agreement", "agreement_on_teacher_correct"]:
             slug = f"{prefix}_{suffix}"
 
             metric = self.metric[slug]
