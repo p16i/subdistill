@@ -106,20 +106,7 @@ class OrthogonalBasisPolicy(Policy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-        # random rotation
-        U = (
-            torch.from_numpy(ortho_group.rvs(k))
-            .float()
-            .unsqueeze(2)
-            .unsqueeze(3)
-            .to(device)
-        )
-
-        class Module(nn.Module):
-            def forward(self, x):
-                return F.conv2d(x, U)
-
-        self.transformer_student_feats = Module()
+        self.transformer_student_feats = nn.Identity()
 
     def criterion(self, transformed_teacher_feats, transformed_student_feats):
         b, _, w, h = transformed_teacher_feats.shape
