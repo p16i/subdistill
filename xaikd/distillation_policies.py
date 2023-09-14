@@ -47,6 +47,23 @@ def register_layer_policy(name):
     return wrapped
 
 
+class Affine2D(nn.Module):
+    def __init__(self, k: int) -> None:
+        super().__init__()
+
+        self.W = nn.Parameter(torch.ones(k))
+        self.b = nn.Parameter(torch.zeros(k)).reshape((1, -1, 1, 1))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return (
+            F.conv2d(
+                x,
+                torch.diag(self.W).unsqueeze(2).unsqueeze(3),
+            )
+            + self.b
+        )
+
+
 def get_layer_policy(name: str, **kwargs) -> Policy:
     return LAYER_POLICY[name](**kwargs)
 
@@ -106,7 +123,7 @@ class OrthogonalBasisPolicy(Policy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-        self.transformer_student_feats = nn.BatchNorm2d(num_features=k)
+        self.transformer_student_feats = Affine2D(k=k)
 
     def criterion(self, transformed_teacher_feats, transformed_student_feats):
         b, _, w, h = transformed_teacher_feats.shape
