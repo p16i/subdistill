@@ -168,9 +168,15 @@ def test_cifar100_superclass_transform_target(super_class):
         df[df.coarse_label_name == super_class].fine_label.values.tolist()
     )
 
-    targets = ds._transform_target(fine_labels)
+    dl_val = datasets.build_dataloader(
+        ds.create_subset(train_split=False), shuffle=False
+    )
 
-    assert np.isin(targets, range(len(fine_labels))).all()
+    arr_ys = []
+    for _, y in dl_val:
+        arr_ys.extend(y.numpy().tolist())
+
+    assert np.isin(arr_ys, range(len(fine_labels))).all()
 
 
 def test_subsample_dataset():

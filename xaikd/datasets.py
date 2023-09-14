@@ -324,13 +324,75 @@ class CIFAR100(DatasetConfiguration):
     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
         return target
 
-    def create_subset(self, train_split=False) -> Dataset:
+    def create_subset(
+        self,
+        train_split=False,
+        target_transform: typing.Union[None, typing.Callable] = None,
+    ) -> Dataset:
         return self.dataclass(
             root=self.root,
             train=train_split,
             transform=self.input_transformation,
             download=TORCHVISION_DATASET_DOWNLOAD,
+            target_transform=target_transform,
         )
+
+
+@dataclass
+class Cifar100SuperClassesDataset(DatasetConfiguration):
+    def __init__(
+        self,
+        base: CIFAR100,
+        super_class: str,
+        num_train_samples: typing.Union[None, int] = None,
+    ):
+        # todo: refactor this not w.r.t the twoclass dataset
+        self.base = base
+        df_meta = pd.read_csv(
+            constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
+        )
+
+        df_selected = df_meta[df_meta.coarse_label_name == super_class]
+        df_selected = df_selected.sort_values(by="fine_label")
+        print(
+            f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
+        )
+        for row in df_selected.to_dict("records"):
+            print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
+
+        # remark: the targets are defined in the CIFAR100 dataset.
+        self.selected_classes = df_selected.fine_label.values.tolist()
+
+        self.num_classes = len(self.selected_classes)
+
+        self._normalizer = self.base._normalizer
+        self.input_transformation = self.base.input_transformation
+        self.input_training_transformation = self.base.input_training_transformation
+
+        # change name to mapping_old_and_new_target_indices
+        # converting from old target (original dataset) to new target {0, 1,...})
+        self._target_mapping = dict(
+            zip(self.selected_classes, range(len(self.selected_classes)))
+        )
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = self.base.create_subset(
+            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
+        )
+        labels = ds.targets
+
+        selected_data_indices = np.argwhere(
+            np.isin(labels, self.selected_classes)
+        ).reshape(-1)
+
+        ds.data = ds.data[selected_data_indices, :]
+
+        targets = np.array(ds.targets)[selected_data_indices].tolist()
+        assert np.isin(targets, self.selected_classes).all()
+
+        ds.targets = targets
+
+        return ds
 
 
 @register_dataset("imagenet")
@@ -367,12 +429,16 @@ class ImageNet(DatasetConfiguration):
         self.dataclass = tvd.ImageNet
         self.root = DATADIR / "imagenet"
 
-    def create_subset(self, train_split=False, **kwargs) -> Dataset:
+    def create_subset(
+        self,
+        train_split=False,
+        target_transform: typing.Union[None, typing.Callable] = None,
+    ) -> Dataset:
         return self.dataclass(
             root=self.root,
             split="train" if train_split else "val",
             transform=self.input_transformation,
-            **kwargs,
+            target_transform=target_transform,
         )
 
     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
@@ -416,104 +482,3 @@ class ImageNetButterfly(ImageNet):
         ds.targets = selected_targets
 
         return ds
-
-    def _transform_target(self, targets: typing.List[int]) -> typing.List[int]:
-        """
-        The function transforms the `original` target (as in the original dataset)
-        to a new zero-indexing target.
-
-        Suppose we consider `cifar100-people` whose associated targets are {2, 11, 35, 46, 98}.
-        Then, these targets are transformed to {0, 1, 2, 3, 4}.
-
-
-        Args:
-            targets (typing.List[int]): _description_
-
-        Returns:
-            typing.List[int]: _description_
-        """
-        new_target = []
-
-        for target in targets:
-            new_target.append(self._target_mapping[target])
-
-        return new_target
-
-
-@dataclass
-class Cifar100SuperClassesDataset(DatasetConfiguration):
-    def __init__(
-        self,
-        base: DatasetConfiguration,
-        super_class: str,
-        num_train_samples: typing.Union[None, int] = None,
-    ):
-        # todo: refactor this not w.r.t the twoclass dataset
-        self.base = base
-        df_meta = pd.read_csv(
-            constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
-        )
-
-        df_selected = df_meta[df_meta.coarse_label_name == super_class]
-        df_selected = df_selected.sort_values(by="fine_label")
-        print(
-            f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
-        )
-        for row in df_selected.to_dict("records"):
-            print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
-
-        # remark: the targets are defined in the CIFAR100 dataset.
-        self.selected_classes = df_selected.fine_label.values.tolist()
-
-        self.num_classes = len(self.selected_classes)
-
-        self._normalizer = self.base._normalizer
-        self.input_transformation = self.base.input_transformation
-        self.input_training_transformation = self.base.input_training_transformation
-
-        # change name to mapping_old_and_new_target_indices
-        # converting from old target (original dataset) to new target {0, 1,...})
-        self._target_mapping = dict(
-            zip(self.selected_classes, range(len(self.selected_classes)))
-        )
-
-    def create_subset(self, train_split=False) -> Dataset:
-        ds = self.base.create_subset(train_split=train_split)
-        labels = ds.targets
-
-        selected_data_indices = np.argwhere(
-            np.isin(labels, self.selected_classes)
-        ).reshape(-1)
-
-        ds.data = ds.data[selected_data_indices, :]
-
-        targets = np.array(ds.targets)[selected_data_indices].tolist()
-        assert np.isin(targets, self.selected_classes).all()
-
-        new_targets = self._transform_target(targets)
-
-        ds.targets = new_targets
-
-        return ds
-
-    def _transform_target(self, targets: typing.List[int]) -> typing.List[int]:
-        """
-        The function transforms the `original` target (as in the original dataset)
-        to a new zero-indexing target.
-
-        Suppose we consider `cifar100-people` whose associated targets are {2, 11, 35, 46, 98}.
-        Then, these targets are transformed to {0, 1, 2, 3, 4}.
-
-
-        Args:
-            targets (typing.List[int]): _description_
-
-        Returns:
-            typing.List[int]: _description_
-        """
-        new_target = []
-
-        for target in targets:
-            new_target.append(self._target_mapping[target])
-
-        return new_target
