@@ -123,7 +123,10 @@ class OrthogonalBasisPolicy(Policy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-        self.transformer_student_feats = Affine2D(k=k, device=device)
+        # self.transformer_student_feats = Affine2D(k=k, device=device)
+        self.transformer_student_feats = nn.BatchNorm2d(
+            num_features=k, affine=False
+        ).to(device)
 
     def criterion(self, transformed_teacher_feats, transformed_student_feats):
         b, _, w, h = transformed_teacher_feats.shape
