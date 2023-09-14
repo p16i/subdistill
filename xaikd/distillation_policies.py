@@ -48,11 +48,11 @@ def register_layer_policy(name):
 
 
 class Affine2D(nn.Module):
-    def __init__(self, k: int) -> None:
+    def __init__(self, k: int, device: str) -> None:
         super().__init__()
 
-        self.W = nn.Parameter(torch.ones(k))
-        self.b = nn.Parameter(torch.zeros(k)).reshape((1, -1, 1, 1))
+        self.W = nn.Parameter(torch.ones(k)).to(device)
+        self.b = nn.Parameter(torch.zeros(k)).reshape((1, -1, 1, 1)).to(device)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return (
