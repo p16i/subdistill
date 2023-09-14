@@ -8,9 +8,9 @@ import numpy as np
 from torch import nn
 from torch.nn import functional as F
 
+from xaikd.utils.modules import Centering2D
 from xaikd.bases import Basis, AdapterMode
 
-from torch.nn.modules import batchnorm
 
 from scipy.stats import ortho_group
 
@@ -47,78 +47,6 @@ def register_layer_policy(name):
         return fn
 
     return wrapped
-
-
-class Affine2D(nn.Module):
-    def __init__(self, k: int, device: str) -> None:
-        super().__init__()
-
-        self.W = nn.Parameter(torch.randn(k)).to(device)
-        self.b = nn.Parameter(torch.randn(k)).reshape((1, -1, 1, 1)).to(device)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return (
-            F.conv2d(
-                x,
-                torch.diag(self.W).unsqueeze(2).unsqueeze(3),
-            )
-            + self.b
-        )
-
-
-class Centering(batchnorm._BatchNorm):
-    def forward(self, input: torch.Tensor) -> torch.Tensor:
-        self._check_input_dim(input)
-
-        # exponential_average_factor is set to self.momentum
-        # (when it is available) only so that it gets updated
-        # in ONNX graph when this node is exported to ONNX.
-        if self.momentum is None:
-            exponential_average_factor = 0.0
-        else:
-            exponential_average_factor = self.momentum
-
-        if self.training and self.track_running_stats:
-            # TODO: if statement only here to tell the jit to skip emitting this when it is None
-            if self.num_batches_tracked is not None:  # type: ignore[has-type]
-                self.num_batches_tracked.add_(1)  # type: ignore[has-type]
-                if self.momentum is None:  # use cumulative moving average
-                    exponential_average_factor = 1.0 / float(self.num_batches_tracked)
-                else:  # use exponential moving average
-                    exponential_average_factor = self.momentum
-
-        r"""
-        Decide whether the mini-batch stats should be used for normalization rather than the buffers.
-        Mini-batch stats are used in training mode, and in eval mode when buffers are None.
-        """
-        if self.training:
-            bn_training = True
-        else:
-            bn_training = (self.running_mean is None) and (self.running_var is None)
-
-        r"""
-        Buffers are only updated if they are to be tracked and we are in training mode. Thus they only need to be
-        passed when the update should occur (i.e. in training mode when they are tracked), or when buffer stats are
-        used for normalization (i.e. in eval mode when buffers are not None).
-        """
-        _, d, _, _ = input.shape
-        return F.batch_norm(
-            input,
-            # If buffers are not to be tracked, ensure that they won't be updated
-            self.running_mean
-            if not self.training or self.track_running_stats
-            else None,
-            torch.ones(d).to(input.device),
-            None,
-            None,
-            bn_training,
-            exponential_average_factor,
-            self.eps,
-        )
-
-    def _check_input_dim(self, input):
-        if input.dim() != 4:
-            raise ValueError("expected 4D input (got {}D input)".format(input.dim()))
 
 
 def get_layer_policy(name: str, **kwargs) -> Policy:
@@ -180,8 +108,7 @@ class OrthogonalBasisPolicy(Policy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-        # self.transformer_student_feats = Affine2D(k=k, device=device)
-        self.transformer_student_feats = Centering(num_features=k, affine=False).to(
+        self.transformer_student_feats = Centering2D(num_features=k, affine=False).to(
             device
         )
 
