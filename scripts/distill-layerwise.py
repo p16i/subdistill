@@ -122,9 +122,19 @@ def main(
         teacher_model.fc, selected_classes=dataset.selected_classes
     )
     teacher_layer_dims_mapping = utils.get_dimensions_at_layers(
-        teacher_model, train_loader_with_aug, layers=layers
+        teacher_model, train_loader, layers=layers
     )
     teacher_model.to(device)
+
+    student_layer_dims_mapping = utils.get_dimensions_at_layers(
+        models.get_untrained_model(student, num_classes=dataset.num_classes).eval(),
+        train_loader,
+        layers=layers,
+    )
+
+    print("Layerwise Distillation with")
+    for k, v in student_layer_dims_mapping.items():
+        print(f"> layer={k}: teacher={teacher_layer_dims_mapping[k]} -> student={v}")
 
     # prepare bases
     for layer in layers:
@@ -169,10 +179,6 @@ def main(
 
         student_model = models.get_untrained_model(
             student, num_classes=dataset.num_classes
-        )
-
-        student_layer_dims_mapping = utils.get_dimensions_at_layers(
-            student_model, train_loader_with_aug, layers=layers
         )
 
         layer_policies = []

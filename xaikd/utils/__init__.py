@@ -162,7 +162,7 @@ def modify_last_layer_for_subclasses(
 def get_dimensions_at_layers(
     model: nn.Module, dataloader: DataLoader, layers: typing.List[str]
 ) -> typing.Dict[str, int]:
-    model.eval()
+    assert not model.training
 
     hooks = []
     modules = []
@@ -187,7 +187,5 @@ def get_dimensions_at_layers(
     finally:
         for hook in hooks:
             hook.remove()
-
-        model.train()
 
     return dimensions
