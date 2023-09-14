@@ -3,6 +3,7 @@ import numpy.typing as npt
 
 import json
 import torch
+from torch.utils.data import DataLoader
 from torch import nn
 import numpy as np
 
@@ -155,3 +156,38 @@ def modify_last_layer_for_subclasses(
 
     layer.weight = nn.Parameter(layer.weight[selected_classes, :])
     layer.bias = nn.Parameter(layer.bias[selected_classes])
+
+
+@torch.no_grad()
+def get_dimensions_at_layers(
+    model: nn.Module, dataloader: DataLoader, layers: typing.List[str]
+) -> typing.Dict[str, int]:
+    model.eval()
+
+    hooks = []
+    modules = []
+    try:
+        for layer in layers:
+            module, hook = interceptor.attach_hook_intercept_layer_output(
+                model, layer, should_retain_grad=False
+            )
+            hooks.append(hook)
+            modules.append(module)
+
+        x, _ = next(iter(dataloader))
+
+        _ = model(x)
+
+        dimensions = dict()
+        for layer, module in zip(layers, modules):
+            output = interceptor.get_output(module)
+            _, d, _, _ = output.shape
+            dimensions[layer] = d
+
+    finally:
+        for hook in hooks:
+            hook.remove()
+
+        model.train()
+
+    return dimensions

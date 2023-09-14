@@ -121,6 +121,9 @@ def main(
     utils.modify_last_layer_for_subclasses(
         teacher_model.fc, selected_classes=dataset.selected_classes
     )
+    teacher_layer_dims_mapping = utils.get_dimensions_at_layers(
+        teacher_model, train_loader_with_aug, layers=layers
+    )
     teacher_model.to(device)
 
     # prepare bases
@@ -168,12 +171,14 @@ def main(
             student, num_classes=dataset.num_classes
         )
 
+        student_layer_dims_mapping = utils.get_dimensions_at_layers(
+            student_model, train_loader_with_aug, layers=layers
+        )
+
         layer_policies = []
         for layer in layers:
-            student_layer_dims = constants.ARCH_LAYER_DIMENSIONS[student][layer]
-            teacher_layer_dims = models.get_layer_output_dimensions(
-                teacher_model, layer
-            )
+            student_layer_dims = student_layer_dims_mapping[layer]
+            teacher_layer_dims = teacher_layer_dims_mapping[layer]
 
             kwargs = dict(
                 teacher_dims=teacher_layer_dims,

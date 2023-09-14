@@ -6,6 +6,7 @@ import numpy as np
 
 from xaikd import utils
 from xaikd import models
+from xaikd import datasets
 
 
 def test_subsample():
@@ -72,3 +73,25 @@ def test_logspace():
     np.testing.assert_equal(
         [1] + np.logspace(1, 9, num=9, base=2).tolist() + [d], utils.logspace(d)
     )
+
+
+@pytest.mark.parametrize(
+    "arch,expected",
+    [
+        ("resnet18", dict(layer1=64, layer2=128, layer3=256, layer4=512)),
+        ("resnet50", dict(layer1=256, layer2=512, layer3=1024, layer4=2048)),
+    ],
+)
+def test_get_dimensions(arch, expected):
+    layers = expected.keys()
+    dataset = datasets.construct("cifar100-people")
+
+    dl = datasets.build_dataloader(
+        dataset.create_subset(train_split=False), shuffle=False, batch_size=5
+    )
+
+    model = models.get_trained_model(f"cifar100-{arch}-p1")
+
+    actual = utils.get_dimensions_at_layers(model, dl, layers=layers)
+
+    np.testing.assert_equal(actual, expected)
