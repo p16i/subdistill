@@ -210,10 +210,11 @@ def _generate_resnet18_compressed(
             dilate=False,
         )
 
-        # todo: this is temporary
-        layers.append(
-            (f"layer{i+1}", nn.Sequential(layer, nn.BatchNorm2d(num_features=dims)))
-        )
+        # # todo: this is temporary;
+        # todo: remove this after also in other derivative of the architecture.
+        # layers.append(
+        #     (f"layer{i+1}", nn.Sequential(layer, nn.BatchNorm2d(num_features=dims)))
+        # )
 
     layers.extend(
         [
