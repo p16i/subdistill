@@ -154,9 +154,11 @@ def main(
         np.save(layer_output_dir / "act_mean", mean)
 
         basis_names = list(
-            map(
-                lambda p: p.split(":")[1],
-                filter(lambda p: "basis" in p, layer_policies),
+            set(
+                map(
+                    lambda p: p.split(":")[1],
+                    filter(lambda p: "basis" in p, layer_policies),
+                )
             )
         )
 
@@ -192,7 +194,11 @@ def main(
                 device=device,
             )
 
-            if policy_name == "basis":
+            if policy_name in [
+                "basis",
+                "basis-student-linear",
+                "basis-student-identity",
+            ]:
                 basis_name = policy_slugs[-1]
                 basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
                 layer_output_dir = output_dir / f"layer-{layer}"
