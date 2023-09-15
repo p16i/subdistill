@@ -42,10 +42,10 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 @click.option(
     "--layer-policies",
     type=str,
-    default="basis:pca,basis:prca-sortabs,basis:random,vid,linstudent,linteacher",
+    default="basis:pca--centered,basis:prca-sortabs--centered,basis:random--centered,attention-transfered,vid,fitnetinvid",
     required=True,
 )
-@click.option("--basis-mode", type=str, default="centered", required=True)
+# @click.option("--basis-mode", type=str, default="centered", required=True)
 @click.option("--output-dir", type=str, required=True)
 @click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
@@ -67,7 +67,6 @@ def main(
     lr,
     training_size,
     layers,
-    basis_mode,
     lambda_task,
     lambda_kd,
     lambda_layer,
@@ -165,8 +164,8 @@ def main(
         print(f"we learn {len(basis_names)} bases: {basis_names}")
 
         for basis_name in basis_names:
-            click.echo(f"[layer={layer}] fitting basis={basis_name}--{basis_mode}")
-            basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
+            click.echo(f"[layer={layer}] fitting basis={basis_name}")
+            basis = bases.get_basis(basis_name, seed=seed)
             basis.fit(arr_act, arr_ctx, mean=mean, device=device)
             basis.save(layer_output_dir)
 
@@ -200,7 +199,7 @@ def main(
                 "basis-student-identity",
             ]:
                 basis_name = policy_slugs[-1]
-                basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
+                basis = bases.get_basis(basis_name, seed=seed)
                 layer_output_dir = output_dir / f"layer-{layer}"
                 basis.load(layer_output_dir)
 
