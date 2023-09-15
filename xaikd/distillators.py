@@ -39,6 +39,7 @@ class Teacher(object):
     """
 
     def __init__(self, model: torch.nn.Module):
+        assert not model.training
         self.model = utils.freeze_model(model)
 
     def __call__(self, *args: Any) -> torch.Tensor:
