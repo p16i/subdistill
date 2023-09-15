@@ -44,7 +44,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 @click.option(
     "--layer-policies",
     type=str,
-    default="basis:pca--centered,basis:prca-sortabs--centered,basis:random--centered,attention-transfered,vid,fitnetinvid",
+    default="basis:pca--centered,basis:prca-sortabs--centered,basis:random--centered,attention-transfer,vid,fitnetinvid",
     required=True,
 )
 # @click.option("--basis-mode", type=str, default="centered", required=True)
