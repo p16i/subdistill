@@ -196,7 +196,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         for layer, policy in zip(
             self.layer_policy_collection.layers, self.layer_policy_collection.policies
         ):
-            if hasattr(policy.transformer_student_feats, "weight"):
+            if (
+                hasattr(policy.transformer_student_feats, "weight")
+                and policy.transformer_student_feats.weight is not None
+            ):
                 W = policy.transformer_student_feats.weight
                 slug = f"student-transform-norm--{layer}"
 
