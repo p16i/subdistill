@@ -201,6 +201,7 @@ def main(
                 "basis-student-linearnb",
                 "basis-student-linearnbinner",
                 "basis-student-identity",
+                "basis-student-identityinner",
                 "basis-student-ortho",
                 "basis-student-orthoinner",
                 "basis-student-orthoinnerstudentnorm",

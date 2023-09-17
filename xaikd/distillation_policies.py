@@ -166,6 +166,7 @@ class FitNetInVIDSetup(Policy):
             out_channels=teacher_dims,
             in_channels=student_dims,
             kernel_size=1,
+            bias=False,
         ).to(device)
 
         self.transformer_teacher_feats = nn.Identity()
@@ -189,6 +190,63 @@ class FitNetInVIDSetup(Policy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+@register_layer_policy("fitnetinvidinner")
+class FitNetInVIDSetup(Policy):
+    """
+    @inproceedings{DBLP:journals/corr/RomeroBKCGB14,
+        author       = {Adriana Romero and
+                        Nicolas Ballas and
+                        Samira Ebrahimi Kahou and
+                        Antoine Chassang and
+                        Carlo Gatta and
+                        Yoshua Bengio},
+        title        = {FitNets: Hints for Thin Deep Nets},
+        booktitle    = {{ICLR} (Poster)},
+        year         = {2015}
+    }
+    Remark: the implementation is the FitNet version in VID setup (cf. Ahn et al. (2019, VID, First Paragraph of Section 3).
+    The difference from the original setup is that, here, we do NOT pretrain the linear transform of the student.
+    Said differently, the FitNet implementation here contains only ONE stage.
+    """
+
+    def __init__(self, teacher_dims: int, student_dims: int, device: str) -> None:
+        super().__init__()
+
+        self.transformer_student_feats = nn.Conv2d(
+            out_channels=teacher_dims,
+            in_channels=student_dims,
+            kernel_size=1,
+            bias=False,
+        ).to(device)
+
+        self.transformer_teacher_feats = nn.Identity()
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        transformed_teacher_feats = F.normalize(transformed_teacher_feats, dim=1)
+        transformed_student_feats = F.normalize(transformed_student_feats, dim=1)
+
+        inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
+            dim=1
+        ) / (w * h)
+
+        inner_prod = inner_prod.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        inner_prod = inner_prod.sum(dim=1)
+
+        assert inner_prod.shape == (b,)
+
+        # average over all samples
+        inner_prod = inner_prod.mean()
+
+        # converting minimization problem.
+        return -inner_prod
 
 
 @register_layer_policy("vid")
@@ -540,6 +598,43 @@ class OrthogonalBasisIdentityPolicy(Policy):
         return loss_mse
 
 
+@register_layer_policy("basis-student-identityinner")
+class OrthogonalBasisIdentityPolicy(Policy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.Identity()
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_layer_policy("basis-student-linear")
 class OrthogonalBasisLinearPolicy(Policy):
     def __init__(
@@ -565,20 +660,25 @@ class OrthogonalBasisLinearPolicy(Policy):
 
         assert transformed_teacher_feats.shape == transformed_student_feats.shape
 
-        loss_mse = F.mse_loss(
-            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        transformed_teacher_feats = F.normalize(transformed_teacher_feats, dim=1)
+        transformed_student_feats = F.normalize(transformed_student_feats, dim=1)
+
+        inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
+            dim=1
         ) / (w * h)
-        loss_mse = loss_mse.flatten(start_dim=1)
+
+        inner_prod = inner_prod.flatten(start_dim=1)
 
         # sum over all spatial dimensions
-        loss_mse = loss_mse.sum(dim=1)
+        inner_prod = inner_prod.sum(dim=1)
 
-        assert loss_mse.shape == (b,)
+        assert inner_prod.shape == (b,)
 
         # average over all samples
-        loss_mse = loss_mse.mean()
+        inner_prod = inner_prod.mean()
 
-        return loss_mse
+        # converting minimization problem.
+        return -inner_prod
 
 
 @register_layer_policy("basis-student-linearnb")
