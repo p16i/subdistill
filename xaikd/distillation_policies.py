@@ -695,6 +695,9 @@ class OrthogonalBasisOrthoInnerPolicy(Policy):
 
         assert transformed_teacher_feats.shape == transformed_student_feats.shape
 
+        transformed_teacher_feats = F.normalize(transformed_teacher_feats, dim=1)
+        transformed_student_feats = F.normalize(transformed_student_feats, dim=1)
+
         inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
             dim=1
         ) / (w * h)
