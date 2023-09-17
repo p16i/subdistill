@@ -621,3 +621,52 @@ class OrthogonalBasisLinearNoBiasPolicy(Policy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+class Conv2d1x1(nn.Module):
+    def __init__(self, d) -> None:
+        super().__init__()
+
+        self.weight = nn.Parameter(torch.randn(d, d))
+
+    def forward(self, x: torch.Tensor):
+        return F.conv2d(x, self.weight.unsqueeze(2).unsqueeze(3))
+
+
+@register_layer_policy("basis-student-ortho")
+class OrthogonalBasisOrthoPolicy(Policy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = torch.nn.utils.parametrizations.orthogonal(
+            Conv2d1x1(d=student_dims)
+        ).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
