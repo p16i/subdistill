@@ -203,6 +203,7 @@ def main(
                 "basis-student-ortho",
                 "basis-student-orthoinner",
                 "basis-student-orthoconstinner",
+                "basis-student-orthoconstinnerstudentnorm",
             ]:
                 basis_name = policy_slugs[-1]
                 basis = bases.get_basis(basis_name, seed=seed)

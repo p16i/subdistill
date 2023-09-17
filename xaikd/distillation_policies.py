@@ -731,7 +731,11 @@ class OrthogonalBasisOrthoInnerPolicy(Policy):
         )
 
         self.Q = (
-            torch.from_numpy(ortho_group.rvs(k)).float().unsqueeze(2).unsqueeze(3).to(device)
+            torch.from_numpy(ortho_group.rvs(k))
+            .float()
+            .unsqueeze(2)
+            .unsqueeze(3)
+            .to(device)
         )
 
         def transform_student_feat(x: torch.Tensor) -> torch.Tensor:
@@ -745,6 +749,58 @@ class OrthogonalBasisOrthoInnerPolicy(Policy):
         assert transformed_teacher_feats.shape == transformed_student_feats.shape
 
         transformed_teacher_feats = F.normalize(transformed_teacher_feats, dim=1)
+        transformed_student_feats = F.normalize(transformed_student_feats, dim=1)
+
+        inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
+            dim=1
+        ) / (w * h)
+
+        inner_prod = inner_prod.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        inner_prod = inner_prod.sum(dim=1)
+
+        assert inner_prod.shape == (b,)
+
+        # average over all samples
+        inner_prod = inner_prod.mean()
+
+        # converting minimization problem.
+        return -inner_prod
+
+
+@register_layer_policy("basis-student-orthoconstinnerstudentnorm")
+class OrthogonalBasisOrthoInnerStudentNormPolicy(Policy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.Q = (
+            torch.from_numpy(ortho_group.rvs(k))
+            .float()
+            .unsqueeze(2)
+            .unsqueeze(3)
+            .to(device)
+        )
+
+        def transform_student_feat(x: torch.Tensor) -> torch.Tensor:
+            return F.conv2d(x, self.Q)
+
+        self.transformer_student_feats = transform_student_feat
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
         transformed_student_feats = F.normalize(transformed_student_feats, dim=1)
 
         inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
