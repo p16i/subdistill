@@ -201,6 +201,7 @@ def main(
                 "basis-student-linearnb",
                 "basis-student-identity",
                 "basis-student-ortho",
+                "basis-student-orthoinner",
             ]:
                 basis_name = policy_slugs[-1]
                 basis = bases.get_basis(basis_name, seed=seed)

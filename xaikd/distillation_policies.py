@@ -670,3 +670,44 @@ class OrthogonalBasisOrthoPolicy(Policy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+@register_layer_policy("basis-student-orthoinner")
+class OrthogonalBasisOrthoInnerPolicy(Policy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = torch.nn.utils.parametrizations.orthogonal(
+            Conv2d1x1(d=student_dims)
+        ).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
+            dim=1
+        ) / (w * h)
+
+        inner_prod = inner_prod.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        inner_prod = inner_prod.sum(dim=1)
+
+        assert inner_prod.shape == (b,)
+
+        # average over all samples
+        inner_prod = inner_prod.mean()
+
+        # converting minimization problem.
+        return -inner_prod
