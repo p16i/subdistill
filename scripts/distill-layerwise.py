@@ -198,6 +198,7 @@ def main(
             if policy_name in [
                 "basis",
                 "basis-student-linear",
+                "basis-student-linearnb",
                 "basis-student-identity",
             ]:
                 basis_name = policy_slugs[-1]
