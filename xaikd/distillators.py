@@ -200,7 +200,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 W = policy.transformer_student_feats.weight
                 slug = f"student-transform-norm--{layer}"
 
-                self.log(slug, torch.linalg.matrix_norm(W.squeeze(), ord=2))
+                self.log(slug, torch.linalg.matrix_norm(W.squeeze()))
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")
