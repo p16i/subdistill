@@ -202,6 +202,7 @@ def main(
                 "basis-student-identity",
                 "basis-student-ortho",
                 "basis-student-orthoinner",
+                "basis-student-orthoinnerstudentnorm",
                 "basis-student-orthoconstinner",
                 "basis-student-orthoconstinnerstudentnorm",
             ]:
