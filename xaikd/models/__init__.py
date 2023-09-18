@@ -341,7 +341,7 @@ def _generate_resnet18_customized2(num_classes: int) -> nn.Module:
     ]
 
     arr_num_blocks = [2, 2, 2, 2]
-    arr_dims = [32, 32, 32, 32]
+    arr_dims = [32, 32, 16, 5]
 
     for i, (dims, num_blocks) in enumerate(zip(arr_dims, arr_num_blocks)):
         layer = resnet18._make_layer(
