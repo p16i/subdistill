@@ -114,7 +114,18 @@ def main(
 
     train_loader = datasets.build_dataloader(ds_train, shuffle=True)
     val_loader = datasets.build_dataloader(
-        dataset.create_subset(train_split=False),
+        cleverhans.contaminate_dataset(
+            # remark: we have to do it this way because the current version of
+            #  `contaminate_dataset` function only work with `Subset.
+            dataset=datasets.subsample_dataset(
+                dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
+            ),
+            contamination_level=contamination_level,
+            seed=seed,
+            # remark: here, we assume that, in the validation data for distillation,
+            # all validaiton samples of only one class has spuriour correlation.
+            victim_class_indices=dataset.selected_classes,
+        ),
         shuffle=False,
     )
 
