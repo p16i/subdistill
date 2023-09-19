@@ -240,12 +240,7 @@ def _generate_resnet18_compressed(
         layers.append(
             (
                 f"layer{i+1}",
-                nn.Sequential(
-                    layer,
-                    nn.Conv2d(
-                        in_channels=dims, out_channels=dims, kernel_size=1, bias=True
-                    ),
-                ),
+                nn.Sequential(layer, nn.BatchNorm2d(num_features=dims)),
             )
         )
 
