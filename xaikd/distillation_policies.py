@@ -192,6 +192,63 @@ class FitNetInVIDSetup(Policy):
         return loss_mse
 
 
+@register_layer_policy("fitnetinvidbnrelu")
+class FitNetInVIDSetup(Policy):
+    """
+    @inproceedings{DBLP:journals/corr/RomeroBKCGB14,
+        author       = {Adriana Romero and
+                        Nicolas Ballas and
+                        Samira Ebrahimi Kahou and
+                        Antoine Chassang and
+                        Carlo Gatta and
+                        Yoshua Bengio},
+        title        = {FitNets: Hints for Thin Deep Nets},
+        booktitle    = {{ICLR} (Poster)},
+        year         = {2015}
+    }
+    Remark: the implementation is the FitNet version in VID setup (cf. Ahn et al. (2019, VID, First Paragraph of Section 3).
+    The difference from the original setup is that, here, we do NOT pretrain the linear transform of the student.
+    Said differently, the FitNet implementation here contains only ONE stage.
+    """
+
+    def __init__(self, teacher_dims: int, student_dims: int, device: str) -> None:
+        super().__init__()
+
+        self.transformer_student_feats = nn.Sequential(
+            # cf.  https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/models/util.py#L131
+            nn.Conv2d(
+                out_channels=teacher_dims,
+                in_channels=student_dims,
+                kernel_size=1,
+                bias=False,
+            ),
+            nn.BatchNorm2d(num_features=teacher_dims),
+            nn.ReLU(),
+        ).to(device)
+
+        self.transformer_teacher_feats = nn.Identity()
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_layer_policy("fitnetinvidinner")
 class FitNetInVIDSetup(Policy):
     """
