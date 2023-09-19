@@ -243,7 +243,7 @@ def _generate_resnet18_compressed(
                 nn.Sequential(
                     layer,
                     nn.Conv2d(
-                        in_channels=dims, out_channels=dims, kernel_size=1, bias=False
+                        in_channels=dims, out_channels=dims, kernel_size=1, bias=True
                     ),
                 ),
             )
