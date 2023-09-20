@@ -579,9 +579,15 @@ class PRCA(Basis):
         if self.centering:
             activation = activation - mean
 
-        eigvals, eigvecs = np.linalg.eigh(
-            ((activation.T @ context + context.T @ activation)) / n
-        )
+        with torch.no_grad():
+            eigvals, eigvecs = torch.linalg.eigh(
+                torch.from_numpy(
+                    ((activation.T @ context + context.T @ activation)) / n
+                )
+            )
+
+        eigvals = eigvals.numpy()
+        eigvecs = eigvecs.numpy()
 
         # sorted by descending of `criteria(eigvals)`
         indices = np.argsort(-self._criteria(eigvals))
