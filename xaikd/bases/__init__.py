@@ -582,11 +582,11 @@ class PRCA(Basis):
         with torch.no_grad():
             eigvals, eigvecs = torch.linalg.eigh(
                 torch.from_numpy(
-                    ((activation.T @ context + context.T @ activation))
+                    ((activation.T @ context + context.T @ activation)) / n
                 )
             )
 
-        eigvals = eigvals.numpy() / n
+        eigvals = eigvals.numpy()
         eigvecs = eigvecs.numpy()
 
         # sorted by descending of `criteria(eigvals)`
