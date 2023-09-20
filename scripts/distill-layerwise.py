@@ -24,6 +24,7 @@ from xaikd import (
     constants,
 )
 
+from xaikd.showcases import cleverhans
 from xaikd import distillation_policies
 from xaikd.utils import click_types
 
@@ -37,25 +38,28 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 @click.command()
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
 @click.option("--teacher", default="cifar100-resnet18-wb15", required=True)
-@click.option("--student", default="resnet18compr2", required=True)
-@click.option("--layers", default="layer3,layer4", type=str, required=True)
+@click.option("--student", default="resnet18cifarcompr2", required=True)
+@click.option(
+    "--layers", default="layer1,layer2,layer3,layer4", type=str, required=True
+)
 @click.option(
     "--layer-policies",
     type=str,
-    default="basis:pca,basis:prca-sortabs,basis:random,vid,linstudent,linteacher",
+    default="basis-student-linearnbinner:pca--uncentered,basis-student-linearnbinner:prca-sortabs--uncentered,basis-student-linearnbinner:random--uncentered,attention-transfer,vid,fitnetinvidinner,fitnetinvid",
     required=True,
 )
-@click.option("--basis-mode", type=str, default="centered", required=True)
+# @click.option("--basis-mode", type=str, default="centered", required=True)
 @click.option("--output-dir", type=str, required=True)
 @click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--lr", type=float, default=0.0005, required=True)
-@click.option("--lambda-kd", type=click_types.SmartFloat(), default=1.0)
+@click.option("--lambda-kd", type=float, default=1.0)
 @click.option("--lambda-task", type=float, default=0.0)
-@click.option("--lambda-layer", type=click_types.SmartFloat(), required=True)
+@click.option("--lambda-layer", type=float, required=True)
 @click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
 @click.option("--skip-baselines", type=bool, default=False, is_flag=True)
+@click.option("--contamination-level", type=float, default=0.75)
 def main(
     teacher,
     student,
@@ -67,10 +71,10 @@ def main(
     lr,
     training_size,
     layers,
-    basis_mode,
     lambda_task,
     lambda_kd,
     lambda_layer,
+    contamination_level,
     skip_baselines,
     skip_if_exist,
 ):
@@ -83,7 +87,11 @@ def main(
     layers = layers.split(",")
     layer_policies = layer_policies.split(",")
 
-    output_dir = Path(output_dir) / f"{dataset}-tz{training_size}-seed{seed}" / teacher
+    output_dir = (
+        Path(output_dir)
+        / f"{dataset}-clv{contamination_level}-tz{training_size}-seed{seed}"
+        / teacher
+    )
 
     os.makedirs(output_dir, exist_ok=True)
     click.echo(f"Output: {output_dir}")
@@ -95,13 +103,29 @@ def main(
 
     logit_mod = attributors.OneClassEvidence(num_classes=dataset.num_classes)
 
-    ds_train = datasets.subsample_dataset(
-        dataset.create_subset(train_split=True), ratio=training_size, seed=seed
+    ds_train = cleverhans.contaminate_dataset(
+        datasets.subsample_dataset(
+            dataset.create_subset(train_split=True), ratio=training_size, seed=seed
+        ),
+        contamination_level=contamination_level,
+        seed=seed,
+        victim_class_indices=[min(dataset.selected_classes)],
     )
 
     train_loader = datasets.build_dataloader(ds_train, shuffle=True)
     val_loader = datasets.build_dataloader(
-        dataset.create_subset(train_split=False),
+        cleverhans.contaminate_dataset(
+            # remark: we have to do it this way because the current version of
+            #  `contaminate_dataset` function only work with `Subset.
+            dataset=datasets.subsample_dataset(
+                dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
+            ),
+            contamination_level=contamination_level,
+            seed=seed,
+            # remark: here, we assume that, in the validation data for distillation,
+            # all validaiton samples of only one class has spuriour correlation.
+            victim_class_indices=dataset.selected_classes,
+        ),
         shuffle=False,
     )
 
@@ -121,7 +145,20 @@ def main(
     utils.modify_last_layer_for_subclasses(
         teacher_model.fc, selected_classes=dataset.selected_classes
     )
+    teacher_layer_dims_mapping = utils.get_dimensions_at_layers(
+        teacher_model, train_loader, layers=layers
+    )
     teacher_model.to(device)
+
+    student_layer_dims_mapping = utils.get_dimensions_at_layers(
+        models.get_untrained_model(student, num_classes=dataset.num_classes).eval(),
+        train_loader,
+        layers=layers,
+    )
+
+    print("Layerwise Distillation with")
+    for k, v in student_layer_dims_mapping.items():
+        print(f"> layer={k}: teacher={teacher_layer_dims_mapping[k]} -> student={v}")
 
     # prepare bases
     for layer in layers:
@@ -141,17 +178,19 @@ def main(
         np.save(layer_output_dir / "act_mean", mean)
 
         basis_names = list(
-            map(
-                lambda p: p.split(":")[1],
-                filter(lambda p: "basis" in p, layer_policies),
+            set(
+                map(
+                    lambda p: p.split(":")[1],
+                    filter(lambda p: "basis" in p, layer_policies),
+                )
             )
         )
 
         print(f"we learn {len(basis_names)} bases: {basis_names}")
 
         for basis_name in basis_names:
-            click.echo(f"[layer={layer}] fitting basis={basis_name}--{basis_mode}")
-            basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
+            click.echo(f"[layer={layer}] fitting basis={basis_name}")
+            basis = bases.get_basis(basis_name, seed=seed)
             basis.fit(arr_act, arr_ctx, mean=mean, device=device)
             basis.save(layer_output_dir)
 
@@ -170,10 +209,8 @@ def main(
 
         layer_policies = []
         for layer in layers:
-            student_layer_dims = constants.ARCH_LAYER_DIMENSIONS[student][layer]
-            teacher_layer_dims = models.get_layer_output_dimensions(
-                teacher_model, layer
-            )
+            student_layer_dims = student_layer_dims_mapping[layer]
+            teacher_layer_dims = teacher_layer_dims_mapping[layer]
 
             kwargs = dict(
                 teacher_dims=teacher_layer_dims,
@@ -181,9 +218,22 @@ def main(
                 device=device,
             )
 
-            if policy_name == "basis":
+            if policy_name in [
+                "basis",
+                "basis-student-linear",
+                "basis-student-linearnb",
+                "basis-student-linearnbinner",
+                "basis-student-linearnbinitinner",
+                "basis-student-identity",
+                "basis-student-identityinner",
+                "basis-student-ortho",
+                "basis-student-orthoinner",
+                "basis-student-orthoinnerstudentnorm",
+                "basis-student-orthoconstinner",
+                "basis-student-orthoconstinnerstudentnorm",
+            ]:
                 basis_name = policy_slugs[-1]
-                basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=seed)
+                basis = bases.get_basis(basis_name, seed=seed)
                 layer_output_dir = output_dir / f"layer-{layer}"
                 basis.load(layer_output_dir)
 

@@ -39,6 +39,7 @@ class Teacher(object):
     """
 
     def __init__(self, model: torch.nn.Module):
+        assert not model.training
         self.model = utils.freeze_model(model)
 
     def __call__(self, *args: Any) -> torch.Tensor:
@@ -186,11 +187,24 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             value = metric.compute()
             metric.reset()
 
-            self.log(slug, value)
-            self.arr_metrics[slug].append(float(value))
+            if not self.trainer.sanity_checking:
+                self.log(slug, value)
+                self.arr_metrics[slug].append(float(value))
 
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")
+
+        for layer, policy in zip(
+            self.layer_policy_collection.layers, self.layer_policy_collection.policies
+        ):
+            if (
+                hasattr(policy.transformer_student_feats, "weight")
+                and policy.transformer_student_feats.weight is not None
+            ):
+                W = policy.transformer_student_feats.weight
+                slug = f"student-transform-norm--{layer}"
+
+                self.log(slug, torch.linalg.matrix_norm(W.squeeze()))
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")

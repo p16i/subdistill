@@ -60,3 +60,20 @@ def test_resnet_layer_interception(slug, layer):
 
     finally:
         hook.remove()
+
+
+@pytest.mark.parametrize("slug", ("resnet18cifarcompr2",))
+@pytest.mark.parametrize("layer", ("layer1", "layer2", "layer3", "layer4"))
+# @pytest.mark.slow()
+def test_student_extra_interception(slug, layer):
+    model1 = models.get_untrained_model(slug, num_classes=5)
+
+    try:
+        module, hook = interceptor.attach_hook_intercept_layer_output(
+            model1, layer, should_retain_grad=False
+        )
+
+        assert isinstance(module, torch.nn.BatchNorm2d)
+
+    finally:
+        hook.remove()

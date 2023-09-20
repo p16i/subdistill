@@ -43,7 +43,7 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
 @pytest.mark.slow()
 def test_distillation_not_alter_teacher():
     teacher_model_name = "cifar100-resnet18-p1"
-    student_model_name = "resnet18compr2"
+    student_model_name = "resnet18cifarcompr2"
 
     teacher_model = models.get_trained_model(teacher_model_name)
 
@@ -67,6 +67,17 @@ def test_distillation_not_alter_teacher():
     train_loader = datasets.build_dataloader(ds_training, shuffle=True)
     val_loader = datasets.build_dataloader(ds_val, shuffle=False)
 
+    teacher_dims_mapping = utils.get_dimensions_at_layers(
+        teacher_model, train_loader, layers
+    )
+    student_dims_mapping = utils.get_dimensions_at_layers(
+        models.get_untrained_model(
+            student_model_name, num_classes=dataset.num_classes
+        ).eval(),
+        train_loader,
+        layers,
+    )
+
     np.random.seed(1)
 
     layer_policies = []
@@ -75,8 +86,8 @@ def test_distillation_not_alter_teacher():
     for layer in layers:
         arr_adapters.append(
             distillation_policies.LearnableAdapterTeacherPolicy(
-                teacher_dims=constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer],
-                student_dims=constants.ARCH_LAYER_DIMENSIONS[student_model_name][layer],
+                teacher_dims=teacher_dims_mapping[layer],
+                student_dims=student_dims_mapping[layer],
                 device=device,
             )
         )
@@ -174,16 +185,30 @@ def test_get_parameters(layers):
 
     teacher_model = models.get_trained_model("cifar100-resnet18-p1")
     student = models.get_untrained_model(
-        "resnet18compr2", num_classes=dataset.num_classes
+        "resnet18cifarcompr2", num_classes=dataset.num_classes
+    )
+
+    train_loader = datasets.build_dataloader(
+        dataset.create_subset(train_split=True), shuffle=False
+    )
+
+    teacher_dims_mapping = utils.get_dimensions_at_layers(
+        teacher_model, train_loader, layers
+    )
+    student_dims_mapping = utils.get_dimensions_at_layers(
+        models.get_untrained_model(
+            "resnet18cifarcompr2", num_classes=dataset.num_classes
+        ).eval(),
+        train_loader,
+        layers,
     )
 
     adapters = []
     for layer in layers:
-        dim = constants.ARCH_LAYER_DIMENSIONS["resnet18compr2"][layer]
         adapters.append(
             distillation_policies.LearnableAdapterTeacherPolicy(
-                teacher_dims=constants.ARCH_LAYER_DIMENSIONS["resnet18"][layer],
-                student_dims=dim,
+                teacher_dims=teacher_dims_mapping[layer],
+                student_dims=student_dims_mapping[layer],
                 device=device,
             )
         )
