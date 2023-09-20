@@ -187,8 +187,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             value = metric.compute()
             metric.reset()
 
-            self.log(slug, value)
-            self.arr_metrics[slug].append(float(value))
+            if not self.trainer.sanity_checking:
+                self.log(slug, value)
+                self.arr_metrics[slug].append(float(value))
 
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")

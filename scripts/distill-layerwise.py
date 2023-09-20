@@ -24,6 +24,7 @@ from xaikd import (
     constants,
 )
 
+from xaikd.showcases import cleverhans
 from xaikd import distillation_policies
 from xaikd.utils import click_types
 
@@ -58,6 +59,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 @click.option("--lambda-layer", type=float, required=True)
 @click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
 @click.option("--skip-baselines", type=bool, default=False, is_flag=True)
+@click.option("--contamination-level", type=float, default=0.75)
 def main(
     teacher,
     student,
@@ -72,6 +74,7 @@ def main(
     lambda_task,
     lambda_kd,
     lambda_layer,
+    contamination_level,
     skip_baselines,
     skip_if_exist,
 ):
@@ -84,7 +87,11 @@ def main(
     layers = layers.split(",")
     layer_policies = layer_policies.split(",")
 
-    output_dir = Path(output_dir) / f"{dataset}-tz{training_size}-seed{seed}" / teacher
+    output_dir = (
+        Path(output_dir)
+        / f"{dataset}-clv{contamination_level}-tz{training_size}-seed{seed}"
+        / teacher
+    )
 
     os.makedirs(output_dir, exist_ok=True)
     click.echo(f"Output: {output_dir}")
@@ -96,13 +103,29 @@ def main(
 
     logit_mod = attributors.OneClassEvidence(num_classes=dataset.num_classes)
 
-    ds_train = datasets.subsample_dataset(
-        dataset.create_subset(train_split=True), ratio=training_size, seed=seed
+    ds_train = cleverhans.contaminate_dataset(
+        datasets.subsample_dataset(
+            dataset.create_subset(train_split=True), ratio=training_size, seed=seed
+        ),
+        contamination_level=contamination_level,
+        seed=seed,
+        victim_class_indices=[min(dataset.selected_classes)],
     )
 
     train_loader = datasets.build_dataloader(ds_train, shuffle=True)
     val_loader = datasets.build_dataloader(
-        dataset.create_subset(train_split=False),
+        cleverhans.contaminate_dataset(
+            # remark: we have to do it this way because the current version of
+            #  `contaminate_dataset` function only work with `Subset.
+            dataset=datasets.subsample_dataset(
+                dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
+            ),
+            contamination_level=contamination_level,
+            seed=seed,
+            # remark: here, we assume that, in the validation data for distillation,
+            # all validaiton samples of only one class has spuriour correlation.
+            victim_class_indices=dataset.selected_classes,
+        ),
         shuffle=False,
     )
 
