@@ -296,17 +296,17 @@ class CIFAR100(DatasetConfiguration):
     selected_classes = list(range(100))
 
     def __init__(self):
-        # todo: important: use statistic from cifar100 training itself to construct normalize
-        # ref: https://github.com/zju-vipa/NetGraft/blob/main/utils/data.py#L10
+        # ref: https://github.com/weiaicunzai/pytorch-cifar100/blob/master/conf/global_settings.py#L12C1-L13C83
         self._normalizer = transforms.Normalize(
-            mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010)
+            mean=(0.5070751592371323, 0.48654887331495095, 0.4409178433670343),
+            std=(0.2673342858792401, 0.2564384629170883, 0.27615047132568404),
         )
 
         self.input_transformation = transforms.Compose(
             [transforms.ToTensor(), self._normalizer]
         )
 
-        # # ref: https://github.com/zju-vipa/NetGraft/blob/main/utils/data.py#L35
+        # ref: https://github.com/zju-vipa/NetGraft/blob/main/utils/data.py#L35
         self.input_training_transformation = transforms.Compose(
             [
                 transforms.RandomCrop(32, padding=4),
