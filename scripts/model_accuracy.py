@@ -49,14 +49,9 @@ def main(dataset_name, model_names, output_dir):
 
         print(f"Model={model_name}")
         model_stat = dict(model=model_name)
-        for prefix, dl in [("train", train_dl), ("val", val_dl)]:
-            acc, xent = metrics.accuracy_with_subclasses(
-                model,
-                dl,
-                considered_classes=dataset.selected_classes,
-                transform_target=dataset.transform_target,
-                device=device,
-            )
+        for prefix, dl in [("train", train_dl), ("val", val_dl)][1:]:
+            acc, xent  = metrics.accuracy(model,dl, num_classes=len(dataset.selected_classes), device=device)
+
             print(f" > [{prefix:5s}] xent={xent:.4f} acc={acc:.4f}")
 
             model_stat[f"{prefix}_xent"] = xent
