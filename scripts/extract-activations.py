@@ -41,7 +41,7 @@ def main(model_name, layer, output_dir, seed, selected_bases):
     output_dir = Path(output_dir) / model_name / layer
     os.makedirs(output_dir, exist_ok=True)
 
-    model = models.get_model(name=model_name).to(device)
+    model = models.get_trained_model(name=model_name).to(device)
 
     logit_modifier = attributors.OneClassEvidence(dataset)
 

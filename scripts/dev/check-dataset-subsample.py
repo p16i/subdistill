@@ -39,7 +39,7 @@ def main(dataset_name, training_size, seed, output_dir):
     logit_mod = attributors.OneClassEvidence(dataset=dataset)
 
     arr_act, arr_ctx = attributors.extract_activation_context(
-        model=models.get_model(teacher_model),
+        model=models.get_trained_model(teacher_model),
         layer=layer,
         data_loader=train_loader,
         dataset=dataset,

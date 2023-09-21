@@ -50,36 +50,63 @@ def auroc(
     return float(auroc), float(bin_accuracy)
 
 
-def accuracy(model: nn.Module, dl: DataLoader, num_classes: int, device: str) -> float:
+def accuracy(
+    model: nn.Module,
+    dataloader: DataLoader,
+    num_classes: int,
+    device: str,
+    verbose=False,
+) -> typing.Tuple[float, float]:
+    """_summary_
+
+    Args:
+        model (nn.Module): _description_
+        dataloader (DataLoader): _description_
+        num_classes (int): _description_
+        device (str): _description_
+        verbose (bool, optional): _description_. Defaults to False.
+
+    Returns:
+        acc: torch.Tensor
+        xent: torch.Tensor
+    """
     model.eval()
-    metric = Accuracy(task="multiclass", num_classes=num_classes)
 
-    for x, y in dl:
+    metric_acc = Accuracy(task="multiclass", num_classes=num_classes)
+    metric_xent = MeanMetric()
+
+    for x, y in tqdm(
+        dataloader, desc="computing accuracy for selected claseses", disable=not verbose
+    ):
         logits = model(x.to(device)).cpu()
-        metric.update(logits, y)
+        metric_acc.update(logits, y)
+        xent = F.cross_entropy(logits, y, reduction="none")
+        metric_xent.update(xent)
 
-    return float(metric.compute())
+    return float(metric_acc.compute()), float(metric_xent.compute())
 
 
 def accuracy_with_subclasses(
     model: nn.Module,
-    dl: DataLoader,
+    dataloader: DataLoader,
     considered_classes: typing.List[int],
-    transform_target: typing.Callable[[torch.Tensor], torch.Tensor],
+    transform_target: typing.Callable[[typing.List[int]], typing.List[int]],
     device: str,
     verbose=False,
 ) -> typing.Tuple[float, float]:
+    raise NotImplementedError("Obsolete! Use accuracy(..) instead!")
     model.eval()
 
     metric_acc = Accuracy(task="multiclass", num_classes=len(considered_classes))
     metric_xent = MeanMetric()
 
     for x, y in tqdm(
-        dl, desc="Computing accuracy for selected claseses", disable=not verbose
+        dataloader, desc="Computing accuracy for selected claseses", disable=not verbose
     ):
         logits = model(x.to(device)).cpu()
         selected_logits = logits[:, considered_classes]
-        transformed_y = transform_target(y)
+        transformed_y = transform_target(y.detach().cpu().numpy())
+        transformed_y = torch.Tensor(transformed_y).to(y.device)
         metric_acc.update(selected_logits, transformed_y)
         xent = F.cross_entropy(selected_logits, transformed_y, reduction="none")
         metric_xent.update(xent)

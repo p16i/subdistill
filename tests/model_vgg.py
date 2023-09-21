@@ -35,7 +35,7 @@ def test_group_feature_layers_vgg11(arch_cls, num_classes, input_size):
 @pytest.mark.parametrize("layer", ["layer1", "layer2", "layer3", "layer4", "layer5"])
 @pytest.mark.slow
 def test_split_resnet_model(slug, layer):
-    model = models.get_model(slug)
+    model = models.get_trained_model(slug)
 
     head, layer_module, classifier = model.split_at(layer)
     if "imagenet" in slug:

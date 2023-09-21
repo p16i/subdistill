@@ -81,7 +81,7 @@ def main(
     basis_names = basis_names.split(",")
     device = utils.get_device()
 
-    teacher_model = models.get_model(model_name)
+    teacher_model = models.get_trained_model(model_name)
     teacher_model.to(device)
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(dataset_name)
 
@@ -199,7 +199,7 @@ def main(
             )
 
             distillator = distillators.Layerwise(
-                teacher=models.get_model(model_name),
+                teacher=models.get_trained_model(model_name),
                 dataset=dataset,
                 train_dataloader=train_loader_with_aug,
                 val_dataloader=val_loader,
@@ -232,7 +232,7 @@ def main(
 
             basis.load(output_dir)
 
-            student = models.get_model(model_name)
+            student = models.get_trained_model(model_name)
 
             log_dir = basis_distillation_output_dir / "log"
 
@@ -268,8 +268,8 @@ def main(
                 lr=lr,
                 logger=logger,
                 log_dir=log_dir,
-                lambda_mse=lambda_mse,
-                lambda_xent=lambda_xent,
+                lambda_layer=lambda_mse,
+                lambda_task=lambda_xent,
                 enable_checkpointing=True,
                 callbacks=[
                     # remark: `monitored attribute` should be macthed

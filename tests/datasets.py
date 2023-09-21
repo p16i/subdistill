@@ -140,14 +140,18 @@ def test_parse_dataset_name(name, expected):
     "super_class", DF_CIFAR100_LABEL_MAPPING["coarse_label_name"].unique().tolist()
 )
 def test_cifar100_superclass(super_class):
-    ds = datasets.construct(f"cifar100-{super_class}")
+    ds: datasets.Cifar100SuperClassesDataset = datasets.construct(
+        f"cifar100-{super_class}"
+    )
 
     df = DF_CIFAR100_LABEL_MAPPING
 
     fine_labels = df[df.coarse_label_name == super_class].fine_label.values.tolist()
 
+    assert tuple(sorted(ds.selected_classes)) == tuple(sorted(fine_labels))
+
     for ix, (_, y) in enumerate(DataLoader(ds.create_subset(train_split=False))):
-        assert np.isin(y.numpy(), fine_labels).all()
+        assert (y.numpy() <= ds.num_classes - 1).all()
 
 
 @pytest.mark.parametrize(
@@ -164,9 +168,15 @@ def test_cifar100_superclass_transform_target(super_class):
         df[df.coarse_label_name == super_class].fine_label.values.tolist()
     )
 
-    targets = ds.transform_target(torch.Tensor(fine_labels)).numpy()
+    dl_val = datasets.build_dataloader(
+        ds.create_subset(train_split=False), shuffle=False
+    )
 
-    assert np.isin(targets, range(len(fine_labels))).all()
+    arr_ys = []
+    for _, y in dl_val:
+        arr_ys.extend(y.numpy().tolist())
+
+    assert np.isin(arr_ys, range(len(fine_labels))).all()
 
 
 def test_subsample_dataset():

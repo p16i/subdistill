@@ -3,6 +3,7 @@ import numpy.typing as npt
 
 import json
 import torch
+from torch.utils.data import DataLoader
 from torch import nn
 import numpy as np
 
@@ -81,10 +82,16 @@ def subsample_tensors(
 
 
 def count_params_in_model(model: torch.nn.Module) -> typing.Tuple[int, int]:
+    return count_params_in_list_params(model.parameters())
+
+
+def count_params_in_list_params(
+    params: typing.Iterable[torch.nn.Parameter],
+) -> typing.Tuple[int, int]:
     # ref: https://stackoverflow.com/a/49201237
 
     total, trainable = 0, 0
-    for param in model.parameters():
+    for param in params:
         n = param.numel()
         total += n
 
@@ -140,3 +147,45 @@ def is_permuation_matrix(x: npt.NDArray) -> bool:
         and (x.sum(axis=1) == 1).all()
         and ((x == 1) | (x == 0)).all()
     )
+
+
+def modify_last_layer_for_subclasses(
+    layer: nn.Linear, selected_classes: typing.List[int]
+):
+    assert isinstance(layer, nn.Linear)
+
+    layer.weight = nn.Parameter(layer.weight[selected_classes, :])
+    layer.bias = nn.Parameter(layer.bias[selected_classes])
+
+
+@torch.no_grad()
+def get_dimensions_at_layers(
+    model: nn.Module, dataloader: DataLoader, layers: typing.List[str]
+) -> typing.Dict[str, int]:
+    assert not model.training
+
+    hooks = []
+    modules = []
+    try:
+        for layer in layers:
+            module, hook = interceptor.attach_hook_intercept_layer_output(
+                model, layer, should_retain_grad=False
+            )
+            hooks.append(hook)
+            modules.append(module)
+
+        x, _ = next(iter(dataloader))
+
+        _ = model(x)
+
+        dimensions = dict()
+        for layer, module in zip(layers, modules):
+            output = interceptor.get_output(module)
+            _, d, _, _ = output.shape
+            dimensions[layer] = d
+
+    finally:
+        for hook in hooks:
+            hook.remove()
+
+    return dimensions

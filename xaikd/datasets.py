@@ -324,13 +324,75 @@ class CIFAR100(DatasetConfiguration):
     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
         return target
 
-    def create_subset(self, train_split=False) -> Dataset:
+    def create_subset(
+        self,
+        train_split=False,
+        target_transform: typing.Union[None, typing.Callable] = None,
+    ) -> Dataset:
         return self.dataclass(
             root=self.root,
             train=train_split,
             transform=self.input_transformation,
             download=TORCHVISION_DATASET_DOWNLOAD,
+            target_transform=target_transform,
         )
+
+
+@dataclass
+class Cifar100SuperClassesDataset(DatasetConfiguration):
+    def __init__(
+        self,
+        base: CIFAR100,
+        super_class: str,
+        num_train_samples: typing.Union[None, int] = None,
+    ):
+        # todo: refactor this not w.r.t the twoclass dataset
+        self.base = base
+        df_meta = pd.read_csv(
+            constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
+        )
+
+        df_selected = df_meta[df_meta.coarse_label_name == super_class]
+        df_selected = df_selected.sort_values(by="fine_label")
+        print(
+            f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
+        )
+        for row in df_selected.to_dict("records"):
+            print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
+
+        # remark: the targets are defined in the CIFAR100 dataset.
+        self.selected_classes = df_selected.fine_label.values.tolist()
+
+        self.num_classes = len(self.selected_classes)
+
+        self._normalizer = self.base._normalizer
+        self.input_transformation = self.base.input_transformation
+        self.input_training_transformation = self.base.input_training_transformation
+
+        # change name to mapping_old_and_new_target_indices
+        # converting from old target (original dataset) to new target {0, 1,...})
+        self._target_mapping = dict(
+            zip(self.selected_classes, range(len(self.selected_classes)))
+        )
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = self.base.create_subset(
+            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
+        )
+        labels = ds.targets
+
+        selected_data_indices = np.argwhere(
+            np.isin(labels, self.selected_classes)
+        ).reshape(-1)
+
+        ds.data = ds.data[selected_data_indices, :]
+
+        targets = np.array(ds.targets)[selected_data_indices].tolist()
+        assert np.isin(targets, self.selected_classes).all()
+
+        ds.targets = targets
+
+        return ds
 
 
 @register_dataset("imagenet")
@@ -367,11 +429,16 @@ class ImageNet(DatasetConfiguration):
         self.dataclass = tvd.ImageNet
         self.root = DATADIR / "imagenet"
 
-    def create_subset(self, train_split=False) -> Dataset:
+    def create_subset(
+        self,
+        train_split=False,
+        target_transform: typing.Union[None, typing.Callable] = None,
+    ) -> Dataset:
         return self.dataclass(
             root=self.root,
             split="train" if train_split else "val",
             transform=self.input_transformation,
+            target_transform=target_transform,
         )
 
     def transform_target(self, target: torch.Tensor) -> torch.Tensor:
@@ -380,132 +447,38 @@ class ImageNet(DatasetConfiguration):
 
 @register_dataset("imagenet-butterfly")
 class ImageNetButterfly(ImageNet):
+    # remark: the targets are defined in the ImageNet dataset.
     selected_classes = [321, 322, 323, 324, 325, 326]
 
     def __init__(self):
         super().__init__()
 
         # todo: add unit tests  but mark.as.on server
-        self.target_transform_dict = dict(
+        self._target_mapping = dict(
             zip(self.selected_classes, range(len(self.selected_classes)))
         )
 
+        self.num_classes = len(self.selected_classes)
+
     def create_subset(self, train_split=False) -> Dataset:
-        ds = super().create_subset(train_split=train_split)
+        ds = super().create_subset(
+            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
+        )
 
         indices = np.argwhere(np.isin(ds.targets, self.selected_classes)).reshape(-1)
 
         print(f"We have {len(indices)} images in classes {self.selected_classes}")
 
-        new_samples = []
-        new_targets = []
+        selected_samples = []
+        selected_targets = []
 
         for six in tqdm(indices, desc="preparing `butterfly` samples"):
-            new_samples.append(ds.samples[six])
-            new_targets.append(ds.targets[six])
+            selected_samples.append(ds.samples[six])
+            selected_targets.append(ds.targets[six])
 
-        ds.imgs = new_samples
-        ds.samples = new_samples
-        ds.targets = new_targets
+        ds.imgs = selected_samples
+        ds.samples = selected_samples
 
-        assert np.isin(ds.targets, self.selected_classes).all()
-
-        return ds
-
-    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
-        new_target = []
-
-        for t in target:
-            new_target.append(self.target_transform_dict[int(t.detach().cpu())])
-
-        return torch.Tensor(new_target).long().to(target.device)
-
-
-@dataclass
-class Cifar100SuperClassesDataset(DatasetConfiguration):
-    def __init__(
-        self,
-        base: DatasetConfiguration,
-        super_class: str,
-        num_train_samples: typing.Union[None, int] = None,
-    ):
-        # todo: refactor this not w.r.t the twoclass dataset
-        self.base = base
-        df_meta = pd.read_csv(
-            constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
-        )
-
-        df_selected = df_meta[df_meta.coarse_label_name == super_class]
-        df_selected = df_selected.sort_values(by="fine_label")
-        print(
-            f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
-        )
-        for row in df_selected.to_dict("records"):
-            print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
-
-        self.selected_classes = df_selected.fine_label.values.tolist()
-
-        # remark: Attention! this is `num_classes` of CIFAR100.
-        # todo: when do we use this?
-        self.num_classes = 100
-
-        self._normalizer = self.base._normalizer
-        self.input_transformation = self.base.input_transformation
-        self.input_training_transformation = self.base.input_training_transformation
-
-        self.target_transform_dict = dict(
-            zip(self.selected_classes, range(len(self.selected_classes)))
-        )
-
-    def create_subset(self, train_split=False) -> Dataset:
-        ds = self.base.create_subset(train_split=train_split)
-        labels = ds.targets
-
-        selected_data_indices = np.argwhere(
-            np.isin(labels, self.selected_classes)
-        ).reshape(-1)
-
-        ds.data = ds.data[selected_data_indices, :]
-        ds.targets = np.array(ds.targets)[selected_data_indices].tolist()
-
-        assert np.isin(ds.targets, self.selected_classes).all()
+        ds.targets = selected_targets
 
         return ds
-
-    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
-        new_target = []
-
-        for t in target:
-            new_target.append(self.target_transform_dict[int(t.detach().cpu())])
-
-        return torch.Tensor(new_target).long().to(target.device)
-
-    # def loader(
-    #     self,
-    #     batch_size=64,
-    #     num_workers=2,
-    #     train_split=False,
-    #     shuffle=False,
-    # ):
-    #     ds = self.create_subset(train_split=train_split)
-    #     labels = ds.targets
-
-    #     if train_split and self.num_train_samples is not None:
-    #         # for training split: select training samples for those classes and subsample
-    #         selected_data_indices = selected_subset_samples_for_classes(
-    #             np.array(labels),
-    #             self.selected_classes,
-    #             samples_per_class=self.num_train_samples,
-    #         )
-    #     else:
-    #         # for validation split: select samples for those classes only
-    #         selected_data_indices = np.argwhere(
-    #             np.isin(labels, self.selected_classes)
-    #         ).reshape(-1)
-
-    #     ds.data = ds.data[selected_data_indices, :]
-    #     ds.targets = np.array(ds.targets)[selected_data_indices].tolist()
-
-    #     assert np.isin(ds.targets, self.selected_classes).all()
-
-    #     return

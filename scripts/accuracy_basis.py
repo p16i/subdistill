@@ -85,7 +85,7 @@ def estimate_acc_for_basis(
                 model,
                 dataloader,
                 dataset.selected_classes,
-                dataset.transform_target,
+                dataset._transform_target,
                 device=device,
             )
 
@@ -155,7 +155,7 @@ def main(
         model,
         val_dataloader,
         dataset.selected_classes,
-        dataset.transform_target,
+        dataset._transform_target,
         device=device,
     )
 

@@ -499,6 +499,61 @@ class PCA(Basis):
         return eigvecs, scale
 
 
+@register_basis("pcainv")
+class PCAInverse(Basis):
+    artifact_keys = ["eigvecs", "scale"]
+
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
+    ):
+        """_summary_
+
+        Args:
+            activation (npt.NDArray): _description_
+            context (npt.NDArray): We do NOT use this here!
+        """
+
+        n, d = activation.shape
+
+        if self.centering:
+            activation = activation - mean
+
+        assert not np.isnan(activation).any()
+
+        cov = activation.T @ activation / n
+
+        eigvals, eigvecs = np.linalg.eigh(cov)
+
+        indices = np.argsort(eigvals)
+
+        eigvals = eigvals[indices]
+        eigvecs = eigvecs[:, indices]
+
+        scale = self._compute_scale(activation, eigvecs)
+
+        cond = eigvals < 0
+
+        if cond.sum() > 0:
+            print("[warning]: some eigenvalues are of PCA smaller than zero!")
+            print(
+                "Because this seems to be numerical issue, we set eigvals[eigvals < 0] = 0"
+            )
+            eigvals[cond] = 0
+
+        assert not np.isnan(scale).any()
+        assert not (eigvals < 0).any()
+
+        np.testing.assert_allclose(scale**0.5, eigvals**0.5, atol=1e-3)
+
+        self.artifact = dict(zip(self.artifact_keys, (eigvecs, scale)))
+
+        return eigvecs, scale
+
+
 @register_basis("prca")
 class PRCA(Basis):
     artifact_keys = ["eigvecs", "scale"]
@@ -548,6 +603,12 @@ class PRCA(Basis):
 class PRCASortAbs(PRCA):
     def _criteria(self, eigvals: npt.NDArray) -> npt.NDArray:
         return np.abs(eigvals)
+
+
+@register_basis("prca-sortabsinv")
+class PRCASortAbsInv(PRCA):
+    def _criteria(self, eigvals: npt.NDArray) -> npt.NDArray:
+        return -np.abs(eigvals)
 
 
 class PRCAVariant(Basis):

@@ -31,7 +31,7 @@ class CIFAR100VerySmall(datasets.CIFAR100):
 @pytest.mark.gpu()
 @pytest.mark.parametrize("layer", ["layer1", "layer2", "layer3", "layer4"])
 def test_extract_activation_context(layer):
-    model = models.get_model("cifar100-resnet18-p1").to(DEVICE)
+    model = models.get_trained_model("cifar100-resnet18-p1").to(DEVICE)
 
     dataset = CIFAR100VerySmall()
 
@@ -46,7 +46,7 @@ def test_extract_activation_context(layer):
         layer=layer,
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
-        logit_modifier=attributors.OneClassEvidence(dataset),
+        logit_modifier=attributors.OneClassEvidence(num_classes=dataset.num_classes),
         rng=np.random.default_rng(seed=1),
     )
 
@@ -60,7 +60,7 @@ def test_extract_activation_context(layer):
 
 @pytest.mark.parametrize("seed", [1, 2])
 def test_extract_activation_context_with_same_seed_different_run(seed):
-    model = models.get_model("cifar100-resnet18-p1").to(DEVICE)
+    model = models.get_trained_model("cifar100-resnet18-p1").to(DEVICE)
 
     dataset = CIFAR100VerySmall()
 
@@ -73,7 +73,7 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
         layer="layer3",
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
-        logit_modifier=attributors.OneClassEvidence(dataset),
+        logit_modifier=attributors.OneClassEvidence(num_classes=dataset.num_classes),
         rng=np.random.default_rng(seed=1),
     )
 
@@ -84,7 +84,7 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
         layer="layer3",
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
-        logit_modifier=attributors.OneClassEvidence(dataset),
+        logit_modifier=attributors.OneClassEvidence(num_classes=dataset.num_classes),
         rng=np.random.default_rng(seed=1),
     )
 
@@ -103,7 +103,7 @@ def test_logit_modifier_oneclass():
 
     logits = torch.rand((2, dataset.num_classes))
 
-    logits_mod_single = attributors.OneClassEvidence(dataset)(
+    logits_mod_single = attributors.OneClassEvidence(num_classes=dataset.num_classes)(
         logits, torch.tensor([class1] * 2)
     )
 
@@ -135,7 +135,11 @@ def test_logit_modifier_selected_classes():
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
         "cifar100-people"
     )
-    selected_classes = dataset.selected_classes
+
+    # selected classes in the new label index system.
+    selected_classes = np.array([0, 1])
+
+    assert (selected_classes <= (dataset.num_classes - 1)).all()
 
     all_classes = set(range(dataset.num_classes))
 
@@ -144,7 +148,9 @@ def test_logit_modifier_selected_classes():
     logits = torch.rand((2, dataset.num_classes))
     logits[:, selected_classes] += 1
 
-    logits_mod_single = attributors.SelectedClassesEvidence(dataset)(logits, None)
+    logits_mod_single = attributors.SelectedClassesEvidence(
+        selected_classes=selected_classes.tolist()
+    )(logits, None)
 
     assert (logits_mod_single[:, selected_classes] > 0).all()
     assert (

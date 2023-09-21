@@ -54,12 +54,12 @@ class LogitModifier(ABC):
 
 
 class OneClassEvidence(LogitModifier):
-    def __init__(self, dataset: datasets.DatasetConfiguration) -> None:
-        self.dataset = dataset
+    def __init__(self, num_classes: int) -> None:
+        self.num_classes = num_classes
 
     def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         logits = logits.clone()
-        return logits * F.one_hot(targets, self.dataset.num_classes).to(logits.device)
+        return logits * F.one_hot(targets, self.num_classes).to(logits.device)
 
     def __str__(self) -> str:
         return "oneclass"
@@ -83,14 +83,12 @@ class OneClassLogSumExpEvidence(LogitModifier):
 
 
 class SelectedClassesEvidence(LogitModifier):
-    def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
-        self.dataset = dataset
+    def __init__(self, selected_classes=typing.List[int]) -> None:
+        self.selected_classes = selected_classes
 
     def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         output = torch.zeros_like(logits)
-        output[:, self.dataset.selected_classes] = logits[
-            :, self.dataset.selected_classes
-        ]
+        output[:, self.selected_classes] = logits[:, self.selected_classes]
 
         return output
 
@@ -134,7 +132,7 @@ def extract_activation_context(
 
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
-            model, layer
+            model, layer, should_retain_grad=True
         )
 
         with make_attributor_for(model, dataset.input_statistics) as attributor:
@@ -192,9 +190,10 @@ def extract_activation(
 
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
-            model, layer
+            model, layer, should_retain_grad=False
         )
 
+        # todo(important): we don't need this composite context right?
         with make_attributor_for(model, dataset.input_statistics) as attributor:
             for batch in tqdm(data_loader):
                 x, y = batch

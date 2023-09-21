@@ -12,7 +12,7 @@ from xaikd import models
 @pytest.mark.parametrize("layer", ["layer1", "layer2", "layer3", "layer4"])
 @pytest.mark.slow
 def test_split_resnet_model(slug, layer):
-    model = models.get_model(slug)
+    model = models.get_trained_model(slug)
 
     head, layer_module, classifier = model.split_at(layer)
     if "imagenet" in slug:

@@ -36,8 +36,8 @@ def _overriden_resnet18_forward_impl(self, x):
 def test_resnet_layer_interception(slug, layer):
     print(f"Testing on {DEVICE}")
 
-    model1 = models.get_model(slug).to(DEVICE)
-    model2 = models.get_model(slug).to(DEVICE)
+    model1 = models.get_trained_model(slug).to(DEVICE)
+    model2 = models.get_trained_model(slug).to(DEVICE)
 
     dummy_input = torch.randn((10, 3, 32, 32)).to(DEVICE)
 
@@ -46,7 +46,9 @@ def test_resnet_layer_interception(slug, layer):
     expected_logit, layers_output = model2(dummy_input)
 
     try:
-        module, hook = interceptor.attach_hook_intercept_layer_output(model1, layer)
+        module, hook = interceptor.attach_hook_intercept_layer_output(
+            model1, layer, should_retain_grad=False
+        )
 
         logits = model1(dummy_input)
         output = getattr(module, "__output")
@@ -55,6 +57,23 @@ def test_resnet_layer_interception(slug, layer):
         assert torch.allclose(output, layers_output[int(layer[-1]) - 1])
 
         assert torch.allclose(logits, expected_logit)
+
+    finally:
+        hook.remove()
+
+
+@pytest.mark.parametrize("slug", ("resnet18cifarcompr2",))
+@pytest.mark.parametrize("layer", ("layer1", "layer2", "layer3", "layer4"))
+# @pytest.mark.slow()
+def test_student_extra_interception(slug, layer):
+    model1 = models.get_untrained_model(slug, num_classes=5)
+
+    try:
+        module, hook = interceptor.attach_hook_intercept_layer_output(
+            model1, layer, should_retain_grad=False
+        )
+
+        assert isinstance(module, torch.nn.BatchNorm2d)
 
     finally:
         hook.remove()
