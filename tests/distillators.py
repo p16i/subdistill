@@ -85,7 +85,7 @@ def test_distillation_not_alter_teacher():
     arr_adapters = []
     for layer in layers:
         arr_adapters.append(
-            distillation_policies.LearnableAdapterTeacherPolicy(
+            distillation_policies.FitNet(
                 teacher_dims=teacher_dims_mapping[layer],
                 student_dims=student_dims_mapping[layer],
                 device=device,
@@ -206,7 +206,7 @@ def test_get_parameters(layers):
     adapters = []
     for layer in layers:
         adapters.append(
-            distillation_policies.LearnableAdapterTeacherPolicy(
+            distillation_policies.FitNet(
                 teacher_dims=teacher_dims_mapping[layer],
                 student_dims=student_dims_mapping[layer],
                 device=device,
