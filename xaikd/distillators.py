@@ -219,7 +219,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 class Layerwise:
     def __init__(
         self,
-        teacher: models.interfaces.DistillableModel,
+        teacher: nn.Module,
         dataset: datasets.Cifar100SuperClassesDataset,
         train_dataloader: DataLoader,
         val_dataloader: DataLoader,

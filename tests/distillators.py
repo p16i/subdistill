@@ -42,7 +42,7 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
 @pytest.mark.gpu()
 @pytest.mark.slow()
 def test_distillation_not_alter_teacher():
-    teacher_model_name = "cifar100-resnet18-p1"
+    teacher_model_name = "cifar100-resnet18-v1"
     student_model_name = "resnet18cifarcompr2"
 
     teacher_model = models.get_trained_model(teacher_model_name)
@@ -183,7 +183,7 @@ def test_get_parameters(layers):
 
     layer = "layer3"
 
-    teacher_model = models.get_trained_model("cifar100-resnet18-p1")
+    teacher_model = models.get_trained_model("cifar100-resnet18-v1")
     student = models.get_untrained_model(
         "resnet18cifarcompr2", num_classes=dataset.num_classes
     )

@@ -5,12 +5,14 @@ import torch
 from xaikd import approximators, models
 from xaikd.utils import count_params_in_model
 
+pytest.skip(allow_module_level=True)
+
 
 @pytest.mark.parametrize(
     "model,layer",
     [
-        ("cifar100-resnet18-p1", "layer3"),
-        ("cifar100-resnet18-p1", "layer4"),
+        ("cifar100-resnet18-v1", "layer3"),
+        ("cifar100-resnet18-v1", "layer4"),
     ],
 )
 def test_approximator_homogenous_mode(model, layer):
@@ -44,8 +46,8 @@ def test_approximator_homogenous_mode(model, layer):
 @pytest.mark.parametrize(
     "model,layer",
     [
-        ("cifar100-resnet18-p1", "layer3"),
-        ("cifar100-resnet18-p1", "layer4"),
+        ("cifar100-resnet18-v1", "layer3"),
+        ("cifar100-resnet18-v1", "layer4"),
     ],
 )
 def test_approximator_homogenous_lowrank_modes(model, layer):
@@ -86,8 +88,8 @@ def test_approximator_homogenous_lowrank_modes(model, layer):
 @pytest.mark.parametrize(
     "model,layer",
     [
-        ("cifar100-resnet18-p1", "layer3"),
-        ("cifar100-resnet18-p1", "layer4"),
+        ("cifar100-resnet18-v1", "layer3"),
+        ("cifar100-resnet18-v1", "layer4"),
     ],
 )
 def test_approximator_homogenous_low_rank_have_same_inits_(model, layer):

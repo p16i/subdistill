@@ -3,16 +3,17 @@ import torch
 import typing
 from torch import nn
 
-from torchvision.models import vgg
 
-from . import interfaces
+from torchvision import models
+
+from . import register_model, interfaces
 
 
 class DistillableVGG(interfaces.DistillableModel):
-    def __init__(self, model: vgg.VGG) -> None:
+    def __init__(self, model: models.vgg.VGG) -> None:
         super().__init__()
 
-        assert isinstance(model, vgg.VGG)
+        assert isinstance(model, models.vgg.VGG)
 
         block_ix = 1
         curr_block = []
@@ -63,7 +64,16 @@ class DistillableVGG(interfaces.DistillableModel):
         return head, layer_module, classifier
 
     @classmethod
-    def cast(cls, model: vgg.VGG):
-        assert isinstance(model, vgg.VGG)
+    def cast(cls, model: models.vgg.VGG):
+        assert isinstance(model, models.vgg.VGG)
 
         return DistillableVGG(model)
+
+
+@register_model("cifar-vgg11")
+def _cifar_vgg11(num_classes: int) -> nn.Module:
+    model = models.vgg.vgg11(num_classes=num_classes)
+
+    model.num_classes = num_classes
+
+    return model

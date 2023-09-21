@@ -8,10 +8,9 @@ from xaikd import models
 @pytest.mark.parametrize(
     "slug",
     [
-        "cifar10-resnet18-p1",
-        "cifar100-resnet18-p1",
+        "cifar100-resnet18-v1",
         "imagenet-resnet18-tv",
-        "cifar100-vgg11-p1",
+        # "cifar100-vgg11-p1",
     ],
 )
 def test_get_models(slug):

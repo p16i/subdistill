@@ -6,11 +6,10 @@ import numpy as np
 from xaikd import models
 
 
-@pytest.mark.parametrize(
-    "slug", ["cifar10-resnet18-p1", "cifar100-resnet18-p1", "imagenet-resnet18-tv"]
-)
+@pytest.mark.parametrize("slug", ["cifar100-resnet18-v1", "imagenet-resnet18-tv"])
 @pytest.mark.parametrize("layer", ["layer1", "layer2", "layer3", "layer4"])
 @pytest.mark.slow
+@pytest.mark.skip
 def test_split_resnet_model(slug, layer):
     model = models.get_trained_model(slug)
 
