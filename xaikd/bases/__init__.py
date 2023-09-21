@@ -605,6 +605,12 @@ class PRCASortAbs(PRCA):
         return np.abs(eigvals)
 
 
+@register_basis("prca-sortabsinv")
+class PRCASortAbsInv(PRCA):
+    def _criteria(self, eigvals: npt.NDArray) -> npt.NDArray:
+        return -np.abs(eigvals)
+
+
 class PRCAVariant(Basis):
     artifact_keys = ["eigvecs", "scale"]
     mode: str
