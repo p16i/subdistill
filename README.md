@@ -11,6 +11,12 @@ Activative env `peotry shell` or run commands via `peotry run ....`
 - `cifar100-resnet-p1`
 
 
+# Resources
+- notebook to train teacher models for cifar100
+  - https://colab.research.google.com/drive/13NNSnXyRuN4vti22kKE2-vpQpTFGO0ta#scrollTo=Xsk-KCxTf07F&uniqifier=1
+    *Remark* currently, it contains key for wandb, and it should not be shared.
+
+
 ## Things to Do/Check when adding a new model
 - make the architecture `Ditsllable`
   - check prediction
