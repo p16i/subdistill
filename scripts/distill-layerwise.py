@@ -45,7 +45,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
 @click.option(
     "--layer-policies",
     type=str,
-    default="basis-student-linearnbinner:pca--uncentered,basis-student-linearnbinner:prca-sortabs--uncentered,basis-student-linearnbinner:random--uncentered,attention-transfer,vid,fitnetinvidinner,fitnetinvid",
+    default="basis-identiy:pca--uncentered,basis-identity:prca-sortabs--uncentered,basis-identity:random--uncentered,attention-transfer,vid,fitnet",
     required=True,
 )
 # @click.option("--basis-mode", type=str, default="centered", required=True)
@@ -218,20 +218,7 @@ def main(
                 device=device,
             )
 
-            if policy_name in [
-                "basis",
-                "basis-student-linear",
-                "basis-student-linearnb",
-                "basis-student-linearnbinner",
-                "basis-student-linearnbinitinner",
-                "basis-student-identity",
-                "basis-student-identityinner",
-                "basis-student-ortho",
-                "basis-student-orthoinner",
-                "basis-student-orthoinnerstudentnorm",
-                "basis-student-orthoconstinner",
-                "basis-student-orthoconstinnerstudentnorm",
-            ]:
+            if "basis" in policy_name:
                 basis_name = policy_slugs[-1]
                 basis = bases.get_basis(basis_name, seed=seed)
                 layer_output_dir = output_dir / f"layer-{layer}"
@@ -295,7 +282,7 @@ def main(
         last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
 
         print(
-            f"Result: [distill with:  `{policy_name}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
+            f"Result: [distill with:  `{policy_name_with_args}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
         )
 
         for k, v in results.items():
