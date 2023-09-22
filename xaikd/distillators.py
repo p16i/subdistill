@@ -1,10 +1,8 @@
-import copy
-import os
 import typing
 from typing import Any, Iterable, Optional
 
 
-from pytorch_lightning.loggers import TensorBoardLogger, Logger
+from pytorch_lightning.loggers import Logger
 
 
 import pytorch_lightning as pl
@@ -14,7 +12,6 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch.nn.modules.module import Module
 from torch.utils.data import DataLoader
 
 
@@ -23,7 +20,6 @@ from pathlib import Path
 
 from xaikd import distillation_policies, utils, datasets, bases, models
 from xaikd.utils import metrics
-from xaikd.distillation_info import LayerDistillInfo
 
 from torchmetrics import Accuracy, MeanMetric
 
@@ -303,7 +299,7 @@ class Layerwise:
             logger=logger,
             log_every_n_steps=1,
             enable_checkpointing=False,
-            deterministic=True,
+            deterministic="warn",
             callbacks=[LearningRateMonitor(logging_interval="step")],
         )
 
