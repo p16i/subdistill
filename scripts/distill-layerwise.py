@@ -13,7 +13,7 @@ from copy import deepcopy
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
 import wandb
 
@@ -91,22 +91,32 @@ def learn_basese(
 
 def build_dataloaders(
     dataset: datasets.DatasetConfiguration,
-    training_size: int,
-    contamination_level: int,
+    training_size: float,
+    contamination_level: float,
     seed: int,
+    use_val_split: bool,
 ) -> typing.Tuple[DataLoader, DataLoader, DataLoader]:
-    ds_train = cleverhans.contaminate_dataset(
-        datasets.subsample_dataset(
-            dataset.create_subset(train_split=True), ratio=training_size, seed=seed
-        ),
-        contamination_level=contamination_level,
-        seed=seed,
-        victim_class_indices=[min(dataset.selected_classes)],
+    ds_train_raw = datasets.subsample_dataset(
+        dataset.create_subset(train_split=True), ratio=training_size, seed=seed
     )
 
-    train_loader = datasets.build_dataloader(ds_train, shuffle=True)
-    val_loader = datasets.build_dataloader(
-        cleverhans.contaminate_dataset(
+    if use_val_split:
+        assert contamination_level == 0.0 and training_size == 1.0
+        training_size = 0.8
+        ds_train, ds_val = random_split(
+            ds_train_raw,
+            [training_size, 1 - training_size],
+            generator=torch.Generator().manual_seed(seed),
+        )
+    else:
+        ds_train = cleverhans.contaminate_dataset(
+            ds_train_raw,
+            contamination_level=contamination_level,
+            seed=seed,
+            victim_class_indices=[min(dataset.selected_classes)],
+        )
+
+        ds_val = cleverhans.contaminate_dataset(
             # remark: we have to do it this way because the current version of
             #  `contaminate_dataset` function only work with `Subset.
             dataset=datasets.subsample_dataset(
@@ -117,9 +127,21 @@ def build_dataloaders(
             # remark: here, we assume that, in the validation data for distillation,
             # all validaiton samples of only one class has spuriour correlation.
             victim_class_indices=dataset.selected_classes,
-        ),
+        )
+
+    train_loader = datasets.build_dataloader(ds_train, shuffle=True)
+    val_loader = datasets.build_dataloader(
+        ds_val,
         shuffle=False,
     )
+
+    print(f"Dataset Information: [use_val_split={use_val_split}]")
+    for label, dl in [("train", train_loader), ("val", val_loader)]:
+        count = 0
+        for _, y in dl:
+            count += y.shape[0]
+
+        print(f"> split={label:5s}: count={count}")
 
     ds_train_with_aug = deepcopy(ds_train)
     ds_train_with_aug.dataset.transform = dataset.input_training_transformation
@@ -157,9 +179,8 @@ def build_dataloaders(
 @click.option("--lambda-kd", type=float, required=True)
 @click.option("--lambda-task", type=float, required=True)
 @click.option("--lambda-layer", type=float, default=None)
-@click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
-@click.option("--skip-baselines", type=bool, default=False, is_flag=True)
-@click.option("--contamination-level", type=float, default=0.75)
+@click.option("--contamination-level", type=float, required=True)
+@click.option("--use-val-split", type=bool, default=False, is_flag=True)
 def main(
     teacher,
     student,
@@ -175,8 +196,7 @@ def main(
     lambda_kd,
     lambda_layer,
     contamination_level,
-    skip_baselines,
-    skip_if_exist,
+    use_val_split,
 ):
     arguments = locals()
 
@@ -189,7 +209,7 @@ def main(
 
     output_dir = (
         Path(output_dir)
-        / f"{dataset}-clv{contamination_level}-tz{training_size}-seed{seed}"
+        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-seed{seed}"
         / teacher
     )
 
@@ -208,6 +228,7 @@ def main(
         training_size=training_size,
         contamination_level=contamination_level,
         seed=seed,
+        use_val_split=use_val_split,
     )
 
     # prepare teacher
