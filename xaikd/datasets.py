@@ -157,6 +157,7 @@ class DatasetConfiguration(ABC):
     input_transformation: typing.Callable
     input_training_transformation: typing.Callable
     dataclass: typing.Callable
+    selected_classes: typing.List[int]
 
     @abstractmethod
     def create_subset(self, train_split=False) -> Dataset:
@@ -385,11 +386,16 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
             np.isin(labels, self.selected_classes)
         ).reshape(-1)
 
+        # here, we select samples belong to those targets.
         ds.data = ds.data[selected_data_indices, :]
 
         targets = np.array(ds.targets)[selected_data_indices].tolist()
         assert np.isin(targets, self.selected_classes).all()
 
+        # remark: the targets here are still in the old system.
+        # They will be converted to the new zero-indexing with target_transforms.
+        # todo: add test
+        #   comparing naive cifar100 and this dataset should have the same val
         ds.targets = targets
 
         return ds
