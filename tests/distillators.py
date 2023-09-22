@@ -231,7 +231,9 @@ def test_get_parameters(layers):
             )
         )
 
-    layer_policy_colleciton = LayerPolicyCollection(layers=layers, policies=adapters)
+    layer_policy_colleciton = LayerPolicyCollection(
+        teacher_layers=layers, student_layers=layers, policies=adapters
+    )
 
     model_training_wrapper = distillators.LayerwiseKDModelWrapper(
         teacher=teacher_model,
