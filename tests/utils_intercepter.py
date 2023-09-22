@@ -62,18 +62,68 @@ def test_resnet_layer_interception(slug, layer):
         hook.remove()
 
 
-@pytest.mark.parametrize("slug", ("resnet18cifarcompr2",))
-@pytest.mark.parametrize("layer", ("layer1", "layer2", "layer3", "layer4"))
-# @pytest.mark.slow()
-def test_student_extra_interception(slug, layer):
-    model1 = models.get_untrained_model(slug, num_classes=5)
-
-    try:
-        module, hook = interceptor.attach_hook_intercept_layer_output(
-            model1, layer, should_retain_grad=False
+@pytest.mark.parametrize(
+    "model_name,layers",
+    [
+        (
+            "cifar100-vgg11-v1",
+            ("features.10", "features.15", "features.20"),
         )
+    ],
+)
+@pytest.mark.slow()
+def test_vgg_layer_interception(model_name, layers):
+    print(f"Testing on {DEVICE}")
 
-        assert isinstance(module, torch.nn.BatchNorm2d)
+    for layer in layers:
+        print(layer)
+        layer_index = int(layer.split(".")[1])
 
-    finally:
-        hook.remove()
+        model1 = models.get_trained_model(model_name).to(DEVICE)
+        model2 = models.get_trained_model(model_name).to(DEVICE)
+
+        dummy_input = torch.randn((10, 3, 32, 32)).to(DEVICE)
+
+        model2_first_path = model2.features[: layer_index + 1]
+
+        expected_output = model2_first_path(dummy_input)
+        expected_logit = model2(dummy_input)
+
+        try:
+            module, hook = interceptor.attach_hook_intercept_layer_output(
+                model1, layer, should_retain_grad=False
+            )
+
+            logits = model1(dummy_input)
+            output = getattr(module, "__output")
+            delattr(module, "__output")
+
+            assert torch.allclose(output, expected_output)
+
+            assert torch.allclose(logits, expected_logit)
+
+        finally:
+            hook.remove()
+
+
+@pytest.mark.parametrize(
+    "model_name,layers",
+    [
+        ("resnet18cifarcompr2", ("layer1", "layer2", "layer3", "layer4")),
+        ("resnet18cifarcompr4", ("layer1", "layer2", "layer3", "layer4")),
+        ("vgg8", ("features.8",)),
+    ],
+)
+def test_student_extra_interception(model_name, layers):
+    model1 = models.get_untrained_model(model_name, num_classes=5)
+
+    for layer in layers:
+        try:
+            module, hook = interceptor.attach_hook_intercept_layer_output(
+                model1, layer, should_retain_grad=False
+            )
+
+            assert isinstance(module, torch.nn.BatchNorm2d)
+
+        finally:
+            hook.remove()
