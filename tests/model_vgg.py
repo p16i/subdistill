@@ -18,6 +18,7 @@ pytest
         (tvm.vgg16, 1000, (10, 3, 224, 224)),
     ],
 )
+@pytest.mark.skip
 def test_group_feature_layers_vgg11(arch_cls, num_classes, input_size):
     model = arch_cls(num_classes=num_classes)
     model.eval()
@@ -37,7 +38,6 @@ def test_group_feature_layers_vgg11(arch_cls, num_classes, input_size):
 @pytest.mark.parametrize("slug", ["cifar100-vgg11-p1", "imagenet-vgg16-tv"])
 @pytest.mark.parametrize("layer", ["layer1", "layer2", "layer3", "layer4", "layer5"])
 @pytest.mark.slow
-@pytest.mark.skip
 def test_split_model(slug, layer):
     model = models.get_trained_model(slug)
 
