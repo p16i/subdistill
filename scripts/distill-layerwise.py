@@ -35,7 +35,7 @@ from xaikd.utils import click_types
 from pytorch_lightning.loggers import WandbLogger
 
 
-WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
+WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep2")
 
 
 def learn_basese(
