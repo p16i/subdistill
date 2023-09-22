@@ -129,7 +129,8 @@ def build_dataloaders(
             victim_class_indices=dataset.selected_classes,
         )
 
-    train_loader = datasets.build_dataloader(ds_train, shuffle=True)
+    # remark: we set shuffle=False here becaue it is only used to learn bases.
+    train_loader = datasets.build_dataloader(ds_train, shuffle=False)
     val_loader = datasets.build_dataloader(
         ds_val,
         shuffle=False,
@@ -146,6 +147,7 @@ def build_dataloaders(
     ds_train_with_aug = deepcopy(ds_train)
     ds_train_with_aug.dataset.transform = dataset.input_training_transformation
 
+    # this loader is used in the distillation process.
     train_loader_with_aug = datasets.build_dataloader(
         ds_train_with_aug,
         shuffle=True,
@@ -204,7 +206,8 @@ def main(
 
     start_time = datetime.now()
 
-    layers = layers.split(",")
+    teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
+
     layer_policies = layer_policies.split(",")
 
     output_dir = (
@@ -235,29 +238,34 @@ def main(
     teacher_model = models.get_trained_model(teacher)
     # use only teacher's logits corresponding to selected classes
     utils.modify_last_layer_for_subclasses(
-        teacher_model.fc, selected_classes=dataset.selected_classes
+        teacher_model, selected_classes=dataset.selected_classes
     )
     teacher_layer_dims_mapping = utils.get_dimensions_at_layers(
-        teacher_model, train_loader, layers=layers
+        teacher_model, train_loader, layers=teacher_layers
     )
     teacher_model.to(device)
 
     student_layer_dims_mapping = utils.get_dimensions_at_layers(
         models.get_untrained_model(student, num_classes=dataset.num_classes).eval(),
         train_loader,
-        layers=layers,
+        layers=student_layers,
     )
 
     print("Layerwise Distillation with the following layers:")
-    for k, v in student_layer_dims_mapping.items():
-        print(f"> layer={k}: teacher={teacher_layer_dims_mapping[k]} -> student={v}")
+    for (teacher_layer, teacher_dim), (student_layer, student_dim) in zip(
+        teacher_layer_dims_mapping.items(),
+        student_layer_dims_mapping.items(),
+    ):
+        print(
+            f"> maping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim})"
+        )
 
     learn_basese(
         teacher_model=teacher_model,
         dataset=dataset,
         train_loader=train_loader,
         logit_mod=logit_mod,
-        layers=layers,
+        layers=teacher_layers,
         layer_policies=layer_policies,
         device=device,
         output_dir=output_dir,
@@ -290,9 +298,9 @@ def main(
         )
 
         layer_policies = []
-        for layer in layers:
-            student_layer_dims = student_layer_dims_mapping[layer]
-            teacher_layer_dims = teacher_layer_dims_mapping[layer]
+        for teacher_layer, student_layer in zip(teacher_layers, student_layers):
+            teacher_layer_dims = teacher_layer_dims_mapping[teacher_layer]
+            student_layer_dims = student_layer_dims_mapping[student_layer]
 
             kwargs = dict(
                 teacher_dims=teacher_layer_dims,
@@ -303,7 +311,7 @@ def main(
             if "basis" in policy_name:
                 basis_name = policy_slugs[-1]
                 basis = bases.get_basis(basis_name, seed=seed)
-                layer_output_dir = output_dir / f"layer-{layer}"
+                layer_output_dir = output_dir / f"layer-{teacher_layer}"
                 basis.load(layer_output_dir)
 
                 kwargs["basis"] = basis
@@ -346,7 +354,9 @@ def main(
         trained_student, results = distillator.distill(
             student=student_model,
             layer_policies=distillation_policies.LayerPolicyCollection(
-                layers=layers, policies=layer_policies
+                teacher_layers=teacher_layers,
+                student_layers=student_layers,
+                policies=layer_policies,
             ),
             epochs=epochs,
             lambda_task=lambda_task,

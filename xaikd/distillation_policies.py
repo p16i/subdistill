@@ -17,6 +17,42 @@ from scipy.stats import ortho_group
 LAYER_POLICY = dict()
 
 
+def parse_layer_string(txt: str) -> typing.Tuple[typing.List[str], typing.List[str]]:
+    """_summary_
+
+    Args:
+        txt (str): _description_
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        teacher_layers : typing.List[str]
+        student_layers : typing.List[str]
+    """
+    teacher_layers = []
+    student_layers = []
+
+    for layer in txt.split(","):
+        slugs = layer.split(":")
+
+        if len(slugs) == 1:
+            teacher_layer = student_layer = slugs[0]
+        elif len(slugs) == 2:
+            teacher_layer, student_layer = slugs
+        else:
+            raise ValueError(
+                "Could not parse `{layer}` into teacher and student layers!"
+            )
+
+        teacher_layers.append(teacher_layer)
+        student_layers.append(student_layer)
+
+    assert len(teacher_layers) == len(student_layers)
+
+    return teacher_layers, student_layers
+
+
 class Policy(nn.Module, ABC):
     transformer_teacher_feats: nn.Module
     transformer_student_feats: nn.Module
@@ -55,13 +91,17 @@ def get_layer_policy(name: str, **kwargs) -> Policy:
 
 class LayerPolicyCollection(nn.ModuleList):
     def __init__(
-        self, layers: typing.List[str], policies: typing.Iterable[Policy]
+        self,
+        teacher_layers: typing.List[str],
+        student_layers: typing.List[str],
+        policies: typing.Iterable[Policy],
     ) -> None:
         super().__init__(policies)
 
-        assert len(layers) == len(policies)
+        assert len(teacher_layers) == len(student_layers) == len(policies)
 
-        self.layers = layers
+        self.teacher_layers = teacher_layers
+        self.student_layers = student_layers
         self.policies = policies
 
     def forward(self, x):

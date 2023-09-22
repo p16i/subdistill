@@ -132,7 +132,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             ) = utils.interceptor.forward_and_intercept_intermediate_layers(
                 self.teacher.model,
                 x,
-                layers=self.layer_policy_collection.layers,
+                layers=self.layer_policy_collection.teacher_layers,
             )
 
         (
@@ -141,7 +141,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         ) = utils.interceptor.forward_and_intercept_intermediate_layers(
             self.student,
             x,
-            layers=self.layer_policy_collection.layers,
+            layers=self.layer_policy_collection.student_layers,
         )
 
         loss_task = self.lambda_task * F.cross_entropy(student_logits, y)
@@ -195,7 +195,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self._compute_metric("val")
 
         for layer, policy in zip(
-            self.layer_policy_collection.layers, self.layer_policy_collection.policies
+            self.layer_policy_collection.student_layers,
+            self.layer_policy_collection.policies,
         ):
             if (
                 hasattr(policy.transformer_student_feats, "weight")
