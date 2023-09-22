@@ -102,6 +102,14 @@ def _cifar_vgg11(num_classes: int) -> nn.Module:
 def _vgg8(num_classes: int) -> nn.Module:
     model = models.vgg._vgg("VGG8", False, None, None, num_classes=num_classes)
 
+    dims = [256, 512, 512]
+    layer_indices = [8, 11, 14]
+
+    for lix, d in zip(layer_indices, dims):
+        module = model.features[lix]
+        assert isinstance(module, nn.MaxPool2d)
+        model.features[lix] = nn.Sequential(module, nn.BatchNorm2d(d))
+
     model.num_classes = num_classes
 
     return model
