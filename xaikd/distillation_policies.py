@@ -64,7 +64,16 @@ class Policy(nn.Module, ABC):
     ) -> torch.Tensor:
         raise NotImplementedError
 
+    def align_spatial_dimensions(
+        self, teacher_feats, student_feats
+    ) -> typing.Tuple[torch.Tensor, torch.Tensor]:
+        return teacher_feats, student_feats
+
     def forward(self, teacher_feats, student_feats) -> torch.Tensor:
+        teacher_feats, student_feats = self.align_spatial_dimensions(
+            teacher_feats, student_feats
+        )
+
         transformed_teacher_feats = self.transformer_teacher_feats(teacher_feats)
         transformed_student_feats = self.transformer_student_feats(student_feats)
 
@@ -146,8 +155,33 @@ class KLPolicy(Policy):
         return (self.T**2) * kl
 
 
+class LayerPolicy(Policy):
+    def align_spatial_dimensions(self, teacher_feats, student_feats):
+        # we assume that the feture maps are square.
+        assert (np.array(teacher_feats.shape[2:]) == teacher_feats.shape[2]).all() and (
+            np.array(student_feats.shape[2:]) == student_feats.shape[2]
+        ).all()
+
+        _, _, teacher_height, _ = teacher_feats.shape
+        _, _, student_height, _ = student_feats.shape
+
+        # cf. https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/distiller_zoo/FT.py#L18C7-L24C17
+        if student_height > teacher_height:
+            student_feats = F.adaptive_avg_pool2d(
+                student_feats, (teacher_height, teacher_height)
+            )
+        elif student_height < teacher_height:
+            teacher_feats = F.adaptive_avg_pool2d(
+                teacher_feats, (student_height, student_height)
+            )
+        else:
+            pass
+
+        return teacher_feats, student_feats
+
+
 @register_layer_policy("fitnet")
-class FitNet(Policy):
+class FitNet(LayerPolicy):
     """
     @inproceedings{DBLP:journals/corr/RomeroBKCGB14,
         author       = {Adriana Romero and
@@ -296,7 +330,7 @@ class FitNetCosineSetup(FitNet):
 
 
 @register_layer_policy("vid")
-class VIDPolicy(Policy):
+class VIDPolicy(LayerPolicy):
     """
     @inproceedings{DBLP:conf/cvpr/AhnHDLD19,
         author       = {Sungsoo Ahn and
@@ -374,7 +408,7 @@ class VIDPolicy(Policy):
 
 
 @register_layer_policy("attention-transfer")
-class AttentionTransferPolicy(Policy):
+class AttentionTransferPolicy(LayerPolicy):
     """
     @inproceedings{DBLP:conf/iclr/ZagoruykoK17,
         author       = {Sergey Zagoruyko and
@@ -423,7 +457,7 @@ class AttentionTransferPolicy(Policy):
 
 
 @register_layer_policy("basis-identity")
-class OrthogonalBasisIdentityPolicy(Policy):
+class OrthogonalBasisIdentityPolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: Basis
     ) -> None:

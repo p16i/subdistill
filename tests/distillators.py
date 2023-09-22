@@ -59,6 +59,11 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
             "vgg8",
             "features.10:features.8,features.15:features.11,features.20:features.14",
         ),
+        (
+            "cifar100-resnet18-v1",
+            "vgg8",
+            "layer3:features.8",
+        ),
     ],
 )
 def test_distillationation_runnable(teacher_model_name, student_model_name, layers):
