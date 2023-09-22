@@ -1,5 +1,7 @@
 from contextlib import nullcontext
 
+from collections import OrderedDict
+
 import os
 import pytest
 
@@ -222,13 +224,18 @@ def test_target_transform():
     dataset = datasets.construct(dataset_name)
 
     model = nn.Sequential(
-        nn.Conv2d(3, 30, kernel_size=3),
-        nn.AdaptiveAvgPool2d(1),
-        nn.Flatten(start_dim=1),
-        nn.Linear(30, 100),
+        OrderedDict(
+            [
+                ("conv1", nn.Conv2d(3, 30, kernel_size=3)),
+                ("pool1", nn.AdaptiveAvgPool2d(1)),
+                ("flatten", nn.Flatten(start_dim=1)),
+                ("__last_layer", nn.Linear(30, 100)),
+            ]
+        )
     )
+
     cloned_model = deepcopy(model)
-    utils.modify_last_layer_for_subclasses(model[-1], dataset.selected_classes)
+    utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
 
     actual_dl_val = datasets.build_dataloader(
         dataset.create_subset(train_split=False), shuffle=False
