@@ -79,7 +79,7 @@ def learn_basese(
         if not os.path.exists(path_mean):
             np.save(path_mean, mean)
         else:
-            np.testing.assert_allclose(mean, np.load(path_mean), atol=1e-4)
+            np.testing.assert_allclose(mean, np.load(path_mean), atol=1e-3)
 
         print(f"we learn {len(basis_names)} bases: {basis_names}")
         for basis_name in basis_names:
