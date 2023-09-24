@@ -299,6 +299,13 @@ def _cifarresnet18c8(num_classes: int):
 #     return model
 
 
+@register_model("resnet18compr1")
+def _resnet18imagenetc1(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=1, num_classes=num_classes, for_cifar=False
+    )
+
+
 @register_model("resnet18compr2")
 def _resnet18imagenetc2(num_classes: int):
     return _generate_resnet18_compressed(
