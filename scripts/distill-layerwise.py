@@ -109,25 +109,30 @@ def build_dataloaders(
             generator=torch.Generator().manual_seed(seed),
         )
     else:
-        ds_train = cleverhans.contaminate_dataset(
-            ds_train_raw,
-            contamination_level=contamination_level,
-            seed=seed,
-            victim_class_indices=[min(dataset.selected_classes)],
-        )
+        if contamination_level == 0:
+            # hardcode this for now for ImageNet
+            ds_train = ds_train_raw
+            ds_val = dataset.create_subset(train_split=False)
+        else:
+            ds_train = cleverhans.contaminate_dataset(
+                ds_train_raw,
+                contamination_level=contamination_level,
+                seed=seed,
+                victim_class_indices=[min(dataset.selected_classes)],
+            )
 
-        ds_val = cleverhans.contaminate_dataset(
-            # remark: we have to do it this way because the current version of
-            #  `contaminate_dataset` function only work with `Subset.
-            dataset=datasets.subsample_dataset(
-                dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
-            ),
-            contamination_level=contamination_level,
-            seed=seed,
-            # remark: here, we assume that, in the validation data for distillation,
-            # all validaiton samples of only one class has spuriour correlation.
-            victim_class_indices=dataset.selected_classes,
-        )
+            ds_val = cleverhans.contaminate_dataset(
+                # remark: we have to do it this way because the current version of
+                #  `contaminate_dataset` function only work with `Subset.
+                dataset=datasets.subsample_dataset(
+                    dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
+                ),
+                contamination_level=contamination_level,
+                seed=seed,
+                # remark: here, we assume that, in the validation data for distillation,
+                # all validaiton samples of only one class has spuriour correlation.
+                victim_class_indices=dataset.selected_classes,
+            )
 
     # remark: we set shuffle=False here becaue it is only used to learn bases.
     train_loader = datasets.build_dataloader(ds_train, shuffle=False)
