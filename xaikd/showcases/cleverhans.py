@@ -38,7 +38,11 @@ def contaminate_dataset(
     Returns:
         Subset: _description_
     """
-    assert isinstance(dataset, Subset) and isinstance(dataset.dataset, CIFAR100)
+    assert isinstance(dataset, Subset)
+
+    if contamination_level > 0:
+        isinstance(dataset.dataset, CIFAR100)
+
     assert 0 <= contamination_level <= 1.0
 
     rng = np.random.default_rng(seed=seed)
