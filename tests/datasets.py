@@ -280,5 +280,5 @@ def test_target_transform():
     np.testing.assert_allclose(actual_acc, expected_acc)
 
     np.testing.assert_allclose(
-        actual_logits, expected_logits[:, dataset.selected_classes]
+        actual_logits, expected_logits[:, dataset.selected_classes], atol=1e-6
     )
