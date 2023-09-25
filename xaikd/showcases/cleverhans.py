@@ -47,6 +47,7 @@ def contaminate_dataset(
 
     rng = np.random.default_rng(seed=seed)
 
+    # indices of samples belong to selected for the Subset
     subsampled_indices = dataset.indices
 
     contaminated_dataset = deepcopy(dataset.dataset)
@@ -65,6 +66,7 @@ def contaminate_dataset(
         np.isin(targets, victim_class_indices)
     ).reshape(-1)
 
+    # only consider samples that belong to the subset.
     potential_victim_sample_indices = np.array(
         list(set(all_possible_victim_sample_indices).intersection(subsampled_indices))
     )
@@ -86,6 +88,8 @@ def contaminate_dataset(
         <= (sample_indices_with_symbol.shape[0] / num_samples_belong_victim_class)
         <= contamination_level
     )
+
+    print(f"> {len(sample_indices_with_symbol)} victims (total={total_victim_samples})")
 
     for ix in sample_indices_with_symbol:
         img = Image.fromarray(data[ix])

@@ -96,43 +96,40 @@ def build_dataloaders(
     seed: int,
     use_val_split: bool,
 ) -> typing.Tuple[DataLoader, DataLoader, DataLoader]:
-    ds_train_raw = datasets.subsample_dataset(
-        dataset.create_subset(train_split=True), ratio=training_size, seed=seed
-    )
-
     if use_val_split:
-        assert contamination_level == 0.0 and training_size == 1.0
+        assert training_size == 1.0
         training_size = 0.8
         ds_train, ds_val = random_split(
-            ds_train_raw,
+            dataset.create_subset(train_split=True),
             [training_size, 1 - training_size],
             generator=torch.Generator().manual_seed(seed),
         )
     else:
-        if contamination_level == 0:
-            # hardcode this for now for ImageNet
-            ds_train = ds_train_raw
-            ds_val = dataset.create_subset(train_split=False)
-        else:
-            ds_train = cleverhans.contaminate_dataset(
-                ds_train_raw,
-                contamination_level=contamination_level,
-                seed=seed,
-                victim_class_indices=[min(dataset.selected_classes)],
-            )
+        ds_train = datasets.subsample_dataset(
+            dataset.create_subset(train_split=True), ratio=training_size, seed=seed
+        )
+        # remark: we have to do it this way because the current version of
+        #  `contaminate_dataset` function only work with `Subset.
+        ds_val = datasets.subsample_dataset(
+            dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
+        )
 
-            ds_val = cleverhans.contaminate_dataset(
-                # remark: we have to do it this way because the current version of
-                #  `contaminate_dataset` function only work with `Subset.
-                dataset=datasets.subsample_dataset(
-                    dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
-                ),
-                contamination_level=contamination_level,
-                seed=seed,
-                # remark: here, we assume that, in the validation data for distillation,
-                # all validaiton samples of only one class has spuriour correlation.
-                victim_class_indices=dataset.selected_classes,
-            )
+    if contamination_level > 0:
+        ds_train = cleverhans.contaminate_dataset(
+            ds_train,
+            contamination_level=contamination_level,
+            seed=seed,
+            victim_class_indices=[min(dataset.selected_classes)],
+        )
+
+        ds_val = cleverhans.contaminate_dataset(
+            dataset=ds_val,
+            contamination_level=contamination_level,
+            seed=seed,
+            # remark: here, we assume that, in the validation data for distillation,
+            # all validaiton samples of only one class has spuriour correlation.
+            victim_class_indices=dataset.selected_classes,
+        )
 
     # remark: we set shuffle=False here becaue it is only used to learn bases.
     train_loader = datasets.build_dataloader(ds_train, shuffle=False)
