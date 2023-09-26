@@ -16,6 +16,7 @@ import pandas as pd
 from copy import deepcopy
 
 from xaikd import datasets, models, utils
+from xaikd.utils import metrics
 
 DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
     datasets.constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
@@ -282,3 +283,35 @@ def test_target_transform():
     np.testing.assert_allclose(
         actual_logits, expected_logits[:, dataset.selected_classes], atol=1e-6
     )
+
+
+@pytest.mark.slow
+def test_subsample_dataset_ratio_one_no_acc_effect():
+    device = utils.get_device()
+    dataset_name = "cifar100-people"
+    dataset = datasets.construct(dataset_name)
+    num_classes = len(dataset.selected_classes)
+
+    model = models.get_trained_model("cifar100-resnet18-v1")
+    model.to(device)
+    utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+
+    ds_train = dataset.create_subset(train_split=True)
+
+    ds_train_2 = datasets.subsample_dataset(ds_train, ratio=1.0, seed=1)
+
+    expected_acc = metrics.accuracy(
+        model,
+        datasets.build_dataloader(ds_train, shuffle=False),
+        num_classes=num_classes,
+        device=device,
+    )
+
+    actual_acc = metrics.accuracy(
+        model,
+        datasets.build_dataloader(ds_train_2, shuffle=False),
+        num_classes=num_classes,
+        device=device,
+    )
+
+    assert actual_acc == expected_acc
