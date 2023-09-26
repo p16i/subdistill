@@ -98,9 +98,8 @@ def _generate_resnet18_compressed(
     resnet18 = torchvision.models.resnet.resnet18()
 
     # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L184
-    ori_inplances = 64
 
-    inplanes = int(ori_inplances / compression_ratio)
+    inplanes = 32
     # becuase inplance is modified throught the generation
     # we have to reset attribute
     resnet18.inplanes = inplanes
@@ -140,7 +139,7 @@ def _generate_resnet18_compressed(
         )
 
     arr_num_blocks = [2, 2, 2, 2]
-    arr_dims = inplanes * np.power(2, np.arange(4))
+    arr_dims = [32, 32, 256 // compression_ratio, 512 // compression_ratio]
 
     for i, (dims, num_blocks) in enumerate(zip(arr_dims, arr_num_blocks)):
         layer = resnet18._make_layer(
