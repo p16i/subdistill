@@ -15,6 +15,9 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
+
+from torchvision import datasets as tvd
+
 import wandb
 
 from xaikd import (
@@ -98,6 +101,8 @@ def build_dataloaders(
 ) -> typing.Tuple[DataLoader, DataLoader, DataLoader]:
     if use_val_split:
         assert training_size == 1.0
+
+        # We set this because we also scale batch-size rather.
         training_size = 0.8
         ds_train, ds_val = random_split(
             dataset.create_subset(train_split=True),
@@ -145,6 +150,12 @@ def build_dataloaders(
             count += y.shape[0]
 
         print(f"> split={label:5s}: count={count}")
+
+    # We have to make sure that the `dataset` attribute is an actual dataset containing tranform.
+    # This avoids having a nested chain of Subsets.
+    assert isinstance(ds_train.dataset, tvd.CIFAR100) or isinstance(
+        ds_train.dataset, tvd.ImageNet
+    )
 
     ds_train_with_aug = deepcopy(ds_train)
     ds_train_with_aug.dataset.transform = dataset.input_training_transformation
