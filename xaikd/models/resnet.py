@@ -202,6 +202,20 @@ def _cifarresnet18c8(num_classes: int):
     )
 
 
+@register_model("resnet18cifarcompr16")
+def _cifarresnet18c16(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=16, num_classes=num_classes, for_cifar=True
+    )
+
+
+@register_model("resnet18cifarcompr32")
+def _cifarresnet18c32(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=32, num_classes=num_classes, for_cifar=True
+    )
+
+
 # @register_model("resnet18cifarcustomized")
 # def _generate_resnet18_customized(num_classes: int) -> nn.Module:
 #     # todo: hard-corded everything for now.
