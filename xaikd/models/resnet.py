@@ -139,7 +139,7 @@ def _generate_resnet18_compressed(
         )
 
     arr_num_blocks = [2, 2, 2, 2]
-    arr_dims = [32, 32, 256 // compression_ratio, 512 // compression_ratio]
+    arr_dims = [32, 64, 256 // compression_ratio, 512 // compression_ratio]
 
     for i, (dims, num_blocks) in enumerate(zip(arr_dims, arr_num_blocks)):
         layer = resnet18._make_layer(
