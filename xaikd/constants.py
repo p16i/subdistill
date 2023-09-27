@@ -10,14 +10,12 @@ BASIS_NAMES = [
 ]
 
 LAMBDA_LAYER_FOR_POLICIES = {
-    "basis-identity:pca--uncentered": 1,
-    "basis-identity:prca-sortabs--uncentered": 1,
-    "basis-identity:random--uncentered": 1e4,
+    "basis-identity:pca--uncentered": 10,
+    "basis-identity:prca-sortabs--uncentered": 1e5,
+    "basis-identity:random--uncentered": 1e6,
     "vid": 1e6,
-    "attention-transfer": 0.1,
-    "fitnet": 1,
-    "fitnet-2l": 1,
-    "fitnet-3l": 1,
+    "attention-transfer": 1e4,
+    "fitnet": 10,
 }
 
 ARCH_LAYER_DIMENSIONS = dict(
