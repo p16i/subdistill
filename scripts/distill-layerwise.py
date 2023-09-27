@@ -356,6 +356,7 @@ def main(
             group=arguments["output_dir"],
             job_type="distillation",
             name=f"{student}-{policy_name_with_args}-seed{seed}",
+            notes=f"commit:{utils.get_git_hash()}",
             config={
                 **arguments,
                 "policy": policy_name_with_args,

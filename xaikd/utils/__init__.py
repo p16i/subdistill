@@ -1,5 +1,6 @@
 import typing
 import numpy.typing as npt
+import subprocess
 
 import json
 import torch
@@ -192,3 +193,7 @@ def get_dimensions_at_layers(
             hook.remove()
 
     return dimensions
+
+
+def get_git_hash() -> str:
+    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
