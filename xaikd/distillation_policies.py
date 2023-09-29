@@ -402,6 +402,8 @@ class VIDPolicy(LayerPolicy):
             (pred_mean - target) ** 2 / pred_var + torch.log(pred_var)
         )
 
+        # cf. https://github.com/HobbitLong/RepDistiller/blob/master/distiller_zoo/VID.py#L53
+        # cf. https://github.com/yoshitomo-matsubara/torchdistill/blob/74a710e882a85204ca27233477695d08086ca7b1/torchdistill/losses/mid_level.py#L696
         loss = torch.mean(neg_log_prob)
 
         return loss
