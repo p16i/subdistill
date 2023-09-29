@@ -10,6 +10,7 @@ BASIS_NAMES = [
 ]
 
 LAMBDA_LAYER_FOR_POLICIES = {
+    "nothing": 0,
     "basis-identity:pca--uncentered": 10,
     "basis-identity:prca-sortabs--uncentered": 1e5,
     "basis-identity:random--uncentered": 1e6,

@@ -180,6 +180,18 @@ class LayerPolicy(Policy):
         return teacher_feats, student_feats
 
 
+@register_layer_policy("nothing")
+class NothingPolicy(LayerPolicy):
+    def __init__(self, teacher_dims: int, student_dims: int, device: str) -> None:
+        super().__init__()
+
+        self.transformer_teacher_feats = nn.Identity()
+        self.transformer_student_feats = nn.Identity()
+
+    def forward(self, teacher_feats, student_feats):
+        return 0
+
+
 @register_layer_policy("fitnet")
 class FitNet(LayerPolicy):
     """

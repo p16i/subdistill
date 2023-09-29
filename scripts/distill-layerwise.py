@@ -183,7 +183,7 @@ def build_dataloaders(
 @click.option(
     "--layer-policies",
     type=str,
-    default="basis-identity:pca--uncentered,basis-identity:prca-sortabs--uncentered,basis-identity:random--uncentered,attention-transfer,vid,fitnet",
+    default="basis-identity:pca--uncentered,basis-identity:prca-sortabs--uncentered,basis-identity:random--uncentered,attention-transfer,vid,fitnet,nothing",
     required=True,
 )
 @click.option("--output-dir", type=str, required=True)
