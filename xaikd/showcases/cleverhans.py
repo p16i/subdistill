@@ -1,5 +1,6 @@
 import typing
 
+
 import numpy as np
 from torch.utils.data import Subset
 from torchvision.datasets import CIFAR100
@@ -14,11 +15,22 @@ COLOR = "red"
 LOCATION = (20, 20)
 
 
-def add_cleverhan_symbol(img):
+def add_cleverhan_symbol(img, rng: np.random.Generator):
     copied_img = img.copy()
 
-    ImageDraw.Draw(copied_img).text(LOCATION, CLEVER_HAN_SYMBOL, COLOR, fontsize=15)
+    x = rng.integers(low=0, high=31 - 4)
+    # remark: because the anchor attribute doesn't seem to work with the default font,
+    # we therefoe adjust by - 3 manually here to compensate the empty space above `+` from the default font.
+    # cf. ./notebooks/2023-10-s16/dev-add-symbol-to-img.ipynb
+    y = rng.integers(low=0 - 3, high=31 - 4 - 3)
 
+    location = (x, y)
+
+    ImageDraw.Draw(copied_img).text(
+        location,
+        text=CLEVER_HAN_SYMBOL,
+        fill=COLOR,
+    )
     return copied_img
 
 
@@ -94,7 +106,7 @@ def contaminate_dataset(
     for ix in sample_indices_with_symbol:
         img = Image.fromarray(data[ix])
 
-        new_img = add_cleverhan_symbol(img)
+        new_img = add_cleverhan_symbol(img, rng)
 
         data[ix] = np.array(new_img)
 
