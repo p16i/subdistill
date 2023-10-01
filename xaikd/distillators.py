@@ -1,10 +1,8 @@
-import copy
-import os
 import typing
 from typing import Any, Iterable, Optional
 
 
-from pytorch_lightning.loggers import TensorBoardLogger, Logger
+from pytorch_lightning.loggers import Logger
 
 
 import pytorch_lightning as pl
@@ -14,7 +12,6 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
-from torch.nn.modules.module import Module
 from torch.utils.data import DataLoader
 
 
@@ -23,7 +20,6 @@ from pathlib import Path
 
 from xaikd import distillation_policies, utils, datasets, bases, models
 from xaikd.utils import metrics
-from xaikd.distillation_info import LayerDistillInfo
 
 from torchmetrics import Accuracy, MeanMetric
 
@@ -132,7 +128,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             ) = utils.interceptor.forward_and_intercept_intermediate_layers(
                 self.teacher.model,
                 x,
-                layers=self.layer_policy_collection.layers,
+                layers=self.layer_policy_collection.teacher_layers,
             )
 
         (
@@ -141,7 +137,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         ) = utils.interceptor.forward_and_intercept_intermediate_layers(
             self.student,
             x,
-            layers=self.layer_policy_collection.layers,
+            layers=self.layer_policy_collection.student_layers,
         )
 
         loss_task = self.lambda_task * F.cross_entropy(student_logits, y)
@@ -195,7 +191,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self._compute_metric("val")
 
         for layer, policy in zip(
-            self.layer_policy_collection.layers, self.layer_policy_collection.policies
+            self.layer_policy_collection.student_layers,
+            self.layer_policy_collection.policies,
         ):
             if (
                 hasattr(policy.transformer_student_feats, "weight")
@@ -219,7 +216,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 class Layerwise:
     def __init__(
         self,
-        teacher: models.interfaces.DistillableModel,
+        teacher: nn.Module,
         dataset: datasets.Cifar100SuperClassesDataset,
         train_dataloader: DataLoader,
         val_dataloader: DataLoader,
@@ -302,7 +299,7 @@ class Layerwise:
             logger=logger,
             log_every_n_steps=1,
             enable_checkpointing=False,
-            deterministic=True,
+            deterministic="warn",
             callbacks=[LearningRateMonitor(logging_interval="step")],
         )
 

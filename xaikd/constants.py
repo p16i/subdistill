@@ -9,6 +9,16 @@ BASIS_NAMES = [
     "prca-abs--centered",
 ]
 
+LAMBDA_LAYER_FOR_POLICIES = {
+    "nothing": 0,
+    "basis-identity:pca--uncentered": 10,
+    "basis-identity:prca-sortabs--uncentered": 1e5,
+    "basis-identity:random--uncentered": 1e6,
+    "vid": 1e6,
+    "attention-transfer": 1e4,
+    "fitnet": 10,
+}
+
 ARCH_LAYER_DIMENSIONS = dict(
     dict(
         resnet18={

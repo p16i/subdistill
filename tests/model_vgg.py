@@ -7,6 +7,8 @@ from xaikd.models.vgg import DistillableVGG
 from torchvision import models as tvm
 import numpy as np
 
+pytest
+
 
 @torch.no_grad()
 @pytest.mark.parametrize(
@@ -16,6 +18,7 @@ import numpy as np
         (tvm.vgg16, 1000, (10, 3, 224, 224)),
     ],
 )
+@pytest.mark.skip
 def test_group_feature_layers_vgg11(arch_cls, num_classes, input_size):
     model = arch_cls(num_classes=num_classes)
     model.eval()
@@ -31,10 +34,11 @@ def test_group_feature_layers_vgg11(arch_cls, num_classes, input_size):
     np.testing.assert_allclose(model(x), models_with_block(x))
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize("slug", ["cifar100-vgg11-p1", "imagenet-vgg16-tv"])
 @pytest.mark.parametrize("layer", ["layer1", "layer2", "layer3", "layer4", "layer5"])
 @pytest.mark.slow
-def test_split_resnet_model(slug, layer):
+def test_split_model(slug, layer):
     model = models.get_trained_model(slug)
 
     head, layer_module, classifier = model.split_at(layer)

@@ -1,5 +1,6 @@
 import typing
 import numpy.typing as npt
+import subprocess
 
 import json
 import torch
@@ -150,8 +151,11 @@ def is_permuation_matrix(x: npt.NDArray) -> bool:
 
 
 def modify_last_layer_for_subclasses(
-    layer: nn.Linear, selected_classes: typing.List[int]
+    model: nn.Module, selected_classes: typing.List[int]
 ):
+    assert hasattr(model, "__last_layer")
+    layer = getattr(model, "__last_layer")
+
     assert isinstance(layer, nn.Linear)
 
     layer.weight = nn.Parameter(layer.weight[selected_classes, :])
@@ -189,3 +193,7 @@ def get_dimensions_at_layers(
             hook.remove()
 
     return dimensions
+
+
+def get_git_hash() -> str:
+    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()

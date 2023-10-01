@@ -41,19 +41,41 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
 
 @pytest.mark.gpu()
 @pytest.mark.slow()
-def test_distillation_not_alter_teacher():
-    teacher_model_name = "cifar100-resnet18-p1"
-    student_model_name = "resnet18cifarcompr2"
+@pytest.mark.parametrize(
+    "teacher_model_name,student_model_name,layers",
+    [
+        (
+            "cifar100-resnet18-v1",
+            "resnet18cifarcompr2",
+            "layer1,layer2,layer3,layer4",
+        ),
+        (
+            "cifar100-resnet50-v1",
+            "resnet18cifarcompr1",
+            "layer1,layer2,layer3,layer4",
+        ),
+        (
+            "cifar100-vgg11-v1",
+            "vgg8",
+            "features.10:features.8,features.15:features.11,features.20:features.14",
+        ),
+        (
+            "cifar100-resnet18-v1",
+            "vgg8",
+            "layer3:features.8",
+        ),
+    ],
+)
+def test_distillationation_runnable(teacher_model_name, student_model_name, layers):
+    teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
     teacher_model = models.get_trained_model(teacher_model_name)
-
-    layers = ["layer3", "layer4"]
 
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
         "cifar100-people"
     )
 
-    utils.modify_last_layer_for_subclasses(teacher_model.fc, dataset.selected_classes)
+    utils.modify_last_layer_for_subclasses(teacher_model, dataset.selected_classes)
 
     device = utils.get_device()
 
@@ -68,31 +90,35 @@ def test_distillation_not_alter_teacher():
     val_loader = datasets.build_dataloader(ds_val, shuffle=False)
 
     teacher_dims_mapping = utils.get_dimensions_at_layers(
-        teacher_model, train_loader, layers
+        teacher_model, train_loader, teacher_layers
     )
     student_dims_mapping = utils.get_dimensions_at_layers(
         models.get_untrained_model(
             student_model_name, num_classes=dataset.num_classes
         ).eval(),
         train_loader,
-        layers,
+        student_layers,
     )
 
     np.random.seed(1)
 
     layer_policies = []
 
-    arr_adapters = []
-    for layer in layers:
-        arr_adapters.append(
-            distillation_policies.LearnableAdapterTeacherPolicy(
-                teacher_dims=teacher_dims_mapping[layer],
-                student_dims=student_dims_mapping[layer],
+    arr_policies = []
+    for teacher_layer, student_layer in zip(teacher_layers, student_layers):
+        arr_policies.append(
+            distillation_policies.FitNet(
+                teacher_dims=teacher_dims_mapping[teacher_layer],
+                student_dims=student_dims_mapping[student_layer],
                 device=device,
             )
         )
 
-    layer_policies = LayerPolicyCollection(layers=layers, policies=arr_adapters)
+    layer_policies = LayerPolicyCollection(
+        teacher_layers=teacher_layers,
+        student_layers=student_layers,
+        policies=arr_policies,
+    )
 
     teacher_model_before = deepcopy(teacher_model)
     before_batch_norm_stats = get_batchnorm_statistics_from_model(teacher_model_before)
@@ -146,7 +172,7 @@ def test_distillation_not_alter_teacher():
 
         after_batch_norm_stats = get_batchnorm_statistics_from_model(teacher_model)
 
-        # check batchnorm stats before and after
+        # check batchnorm stats of teacher before and after
         for before_bn_stat, after_bn_stat in zip(
             before_batch_norm_stats, after_batch_norm_stats
         ):
@@ -170,9 +196,6 @@ def test_distillation_not_alter_teacher():
             )
 
 
-# todo: add test for _get_paramaters
-
-
 @pytest.mark.parametrize("layers", [["layer3"], ["layer3", "layer4"]])
 def test_get_parameters(layers):
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
@@ -183,7 +206,7 @@ def test_get_parameters(layers):
 
     layer = "layer3"
 
-    teacher_model = models.get_trained_model("cifar100-resnet18-p1")
+    teacher_model = models.get_trained_model("cifar100-resnet18-v1")
     student = models.get_untrained_model(
         "resnet18cifarcompr2", num_classes=dataset.num_classes
     )
@@ -206,14 +229,16 @@ def test_get_parameters(layers):
     adapters = []
     for layer in layers:
         adapters.append(
-            distillation_policies.LearnableAdapterTeacherPolicy(
+            distillation_policies.FitNet(
                 teacher_dims=teacher_dims_mapping[layer],
                 student_dims=student_dims_mapping[layer],
                 device=device,
             )
         )
 
-    layer_policy_colleciton = LayerPolicyCollection(layers=layers, policies=adapters)
+    layer_policy_colleciton = LayerPolicyCollection(
+        teacher_layers=layers, student_layers=layers, policies=adapters
+    )
 
     model_training_wrapper = distillators.LayerwiseKDModelWrapper(
         teacher=teacher_model,

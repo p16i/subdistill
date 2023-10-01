@@ -6,6 +6,10 @@ import numpy.typing as npt
 from xaikd import datasets
 from xaikd.showcases import cleverhans
 
+from torch.utils.data import random_split
+
+import torch
+
 
 @pytest.mark.parametrize("contamination_level", [0.0, 0.1, 0.3])
 @pytest.mark.parametrize("training_size", [0.1, 0.5])
@@ -71,3 +75,60 @@ def test_contamination_dataset(
         ).mean()
 
         np.testing.assert_allclose(1 - ratio_equal_data_points, expected_ratio)
+
+
+@pytest.mark.parametrize("contamination_level", [0.1, 0.3, 0.5])
+def test_contamination_with_val_split(contamination_level):
+    dataset = datasets.construct("cifar100-people")
+    victim = dataset.selected_classes
+
+    ds_main = dataset.create_subset(train_split=True)
+
+    ds_train, ds_val = random_split(
+        ds_main, [0.8, 0.2], torch.Generator().manual_seed(1)
+    )
+
+    ds_train = cleverhans.contaminate_dataset(
+        ds_train,
+        contamination_level=contamination_level,
+        seed=1,
+        victim_class_indices=victim,
+    )
+
+    ds_val = cleverhans.contaminate_dataset(
+        ds_val,
+        contamination_level=contamination_level,
+        seed=1,
+        victim_class_indices=victim,
+    )
+
+    assert id(ds_main.data) != id(ds_train.dataset.data) != id(ds_val.dataset.data)
+
+    total = ds_main.data.shape[0]
+
+    all_indices = list(range(total))
+    for subset in [ds_train, ds_val]:
+        subset_indices = subset.indices
+        total_subset = len(subset_indices)
+        other_indices = list(set(all_indices).difference(subset_indices))
+
+        ds_main.data[subset.indices,]
+
+        # Other sampls that do NOT belon to the subset shoul NOT be affected
+        # by the contamination.
+        np.testing.assert_equal(
+            ds_main.data[other_indices, :], subset.dataset.data[other_indices, :]
+        )
+
+        # The proportion of the affected sampls should approximately
+        # be equal to the contamination level.
+        diff = (
+            (ds_main.data[subset_indices, :] != subset.dataset.data[subset_indices, :])
+            .reshape(total_subset, -1)
+            .sum(axis=1)
+        )
+
+        np.testing.assert_allclose(
+            (diff > 0).mean(),
+            contamination_level,
+        )

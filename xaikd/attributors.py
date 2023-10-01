@@ -27,8 +27,6 @@ def make_attributor_for(
     model: nn.Module,
     input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]],
 ) -> Gradient:
-    assert isinstance(model, DistillableModel)
-
     input_transform = transforms.Normalize(*input_statistics)
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))

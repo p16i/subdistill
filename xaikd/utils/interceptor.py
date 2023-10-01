@@ -4,7 +4,6 @@ import torch
 from torch import nn
 from torch.utils import hooks
 
-# this is sf
 
 ATTRIBUTE_INTERCEPTED_OUTPUT = "__output"
 
@@ -13,14 +12,17 @@ def get_module(model: nn.Module, layer_str: str) -> nn.Module:
     slugs = layer_str.split(".")
 
     if len(slugs) == 1:
-        module = getattr(model, layer_str)[-1]
+        module = getattr(model, layer_str)
     elif len(slugs) == 2:
         layer, index = slugs
         module = getattr(model, layer)[int(index)]
     else:
         raise ValueError(f"layer={layer_str}; not exists")
 
-    return module
+    if isinstance(module, nn.Sequential):
+        return module[-1]
+    else:
+        return module
 
 
 def attach_hook_intercept_layer_output(
