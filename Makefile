@@ -13,4 +13,4 @@ sync-artifact:
 
 
 jupyter:
-	PYTHONPATH=. poetry run jupyter notebook ./notebooks
+	DATASET_ROOT=$(shell pwd)/datasets PYTHONPATH=. poetry run jupyter notebook ./notebooks
