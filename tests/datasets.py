@@ -1,5 +1,7 @@
 from contextlib import nullcontext
 
+from collections import OrderedDict
+
 import os
 import pytest
 
@@ -7,11 +9,14 @@ import numpy as np
 import torch
 
 from torch.utils.data import DataLoader
+from torch import nn
+from torchvision.datasets import CIFAR100
 
-from torchvision.datasets import CIFAR10
 import pandas as pd
+from copy import deepcopy
 
-from xaikd import datasets
+from xaikd import datasets, models, utils
+from xaikd.utils import metrics
 
 DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
     datasets.constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
@@ -211,3 +216,102 @@ def test_same_seed_same_subsampled_datasets():
 
     np.testing.assert_equal(sub1.indices, sub2.indices)
     assert np.not_equal(sub1.indices, sub3.indices).any()
+
+
+@torch.no_grad()
+@pytest.mark.slow
+def test_target_transform():
+    dataset_name = "cifar100-people"
+    dataset = datasets.construct(dataset_name)
+
+    model = nn.Sequential(
+        OrderedDict(
+            [
+                ("conv1", nn.Conv2d(3, 30, kernel_size=3)),
+                ("pool1", nn.AdaptiveAvgPool2d(1)),
+                ("flatten", nn.Flatten(start_dim=1)),
+                ("__last_layer", nn.Linear(30, 100)),
+            ]
+        )
+    )
+
+    cloned_model = deepcopy(model)
+    utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+
+    actual_dl_val = datasets.build_dataloader(
+        dataset.create_subset(train_split=False), shuffle=False
+    )
+
+    actual_x, actual_y = next(iter(actual_dl_val))
+    assert np.isin(actual_y.numpy(), range(len(dataset.selected_classes))).all()
+
+    actual_logits = model(actual_x)
+
+    actual_acc = np.mean(np.argmax(actual_logits) == actual_y.numpy())
+
+    actual_x, actual_y = next(iter(actual_dl_val))
+
+    expected_all_logits, expected_all_y = [], []
+
+    for x, y in DataLoader(
+        CIFAR100(
+            root=str(datasets.DATADIR / "cifar100"),
+            train=False,
+            transform=dataset.input_transformation,
+        ),
+        shuffle=False,
+        batch_size=64,
+    ):
+        expected_all_logits.append(cloned_model(x).numpy())
+        expected_all_y.append(y.numpy())
+
+    expected_all_logits = np.vstack(expected_all_logits)
+    expected_all_y = np.concatenate(expected_all_y)
+
+    expected_indices = np.argwhere(
+        np.isin(expected_all_y, dataset.selected_classes)
+    ).reshape(-1)[: actual_logits.shape[0]]
+
+    expected_logits = expected_all_logits[expected_indices]
+
+    expected_acc = np.mean(
+        np.argmax(expected_logits) == expected_all_y[expected_indices]
+    )
+
+    np.testing.assert_allclose(actual_acc, expected_acc)
+
+    np.testing.assert_allclose(
+        actual_logits, expected_logits[:, dataset.selected_classes], atol=1e-6
+    )
+
+
+@pytest.mark.slow
+def test_subsample_dataset_ratio_one_no_acc_effect():
+    device = utils.get_device()
+    dataset_name = "cifar100-people"
+    dataset = datasets.construct(dataset_name)
+    num_classes = len(dataset.selected_classes)
+
+    model = models.get_trained_model("cifar100-resnet18-v1")
+    model.to(device)
+    utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+
+    ds_train = dataset.create_subset(train_split=True)
+
+    ds_train_2 = datasets.subsample_dataset(ds_train, ratio=1.0, seed=1)
+
+    expected_acc = metrics.accuracy(
+        model,
+        datasets.build_dataloader(ds_train, shuffle=False),
+        num_classes=num_classes,
+        device=device,
+    )
+
+    actual_acc = metrics.accuracy(
+        model,
+        datasets.build_dataloader(ds_train_2, shuffle=False),
+        num_classes=num_classes,
+        device=device,
+    )
+
+    np.testing.assert_allclose(actual_acc, expected_acc)

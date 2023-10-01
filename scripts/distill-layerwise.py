@@ -1,3 +1,4 @@
+import typing
 import click
 import os
 import pandas as pd
@@ -11,7 +12,12 @@ from pathlib import Path
 from copy import deepcopy
 
 import torch
+from torch import nn
+from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
+
+from torchvision import datasets as tvd
+
 import wandb
 
 from xaikd import (
@@ -32,133 +38,28 @@ from xaikd.utils import click_types
 from pytorch_lightning.loggers import WandbLogger
 
 
-WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise")
+WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep2")
 
 
-@click.command()
-@click.option("--dataset", default="cifar100-people", type=str, required=True)
-@click.option("--teacher", default="cifar100-resnet18-wb15", required=True)
-@click.option("--student", default="resnet18cifarcompr2", required=True)
-@click.option(
-    "--layers", default="layer1,layer2,layer3,layer4", type=str, required=True
-)
-@click.option(
-    "--layer-policies",
-    type=str,
-    default="basis-student-linearnbinner:pca--uncentered,basis-student-linearnbinner:prca-sortabs--uncentered,basis-student-linearnbinner:random--uncentered,attention-transfer,vid,fitnetinvidinner,fitnetinvid",
-    required=True,
-)
-# @click.option("--basis-mode", type=str, default="centered", required=True)
-@click.option("--output-dir", type=str, required=True)
-@click.option("--training-size", type=float, default=1.0, required=True)
-@click.option("--epochs", type=int, default=100, required=True)
-@click.option("--seed", type=int, default=1)
-@click.option("--lr", type=float, default=0.0005, required=True)
-@click.option("--lambda-kd", type=float, default=1.0)
-@click.option("--lambda-task", type=float, default=0.0)
-@click.option("--lambda-layer", type=float, required=True)
-@click.option("--skip-if-exist", type=bool, default=False, is_flag=True)
-@click.option("--skip-baselines", type=bool, default=False, is_flag=True)
-@click.option("--contamination-level", type=float, default=0.75)
-def main(
-    teacher,
-    student,
-    dataset,
-    layer_policies,
-    output_dir,
-    seed,
-    epochs,
-    lr,
-    training_size,
-    layers,
-    lambda_task,
-    lambda_kd,
-    lambda_layer,
-    contamination_level,
-    skip_baselines,
-    skip_if_exist,
+def learn_basese(
+    teacher_model: nn.Module,
+    dataset: datasets.DatasetConfiguration,
+    train_loader: DataLoader,
+    logit_mod: attributors.LogitModifier,
+    layers: typing.List[str],
+    layer_policies: typing.List[str],
+    device: str,
+    output_dir: Path,
+    seed: int,
 ):
-    arguments = locals()
-
-    pl.seed_everything(seed)
-
-    start_time = datetime.now()
-
-    layers = layers.split(",")
-    layer_policies = layer_policies.split(",")
-
-    output_dir = (
-        Path(output_dir)
-        / f"{dataset}-clv{contamination_level}-tz{training_size}-seed{seed}"
-        / teacher
+    basis_names = list(
+        map(
+            lambda p: p.split(":")[1],
+            filter(lambda p: "basis" in p, layer_policies),
+        )
     )
-
-    os.makedirs(output_dir, exist_ok=True)
-    click.echo(f"Output: {output_dir}")
-
-    device = utils.get_device()
-
-    # prepare dataset
-    dataset = datasets.construct(dataset)
-
-    logit_mod = attributors.OneClassEvidence(num_classes=dataset.num_classes)
-
-    ds_train = cleverhans.contaminate_dataset(
-        datasets.subsample_dataset(
-            dataset.create_subset(train_split=True), ratio=training_size, seed=seed
-        ),
-        contamination_level=contamination_level,
-        seed=seed,
-        victim_class_indices=[min(dataset.selected_classes)],
-    )
-
-    train_loader = datasets.build_dataloader(ds_train, shuffle=True)
-    val_loader = datasets.build_dataloader(
-        cleverhans.contaminate_dataset(
-            # remark: we have to do it this way because the current version of
-            #  `contaminate_dataset` function only work with `Subset.
-            dataset=datasets.subsample_dataset(
-                dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
-            ),
-            contamination_level=contamination_level,
-            seed=seed,
-            # remark: here, we assume that, in the validation data for distillation,
-            # all validaiton samples of only one class has spuriour correlation.
-            victim_class_indices=dataset.selected_classes,
-        ),
-        shuffle=False,
-    )
-
-    ds_train_with_aug = deepcopy(ds_train)
-    ds_train_with_aug.dataset.transform = dataset.input_training_transformation
-
-    train_loader_with_aug = datasets.build_dataloader(
-        ds_train_with_aug,
-        shuffle=True,
-        # why do we scale batch_size like this?
-        batch_size=int(np.ceil(64 * training_size)),
-    )
-
-    # prepare teacher
-    teacher_model = models.get_trained_model(teacher)
-    # use only teacher's logits corresponding to selected classes
-    utils.modify_last_layer_for_subclasses(
-        teacher_model.fc, selected_classes=dataset.selected_classes
-    )
-    teacher_layer_dims_mapping = utils.get_dimensions_at_layers(
-        teacher_model, train_loader, layers=layers
-    )
-    teacher_model.to(device)
-
-    student_layer_dims_mapping = utils.get_dimensions_at_layers(
-        models.get_untrained_model(student, num_classes=dataset.num_classes).eval(),
-        train_loader,
-        layers=layers,
-    )
-
-    print("Layerwise Distillation with")
-    for k, v in student_layer_dims_mapping.items():
-        print(f"> layer={k}: teacher={teacher_layer_dims_mapping[k]} -> student={v}")
+    if len(basis_names) == 0:
+        return
 
     # prepare bases
     for layer in layers:
@@ -175,24 +76,214 @@ def main(
         )
 
         mean = np.mean(arr_act, axis=0)
-        np.save(layer_output_dir / "act_mean", mean)
 
-        basis_names = list(
-            set(
-                map(
-                    lambda p: p.split(":")[1],
-                    filter(lambda p: "basis" in p, layer_policies),
-                )
-            )
-        )
+        path_mean = layer_output_dir / "act_mean.npy"
+
+        if not os.path.exists(path_mean):
+            np.save(path_mean, mean)
+        else:
+            np.testing.assert_allclose(mean, np.load(path_mean), atol=1e-3)
 
         print(f"we learn {len(basis_names)} bases: {basis_names}")
-
         for basis_name in basis_names:
             click.echo(f"[layer={layer}] fitting basis={basis_name}")
             basis = bases.get_basis(basis_name, seed=seed)
             basis.fit(arr_act, arr_ctx, mean=mean, device=device)
             basis.save(layer_output_dir)
+
+
+def build_dataloaders(
+    dataset: datasets.DatasetConfiguration,
+    training_size: float,
+    contamination_level: float,
+    seed: int,
+    use_val_split: bool,
+) -> typing.Tuple[DataLoader, DataLoader, DataLoader]:
+    if use_val_split:
+        assert training_size == 1.0
+
+        # We set this because we also scale batch-size rather.
+        training_size = 0.8
+        ds_train, ds_val = random_split(
+            dataset.create_subset(train_split=True),
+            [training_size, 1 - training_size],
+            generator=torch.Generator().manual_seed(seed),
+        )
+    else:
+        ds_train = datasets.subsample_dataset(
+            dataset.create_subset(train_split=True), ratio=training_size, seed=seed
+        )
+        # remark: we have to do it this way because the current version of
+        #  `contaminate_dataset` function only work with `Subset.
+        ds_val = datasets.subsample_dataset(
+            dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
+        )
+
+    if contamination_level > 0:
+        ds_train = cleverhans.contaminate_dataset(
+            ds_train,
+            contamination_level=contamination_level,
+            seed=seed,
+            victim_class_indices=[min(dataset.selected_classes)],
+        )
+
+        ds_val = cleverhans.contaminate_dataset(
+            dataset=ds_val,
+            contamination_level=contamination_level,
+            seed=seed,
+            # remark: here, we assume that, in the validation data for distillation,
+            # all validaiton samples of only one class has spuriour correlation.
+            victim_class_indices=dataset.selected_classes,
+        )
+
+    # remark: we set shuffle=False here becaue it is only used to learn bases.
+    train_loader = datasets.build_dataloader(ds_train, shuffle=False)
+    val_loader = datasets.build_dataloader(
+        ds_val,
+        shuffle=False,
+    )
+
+    print(f"Dataset Information: [use_val_split={use_val_split}]")
+    for label, dl in [("train", train_loader), ("val", val_loader)]:
+        count = 0
+        for _, y in dl:
+            count += y.shape[0]
+
+        print(f"> split={label:5s}: count={count}")
+
+    # We have to make sure that the `dataset` attribute is an actual dataset containing tranform.
+    # This avoids having a nested chain of Subsets.
+    assert isinstance(ds_train.dataset, tvd.CIFAR100) or isinstance(
+        ds_train.dataset, tvd.ImageNet
+    )
+
+    ds_train_with_aug = deepcopy(ds_train)
+    ds_train_with_aug.dataset.transform = dataset.input_training_transformation
+
+    # this loader is used in the distillation process.
+    train_loader_with_aug = datasets.build_dataloader(
+        ds_train_with_aug,
+        shuffle=True,
+        # cf. Ahn et al. (2017), VID, in Supplement Sec. A.3.
+        # we scale batch_size such that when training_size < 1.0,
+        # we get the same number of update steps.
+        batch_size=int(np.ceil(64 * training_size)),
+    )
+
+    return train_loader, train_loader_with_aug, val_loader
+
+
+@click.command()
+@click.option("--dataset", default="cifar100-people", type=str, required=True)
+@click.option("--teacher", default="cifar100-resnet18-v1", required=True)
+@click.option("--student", default="resnet18cifarcompr2", required=True)
+@click.option(
+    "--layers", default="layer1,layer2,layer3,layer4", type=str, required=True
+)
+@click.option(
+    "--layer-policies",
+    type=str,
+    default="basis-identity:pca--uncentered,basis-identity:prca-sortabs--uncentered,basis-identity:random--uncentered,attention-transfer,vid,fitnet,nothing",
+    required=True,
+)
+@click.option("--output-dir", type=str, required=True)
+@click.option("--training-size", type=float, default=1.0, required=True)
+@click.option("--epochs", type=int, default=100, required=True)
+@click.option("--seed", type=int, default=1)
+@click.option("--lr", type=float, default=0.0005, required=True)
+@click.option("--lambda-kd", type=float, required=True)
+@click.option("--lambda-task", type=float, required=True)
+@click.option("--lambda-layer", type=float, default=None)
+@click.option("--contamination-level", type=float, required=True)
+@click.option("--use-val-split", type=bool, default=False, is_flag=True)
+def main(
+    teacher,
+    student,
+    dataset,
+    layer_policies,
+    output_dir,
+    seed,
+    epochs,
+    lr,
+    training_size,
+    layers,
+    lambda_task,
+    lambda_kd,
+    lambda_layer,
+    contamination_level,
+    use_val_split,
+):
+    arguments = locals()
+
+    pl.seed_everything(seed)
+
+    start_time = datetime.now()
+
+    teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
+
+    layer_policies = layer_policies.split(",")
+
+    output_dir = (
+        Path(output_dir)
+        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-seed{seed}"
+        / teacher
+    )
+
+    os.makedirs(output_dir, exist_ok=True)
+    click.echo(f"Output: {output_dir}")
+
+    device = utils.get_device()
+
+    # prepare dataset
+    dataset = datasets.construct(dataset)
+
+    logit_mod = attributors.OneClassEvidence(num_classes=dataset.num_classes)
+
+    train_loader, train_loader_with_aug, val_loader = build_dataloaders(
+        dataset,
+        training_size=training_size,
+        contamination_level=contamination_level,
+        seed=seed,
+        use_val_split=use_val_split,
+    )
+
+    # prepare teacher
+    teacher_model = models.get_trained_model(teacher)
+    # use only teacher's logits corresponding to selected classes
+    utils.modify_last_layer_for_subclasses(
+        teacher_model, selected_classes=dataset.selected_classes
+    )
+    teacher_layer_dims_mapping = utils.get_dimensions_at_layers(
+        teacher_model, train_loader, layers=teacher_layers
+    )
+    teacher_model.to(device)
+
+    student_layer_dims_mapping = utils.get_dimensions_at_layers(
+        models.get_untrained_model(student, num_classes=dataset.num_classes).eval(),
+        train_loader,
+        layers=student_layers,
+    )
+
+    print("Layerwise Distillation with the following layers:")
+    for (teacher_layer, teacher_dim), (student_layer, student_dim) in zip(
+        teacher_layer_dims_mapping.items(),
+        student_layer_dims_mapping.items(),
+    ):
+        print(
+            f"> maping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim})"
+        )
+
+    learn_basese(
+        teacher_model=teacher_model,
+        dataset=dataset,
+        train_loader=train_loader,
+        logit_mod=logit_mod,
+        layers=teacher_layers,
+        layer_policies=layer_policies,
+        device=device,
+        output_dir=output_dir,
+        seed=seed,
+    )
 
     # do distillation
     for policy_name_with_args in tqdm(layer_policies, desc="Distillation"):
@@ -201,6 +292,18 @@ def main(
 
         policy_slugs = policy_name_with_args.split(":")
 
+        print(f"[policy={policy_name_with_args}]")
+        if lambda_layer is None:
+            policy_lambda_layer = constants.LAMBDA_LAYER_FOR_POLICIES[
+                policy_name_with_args
+            ]
+            print(f"> lambda_layer={policy_lambda_layer} (specified via `constants`)")
+        else:
+            policy_lambda_layer = lambda_layer
+            print(
+                f"[> lambda_layer={policy_lambda_layer} (specified via `command line`)"
+            )
+
         policy_name = policy_slugs[0]
 
         student_model = models.get_untrained_model(
@@ -208,9 +311,9 @@ def main(
         )
 
         layer_policies = []
-        for layer in layers:
-            student_layer_dims = student_layer_dims_mapping[layer]
-            teacher_layer_dims = teacher_layer_dims_mapping[layer]
+        for teacher_layer, student_layer in zip(teacher_layers, student_layers):
+            teacher_layer_dims = teacher_layer_dims_mapping[teacher_layer]
+            student_layer_dims = student_layer_dims_mapping[student_layer]
 
             kwargs = dict(
                 teacher_dims=teacher_layer_dims,
@@ -218,23 +321,10 @@ def main(
                 device=device,
             )
 
-            if policy_name in [
-                "basis",
-                "basis-student-linear",
-                "basis-student-linearnb",
-                "basis-student-linearnbinner",
-                "basis-student-linearnbinitinner",
-                "basis-student-identity",
-                "basis-student-identityinner",
-                "basis-student-ortho",
-                "basis-student-orthoinner",
-                "basis-student-orthoinnerstudentnorm",
-                "basis-student-orthoconstinner",
-                "basis-student-orthoconstinnerstudentnorm",
-            ]:
+            if "basis" in policy_name:
                 basis_name = policy_slugs[-1]
                 basis = bases.get_basis(basis_name, seed=seed)
-                layer_output_dir = output_dir / f"layer-{layer}"
+                layer_output_dir = output_dir / f"layer-{teacher_layer}"
                 basis.load(layer_output_dir)
 
                 kwargs["basis"] = basis
@@ -256,7 +346,7 @@ def main(
             [
                 student,
                 "-".join(policy_slugs),
-                f"lmd_task{lambda_task}-lmd_kd{lambda_kd}-lmd_layer{lambda_layer}",
+                f"lmd_task{lambda_task}-lmd_kd{lambda_kd}-lmd_layer{policy_lambda_layer}",
             ]
         )
 
@@ -266,9 +356,11 @@ def main(
             group=arguments["output_dir"],
             job_type="distillation",
             name=f"{student}-{policy_name_with_args}-seed{seed}",
+            notes=f"commit:{utils.get_git_hash()}",
             config={
                 **arguments,
                 "policy": policy_name_with_args,
+                "policy_lambda_layer": policy_lambda_layer,
                 "output_dir": output_dir,
             },
         )
@@ -276,12 +368,14 @@ def main(
         trained_student, results = distillator.distill(
             student=student_model,
             layer_policies=distillation_policies.LayerPolicyCollection(
-                layers=layers, policies=layer_policies
+                teacher_layers=teacher_layers,
+                student_layers=student_layers,
+                policies=layer_policies,
             ),
             epochs=epochs,
             lambda_task=lambda_task,
             lambda_kd=lambda_kd,
-            lambda_layer=lambda_layer,
+            lambda_layer=policy_lambda_layer,
             device=device,
             lr=lr,
             log_dir=log_dir,
@@ -295,7 +389,7 @@ def main(
         last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
 
         print(
-            f"Result: [distill with:  `{policy_name}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
+            f"Result: [distill with:  `{policy_name_with_args}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
         )
 
         for k, v in results.items():
