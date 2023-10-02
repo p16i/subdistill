@@ -109,8 +109,8 @@ def test_vgg_layer_interception(model_name, layers):
 @pytest.mark.parametrize(
     "model_name,layers",
     [
-        ("resnet18cifarcompr2", ("layer1", "layer2", "layer3", "layer4")),
-        ("resnet18cifarcompr4", ("layer1", "layer2", "layer3", "layer4")),
+        ("resnet18xscifarcompr2", ("layer1", "layer2", "layer3", "layer4")),
+        ("resnet18xscifarcompr4", ("layer1", "layer2", "layer3", "layer4")),
         ("vgg8", ("features.8",)),
     ],
 )

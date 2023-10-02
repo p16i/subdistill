@@ -176,7 +176,7 @@ def build_dataloaders(
 @click.command()
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
-@click.option("--student", default="resnet18cifarcompr2", required=True)
+@click.option("--student", default="resnet18xscifarcompr1", required=True)
 @click.option(
     "--layers", default="layer1,layer2,layer3,layer4", type=str, required=True
 )

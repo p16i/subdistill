@@ -46,12 +46,12 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
     [
         (
             "cifar100-resnet18-v1",
-            "resnet18cifarcompr2",
+            "resnet18xscifarcompr2",
             "layer1,layer2,layer3,layer4",
         ),
         (
             "cifar100-resnet50-v1",
-            "resnet18cifarcompr1",
+            "resnet18xscifarcompr1",
             "layer1,layer2,layer3,layer4",
         ),
         (
@@ -208,7 +208,7 @@ def test_get_parameters(layers):
 
     teacher_model = models.get_trained_model("cifar100-resnet18-v1")
     student = models.get_untrained_model(
-        "resnet18cifarcompr2", num_classes=dataset.num_classes
+        "resnet18xscifarcompr2", num_classes=dataset.num_classes
     )
 
     train_loader = datasets.build_dataloader(
@@ -220,7 +220,7 @@ def test_get_parameters(layers):
     )
     student_dims_mapping = utils.get_dimensions_at_layers(
         models.get_untrained_model(
-            "resnet18cifarcompr2", num_classes=dataset.num_classes
+            "resnet18xscifarcompr2", num_classes=dataset.num_classes
         ).eval(),
         train_loader,
         layers,
