@@ -99,7 +99,7 @@ def _generate_resnet18_compressed(
 
     # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L184
 
-    inplanes = 32
+    inplanes = 32 // compression_ratio
     # becuase inplance is modified throught the generation
     # we have to reset attribute
     resnet18.inplanes = inplanes
