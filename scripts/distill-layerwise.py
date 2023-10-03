@@ -294,9 +294,9 @@ def main(
 
         print(f"[policy={policy_name_with_args}]")
         if lambda_layer is None:
-            policy_lambda_layer = constants.LAMBDA_LAYER_FOR_POLICIES[
-                policy_name_with_args
-            ]
+            policy_lambda_layer = constants.get_lamba_layer_for_policy_student(
+                policy_name_with_args, student
+            )
             print(f"> lambda_layer={policy_lambda_layer} (specified via `constants`)")
         else:
             policy_lambda_layer = lambda_layer
