@@ -7,6 +7,7 @@ import types
 from collections import OrderedDict
 
 from torchvision.models.resnet import ResNet18_Weights
+import torch
 
 from torch import nn
 
@@ -15,6 +16,17 @@ from torchvision.models import resnet
 
 from . import interfaces
 from . import register_model
+
+
+class DiagonalScaling(nn.Module):
+    def __init__(self, dims: int) -> None:
+        super().__init__()
+
+        self.scale = nn.Parameter(torch.randn(dims).reshape(1, dims, 1, 1))
+        self.bias = nn.Parameter(torch.zeros(dims).reshape(1, dims, 1, 1))
+
+    def forward(self, x):
+        return self.scale * x + self.bias
 
 
 class DistillableResNet(interfaces.DistillableModel, resnet.ResNet):
@@ -162,7 +174,7 @@ def _generate_resnet18_compressed(
         layers.append(
             (
                 f"layer{i+1}",
-                nn.Sequential(layer, nn.BatchNorm2d(num_features=dims)),
+                nn.Sequential(layer, DiagonalScaling(dims=dims)),
             )
         )
 
