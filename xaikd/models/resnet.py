@@ -246,6 +246,26 @@ def _cifarresnet18c1id(num_classes: int):
     )
 
 
+@register_model("resnet18xscifarcompr2id")
+def _cifarresnet18c2id(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=2,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="id",
+    )
+
+
+@register_model("resnet18xscifarcompr4id")
+def _cifarresnet18c4id(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=4,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="id",
+    )
+
+
 @register_model("resnet18xscifarcompr2")
 def _cifarresnet18c2(num_classes: int):
     return _generate_resnet18_compressed(
