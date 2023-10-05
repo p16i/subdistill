@@ -109,7 +109,7 @@ def _generate_resnet18_compressed(
     for_cifar: bool,
     parameterization_with="bn",
 ) -> nn.Module:
-    assert parameterization_with in ["bn", "diag", "lin"]
+    assert parameterization_with in ["bn", "diag", "lin", "id"]
 
     # todo: hard-corded everything for now.
     resnet18 = torchvision.models.resnet.resnet18()
@@ -182,6 +182,8 @@ def _generate_resnet18_compressed(
             parameterization_module = nn.Conv2d(
                 in_channels=dims, out_channels=dims, kernel_size=1
             )
+        elif parameterization_with == "id":
+            parameterization_module = nn.Identity()
         else:
             raise ValueError(f"no `{parameterization_with}` available")
 
@@ -225,12 +227,22 @@ def _cifarresnet18c1diag(num_classes: int):
 
 
 @register_model("resnet18xscifarcompr1lin")
-def _cifarresnet18c1diag(num_classes: int):
+def _cifarresnet18c1lin(num_classes: int):
     return _generate_resnet18_compressed(
         compression_ratio=1,
         num_classes=num_classes,
         for_cifar=True,
         parameterization_with="lin",
+    )
+
+
+@register_model("resnet18xscifarcompr1id")
+def _cifarresnet18c1id(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=1,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="id",
     )
 
 
