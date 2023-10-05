@@ -104,8 +104,13 @@ def _resnet18_imagenet() -> nn.Module:
 
 
 def _generate_resnet18_compressed(
-    compression_ratio: int, num_classes: int, for_cifar: bool
+    compression_ratio: int,
+    num_classes: int,
+    for_cifar: bool,
+    parameterization_with="bn",
 ) -> nn.Module:
+    assert parameterization_with in ["bn", "diag", "lin"]
+
     # todo: hard-corded everything for now.
     resnet18 = torchvision.models.resnet.resnet18()
 
@@ -169,12 +174,23 @@ def _generate_resnet18_compressed(
             dilate=False,
         )
 
+        if parameterization_with == "bn":
+            parameterization_module = nn.BatchNorm2d(num_features=dims)
+        elif parameterization_with == "diag":
+            parameterization_module = DiagonalScaling(dims=dims)
+        elif parameterization_with == "lin":
+            parameterization_module = nn.Conv2d(
+                in_channels=dims, out_channels=dims, kernel_size=1
+            )
+        else:
+            raise ValueError(f"no `{parameterization_with}` available")
+
         # # todo: this is temporary;
         # todo: remove this after also in other derivative of the architecture.
         layers.append(
             (
                 f"layer{i+1}",
-                nn.Sequential(layer, DiagonalScaling(dims=dims)),
+                nn.Sequential(layer, parameterization_module),
             )
         )
 
@@ -195,6 +211,26 @@ def _generate_resnet18_compressed(
 def _cifarresnet18c1(num_classes: int):
     return _generate_resnet18_compressed(
         compression_ratio=1, num_classes=num_classes, for_cifar=True
+    )
+
+
+@register_model("resnet18xscifarcompr1diag")
+def _cifarresnet18c1diag(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=1,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="diag",
+    )
+
+
+@register_model("resnet18xscifarcompr1lin")
+def _cifarresnet18c1diag(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=1,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="lin",
     )
 
 
