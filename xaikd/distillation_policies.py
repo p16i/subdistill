@@ -551,6 +551,50 @@ class OrthogonalBasisAttentionPolicy(LayerPolicy):
         return loss_mse
 
 
+@register_layer_policy("basis-attention20dims")
+class OrthogonalBasisAttention20DimsPolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis, ord=2
+    ) -> None:
+        super().__init__()
+
+        self.ord = ord
+
+        k = 20
+
+        self.basis = basis
+
+        class AttentionMappingFsumP2(nn.Module):
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                b, c, w, h = x.shape
+
+                # cf. https://github.com/szagoruyko/attention-transfer/blob/master/utils.py#L19C4-L19C61
+                # also Section 3.1 in the paper
+                return F.normalize(x.pow(ord).mean(1).view(x.size(0), -1), dim=1, p=ord)
+
+        self.transformer_student_feats = AttentionMappingFsumP2()
+        self.transformer_teacher_feats = nn.Sequential(
+            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
+            AttentionMappingFsumP2(),
+        )
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, wh = transformed_teacher_feats.shape
+
+        # comparing spatial dimensions
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        # cf. https://github.com/szagoruyko/attention-transfer/blob/master/utils.py#L22
+        # Remark: the implementation seems to be different from eq (2) in the paper.
+        # In particular, the difference is that calling `.mean()` has a factor of 1/(wh),
+        # while the original equal (eq.2) has a factor of `1`.
+        loss_mse = (
+            (transformed_teacher_feats - transformed_student_feats).pow(self.ord).mean()
+        )
+
+        return loss_mse
+
+
 @register_layer_policy("basis-identity-cosine")
 class OrthogonalBasisIdentityCosinePolicy(OrthogonalBasisIdentityPolicy):
     def criterion(self, transformed_teacher_feats, transformed_student_feats):
