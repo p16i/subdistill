@@ -577,3 +577,34 @@ class OrthogonalBasisIdentityCosinePolicy(OrthogonalBasisIdentityPolicy):
 
         # converting minimization problem.
         return -inner_prod
+
+
+@register_layer_policy("basis-l2detach")
+class OrthogonalBasisL2DetachPolicy(OrthogonalBasisIdentityPolicy):
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        student_norm = torch.linalg.norm(
+            transformed_student_feats, dim=1, keepdims=True
+        ).detach()
+
+        transformed_student_feats = student_norm * (
+            transformed_student_feats / student_norm
+        )
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
