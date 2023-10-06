@@ -579,6 +579,36 @@ class OrthogonalBasisIdentityCosinePolicy(OrthogonalBasisIdentityPolicy):
         return -inner_prod
 
 
+@register_layer_policy("basis-innerproduct")
+class OrthogonalBasisInnerProductPolicy(OrthogonalBasisIdentityPolicy):
+    """
+    remark: we might to be careful with this policy for architecturs w/o batchnorm.
+    This is because the inner product can grow infinitely large.
+    """
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
+            dim=1
+        ) / (w * h)
+
+        inner_prod = inner_prod.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        inner_prod = inner_prod.sum(dim=1)
+
+        assert inner_prod.shape == (b,)
+
+        # average over all samples
+        inner_prod = inner_prod.mean()
+
+        # converting minimization problem.
+        return -inner_prod
+
+
 @register_layer_policy("basis-innerproductstudentnorm")
 class OrthogonalBasisInnerProductStudentNormPolicy(OrthogonalBasisIdentityPolicy):
     """
