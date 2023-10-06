@@ -17,6 +17,8 @@ from torchvision.models import resnet
 from . import interfaces
 from . import register_model
 
+from xaikd.utils.modules import Centering2D
+
 
 class DiagonalScaling(nn.Module):
     def __init__(self, dims: int) -> None:
@@ -109,7 +111,7 @@ def _generate_resnet18_compressed(
     for_cifar: bool,
     parameterization_with="bn",
 ) -> nn.Module:
-    assert parameterization_with in ["bn", "diag", "lin", "id"]
+    assert parameterization_with in ["bn", "diag", "lin", "id", "center"]
 
     # todo: hard-corded everything for now.
     resnet18 = torchvision.models.resnet.resnet18()
@@ -176,6 +178,8 @@ def _generate_resnet18_compressed(
 
         if parameterization_with == "bn":
             parameterization_module = nn.BatchNorm2d(num_features=dims)
+        elif parameterization_with == "center":
+            parameterization_module = Centering2D(num_features=dims)
         elif parameterization_with == "diag":
             parameterization_module = DiagonalScaling(dims=dims)
         elif parameterization_with == "lin":
@@ -213,6 +217,16 @@ def _generate_resnet18_compressed(
 def _cifarresnet18c1(num_classes: int):
     return _generate_resnet18_compressed(
         compression_ratio=1, num_classes=num_classes, for_cifar=True
+    )
+
+
+@register_model("resnet18xscifarcompr1center")
+def _cifarresnet18c1center(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=1,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="center",
     )
 
 
