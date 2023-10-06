@@ -579,8 +579,8 @@ class OrthogonalBasisIdentityCosinePolicy(OrthogonalBasisIdentityPolicy):
         return -inner_prod
 
 
-@register_layer_policy("basis-innerproductdetachnorm")
-class OrthogonalBasisIdentityCosinePolicy(OrthogonalBasisIdentityPolicy):
+@register_layer_policy("basis-innerproductstudentnorm")
+class OrthogonalBasisInnerProductStudentNormPolicy(OrthogonalBasisIdentityPolicy):
     """
     remark: we might to be careful with this policy for architecturs w/o batchnorm.
     This is because the inner product can grow infinitely large.
@@ -591,13 +591,7 @@ class OrthogonalBasisIdentityCosinePolicy(OrthogonalBasisIdentityPolicy):
 
         assert transformed_teacher_feats.shape == transformed_student_feats.shape
 
-        student_norm = torch.linalg.norm(
-            transformed_student_feats, dim=1, keepdims=True
-        ).detach()
-
-        transformed_student_feats = student_norm * (
-            transformed_student_feats / student_norm
-        )
+        transformed_student_feats = F.normalize(transformed_student_feats, dim=1)
 
         inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
             dim=1
