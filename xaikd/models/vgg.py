@@ -99,7 +99,7 @@ def _cifar_vgg11(num_classes: int) -> nn.Module:
 
 
 @register_model("vgg8")
-def _vgg8(num_classes: int) -> nn.Module:
+def _vgg8(num_classes: int, parameterization="bn") -> nn.Module:
     model = models.vgg._vgg("VGG8", False, None, None, num_classes=num_classes)
 
     dims = [256, 512, 512]
@@ -108,8 +108,22 @@ def _vgg8(num_classes: int) -> nn.Module:
     for lix, d in zip(layer_indices, dims):
         module = model.features[lix]
         assert isinstance(module, nn.MaxPool2d)
-        model.features[lix] = nn.Sequential(module, nn.BatchNorm2d(d))
+
+        if parameterization == "bn":
+            parameterization_module = nn.BatchNorm2d(d)
+        elif parameterization == "lin":
+            parameterization_module = nn.Conv2d(
+                in_channels=d, out_channels=d, kernel_size=1
+            )
+        else:
+            raise ValueError(f"No `{parameterization}` available!")
+
+        model.features[lix] = nn.Sequential(module, parameterization_module)
 
     model.num_classes = num_classes
 
     return model
+
+@register_model("vgg8lin")
+def _vgg8lin(num_classes: int) -> nn.Module:
+    return _vgg8(num_classes=num_classes, parameterization="lin")
