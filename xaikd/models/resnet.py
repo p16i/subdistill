@@ -17,18 +17,7 @@ from torchvision.models import resnet
 from . import interfaces
 from . import register_model
 
-from xaikd.utils.modules import Centering2D
-
-
-class DiagonalScaling(nn.Module):
-    def __init__(self, dims: int) -> None:
-        super().__init__()
-
-        self.scale = nn.Parameter(torch.randn(dims).reshape(1, dims, 1, 1))
-        self.bias = nn.Parameter(torch.zeros(dims).reshape(1, dims, 1, 1))
-
-    def forward(self, x):
-        return self.scale * x + self.bias
+from xaikd.utils.modules import Centering2D, DiagonalScaling
 
 
 class DistillableResNet(interfaces.DistillableModel, resnet.ResNet):

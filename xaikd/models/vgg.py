@@ -9,7 +9,7 @@ from torchvision import models
 from . import register_model, interfaces
 
 
-from xaikd.utils.modules import Centering2D
+from xaikd.utils.modules import Centering2D, DiagonalScaling
 
 
 models.vgg.cfgs["VGG8"] = [
@@ -116,6 +116,8 @@ def _vgg8(num_classes: int, parameterization="bn") -> nn.Module:
             parameterization_module = nn.BatchNorm2d(d)
         elif parameterization == "center":
             parameterization_module = Centering2D(num_features=d)
+        elif parameterization == "diag":
+            parameterization_module = DiagonalScaling(dims=d)
         elif parameterization == "lin":
             parameterization_module = nn.Conv2d(
                 in_channels=d, out_channels=d, kernel_size=1
@@ -131,9 +133,15 @@ def _vgg8(num_classes: int, parameterization="bn") -> nn.Module:
 
 
 @register_model("vgg8center")
-def _vgg8center(num_classes: int) -> nn.Module:
+def _vgg8lin(num_classes: int) -> nn.Module:
     return _vgg8(num_classes=num_classes, parameterization="center")
+
 
 @register_model("vgg8lin")
 def _vgg8lin(num_classes: int) -> nn.Module:
     return _vgg8(num_classes=num_classes, parameterization="lin")
+
+
+@register_model("vgg8diag")
+def _vgg8diag(num_classes: int) -> nn.Module:
+    return _vgg8(num_classes=num_classes, parameterization="diag")

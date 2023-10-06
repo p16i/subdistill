@@ -1,4 +1,5 @@
 import torch
+from torch import nn
 from torch.nn import functional as F
 from torch.nn.modules import batchnorm
 
@@ -61,3 +62,14 @@ class Centering2D(batchnorm._BatchNorm):
     def _check_input_dim(self, input):
         if input.dim() != 4:
             raise ValueError("expected 4D input (got {}D input)".format(input.dim()))
+
+
+class DiagonalScaling(nn.Module):
+    def __init__(self, dims: int) -> None:
+        super().__init__()
+
+        self.scale = nn.Parameter(torch.randn(dims).reshape(1, dims, 1, 1))
+        self.bias = nn.Parameter(torch.zeros(dims).reshape(1, dims, 1, 1))
+
+    def forward(self, x):
+        return self.scale * x + self.bias
