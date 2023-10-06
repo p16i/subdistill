@@ -553,14 +553,14 @@ class OrthogonalBasisAttentionPolicy(LayerPolicy):
 
 @register_layer_policy("basis-attention20dims")
 class OrthogonalBasisAttention20DimsPolicy(LayerPolicy):
+    k = 20
+
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: Basis, ord=2
     ) -> None:
         super().__init__()
 
         self.ord = ord
-
-        k = 20
 
         self.basis = basis
 
@@ -574,7 +574,7 @@ class OrthogonalBasisAttention20DimsPolicy(LayerPolicy):
 
         self.transformer_student_feats = AttentionMappingFsumP2()
         self.transformer_teacher_feats = nn.Sequential(
-            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
+            basis.construct_adapter(k=self.k, mode=AdapterMode.ENCODER, device=device),
             AttentionMappingFsumP2(),
         )
 
@@ -593,6 +593,11 @@ class OrthogonalBasisAttention20DimsPolicy(LayerPolicy):
         )
 
         return loss_mse
+
+
+@register_layer_policy("basis-attention1dim")
+class OrthogonalBasisAttention1DimPolicy(OrthogonalBasisAttention20DimsPolicy):
+    k = 1
 
 
 @register_layer_policy("basis-identity-cosine")
