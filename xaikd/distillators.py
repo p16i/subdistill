@@ -112,8 +112,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
 
         # ref: https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L273
+        # ref: https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L50C1-L50C1
         optimizer = torch.optim.SGD(
-            parameters, lr=0.01, momentum=0.9, weight_decay=5e-4
+            parameters, lr=0.05, momentum=0.9, weight_decay=5e-4
         )
         scheduler = torch.optim.lr_scheduler.MultiStepLR(
             optimizer, milestones=[150, 180, 210], gamma=0.1
