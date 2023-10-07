@@ -151,6 +151,15 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
 
+            if prefix == "val":
+                norm = torch.linalg.norm(student_arr_intermediate_feats[lix], dim=1)
+                layer = self.layer_policy_collection.student_layers[lix]
+
+                self.log(f"{prefix}_{layer}_min", norm.min(), on_epoch=True)
+                self.log(f"{prefix}_{layer}_max", norm.max(), on_epoch=True)
+                self.log(f"{prefix}_{layer}_mean", norm.mean(), on_epoch=True)
+                self.log(f"{prefix}_{layer}_median", norm.median(), on_epoch=True)
+
         loss = loss_task + loss_kd + loss_layer
 
         self.log(f"{prefix}_loss_task", loss_task, on_epoch=True)
