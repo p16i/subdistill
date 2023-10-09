@@ -15,13 +15,13 @@ from xaikd.utils.modules import Centering2D, DiagonalScaling
 models.vgg.cfgs["VGG8"] = [
     64,
     "M",
-    128,
+    64,
     "M",
-    256,
+    32,
     "M",
-    512,
+    32,
     "M",
-    512,
+    32,
     "M",
 ]
 
@@ -101,11 +101,11 @@ def _cifar_vgg11(num_classes: int) -> nn.Module:
     return _vgg11(num_classes)
 
 
-@register_model("vgg8")
+@register_model("vgg8xs")
 def _vgg8(num_classes: int, parameterization="bn") -> nn.Module:
     model = models.vgg._vgg("VGG8", False, None, None, num_classes=num_classes)
 
-    dims = [256, 512, 512]
+    dims = [32, 32, 32]
     layer_indices = [8, 11, 14]
 
     for lix, d in zip(layer_indices, dims):
@@ -127,21 +127,31 @@ def _vgg8(num_classes: int, parameterization="bn") -> nn.Module:
 
         model.features[lix] = nn.Sequential(module, parameterization_module)
 
+    model.classifier = nn.Sequential(
+        nn.Linear(dims[-1] * 7 * 7, 16),
+        nn.ReLU(True),
+        nn.Dropout(p=0.5),
+        nn.Linear(16, 16),
+        nn.ReLU(True),
+        nn.Dropout(p=0.5),
+        nn.Linear(16, num_classes),
+    )
+
     model.num_classes = num_classes
 
     return model
 
 
-@register_model("vgg8center")
+@register_model("vgg8xscenter")
 def _vgg8lin(num_classes: int) -> nn.Module:
     return _vgg8(num_classes=num_classes, parameterization="center")
 
 
-@register_model("vgg8lin")
+@register_model("vgg8xslin")
 def _vgg8lin(num_classes: int) -> nn.Module:
     return _vgg8(num_classes=num_classes, parameterization="lin")
 
 
-@register_model("vgg8diag")
+@register_model("vgg8xsdiag")
 def _vgg8diag(num_classes: int) -> nn.Module:
     return _vgg8(num_classes=num_classes, parameterization="diag")

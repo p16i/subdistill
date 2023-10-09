@@ -129,7 +129,7 @@ def test_vgg_layer_interception(model_name, layers):
             ("layer1", "layer2", "layer3", "layer4"),
             torch.nn.BatchNorm2d,
         ),
-        ("vgg8", ("features.8",), torch.nn.BatchNorm2d),
+        ("vgg8xs", ("features.8",), torch.nn.BatchNorm2d),
     ],
 )
 def test_student_extra_interception(

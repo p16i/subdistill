@@ -56,7 +56,7 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
         ),
         (
             "cifar100-vgg11-v1",
-            "vgg8",
+            "vgg8xs",
             "features.10:features.8,features.15:features.11,features.20:features.14",
         ),
         (
