@@ -66,7 +66,7 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
         ),
     ],
 )
-def test_distillation_runnable_andD_correct(
+def test_distillation_runnable_and_correct(
     teacher_model_name, student_model_name, layers
 ):
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
@@ -165,7 +165,7 @@ def test_distillation_runnable_andD_correct(
 
         # sanity check `teacher`
         expected_teacher_acc_xent = metrics.accuracy(
-            teacher_model_before,
+            teacher_model_before.to(device),
             dataloader=val_loader,
             num_classes=dataset.num_classes,
             device=device,
