@@ -66,7 +66,9 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
         ),
     ],
 )
-def test_distillationation_runnable(teacher_model_name, student_model_name, layers):
+def test_distillation_runnable_andD_correct(
+    teacher_model_name, student_model_name, layers
+):
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
     teacher_model = models.get_trained_model(teacher_model_name)
@@ -151,6 +153,7 @@ def test_distillationation_runnable(teacher_model_name, student_model_name, laye
 
     # post-training assertions
     with torch.no_grad():
+        # sanity check `student``
         actual_acc, _ = metrics.accuracy(
             student,
             dataloader=val_loader,
@@ -159,6 +162,17 @@ def test_distillationation_runnable(teacher_model_name, student_model_name, laye
         )
         expected_acc = results["arr_metrics"]["val_acc"][-1]
         np.testing.assert_allclose(actual_acc, expected_acc)
+
+        # sanity check `teacher`
+        expected_teacher_acc_xent = metrics.accuracy(
+            teacher_model_before,
+            dataloader=val_loader,
+            num_classes=dataset.num_classes,
+            device=device,
+        )
+        np.testing.assert_allclose(
+            (distillator.ref_acc, distillator.ref_xent), expected_teacher_acc_xent
+        )
 
         # check teacher parameters not get updated!
         for before_params, after_params in zip(
