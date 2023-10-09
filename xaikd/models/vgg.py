@@ -17,7 +17,7 @@ models.vgg.cfgs["VGG8"] = [
     "M",
     64,
     "M",
-    32,
+    48,
     "M",
     32,
     "M",
@@ -105,7 +105,7 @@ def _cifar_vgg11(num_classes: int) -> nn.Module:
 def _vgg8(num_classes: int, parameterization="bn") -> nn.Module:
     model = models.vgg._vgg("VGG8", False, None, None, num_classes=num_classes)
 
-    dims = [32, 32, 32]
+    dims = [48, 32, 32]
     layer_indices = [8, 11, 14]
 
     for lix, d in zip(layer_indices, dims):
