@@ -188,7 +188,7 @@ def build_dataloaders(
 )
 @click.option("--output-dir", type=str, required=True)
 @click.option("--training-size", type=float, default=1.0, required=True)
-@click.option("--epochs", type=int, default=240, required=True)
+@click.option("--epochs", type=int, default=100, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--lambda-kd", type=float, required=True)

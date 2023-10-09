@@ -108,19 +108,15 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         parameters = self._get_parameters()
 
         # pat's optimizer (used in S11, 12)
-        # optimizer = torch.optim.Adam(parameters, lr=self.lr, weight_decay=0.0)
-        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+        optimizer = torch.optim.Adam(parameters, lr=self.lr, weight_decay=0.0)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+        return [optimizer], [scheduler]
 
         # ref: https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L273
-        # ref: https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L50C1-L50C1
-        optimizer = torch.optim.SGD(
-            parameters, lr=0.05, momentum=0.9, weight_decay=5e-4
-        )
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optimizer, milestones=[150, 180, 210], gamma=0.1
-        )
-
-        return [optimizer], [scheduler]
+        # optimizer = torch.optim.SGD(
+        #     parameters, lr=0.01, momentum=0.9, weight_decay=5e-4
+        # )
+        # return optimizer
 
     def _compute_loss(self, batch, prefix, batch_idx):
         x, y = batch
