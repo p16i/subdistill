@@ -162,6 +162,43 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     f"{prefix}_actnorm_{layer}_median", norm.median(), on_epoch=True
                 )
 
+                act = student_arr_intermediate_feats[lix]
+                bn = getattr(
+                    self.student, self.layer_policy_collection.student_layers[lix]
+                )[-1]
+
+                assert isinstance(bn, nn.BatchNorm2d)
+
+                # # here, we revert the affine transforation of batchnorm
+                standardized_values = (
+                    act - bn.bias.reshape(1, -1, 1, 1)
+                ) / bn.weight.reshape(1, -1, 1, 1)
+
+                # we flatten the spatial dimension
+                #  and take the mean over sample
+                #  then take the mean over sptial dimension
+                # expected: max(|E[(a-mu)/sigma]|) \approx 0
+
+                moment_1 = (
+                    standardized_values.flatten(start_dim=2)
+                    .mean(dim=0)
+                    .mean(dim=1)
+                    .abs()
+                    .max()
+                )
+
+                # expected: max( E[ {(a-mu)/sigma}^2 ] ) \approx 1
+                moment_2 = (
+                    (standardized_values**2)
+                    .flatten(start_dim=2)
+                    .mean(dim=0)
+                    .mean(dim=1)
+                    .max()
+                )
+
+                self.log(f"{prefix}_{layer}bn_moment_1", moment_1)
+                self.log(f"{prefix}_{layer}bn_moment_2", moment_2)
+
         loss = loss_task + loss_kd + loss_layer
 
         self.log(f"{prefix}_loss_task", loss_task, on_epoch=True)
