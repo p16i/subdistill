@@ -573,10 +573,13 @@ class OrthogonalRandomPolicy(LayerPolicy):
 
         self.U = (
             (
-                torch.rand(
-                    (k, teacher_dims), generator=torch.Generator().manual_seed(1)
+                (
+                    torch.rand(
+                        (k, teacher_dims), generator=torch.Generator().manual_seed(1)
+                    )
+                    >= 0.5
                 )
-                >= 0.5
+                / k
             )
             .float()
             .to(device)
