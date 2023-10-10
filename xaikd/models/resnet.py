@@ -293,6 +293,26 @@ def _cifarresnet18c4(num_classes: int):
     )
 
 
+@register_model("resnet18xscifarcompr2lin")
+def _cifarresnet18c2lin(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=2,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="lin",
+    )
+
+
+@register_model("resnet18xscifarcompr4lin")
+def _cifarresnet18c4lin(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=4,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="lin",
+    )
+
+
 # @register_model("resnet18cifarcompr8")
 # def _cifarresnet18c8(num_classes: int):
 #     return _generate_resnet18_compressed(
