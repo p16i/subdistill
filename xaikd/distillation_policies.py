@@ -559,6 +559,59 @@ class OrthogonalRandomPolicy(LayerPolicy):
         return loss_mse
 
 
+@register_layer_policy("randombin")
+class OrthogonalRandomPolicy(LayerPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.U = (
+            (
+                torch.rand(
+                    (k, teacher_dims), generator=torch.Generator().manual_seed(1)
+                )
+                >= 0.5
+            )
+            .float()
+            .to(device)
+            .unsqueeze(2)
+            .unsqueeze(3)
+        )
+
+        def transform_teacher(x):
+            return F.conv2d(x, self.U)
+
+        self.transformer_teacher_feats = transform_teacher
+
+        self.transformer_student_feats = nn.Identity()
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_layer_policy("basis-attention")
 class OrthogonalBasisAttentionPolicy(LayerPolicy):
     def __init__(
