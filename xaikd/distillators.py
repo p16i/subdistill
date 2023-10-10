@@ -216,7 +216,12 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     weight = parameterization_module.weight.squeeze()
                     sigular_values = torch.linalg.svdvals(weight)
 
-                    self.log(f"{prefix}_{layer}lin_larget_sigval", sigular_values.max())
+                    self.log(
+                        f"{prefix}_{layer}lin_largest_sigval", sigular_values.max()
+                    )
+                    self.log(
+                        f"{prefix}_{layer}lin_smallest_sigval", sigular_values.min()
+                    )
 
         loss = loss_task + loss_kd + loss_layer
 
