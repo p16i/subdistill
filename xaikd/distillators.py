@@ -221,20 +221,20 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     self.log(f"{prefix}_{layer}bn_moment_1", moment_1)
                     self.log(f"{prefix}_{layer}bn_moment_2", moment_2)
 
-                    cross_corr = (
-                        (
-                            policy.transformer_teacher_feats(
-                                teacher_arr_intermediate_feats[lix]
-                            )
-                            * student_arr_intermediate_feats[lix]
-                        )
-                        .flatten(start_dim=2)
-                        .mean(dim=0)
-                        .mean(dim=1)
-                        .abs()
-                        .median()
-                    )
-                    self.log(f"{prefix}_{layer}bn_crosscorr", cross_corr)
+                    # cross_corr = (
+                    #     (
+                    #         policy.transformer_teacher_feats(
+                    #             teacher_arr_intermediate_feats[lix]
+                    #         )
+                    #         * student_arr_intermediate_feats[lix]
+                    #     )
+                    #     .flatten(start_dim=2)
+                    #     .mean(dim=0)
+                    #     .mean(dim=1)
+                    #     .abs()
+                    #     .median()
+                    # )
+                    # self.log(f"{prefix}_{layer}bn_crosscorr", cross_corr)
                 elif isinstance(parameterization_module, nn.Conv2d):
                     weight = parameterization_module.weight.squeeze()
                     sigular_values = torch.linalg.svdvals(weight)
