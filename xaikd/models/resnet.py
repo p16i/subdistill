@@ -249,6 +249,16 @@ def _cifarresnet18c1rot(num_classes: int):
     )
 
 
+@register_model("resnet18xscifarcompr4rot")
+def _cifarresnet18c4rot(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=4,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="rot",
+    )
+
+
 @register_model("resnet18xscifarcompr1id")
 def _cifarresnet18c1id(num_classes: int):
     return _generate_resnet18_compressed(
