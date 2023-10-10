@@ -184,7 +184,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     .mean(dim=0)
                     .mean(dim=1)
                     .abs()
-                    .max()
+                    .median()
                 )
 
                 # expected: max( E[ {(a-mu)/sigma}^2 ] ) \approx 1
@@ -193,7 +193,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     .flatten(start_dim=2)
                     .mean(dim=0)
                     .mean(dim=1)
-                    .max()
+                    .median()
                 )
 
                 self.log(f"{prefix}_{layer}bn_moment_1", moment_1)
