@@ -222,6 +222,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     self.log(
                         f"{prefix}_{layer}lin_smallest_sigval", sigular_values.min()
                     )
+                    self.log(
+                        f"{prefix}_{layer}lin_median_sigval", sigular_values.median()
+                    )
 
         loss = loss_task + loss_kd + loss_layer
 
