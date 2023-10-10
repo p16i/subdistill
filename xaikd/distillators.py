@@ -149,10 +149,17 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
 
+            policy.transformer_teacher_feats
+
             if prefix == "val":
                 for label, act in (
                     ("student", student_arr_intermediate_feats[lix]),
-                    ("teacher", teacher_arr_intermediate_feats[lix]),
+                    (
+                        "teacher",
+                        policy.transformer_teacher_feats(
+                            teacher_arr_intermediate_feats[lix]
+                        ),
+                    ),
                 ):
                     norm = torch.linalg.norm(act, dim=1)
                     layer = self.layer_policy_collection.student_layers[lix]
