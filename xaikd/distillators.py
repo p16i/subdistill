@@ -152,15 +152,21 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             )
 
             if prefix == "val":
-                norm = torch.linalg.norm(student_arr_intermediate_feats[lix], dim=1)
-                layer = self.layer_policy_collection.student_layers[lix]
+                for label, act in (
+                    ("student", student_arr_intermediate_feats[lix]),
+                    ("teacher", teacher_arr_intermediate_feats[lix]),
+                ):
+                    norm = torch.linalg.norm(act], dim=1)
+                    layer = self.layer_policy_collection.student_layers[lix]
 
-                self.log(f"{prefix}_actnorm_{layer}_min", norm.min(), on_epoch=True)
-                self.log(f"{prefix}_actnorm_{layer}_max", norm.max(), on_epoch=True)
-                self.log(f"{prefix}_actnorm_{layer}_mean", norm.mean(), on_epoch=True)
-                self.log(
-                    f"{prefix}_actnorm_{layer}_median", norm.median(), on_epoch=True
-                )
+                    self.log(f"{prefix}_actnorm_{label}_{layer}_min", norm.min(), on_epoch=True)
+                    self.log(f"{prefix}_actnorm_{label}_{layer}_max", norm.max(), on_epoch=True)
+                    self.log(
+                        f"{prefix}_actnorm_{label}_{layer}_mean", norm.mean(), on_epoch=True
+                    )
+                    self.log(
+                        f"{prefix}_actnorm_{label}_{layer}_median", norm.median(), on_epoch=True
+                    )
 
                 act = student_arr_intermediate_feats[lix]
                 parameterization_module = getattr(
