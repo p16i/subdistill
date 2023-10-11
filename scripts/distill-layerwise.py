@@ -137,7 +137,10 @@ def build_dataloaders(
         )
 
     # remark: we set shuffle=False here becaue it is only used to learn bases.
-    train_loader = datasets.build_dataloader(ds_train, shuffle=False)
+    # experimental: use clean dataset to estimate bases.
+    train_loader = datasets.build_dataloader(
+        dataset.create_subset(train_split=True), shuffle=False
+    )
     val_loader = datasets.build_dataloader(
         ds_val,
         shuffle=False,
