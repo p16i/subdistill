@@ -24,7 +24,7 @@ def add_cleverhan_symbol(img, rng: np.random.Generator):
     y = rng.integers(low=0 - 3, high=31 - 4 - 3)
 
     # location = (x, y)
-    location = (0, 24)
+    location = (20, 20)
 
     ImageDraw.Draw(copied_img).text(
         location,
