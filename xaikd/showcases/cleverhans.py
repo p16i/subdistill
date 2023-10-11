@@ -23,8 +23,7 @@ def add_cleverhan_symbol(img, rng: np.random.Generator):
     # cf. ./notebooks/2023-10-s16/dev-add-symbol-to-img.ipynb
     y = rng.integers(low=0 - 3, high=31 - 4 - 3)
 
-    # location = (x, y)
-    location = (20, 20)
+    location = (x, y)
 
     ImageDraw.Draw(copied_img).text(
         location,
