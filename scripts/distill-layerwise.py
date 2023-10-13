@@ -242,7 +242,10 @@ def main(
     dataset = datasets.construct(dataset)
 
     # logit_mod = attributors.OneClassEvidence(num_classes=dataset.num_classes)
-    logit_mod = attributors.WinningClassEvidence(num_classes=dataset.num_classes)
+    # logit_mod = attributors.WinningClassEvidence(num_classes=dataset.num_classes)
+    logit_mod = attributors.ContrastTop2WinningClassesEvidence(
+        num_classes=dataset.num_classes
+    )
 
     train_loader, train_loader_with_aug, val_loader = build_dataloaders(
         dataset,
