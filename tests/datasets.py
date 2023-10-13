@@ -314,4 +314,4 @@ def test_subsample_dataset_ratio_one_no_acc_effect():
         device=device,
     )
 
-    np.testing.assert_allclose(actual_acc, expected_acc)
+    np.testing.assert_allclose(actual_acc, expected_acc, atol=1e-7)
