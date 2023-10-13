@@ -1,0 +1,55 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --use-val-split
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+name: &group_name ./artifacts/2023-10-s16/experiments/ex2.2-basis-attention
+parameters:
+  contamination-level:
+    value: 0.0
+  dataset:
+    value: cifar100-people
+  lambda-kd:
+    value: 1
+  lambda-layer:
+    values:
+      - 0
+      - 0.0001
+      - 0.001
+      - 0.01
+      - 0.1
+      - 1
+      - 10
+      - 100
+      - 1000
+      - 10000
+      - 100000
+  lambda-task:
+    value: 0
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  layer-policies:
+    values:
+      - basis-attention:pca--uncentered
+      - basis-attention:prca-sortabs--uncentered
+      - basis-attention:random--uncentered
+      - attention-transfer
+  output-dir:
+    value: *group_name
+  student:
+    values:
+      #  - resnet18xscifarcompr1id
+      - resnet18xscifarcompr2id
+      - resnet18xscifarcompr4id
+  teacher:
+    value: cifar100-resnet18-v1
+program: scripts/distill-layerwise.py
+project: xaikd-distillation-layerwise-ep2

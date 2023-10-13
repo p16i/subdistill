@@ -496,6 +496,8 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
+        loss_mse = loss_mse / self.basis.artifact["scale"].max()
+
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
 
@@ -505,6 +507,207 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+@register_layer_policy("random")
+class OrthogonalRandomPolicy(LayerPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.U = (
+            torch.from_numpy(
+                ortho_group.rvs(
+                    dim=teacher_dims, random_state=np.random.default_rng(1)
+                )[:, :k]
+            )
+            .float()
+            .T.to(device)
+            .unsqueeze(2)
+            .unsqueeze(3)
+        )
+
+        def transform_teacher(x):
+            return F.conv2d(x, self.U)
+
+        self.transformer_teacher_feats = transform_teacher
+
+        self.transformer_student_feats = nn.Identity()
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
+@register_layer_policy("randombin")
+class OrthogonalRandomPolicy(LayerPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.U = (
+            (
+                (
+                    torch.rand(
+                        (k, teacher_dims), generator=torch.Generator().manual_seed(1)
+                    )
+                    >= 0.5
+                )
+                / k
+            )
+            .float()
+            .to(device)
+            .unsqueeze(2)
+            .unsqueeze(3)
+        )
+
+        def transform_teacher(x):
+            return F.conv2d(x, self.U)
+
+        self.transformer_teacher_feats = transform_teacher
+
+        self.transformer_student_feats = nn.Identity()
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
+@register_layer_policy("basis-attention")
+class OrthogonalBasisAttentionPolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis, ord=2
+    ) -> None:
+        super().__init__()
+
+        self.ord = ord
+
+        k = student_dims
+
+        self.basis = basis
+
+        class AttentionMappingFsumP2(nn.Module):
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                b, c, w, h = x.shape
+
+                # cf. https://github.com/szagoruyko/attention-transfer/blob/master/utils.py#L19C4-L19C61
+                # also Section 3.1 in the paper
+                return F.normalize(x.pow(ord).mean(1).view(x.size(0), -1), dim=1, p=ord)
+
+        self.transformer_student_feats = AttentionMappingFsumP2()
+        self.transformer_teacher_feats = nn.Sequential(
+            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
+            AttentionMappingFsumP2(),
+        )
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, wh = transformed_teacher_feats.shape
+
+        # comparing spatial dimensions
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        # cf. https://github.com/szagoruyko/attention-transfer/blob/master/utils.py#L22
+        # Remark: the implementation seems to be different from eq (2) in the paper.
+        # In particular, the difference is that calling `.mean()` has a factor of 1/(wh),
+        # while the original equal (eq.2) has a factor of `1`.
+        loss_mse = (
+            (transformed_teacher_feats - transformed_student_feats).pow(self.ord).mean()
+        )
+
+        return loss_mse
+
+
+@register_layer_policy("basis-attention20dims")
+class OrthogonalBasisAttention20DimsPolicy(LayerPolicy):
+    k = 20
+
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis, ord=2
+    ) -> None:
+        super().__init__()
+
+        self.ord = ord
+
+        self.basis = basis
+
+        class AttentionMappingFsumP2(nn.Module):
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                b, c, w, h = x.shape
+
+                # cf. https://github.com/szagoruyko/attention-transfer/blob/master/utils.py#L19C4-L19C61
+                # also Section 3.1 in the paper
+                return F.normalize(x.pow(ord).mean(1).view(x.size(0), -1), dim=1, p=ord)
+
+        self.transformer_student_feats = AttentionMappingFsumP2()
+        self.transformer_teacher_feats = nn.Sequential(
+            basis.construct_adapter(k=self.k, mode=AdapterMode.ENCODER, device=device),
+            AttentionMappingFsumP2(),
+        )
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, wh = transformed_teacher_feats.shape
+
+        # comparing spatial dimensions
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        # cf. https://github.com/szagoruyko/attention-transfer/blob/master/utils.py#L22
+        # Remark: the implementation seems to be different from eq (2) in the paper.
+        # In particular, the difference is that calling `.mean()` has a factor of 1/(wh),
+        # while the original equal (eq.2) has a factor of `1`.
+        loss_mse = (
+            (transformed_teacher_feats - transformed_student_feats).pow(self.ord).mean()
+        )
+
+        return loss_mse
+
+
+@register_layer_policy("basis-attention1dim")
+class OrthogonalBasisAttention1DimPolicy(OrthogonalBasisAttention20DimsPolicy):
+    k = 1
 
 
 @register_layer_policy("basis-identity-cosine")
@@ -533,3 +736,96 @@ class OrthogonalBasisIdentityCosinePolicy(OrthogonalBasisIdentityPolicy):
 
         # converting minimization problem.
         return -inner_prod
+
+
+@register_layer_policy("basis-innerproduct")
+class OrthogonalBasisInnerProductPolicy(OrthogonalBasisIdentityPolicy):
+    """
+    remark: we might to be careful with this policy for architecturs w/o batchnorm.
+    This is because the inner product can grow infinitely large.
+    """
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
+            dim=1
+        ) / (w * h)
+
+        inner_prod = inner_prod.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        inner_prod = inner_prod.sum(dim=1)
+
+        assert inner_prod.shape == (b,)
+
+        # average over all samples
+        inner_prod = inner_prod.mean()
+
+        # converting minimization problem.
+        return -inner_prod
+
+
+@register_layer_policy("basis-innerproductstudentnorm")
+class OrthogonalBasisInnerProductStudentNormPolicy(OrthogonalBasisIdentityPolicy):
+    """
+    remark: we might to be careful with this policy for architecturs w/o batchnorm.
+    This is because the inner product can grow infinitely large.
+    """
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        transformed_student_feats = F.normalize(transformed_student_feats, dim=1)
+
+        inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
+            dim=1
+        ) / (w * h)
+
+        inner_prod = inner_prod.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        inner_prod = inner_prod.sum(dim=1)
+
+        assert inner_prod.shape == (b,)
+
+        # average over all samples
+        inner_prod = inner_prod.mean()
+
+        # converting minimization problem.
+        return -inner_prod
+
+
+@register_layer_policy("basis-l2detach")
+class OrthogonalBasisL2DetachPolicy(OrthogonalBasisIdentityPolicy):
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, _, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        student_norm = torch.linalg.norm(
+            transformed_student_feats, dim=1, keepdims=True
+        ).detach()
+
+        transformed_student_feats = student_norm * (
+            transformed_student_feats / student_norm
+        )
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
