@@ -86,7 +86,9 @@ class ContrastTop2WinningClassesEvidence(LogitModifier):
         # find the label of two winning classes
         _, indices = torch.topk(logits, dim=1, k=2)
         # todo: adding test
-        return logits * F.one_hot(indices[:, 0]) - logits * F.one_hot(indices[:, 1])
+        return logits * F.one_hot(indices[:, 0], self.num_classes) - logits * F.one_hot(
+            indices[:, 1], self.num_classes
+        )
 
     def __str__(self) -> str:
         return "contrasttop2"
