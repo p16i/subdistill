@@ -12,7 +12,6 @@ from copy import deepcopy
 
 CLEVER_HAN_SYMBOL = "+"
 COLOR = "red"
-LOCATION = (20, 20)
 
 
 def add_cleverhan_symbol(img, rng: np.random.Generator):

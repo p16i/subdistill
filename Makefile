@@ -14,3 +14,9 @@ sync-artifact:
 
 jupyter:
 	DATASET_ROOT=$(shell pwd)/datasets PYTHONPATH=. poetry run jupyter notebook ./notebooks
+
+srun5h:
+	srun -p gpu-5h --pty --gres=gpu:1 /bin/bash
+
+srun2d:
+	srun -p gpu-2d --pty --gres=gpu:1 /bin/bash

@@ -46,27 +46,29 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
     [
         (
             "cifar100-resnet18-v1",
-            "resnet18cifarcompr2",
+            "resnet18xscifarcompr2",
             "layer1,layer2,layer3,layer4",
         ),
         (
             "cifar100-resnet50-v1",
-            "resnet18cifarcompr1",
+            "resnet18xscifarcompr1",
             "layer1,layer2,layer3,layer4",
         ),
         (
             "cifar100-vgg11-v1",
-            "vgg8",
+            "vgg8xs",
             "features.10:features.8,features.15:features.11,features.20:features.14",
         ),
         (
             "cifar100-resnet18-v1",
-            "vgg8",
+            "vgg8xs",
             "layer3:features.8",
         ),
     ],
 )
-def test_distillationation_runnable(teacher_model_name, student_model_name, layers):
+def test_distillation_runnable_and_correct(
+    teacher_model_name, student_model_name, layers
+):
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
     teacher_model = models.get_trained_model(teacher_model_name)
@@ -151,6 +153,7 @@ def test_distillationation_runnable(teacher_model_name, student_model_name, laye
 
     # post-training assertions
     with torch.no_grad():
+        # sanity check `student``
         actual_acc, _ = metrics.accuracy(
             student,
             dataloader=val_loader,
@@ -159,6 +162,17 @@ def test_distillationation_runnable(teacher_model_name, student_model_name, laye
         )
         expected_acc = results["arr_metrics"]["val_acc"][-1]
         np.testing.assert_allclose(actual_acc, expected_acc)
+
+        # sanity check `teacher`
+        expected_teacher_acc_xent = metrics.accuracy(
+            teacher_model_before.to(device),
+            dataloader=val_loader,
+            num_classes=dataset.num_classes,
+            device=device,
+        )
+        np.testing.assert_allclose(
+            (distillator.ref_acc, distillator.ref_xent), expected_teacher_acc_xent
+        )
 
         # check teacher parameters not get updated!
         for before_params, after_params in zip(
@@ -208,7 +222,7 @@ def test_get_parameters(layers):
 
     teacher_model = models.get_trained_model("cifar100-resnet18-v1")
     student = models.get_untrained_model(
-        "resnet18cifarcompr2", num_classes=dataset.num_classes
+        "resnet18xscifarcompr2", num_classes=dataset.num_classes
     )
 
     train_loader = datasets.build_dataloader(
@@ -220,7 +234,7 @@ def test_get_parameters(layers):
     )
     student_dims_mapping = utils.get_dimensions_at_layers(
         models.get_untrained_model(
-            "resnet18cifarcompr2", num_classes=dataset.num_classes
+            "resnet18xscifarcompr2", num_classes=dataset.num_classes
         ).eval(),
         train_loader,
         layers,
