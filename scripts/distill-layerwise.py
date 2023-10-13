@@ -289,7 +289,6 @@ def main(
     learn_basese(
         teacher_model=teacher_model,
         dataset=dataset,
-        # here, if the
         train_loader=train_loader_for_learning_bases,
         logit_mod=logit_mod,
         layers=teacher_layers,
