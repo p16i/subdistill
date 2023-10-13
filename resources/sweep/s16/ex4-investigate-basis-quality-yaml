@@ -1,0 +1,55 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  # - --learning-bases-from-clean-data
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+name: &group_name ./artifacts/2023-10-s16/distill-layerwise/run4/with-scaling
+parameters:
+  contamination-level:
+    values:
+      - 0
+      - 0.25
+      - 0.5
+      - 0.75
+      - 1.0
+  dataset:
+    value: cifar100-people
+  lambda-kd:
+    value: 1
+  lambda-task:
+    value: 0
+  layer-policies:
+    values:
+      - basis-identity:pca--uncentered
+      - basis-identity:prca-sortabs--uncentered
+      - basis-identity:random--uncentered
+      - vid
+      - attention-transfer
+      - nothing
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  output-dir:
+    value: *group_name
+  student:
+    values:
+      # - resnet18xscifarcompr1
+      - resnet18xscifarcompr2
+      - resnet18xscifarcompr4
+  teacher:
+    value: cifar100-resnet18-v1
+  training-size:
+    values:
+      - 1.0
+      - 0.5
+      - 0.25
+      - 0.1
+program: scripts/distill-layerwise.py
+project: xaikd-distillation-layerwise-ep2
