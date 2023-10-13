@@ -63,6 +63,19 @@ class OneClassEvidence(LogitModifier):
         return "oneclass"
 
 
+class WinningClassEvidence(LogitModifier):
+    def __init__(self, num_classes: int) -> None:
+        self.num_classes = num_classes
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        wining_targets = torch.argmax(logits, dim=1)
+        return logits * F.one_hot(wining_targets, self.num_classes).to(logits.device)
+
+    def __str__(self) -> str:
+        return "oneclass"
+
+
 class OneClassLogSumExpEvidence(LogitModifier):
     def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
         self.dataset = dataset
