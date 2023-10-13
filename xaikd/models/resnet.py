@@ -17,7 +17,7 @@ from torchvision.models import resnet
 from . import interfaces
 from . import register_model
 
-from xaikd.utils.modules import Centering2D, DiagonalScaling
+from xaikd.utils.modules import Centering2D, DiagonalScaling, Conv2dRotation
 
 
 class DistillableResNet(interfaces.DistillableModel, resnet.ResNet):
@@ -100,8 +100,6 @@ def _generate_resnet18_compressed(
     for_cifar: bool,
     parameterization_with="bn",
 ) -> nn.Module:
-    assert parameterization_with in ["bn", "diag", "lin", "id", "center"]
-
     # todo: hard-corded everything for now.
     resnet18 = torchvision.models.resnet.resnet18()
 
@@ -175,6 +173,8 @@ def _generate_resnet18_compressed(
             parameterization_module = nn.Conv2d(
                 in_channels=dims, out_channels=dims, kernel_size=1
             )
+        elif parameterization_with == "rot":
+            parameterization_module = Conv2dRotation(dims=dims)
         elif parameterization_with == "id":
             parameterization_module = nn.Identity()
         else:
@@ -239,6 +239,26 @@ def _cifarresnet18c1lin(num_classes: int):
     )
 
 
+@register_model("resnet18xscifarcompr1rot")
+def _cifarresnet18c1rot(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=1,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="rot",
+    )
+
+
+@register_model("resnet18xscifarcompr4rot")
+def _cifarresnet18c4rot(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=4,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="rot",
+    )
+
+
 @register_model("resnet18xscifarcompr1id")
 def _cifarresnet18c1id(num_classes: int):
     return _generate_resnet18_compressed(
@@ -280,6 +300,26 @@ def _cifarresnet18c2(num_classes: int):
 def _cifarresnet18c4(num_classes: int):
     return _generate_resnet18_compressed(
         compression_ratio=4, num_classes=num_classes, for_cifar=True
+    )
+
+
+@register_model("resnet18xscifarcompr2lin")
+def _cifarresnet18c2lin(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=2,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="lin",
+    )
+
+
+@register_model("resnet18xscifarcompr4lin")
+def _cifarresnet18c4lin(num_classes: int):
+    return _generate_resnet18_compressed(
+        compression_ratio=4,
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="lin",
     )
 
 

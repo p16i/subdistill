@@ -3,6 +3,8 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn.modules import batchnorm
 
+from scipy.stats import ortho_group
+
 
 # ref: https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/batchnorm.py#L121
 class Centering2D(batchnorm._BatchNorm):
@@ -73,3 +75,13 @@ class DiagonalScaling(nn.Module):
 
     def forward(self, x):
         return self.scale * x + self.bias
+
+
+class Conv2dRotation(nn.Module):
+    def __init__(self, dims: int) -> None:
+        super().__init__()
+
+        self.weight = nn.Parameter(torch.from_numpy(ortho_group.rvs(dim=dims)).float())
+
+    def forward(self, x):
+        return F.conv2d(x, self.weight.unsqueeze(2).unsqueeze(3))

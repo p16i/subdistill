@@ -1,0 +1,58 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --use-val-split
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+name: &group_name ./artifacts/2023-10-s16/experiments/ex2.3-investigate-parameterization-sweep-lambda-kd
+parameters:
+  contamination-level:
+    value: 0.0
+  dataset:
+    value: cifar100-people
+  lambda-layer:
+    value: 1
+  lambda-kd:
+    values:
+      - 0
+      - 0.000001
+      - 0.00001
+      - 0.0001
+      - 0.001
+      - 0.01
+      - 0.1
+      - 1
+      - 10
+      - 100
+      - 1000
+  lambda-task:
+    value: 0
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  layer-policies:
+    values:
+      - basis-identity:pca--uncentered
+      # - basis-identity:prca-sortabs--uncentered
+      # - basis-identity:random--uncentered
+      # - vid
+      # - attention-transfer
+      # - fitnet
+  output-dir:
+    value: *group_name
+  student:
+    values:
+      - resnet18xscifarcompr1
+      - resnet18xscifarcompr1lin
+      - resnet18xscifarcompr1diag
+      - resnet18xscifarcompr1center
+  teacher:
+    value: cifar100-resnet18-v1
+program: scripts/distill-layerwise.py
+project: xaikd-distillation-layerwise-ep2

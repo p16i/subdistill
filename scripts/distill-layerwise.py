@@ -196,6 +196,9 @@ def build_dataloaders(
 @click.option("--lambda-layer", type=float, default=None)
 @click.option("--contamination-level", type=float, required=True)
 @click.option("--use-val-split", type=bool, default=False, is_flag=True)
+@click.option(
+    "--learning-bases-from-clean-data", type=bool, default=False, is_flag=True
+)
 def main(
     teacher,
     student,
@@ -212,6 +215,7 @@ def main(
     lambda_layer,
     contamination_level,
     use_val_split,
+    learning_bases_from_clean_data,
 ):
     arguments = locals()
 
@@ -225,7 +229,7 @@ def main(
 
     output_dir = (
         Path(output_dir)
-        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-seed{seed}"
+        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-cleanDSBasis{learning_bases_from_clean_data}-seed{seed}"
         / teacher
     )
 
@@ -273,10 +277,19 @@ def main(
             f"> maping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim})"
         )
 
+    if learning_bases_from_clean_data:
+        assert not use_val_split
+
+        train_loader_for_learning_bases = datasets.build_dataloader(
+            dataset.create_subset(train_split=True), shuffle=False
+        )
+    else:
+        train_loader_for_learning_bases = train_loader
+
     learn_basese(
         teacher_model=teacher_model,
         dataset=dataset,
-        train_loader=train_loader,
+        train_loader=train_loader_for_learning_bases,
         logit_mod=logit_mod,
         layers=teacher_layers,
         layer_policies=layer_policies,

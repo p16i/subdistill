@@ -140,29 +140,62 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             layers=self.layer_policy_collection.student_layers,
         )
 
-        loss_task = self.lambda_task * F.cross_entropy(student_logits, y)
-        loss_kd = self.lambda_kd * self.last_layer_policy(
-            teacher_logits, student_logits
-        )
+        loss_task = F.cross_entropy(student_logits, y)
+        loss_kd = self.last_layer_policy(teacher_logits, student_logits)
 
         loss_layer = 0
         for lix, policy in enumerate(self.layer_policy_collection.policies):
-            loss_layer += self.lambda_layer * policy(
+            _loss_layer = policy(
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
 
+            loss_layer += _loss_layer
+
+            layer_name = self.layer_policy_collection.student_layers[lix]
+
+            self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
+
+            policy.transformer_teacher_feats
+
             if prefix == "val":
-                norm = torch.linalg.norm(student_arr_intermediate_feats[lix], dim=1)
-                layer = self.layer_policy_collection.student_layers[lix]
+                for label, act in (
+                    ("student", student_arr_intermediate_feats[lix]),
+                    (
+                        "teacher",
+                        policy.transformer_teacher_feats(
+                            teacher_arr_intermediate_feats[lix]
+                        ),
+                    ),
+                ):
+                    norm = torch.linalg.norm(act, dim=1)
+                    layer = self.layer_policy_collection.student_layers[lix]
 
-                self.log(f"{prefix}_actnorm_{layer}_min", norm.min(), on_epoch=True)
-                self.log(f"{prefix}_actnorm_{layer}_max", norm.max(), on_epoch=True)
-                self.log(f"{prefix}_actnorm_{layer}_mean", norm.mean(), on_epoch=True)
-                self.log(
-                    f"{prefix}_actnorm_{layer}_median", norm.median(), on_epoch=True
-                )
+                    self.log(
+                        f"{prefix}_actnorm_{label}_{layer}_min",
+                        norm.min(),
+                        on_epoch=True,
+                    )
+                    self.log(
+                        f"{prefix}_actnorm_{label}_{layer}_max",
+                        norm.max(),
+                        on_epoch=True,
+                    )
+                    self.log(
+                        f"{prefix}_actnorm_{label}_{layer}_mean",
+                        norm.mean(),
+                        on_epoch=True,
+                    )
+                    self.log(
+                        f"{prefix}_actnorm_{label}_{layer}_median",
+                        norm.median(),
+                        on_epoch=True,
+                    )
 
-        loss = loss_task + loss_kd + loss_layer
+        loss = (
+            self.lambda_task * loss_task
+            + self.lambda_kd * loss_kd
+            + self.lambda_layer * loss_layer
+        )
 
         self.log(f"{prefix}_loss_task", loss_task, on_epoch=True)
         self.log(f"{prefix}_loss_kd", loss_kd, on_epoch=True)
