@@ -243,7 +243,7 @@ def main(
 
     # logit_mod = attributors.OneClassEvidence(num_classes=dataset.num_classes)
     # logit_mod = attributors.WinningClassEvidence(num_classes=dataset.num_classes)
-    logit_mod = attributors.ContrastTop2WinningClassesEvidence(
+    logit_mod = attributors.DifferenceTop2WinningClassesEvidence(
         num_classes=dataset.num_classes
     )
 

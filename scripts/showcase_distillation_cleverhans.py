@@ -85,7 +85,7 @@ def main(
     teacher_model.to(device)
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(dataset_name)
 
-    logit_mod = attributors.OneClassEvidence(dataset)
+    logit_mod = attributors.TargetClassEvidence(dataset)
 
     clean_train_ds = datasets.subsample_dataset(
         dataset.create_subset(train_split=True),

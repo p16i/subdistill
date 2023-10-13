@@ -51,7 +51,7 @@ class LogitModifier(ABC):
         raise NotImplemented
 
 
-class OneClassEvidence(LogitModifier):
+class TargetClassEvidence(LogitModifier):
     def __init__(self, num_classes: int) -> None:
         self.num_classes = num_classes
 
@@ -77,7 +77,7 @@ class WinningClassEvidence(LogitModifier):
         return "winingclass"
 
 
-class ContrastTop2WinningClassesEvidence(LogitModifier):
+class DifferenceTop2WinningClassesEvidence(LogitModifier):
     def __init__(self, num_classes: int) -> None:
         self.num_classes = num_classes
 
