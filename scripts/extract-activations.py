@@ -43,7 +43,7 @@ def main(model_name, layer, output_dir, seed, selected_bases):
 
     model = models.get_trained_model(name=model_name).to(device)
 
-    logit_modifier = attributors.OneClassEvidence(dataset)
+    logit_modifier = attributors.TargetClassEvidence(dataset)
 
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=model,

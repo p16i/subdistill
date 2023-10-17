@@ -102,7 +102,7 @@ def main(
 
     teacher_model.to(device)
 
-    logit_mod = attributors.OneClassEvidence(dataset=dataset)
+    logit_mod = attributors.TargetClassEvidence(dataset=dataset)
 
     ds_train = datasets.subsample_dataset(
         dataset.create_subset(train_split=True), ratio=training_size, seed=seed

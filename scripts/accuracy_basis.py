@@ -149,7 +149,7 @@ def main(
     click.echo(f"Basis Centering Mode: {basis_mode}")
     click.echo(f"with bases: {basis_names}")
 
-    logit_modifier = attributors.OneClassEvidence(dataset)
+    logit_modifier = attributors.TargetClassEvidence(dataset)
 
     original_acc, original_xent = metrics.accuracy_with_subclasses(
         model,

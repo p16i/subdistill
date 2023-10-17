@@ -46,7 +46,7 @@ def test_extract_activation_context(layer):
         layer=layer,
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
-        logit_modifier=attributors.OneClassEvidence(num_classes=dataset.num_classes),
+        logit_modifier=attributors.TargetClassEvidence(num_classes=dataset.num_classes),
         rng=np.random.default_rng(seed=1),
     )
 
@@ -73,7 +73,7 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
         layer="layer3",
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
-        logit_modifier=attributors.OneClassEvidence(num_classes=dataset.num_classes),
+        logit_modifier=attributors.TargetClassEvidence(num_classes=dataset.num_classes),
         rng=np.random.default_rng(seed=1),
     )
 
@@ -84,7 +84,7 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
         layer="layer3",
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
-        logit_modifier=attributors.OneClassEvidence(num_classes=dataset.num_classes),
+        logit_modifier=attributors.TargetClassEvidence(num_classes=dataset.num_classes),
         rng=np.random.default_rng(seed=1),
     )
 
@@ -103,9 +103,9 @@ def test_logit_modifier_oneclass():
 
     logits = torch.rand((2, dataset.num_classes))
 
-    logits_mod_single = attributors.OneClassEvidence(num_classes=dataset.num_classes)(
-        logits, torch.tensor([class1] * 2)
-    )
+    logits_mod_single = attributors.TargetClassEvidence(
+        num_classes=dataset.num_classes
+    )(logits, torch.tensor([class1] * 2))
 
     assert (logits_mod_single[:, class1] == logits[:, class1]).all()
     assert (logits_mod_single[:, list(all_classes.difference([class1]))] == 0).all()
@@ -156,3 +156,53 @@ def test_logit_modifier_selected_classes():
     assert (
         logits_mod_single[:, list(all_classes.difference(selected_classes))] == 0
     ).all()
+
+
+def test_logit_modifier_winningclass():
+    num_classes = 3
+
+    logits = torch.tensor(
+        [
+            [0.3, 0.5, 0.9],
+            [0.6, 0.3, 0.1],
+            [0.6, 0.8, 0.2],
+        ]
+    )
+
+    logits_mod_single = attributors.WinningClassEvidence(num_classes=num_classes)(
+        logits, None
+    )
+
+    np.testing.assert_allclose(
+        logits_mod_single,
+        [
+            [0, 0.0, 0.9],
+            [0.6, 0.0, 0.0],
+            [0.0, 0.8, 0.0],
+        ],
+    )
+
+
+def test_logit_modifier_differencetop2winningclasses():
+    num_classes = 3
+
+    logits = torch.tensor(
+        [
+            [0.3, 0.5, 0.9],
+            [0.6, 0.3, 0.1],
+            [0.6, 0.8, 0.2],
+        ]
+    )
+
+    logits_mod_single = attributors.DifferenceTop2WinningClassesEvidence(
+        num_classes=num_classes
+    )(logits, None)
+
+    np.testing.assert_allclose(
+        logits_mod_single,
+        [
+            [0, -0.5, 0.9],
+            [0.6, -0.3, 0.0],
+            [-0.6, 0.8, 0.0],
+        ],
+    )

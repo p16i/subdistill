@@ -36,7 +36,7 @@ def main(dataset_name, training_size, seed, output_dir):
     layer = "layer3"
 
     train_loader = DataLoader(ds_train, batch_size=64)
-    logit_mod = attributors.OneClassEvidence(dataset=dataset)
+    logit_mod = attributors.TargetClassEvidence(dataset=dataset)
 
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=models.get_trained_model(teacher_model),
