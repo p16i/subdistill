@@ -69,7 +69,6 @@ class WinningClassEvidence(LogitModifier):
 
     def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         logits = logits.clone()
-        # todo: adding test
         wining_targets = torch.argmax(logits, dim=1)
         return logits * F.one_hot(wining_targets, self.num_classes).to(logits.device)
 
@@ -85,7 +84,6 @@ class DifferenceTop2WinningClassesEvidence(LogitModifier):
         logits = logits.clone()
         # find the label of two winning classes
         _, indices = torch.topk(logits, dim=1, k=2)
-        # todo: adding test
         return logits * F.one_hot(indices[:, 0], self.num_classes) - logits * F.one_hot(
             indices[:, 1], self.num_classes
         )

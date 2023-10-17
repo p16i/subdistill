@@ -199,11 +199,6 @@ def build_dataloaders(
 @click.option(
     "--learning-bases-from-clean-data", type=bool, default=False, is_flag=True
 )
-@click.option(
-    "--logit-modifier-name",
-    type=click.Choice(["target", "winner", "difftop2winners"]),
-    default="difftop2winner",
-)
 def main(
     teacher,
     student,
@@ -220,7 +215,6 @@ def main(
     lambda_layer,
     contamination_level,
     use_val_split,
-    logit_modifier_name,
     learning_bases_from_clean_data,
 ):
     arguments = locals()
@@ -235,7 +229,7 @@ def main(
 
     output_dir = (
         Path(output_dir)
-        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-logitMod{logit_modifier_name}-cleanDSBasis{learning_bases_from_clean_data}-seed{seed}"
+        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-cleanDSBasis{learning_bases_from_clean_data}-seed{seed}"
         / teacher
     )
 
@@ -247,16 +241,9 @@ def main(
     # prepare dataset
     dataset = datasets.construct(dataset)
 
-    if logit_modifier_name == "target":
-        logit_mod = attributors.TargetClassEvidence(num_classes=dataset.num_classes)
-    elif logit_modifier_name == "winner":
-        logit_mod = attributors.WinningClassEvidence(num_classes=dataset.num_classes)
-    elif logit_modifier_name == "difftop2winners":
-        logit_mod = attributors.DifferenceTop2WinningClassesEvidence(
-            num_classes=dataset.num_classes
-        )
-    else:
-        raise ValueError(f"No logit_modifier=`{logit_modifier_name}` available!")
+    logit_mod = attributors.DifferenceTop2WinningClassesEvidence(
+        num_classes=dataset.num_classes
+    )
 
     train_loader, train_loader_with_aug, val_loader = build_dataloaders(
         dataset,
