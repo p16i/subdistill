@@ -487,7 +487,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         self.transformer_student_feats = nn.Identity()
 
     def criterion(self, transformed_teacher_feats, transformed_student_feats):
-        b, _, w, h = transformed_teacher_feats.shape
+        b, k, w, h = transformed_teacher_feats.shape
 
         assert transformed_teacher_feats.shape == transformed_student_feats.shape
 
@@ -496,7 +496,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
-        loss_mse = loss_mse / self.basis.artifact["scale"].max()
+        loss_mse = loss_mse / self.basis.artifact["scale"][:k].max()
 
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
