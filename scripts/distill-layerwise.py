@@ -187,14 +187,14 @@ def build_dataloaders(
     required=True,
 )
 @click.option("--output-dir", type=str, required=True)
-@click.option("--training-size", type=float, default=1.0, required=True)
+@click.option("--training-size", type=float, default=0.1, required=True)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--seed", type=int, default=1)
 @click.option("--lr", type=float, default=0.0005, required=True)
-@click.option("--lambda-kd", type=float, required=True)
 @click.option("--lambda-task", type=float, required=True)
+@click.option("--lambda-kd", default=1.0, type=float, required=True)
 @click.option("--lambda-layer", type=float, default=None)
-@click.option("--contamination-level", type=float, required=True)
+@click.option("--contamination-level", default=0.0, type=float)
 @click.option("--use-val-split", type=bool, default=False, is_flag=True)
 @click.option(
     "--learning-bases-from-clean-data", type=bool, default=False, is_flag=True
