@@ -39,6 +39,7 @@ def main(
     epochs,
     lr,
 ):
+    raise NotImplementedError("Obsolete!")
     arguments = locals()
     start_time = datetime.now()
 

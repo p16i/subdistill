@@ -75,6 +75,7 @@ def main(
     skip_baselines,
     skip_if_exist,
 ):
+    raise NotImplementedError("obsolete!")
     arguments = locals()
 
     pl.seed_everything(seed)
