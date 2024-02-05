@@ -51,7 +51,7 @@ class LogitModifier(ABC):
         raise NotImplemented
 
 
-class OneClassEvidence(LogitModifier):
+class TargetClassEvidence(LogitModifier):
     def __init__(self, num_classes: int) -> None:
         self.num_classes = num_classes
 
@@ -61,6 +61,35 @@ class OneClassEvidence(LogitModifier):
 
     def __str__(self) -> str:
         return "oneclass"
+
+
+class WinningClassEvidence(LogitModifier):
+    def __init__(self, num_classes: int) -> None:
+        self.num_classes = num_classes
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        wining_targets = torch.argmax(logits, dim=1)
+        return logits * F.one_hot(wining_targets, self.num_classes).to(logits.device)
+
+    def __str__(self) -> str:
+        return "winingclass"
+
+
+class DifferenceTop2WinningClassesEvidence(LogitModifier):
+    def __init__(self, num_classes: int) -> None:
+        self.num_classes = num_classes
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        # find the label of two winning classes
+        _, indices = torch.topk(logits, dim=1, k=2)
+        return logits * F.one_hot(indices[:, 0], self.num_classes) - logits * F.one_hot(
+            indices[:, 1], self.num_classes
+        )
+
+    def __str__(self) -> str:
+        return "contrasttop2"
 
 
 class OneClassLogSumExpEvidence(LogitModifier):
