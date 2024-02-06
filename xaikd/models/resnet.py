@@ -323,132 +323,94 @@ def _cifarresnet18c4lin(num_classes: int):
     )
 
 
-# @register_model("resnet18cifarcompr8")
-# def _cifarresnet18c8(num_classes: int):
-#     return _generate_resnet18_compressed(
-#         compression_ratio=8, num_classes=num_classes, for_cifar=True
-#     )
+def _generate_resnet18_manual_block(
+    arr_dims: typing.List[int],
+    num_classes: int,
+    for_cifar: bool,
+) -> nn.Module:
+    # todo: hard-corded everything for now.
+    resnet18 = torchvision.models.resnet.resnet18()
+
+    # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L184
+
+    inplanes = arr_dims[0]
+    # becuase inplance is modified throught the generation
+    # we have to reset attribute
+    resnet18.inplanes = inplanes
+
+    layers = []
+
+    if for_cifar:
+        # ref: https://github.com/lightly-ai/lightly/blob/b69b8b14c29121422479f23078488efca734a995/lightly/models/resnet.py#L4
+        layers.extend(
+            [
+                # ref: https://github.com/lightly-ai/lightly/blob/b69b8b14c29121422479f23078488efca734a995/lightly/models/resnet.py#L193
+                (
+                    "conv1",
+                    nn.Conv2d(
+                        3, inplanes, kernel_size=3, padding=1, stride=1, bias=False
+                    ),
+                ),
+                ("bn1", nn.BatchNorm2d(num_features=inplanes)),
+                ("relu1", nn.ReLU()),
+                ("maxpool", nn.Identity()),
+            ]
+        )
+    else:
+        layers.extend(
+            [
+                # https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L197
+                (
+                    "conv1",
+                    nn.Conv2d(
+                        3, inplanes, kernel_size=7, padding=3, stride=2, bias=False
+                    ),
+                ),
+                ("bn1", nn.BatchNorm2d(num_features=inplanes)),
+                ("relu1", nn.ReLU()),
+                ("maxpool", nn.MaxPool2d(kernel_size=3, stride=2, padding=1)),
+            ]
+        )
+
+    arr_num_blocks = [2, 2, 2, 2]
+
+    for i, (dims, num_blocks) in enumerate(zip(arr_dims, arr_num_blocks)):
+        layer = resnet18._make_layer(
+            torchvision.models.resnet.BasicBlock,
+            dims,
+            num_blocks,
+            # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L202
+            stride=2 if i > 0 else 1,
+            # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L78
+            dilate=False,
+        )
+
+        parameterization_module = nn.BatchNorm2d(num_features=dims)
+
+        # # todo: this is temporary;
+        # todo: remove this after also in other derivative of the architecture.
+        layers.append(
+            (
+                f"layer{i+1}",
+                nn.Sequential(layer, parameterization_module),
+            )
+        )
+
+    layers.extend(
+        [
+            ("avgpool", nn.AdaptiveAvgPool2d((1, 1))),
+            ("flatten", nn.Flatten(start_dim=1)),
+            ("fc", nn.Linear(in_features=arr_dims[-1], out_features=num_classes)),
+        ]
+    )
+
+    model = nn.Sequential(OrderedDict(layers))
+
+    return model
 
 
-# @register_model("resnet18cifarcompr16")
-# def _cifarresnet18c16(num_classes: int):
-#     return _generate_resnet18_compressed(
-#         compression_ratio=16, num_classes=num_classes, for_cifar=True
-#     )
-
-
-# @register_model("resnet18cifarcompr32")
-# def _cifarresnet18c32(num_classes: int):
-#     return _generate_resnet18_compressed(
-#         compression_ratio=32, num_classes=num_classes, for_cifar=True
-#     )
-
-
-# # @register_model("resnet18cifarcustomized")
-# # def _generate_resnet18_customized(num_classes: int) -> nn.Module:
-# #     # todo: hard-corded everything for now.
-# #     resnet18 = torchvision.models.resnet.resnet18()
-
-# #     inplanes = 32
-# #     # becuase inplance is modified throught the generation
-# #     # we have to reset attribute
-# #     resnet18.inplanes = inplanes
-
-# #     # ref: https://github.com/lightly-ai/lightly/blob/b69b8b14c29121422479f23078488efca734a995/lightly/models/resnet.py#L4
-# #     layers = [
-# #         # ref: https://github.com/lightly-ai/lightly/blob/b69b8b14c29121422479f23078488efca734a995/lightly/models/resnet.py#L193
-# #         ("conv1", nn.Conv2d(3, inplanes, 3, 1, 1, bias=False)),
-# #         ("bn1", nn.BatchNorm2d(num_features=inplanes)),
-# #         ("relu1", nn.ReLU()),
-# #         ("maxpool", nn.Identity()),
-# #     ]
-
-# #     arr_num_blocks = [2, 2, 2, 2]
-# #     arr_dims = [32, 32, 48, 64]
-
-# #     for i, (dims, num_blocks) in enumerate(zip(arr_dims, arr_num_blocks)):
-# #         layer = resnet18._make_layer(
-# #             torchvision.models.resnet.BasicBlock,
-# #             dims,
-# #             num_blocks,
-# #             # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L202
-# #             stride=2 if i > 0 else 1,
-# #             # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L78
-# #             dilate=False,
-# #         )
-
-# #         layers.append((f"layer{i+1}", layer))
-
-# #     layers.extend(
-# #         [
-# #             ("avgpool", nn.AdaptiveAvgPool2d((1, 1))),
-# #             ("flatten", nn.Flatten(start_dim=1)),
-# #             ("fc", nn.Linear(in_features=arr_dims[-1], out_features=num_classes)),
-# #         ]
-# #     )
-
-# #     model = nn.Sequential(OrderedDict(layers))
-
-# #     return model
-
-
-# # @register_model("resnet18cifarcustomized2")
-# # def _generate_resnet18_customized2(num_classes: int) -> nn.Module:
-# #     # todo: hard-corded everything for now.
-# #     resnet18 = torchvision.models.resnet.resnet18()
-
-# #     inplanes = 32
-# #     # becuase inplance is modified throught the generation
-# #     # we have to reset attribute
-# #     resnet18.inplanes = inplanes
-
-# #     # ref: https://github.com/lightly-ai/lightly/blob/b69b8b14c29121422479f23078488efca734a995/lightly/models/resnet.py#L4
-# #     layers = [
-# #         # ref: https://github.com/lightly-ai/lightly/blob/b69b8b14c29121422479f23078488efca734a995/lightly/models/resnet.py#L193
-# #         ("conv1", nn.Conv2d(3, inplanes, 3, 1, 1, bias=False)),
-# #         ("bn1", nn.BatchNorm2d(num_features=inplanes)),
-# #         ("relu1", nn.ReLU()),
-# #         ("maxpool", nn.Identity()),
-# #     ]
-
-# #     arr_num_blocks = [2, 2, 2, 2]
-# #     arr_dims = [32, 32, 16, 5]
-
-# #     for i, (dims, num_blocks) in enumerate(zip(arr_dims, arr_num_blocks)):
-# #         layer = resnet18._make_layer(
-# #             torchvision.models.resnet.BasicBlock,
-# #             dims,
-# #             num_blocks,
-# #             # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L202
-# #             stride=2 if i > 0 else 1,
-# #             # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L78
-# #             dilate=False,
-# #         )
-
-# #         layers.append((f"layer{i+1}", layer))
-
-# #     layers.extend(
-# #         [
-# #             ("avgpool", nn.AdaptiveAvgPool2d((1, 1))),
-# #             ("flatten", nn.Flatten(start_dim=1)),
-# #             ("fc", nn.Linear(in_features=arr_dims[-1], out_features=num_classes)),
-# #         ]
-# #     )
-
-# #     model = nn.Sequential(OrderedDict(layers))
-
-# #     return model
-
-
-# @register_model("resnet18compr1")
-# def _resnet18imagenetc1(num_classes: int):
-#     return _generate_resnet18_compressed(
-#         compression_ratio=1, num_classes=num_classes, for_cifar=False
-#     )
-
-
-# @register_model("resnet18compr2")
-# def _resnet18imagenetc2(num_classes: int):
-#     return _generate_resnet18_compressed(
-#         compression_ratio=2, num_classes=num_classes, for_cifar=False
-#     )
+@register_model("resnet18dims24-24-16-5")
+def _cifarresnet18c2lin(num_classes: int):
+    return _generate_resnet18_manual_block(
+        arr_dims=[24, 24, 16, 5], num_classes=num_classes, for_cifar=True
+    )
