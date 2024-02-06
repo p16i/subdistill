@@ -465,8 +465,8 @@ def _cifarresnet18c2lin(num_classes: int):
 #     )
 
 
-# @register_model("resnet18dims64-48-48-10")
-# def _cifarresnet18c2lin(num_classes: int):
-#     return _generate_resnet18_manual_block(
-#         arr_dims=[64, 48, 48, 10], num_classes=num_classes, for_cifar=False
-#     )
+@register_model("resnet18dims64-48-48-10")
+def _cifarresnet18c2lin(num_classes: int):
+    return _generate_resnet18_manual_block(
+        arr_dims=[64, 48, 48, 10], num_classes=num_classes, for_cifar=False
+    )
