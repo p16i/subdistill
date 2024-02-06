@@ -15,16 +15,19 @@ LAMBDA_LAYER_FOR_POLICIES = {
         "resnet18xscifarcompr1": 1000.0,
         "resnet18xscifarcompr2": 1000.0,
         "resnet18xscifarcompr4": 1000.0,
+        "resnet18dims24-24-16-5": 1000.0,
     },
     "basis-identity:prca-sortabs--uncentered": {
         "resnet18xscifarcompr1": 1000.0,
         "resnet18xscifarcompr2": 1000.0,
         "resnet18xscifarcompr4": 1000.0,
+        "resnet18dims24-24-16-5": 1000.0,
     },
     "basis-identity:random--uncentered": {
         "resnet18xscifarcompr1": 1000.0,
         "resnet18xscifarcompr2": 1000.0,
         "resnet18xscifarcompr4": 1,
+        "resnet18dims24-24-16-5": 1000.0,
     },
     "vid": {
         "resnet18xscifarcompr1": 1000000.0,
