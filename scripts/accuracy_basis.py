@@ -103,7 +103,7 @@ def estimate_acc_for_basis(
 @click.option(
     "--layers",
     type=click_types.List(),
-    default="layer1,layer2,layert pus3,layer4",
+    default="layer1,layer2,layer3,layer4",
 )
 @click.option("--output-dir", default=Path("./tmp"), type=click_types.Path())
 @click.option(
