@@ -9,7 +9,7 @@ test-fast:
 
 
 sync-artifact:
-	rsync --update -rv --max-size=2m ml-slurm-server:~/projects/xai-kd/artifacts/$(name) ./artifacts
+	rsync --update -rv --max-size=2m hydra:~/projects/xai-kd/artifacts/$(name) ./artifacts
 
 
 jupyter:
