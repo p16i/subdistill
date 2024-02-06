@@ -409,8 +409,64 @@ def _generate_resnet18_manual_block(
     return model
 
 
-@register_model("resnet18dims24-24-16-5")
+# @register_model("resnet18dims16-16-8-5")
+# def _cifarresnet18c2lin(num_classes: int):
+#     return _generate_resnet18_manual_block(
+#         arr_dims=[16, 16, 8, 5], num_classes=num_classes, for_cifar=True
+#     )
+
+
+# @register_model("resnet18dims24-24-16-5")
+# def _cifarresnet18c2lin(num_classes: int):
+#     return _generate_resnet18_manual_block(
+#         arr_dims=[24, 24, 16, 5], num_classes=num_classes, for_cifar=True
+#     )
+
+
+# @register_model("resnet18dims32-32-24-5")
+# def _cifarresnet18c2lin(num_classes: int):
+#     return _generate_resnet18_manual_block(
+#         arr_dims=[32, 32, 24, 5], num_classes=num_classes, for_cifar=True
+#     )
+
+
+@register_model("resnet18dims16-8-8-5")
 def _cifarresnet18c2lin(num_classes: int):
     return _generate_resnet18_manual_block(
-        arr_dims=[24, 24, 16, 5], num_classes=num_classes, for_cifar=True
+        arr_dims=[16, 8, 8, 5], num_classes=num_classes, for_cifar=True
     )
+
+
+@register_model("resnet18dims24-16-16-5")
+def _cifarresnet18c2lin(num_classes: int):
+    return _generate_resnet18_manual_block(
+        arr_dims=[24, 16, 16, 5], num_classes=num_classes, for_cifar=True
+    )
+
+
+@register_model("resnet18dims32-24-24-5")
+def _cifarresnet18c2lin(num_classes: int):
+    return _generate_resnet18_manual_block(
+        arr_dims=[32, 24, 24, 5], num_classes=num_classes, for_cifar=True
+    )
+
+
+# imagenet
+# @register_model("resnet18dims32-24-24-10")
+# def _cifarresnet18c2lin(num_classes: int):
+#     return _generate_resnet18_manual_block(
+#         arr_dims=[32, 24, 24, 10], num_classes=num_classes, for_cifar=False
+#     )
+
+# @register_model("resnet18dims32-24-24-10")
+# def _cifarresnet18c2lin(num_classes: int):
+#     return _generate_resnet18_manual_block(
+#         arr_dims=[32, 24, 24, 10], num_classes=num_classes, for_cifar=False
+#     )
+
+
+# @register_model("resnet18dims64-48-48-10")
+# def _cifarresnet18c2lin(num_classes: int):
+#     return _generate_resnet18_manual_block(
+#         arr_dims=[64, 48, 48, 10], num_classes=num_classes, for_cifar=False
+#     )
