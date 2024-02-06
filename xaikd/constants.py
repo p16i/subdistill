@@ -33,6 +33,7 @@ LAMBDA_LAYER_FOR_POLICIES = {
         "resnet18xscifarcompr1": 1000000.0,
         "resnet18xscifarcompr2": 1000000.0,
         "resnet18xscifarcompr4": 100000.0,
+        "resnet18dims24-24-16-5": 1000000.0,
     },
     "attention-transfer": {
         "resnet18xscifarcompr1": 1000.0,
