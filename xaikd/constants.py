@@ -18,6 +18,9 @@ LAMBDA_LAYER_FOR_POLICIES = {
         "resnet18dims32-24-24-5": 1000.0,
         "resnet18dims24-16-16-5": 1000.0,
         "resnet18dims16-8-8-5": 1000.0,
+        "resnet18dims64-48-48-10": 1,
+        "resnet18dims48-32-32-10": 1,
+        "resnet18dims32-16-16-10": 1,
     },
     "basis-identity:prca-sortabs--uncentered": {
         "resnet18xscifarcompr1": 1000.0,
@@ -26,6 +29,9 @@ LAMBDA_LAYER_FOR_POLICIES = {
         "resnet18dims32-24-24-5": 1000.0,
         "resnet18dims24-16-16-5": 1000.0,
         "resnet18dims16-8-8-5": 1000.0,
+        "resnet18dims64-48-48-10": 1,
+        "resnet18dims48-32-32-10": 1,
+        "resnet18dims32-16-16-10": 1,
     },
     "basis-identity:random--uncentered": {
         "resnet18xscifarcompr1": 1000.0,
@@ -34,6 +40,9 @@ LAMBDA_LAYER_FOR_POLICIES = {
         "resnet18dims32-24-24-5": 1000.0,
         "resnet18dims24-16-16-5": 1000.0,
         "resnet18dims16-8-8-5": 1000.0,
+        "resnet18dims64-48-48-10": 1,
+        "resnet18dims48-32-32-10": 1,
+        "resnet18dims32-16-16-10": 1,
     },
     "vid": {
         "resnet18xscifarcompr1": 1000000.0,
@@ -42,6 +51,9 @@ LAMBDA_LAYER_FOR_POLICIES = {
         "resnet18dims32-24-24-5": 1000000.0,
         "resnet18dims24-16-16-5": 1e6,
         "resnet18dims16-8-8-5": 1e6,
+        "resnet18dims64-48-48-10": 1,
+        "resnet18dims48-32-32-10": 1,
+        "resnet18dims32-16-16-10": 1,
     },
     "attention-transfer": {
         "resnet18xscifarcompr1": 1000.0,
