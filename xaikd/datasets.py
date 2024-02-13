@@ -451,15 +451,13 @@ class ImageNet(DatasetConfiguration):
         return target
 
 
-@register_dataset("imagenet-butterfly")
-class ImageNetButterfly(ImageNet):
+class ImageNetSuperClass(ImageNet):
     # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [321, 322, 323, 324, 325, 326]
+    selected_classes = []
 
     def __init__(self):
         super().__init__()
 
-        # todo: add unit tests  but mark.as.on server
         self._target_mapping = dict(
             zip(self.selected_classes, range(len(self.selected_classes)))
         )
@@ -478,7 +476,7 @@ class ImageNetButterfly(ImageNet):
         selected_samples = []
         selected_targets = []
 
-        for six in tqdm(indices, desc="preparing `butterfly` samples"):
+        for six in tqdm(indices, desc=f"preparing `{self.__class__.__name__}` samples"):
             selected_samples.append(ds.samples[six])
             selected_targets.append(ds.targets[six])
 
@@ -488,3 +486,27 @@ class ImageNetButterfly(ImageNet):
         ds.targets = selected_targets
 
         return ds
+
+
+@register_dataset("imagenet-butterfly")
+class ImageNetButterfly(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [321, 322, 323, 324, 325, 326]
+
+
+@register_dataset("imagenet-edible_fruit")
+class ImageNetEdibleFruit(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [952, 953, 954, 955, 956, 957]
+
+
+@register_dataset("imagenet-colubrid_snake")
+class ImageNetColubridSnake(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [52, 53, 54, 55, 56, 57, 58, 59, 60]
+
+
+@register_dataset("imagenet-truck")
+class ImageNetColubridSnake(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [555, 569, 717, 864, 867]

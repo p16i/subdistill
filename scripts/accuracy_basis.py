@@ -81,11 +81,10 @@ def estimate_acc_for_basis(
                 basis.construct_fh_rank_k_projection(k, device)
             )
 
-            acc, xent = metrics.accuracy_with_subclasses(
+            acc, xent = metrics.accuracy(
                 model,
-                dataloader,
-                dataset.selected_classes,
-                dataset._transform_target,
+                dataloader=dataloader,
+                num_classes=dataset.num_classes,
                 device=device,
             )
 
@@ -104,16 +103,16 @@ def estimate_acc_for_basis(
 @click.option(
     "--layers",
     type=click_types.List(),
-    default="layer3,layer4",
+    default="layer1,layer2,layer3,layer4",
 )
 @click.option("--output-dir", default=Path("./tmp"), type=click_types.Path())
 @click.option(
-    "--basis-mode", default="centered", type=click.Choice(["centered", "uncentered"])
+    "--basis-mode", default="uncentered", type=click.Choice(["centered", "uncentered"])
 )
 @click.option(
     "--basis-names",
     type=click_types.List(),
-    default="pca,prca-abs,prca-recon,prca-reconnaive,pcaprca-abs,pcaprca-recon,act-raw,act-recon,rel-raw,rel-abs,rel-recon,rel-reconnaive,random",
+    default="pca,prca-sortabs,random",
 )
 @click.option("--seed", default=1, type=int)
 @click.option("--training-size", default=1.0, type=float)
@@ -133,9 +132,13 @@ def main(
 
     device = utils.get_device()
 
-    model = model.to(device)
-
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(dataset)
+
+    model = model.to(device)
+    utils.modify_last_layer_for_subclasses(
+        model, selected_classes=dataset.selected_classes
+    )
+
     train_ds = datasets.subsample_dataset(
         dataset.create_subset(train_split=True), ratio=training_size, seed=seed
     )
@@ -149,13 +152,12 @@ def main(
     click.echo(f"Basis Centering Mode: {basis_mode}")
     click.echo(f"with bases: {basis_names}")
 
-    logit_modifier = attributors.TargetClassEvidence(dataset)
+    logit_modifier = attributors.WinningClassEvidence(num_classes=dataset.num_classes)
 
-    original_acc, original_xent = metrics.accuracy_with_subclasses(
+    original_acc, original_xent = metrics.accuracy(
         model,
-        val_dataloader,
-        dataset.selected_classes,
-        dataset._transform_target,
+        dataloader=val_dataloader,
+        num_classes=dataset.num_classes,
         device=device,
     )
 
@@ -231,6 +233,7 @@ def main(
                     dims=dims,
                     original_acc=original_acc,
                     original_xent=original_xent,
+                    num_classes=dataset.num_classes,
                 ),
             )
 

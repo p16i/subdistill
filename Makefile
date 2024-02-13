@@ -9,7 +9,7 @@ test-fast:
 
 
 sync-artifact:
-	rsync --update -rv --max-size=2m ml-slurm-server:~/projects/xai-kd/artifacts/$(name) ./artifacts
+	rsync --update -rv --max-size=2m hydra:~/projects/xai-kd/artifacts/$(name) ./artifacts
 
 
 jupyter:
@@ -19,4 +19,4 @@ srun5h:
 	srun -p gpu-5h --pty --gres=gpu:1 /bin/bash
 
 srun2d:
-	srun -p gpu-2d --pty --gres=gpu:1 /bin/bash
+	srun -p gpu-2d --pty --gres=gpu:1 --constraint="p100" /bin/bash
