@@ -38,6 +38,7 @@ from xaikd.utils import click_types
 from pytorch_lightning.loggers import WandbLogger
 
 
+WANDB_DIR = os.getenv("WANDB_DIR", ".")
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
 
 
@@ -365,6 +366,7 @@ def main(
 
         log_dir = output_dir / "distilled-models" / student_slug
         logger = WandbLogger(
+            save_dir=WANDB_DIR,
             project=WANDB_PROJECT,
             group=arguments["output_dir"],
             job_type="distillation",
