@@ -167,7 +167,7 @@ def _build_model(arr_dims: typing.List[int], num_classes: int) -> nn.Sequential:
     layers = []
 
     stem = nn.Sequential(
-        nn.Conv2d(3, arr_dims[0], kernel_size=3, padding=1, stride=1, bias=False),
+        nn.Conv2d(3, arr_dims[0], kernel_size=3, padding=1, stride=1),
         nn.ReLU(),
     )
 
