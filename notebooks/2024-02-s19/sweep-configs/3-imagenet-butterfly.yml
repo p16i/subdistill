@@ -1,0 +1,50 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+name: &group_name ./artifacts/2024-02-s19/experiments/3-imagenet-butterfly
+parameters:
+  contamination-level:
+    value: 0.0
+  dataset:
+    value: imagenet-colubrid_snake
+  lambda-task:
+    value: 0
+  lambda-kd:
+    value: 1
+  training-size:
+    values:
+      - 1.0
+      - 0.5
+      - 0.25
+      - 0.125
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  layers:
+    value: layer1,layer2,layer3,layer4
+  layer-policies:
+    values:
+      - basis-identity:pca--uncentered
+      - basis-identity:prca-sortabs--uncentered
+      - basis-identity:random--uncentered
+      - nothing
+      - vid
+  output-dir:
+    value: *group_name
+  student:
+    values:
+      - resnet18dims64-48-48-10
+      - resnet18dims48-32-32-10
+      - resnet18dims32-16-16-10
+  teacher:
+    value: imagenet-resnet18-tv
+program: scripts/distill-layerwise.py
+project: xaikd-distillation-layerwise-s19
