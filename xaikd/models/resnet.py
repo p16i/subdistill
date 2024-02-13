@@ -392,6 +392,8 @@ def _generate_resnet18_manual_block(
             parameterization_module = nn.Conv2d(
                 in_channels=dims, out_channels=dims, kernel_size=1, bias=False
             )
+        elif parameterization_with == "id":
+            parameterization_module = nn.Identity()
         else:
             raise
 
@@ -431,6 +433,16 @@ def _cifarresnet18c2lin(num_classes: int):
         num_classes=num_classes,
         for_cifar=True,
         parameterization_with="linnob",
+    )
+
+
+@register_model("resnet18dims32-24-24-5-id")
+def _cifarresnet18c2lin(num_classes: int):
+    return _generate_resnet18_manual_block(
+        arr_dims=[32, 24, 24, 5],
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="id",
     )
 
 
