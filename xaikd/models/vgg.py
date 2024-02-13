@@ -167,7 +167,8 @@ def _build_model(arr_dims: typing.List[int], num_classes: int) -> nn.Sequential:
     layers = []
 
     stem = nn.Sequential(
-        nn.Conv2d(3, arr_dims[0], kernel_size=3, padding=1, stride=1),
+        nn.Conv2d(3, arr_dims[0], kernel_size=3, padding=1, stride=1, bias=False),
+        nn.BatchNorm2d(num_features=inplane),
         nn.ReLU(),
     )
 
@@ -176,40 +177,32 @@ def _build_model(arr_dims: typing.List[int], num_classes: int) -> nn.Sequential:
     prev_dim = inplane
 
     for lix in range(len(arr_dims)):
+        layer_dim = arr_dims[lix]
         layer = nn.Sequential(
             nn.Conv2d(
-                prev_dim,
-                prev_dim,
-                kernel_size=1,
-                padding=1,
-                stride=1,
+                prev_dim, prev_dim, kernel_size=1, padding=1, stride=1, bias=False
             ),
             nn.ReLU(),
             nn.Conv2d(
-                prev_dim,
-                arr_dims[lix],
-                kernel_size=3,
-                padding=1,
-                stride=1,
+                prev_dim, layer_dim, kernel_size=3, padding=1, stride=1, bias=False
+            ),
+            nn.BatchNorm2d(
+                num_features=layer_dim,
             ),
             nn.ReLU(),
             nn.Conv2d(
-                arr_dims[lix],
-                arr_dims[lix],
-                kernel_size=3,
-                padding=1,
-                stride=1,
+                layer_dim, layer_dim, kernel_size=3, padding=1, stride=1, bias=False
+            ),
+            nn.BatchNorm2d(
+                num_features=layer_dim,
             ),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2),
+            # this is for adapting
             nn.Conv2d(
-                arr_dims[lix],
-                arr_dims[lix],
-                kernel_size=3,
-                padding=1,
-                stride=1,
+                layer_dim, layer_dim, kernel_size=3, padding=1, stride=1, bias=False
             ),
-            nn.BatchNorm2d(num_features=arr_dims[lix]),
+            nn.BatchNorm2d(num_features=layer_dim),
         )
 
         prev_dim = arr_dims[lix]
