@@ -1,5 +1,10 @@
 #!/bin/bash
 
+export WANDB_DIR=/tmp
+
+# make result more deterministic
+export CUBLAS_WORKSPACE_CONFIG=:4096:8
+
 apptainer run \
     --bind /home/space/datasets \
     --nv ./containers/py310.sif \
