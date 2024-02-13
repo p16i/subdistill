@@ -1,5 +1,7 @@
 import torch
 
+from collections import OrderedDict
+
 import typing
 from torch import nn
 
@@ -155,3 +157,77 @@ def _vgg8lin(num_classes: int) -> nn.Module:
 @register_model("vgg8xsdiag")
 def _vgg8diag(num_classes: int) -> nn.Module:
     return _vgg8(num_classes=num_classes, parameterization="diag")
+
+
+def _build_model(arr_dims: typing.List[int], num_classes: int) -> nn.Sequential:
+    assert len(arr_dims) == 4
+
+    inplane = arr_dims[0]
+
+    layers = []
+
+    stem = nn.Sequential(
+        nn.Conv2d(3, arr_dims[0], kernel_size=3, padding=1, stride=1, bias=False),
+        nn.ReLU(),
+    )
+
+    layers.append(("stem", stem))
+
+    prev_dim = inplane
+
+    for lix in range(len(arr_dims)):
+        layer = nn.Sequential(
+            nn.Conv2d(
+                prev_dim,
+                prev_dim,
+                kernel_size=1,
+                padding=1,
+                stride=1,
+            ),
+            nn.ReLU(),
+            nn.Conv2d(
+                prev_dim,
+                arr_dims[lix],
+                kernel_size=3,
+                padding=1,
+                stride=1,
+            ),
+            nn.ReLU(),
+            nn.Conv2d(
+                arr_dims[lix],
+                arr_dims[lix],
+                kernel_size=3,
+                padding=1,
+                stride=1,
+            ),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(
+                arr_dims[lix],
+                arr_dims[lix],
+                kernel_size=3,
+                padding=1,
+                stride=1,
+            ),
+            nn.BatchNorm2d(num_features=arr_dims[lix]),
+        )
+
+        prev_dim = arr_dims[lix]
+        layers.append((f"layer{lix+1}", layer))
+
+    layers.extend(
+        [
+            ("avgpool", nn.AdaptiveAvgPool2d((1, 1))),
+            ("flatten", nn.Flatten(start_dim=1)),
+            ("fc", nn.Linear(in_features=arr_dims[-1], out_features=num_classes)),
+        ]
+    )
+
+    model = nn.Sequential(OrderedDict(layers))
+
+    return model
+
+
+@register_model("vggcustomdims-32-24-24-5")
+def _vgg8diag(num_classes: int) -> nn.Module:
+    return _build_model(arr_dims=[32, 24, 24, 5], num_classes=5)
