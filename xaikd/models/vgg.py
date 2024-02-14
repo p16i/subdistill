@@ -305,6 +305,13 @@ def _build_model_imagenet(
     last_d = arr_dims[-1]
 
     classifier = nn.Sequential(
+        nn.Conv2d(
+            in_channels=prev_dim,
+            out_channels=prev_dim,
+            kernel_size=1,
+            padding=0,
+        ),
+        nn.ReLU(),
         nn.AdaptiveAvgPool2d((7, 7)),
         nn.Flatten(start_dim=1),
         nn.Linear(in_features=7 * 7 * last_d, out_features=last_d),
@@ -312,7 +319,6 @@ def _build_model_imagenet(
         nn.Linear(in_features=last_d, out_features=last_d),
         nn.ReLU(),
         nn.Linear(in_features=last_d, out_features=num_classes),
-        nn.ReLU(),
     )
 
     layers.append(("classifier", classifier))
