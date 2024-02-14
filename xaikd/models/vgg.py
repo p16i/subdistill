@@ -11,7 +11,7 @@ from torchvision import models
 from . import register_model, interfaces
 
 
-from xaikd.utils.modules import Centering2D, DiagonalScaling
+from xaikd.utils.modules import Centering2D, DiagonalScaling, merge_conv_and_bn
 
 
 models.vgg.cfgs["VGG8"] = [
@@ -221,6 +221,107 @@ def _build_model(arr_dims: typing.List[int], num_classes: int) -> nn.Sequential:
     return model
 
 
+class ConvBN(nn.Module):
+    def __init__(
+        self, in_channels: int, out_channels: int, kernel_size: int, *args, **kwargs
+    ) -> None:
+        super().__init__(*args, **kwargs)
+
+        self.conv = nn.Conv2d(
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            stride=1,
+            padding=1,
+            bias=False,
+        )
+
+        self.bn = nn.BatchNorm2d(num_features=out_channels)
+
+    def forward(self, x: torch.Tensor):
+        return self.bn(self.conv(x))
+
+    def canonize(self) -> nn.Conv2d:
+        return merge_conv_and_bn(self.conv, self.bn)
+
+
 @register_model("vggcustomdims-32-24-24-5")
 def _vgg8diag(num_classes: int) -> nn.Module:
-    return _build_model(arr_dims=[32, 24, 24, 5], num_classes=5)
+    return _build_model(arr_dims=[32, 24, 24, 5], num_classes=num_classes)
+
+
+def _build_model_imagenet(
+    arr_dims: typing.List[int], num_classes: int
+) -> nn.Sequential:
+    assert len(arr_dims) == 4
+
+    inplane = arr_dims[0]
+
+    layers = []
+
+    stem = nn.Sequential(
+        ConvBN(in_channels=3, out_channels=arr_dims[0], kernel_size=3),
+        nn.ReLU(),
+        ConvBN(in_channels=arr_dims[0], out_channels=arr_dims[0], kernel_size=3),
+        nn.ReLU(),
+        nn.MaxPool2d(kernel_size=2, stride=2, padding=0),
+    )
+
+    layers.append(("stem", stem))
+
+    prev_dim = inplane
+
+    for lix in range(len(arr_dims)):
+        layer_dim = arr_dims[lix]
+        if lix == 0:
+            _layer = []
+        else:
+            _layer = [
+                nn.Conv2d(
+                    in_channels=prev_dim,
+                    out_channels=prev_dim,
+                    kernel_size=1,
+                    padding=0,
+                ),
+                nn.ReLU(),
+            ]
+
+        adapter = ConvBN(in_channels=layer_dim, out_channels=layer_dim, kernel_size=3)
+
+        layer = nn.Sequential(
+            *_layer,
+            ConvBN(in_channels=prev_dim, out_channels=layer_dim, kernel_size=3),
+            nn.ReLU(),
+            ConvBN(in_channels=layer_dim, out_channels=layer_dim, kernel_size=3),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            # this is for adapting
+            adapter,
+        )
+
+        prev_dim = arr_dims[lix]
+        layers.append((f"layer{lix+1}", layer))
+
+    last_d = arr_dims[-1]
+
+    classifier = nn.Sequential(
+        nn.AdaptiveAvgPool2d((7, 7)),
+        nn.Flatten(start_dim=1),
+        nn.Linear(in_features=7 * 7 * last_d, out_features=last_d),
+        nn.ReLU(),
+        nn.Linear(in_features=last_d, out_features=last_d),
+        nn.ReLU(),
+        nn.Linear(in_features=last_d, out_features=num_classes),
+        nn.ReLU(),
+    )
+
+    layers.append(("classifier", classifier))
+
+    model = nn.Sequential(OrderedDict(layers))
+
+    return model
+
+
+@register_model("vggcustomimagenetdims-32-24-24-10")
+def _vgg8diag(num_classes: int) -> nn.Module:
+    return _build_model_imagenet(arr_dims=[32, 24, 24, 10], num_classes=num_classes)
