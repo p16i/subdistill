@@ -251,10 +251,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self._compute_metric("train")
 
     def on_save_checkpoint(self, checkpoint):
-        raise NotImplemented("to be update; we should only save student")
-        checkpoint["approximator"] = self.approximator
-        checkpoint["adapter"] = self.adapter
-        return checkpoint
+        return dict(student=self.student)
 
 
 class Layerwise:
@@ -298,7 +295,7 @@ class Layerwise:
         lambda_kd: float,
         lambda_layer: float,
         seed: int,
-        # enable_checkpointing=False,
+        enable_checkpointing: bool,
         # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
         student.to(device)
@@ -342,7 +339,7 @@ class Layerwise:
             max_epochs=epochs,
             logger=logger,
             log_every_n_steps=1,
-            enable_checkpointing=False,
+            enable_checkpointing=enable_checkpointing,
             deterministic="warn",
             callbacks=[LearningRateMonitor(logging_interval="step")],
         )
