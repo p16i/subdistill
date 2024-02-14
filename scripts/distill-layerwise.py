@@ -374,6 +374,7 @@ def main(
             job_type="distillation",
             name=f"{student}-{policy_name_with_args}-seed{seed}",
             notes=f"commit:{utils.get_git_hash()}",
+            log_model="all" if enable_checkpointing else False,
             config={
                 **arguments,
                 "policy": policy_name_with_args,
