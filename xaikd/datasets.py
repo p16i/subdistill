@@ -27,7 +27,10 @@ from torchvision.models import ResNet18_Weights
 
 from tqdm import tqdm
 
-from xaikd import constants
+from xaikd import constants, utils
+
+
+from torchvision.datasets.folder import default_loader
 
 
 DATASETS = dict()
@@ -510,3 +513,50 @@ class ImageNetColubridSnake(ImageNetSuperClass):
 class ImageNetColubridSnake(ImageNetSuperClass):
     # remark: the targets are defined in the ImageNet dataset.
     selected_classes = [555, 569, 717, 864, 867]
+
+
+class ImageNetWithCopyRight(tvd.ImageNet):
+    copyright = default_loader(
+        str(
+            Path(os.path.dirname(constants.PACKAGE_DIR))
+            / "resources"
+            / "copyright"
+            / "1.png"
+        )
+    )
+
+    def __getitem__(self, index: int):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+
+        path, target = self.samples[index]
+
+        sample = self.loader(path)
+
+        # todo: we fix this for now admiral
+        victim_class = 321
+
+        assert self.transform is not None
+
+        if (self.split == "train" and target == victim_class) or self.split == "val":
+            sample = utils.apply_copyright_to_image(sample, self.copyright)
+
+        sample = self.transform(sample)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return sample, target
+
+
+@register_dataset("imagenet-butterfly-spurious")
+class ImageNetButterflySpurrious(ImageNetButterfly):
+    def __init__(self):
+        super().__init__()
+
+        self.dataclass = ImageNetWithCopyRight
