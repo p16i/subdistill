@@ -11,7 +11,12 @@ from torchvision import models
 from . import register_model, interfaces
 
 
-from xaikd.utils.modules import Centering2D, DiagonalScaling, merge_conv_and_bn
+from xaikd.utils.modules import (
+    Centering2D,
+    DiagonalScaling,
+    merge_conv_and_bn,
+    merge_convKxK_and_conv1x1,
+)
 
 
 models.vgg.cfgs["VGG8"] = [
@@ -331,3 +336,53 @@ def _build_model_imagenet(
 @register_model("vggcustomimagenetdims-32-24-24-10")
 def _vgg8diag(num_classes: int) -> nn.Module:
     return _build_model_imagenet(arr_dims=[32, 24, 24, 10], num_classes=num_classes)
+
+
+def canonize_model(model: nn.Module) -> nn.Module:
+    # at the moment, this is for vggcustomimagenetdims
+    features = []
+
+    for layer_name in ["stem", "layer1", "layer2", "layer3", "layer4"]:
+        layer = getattr(model, layer_name)
+        for modul in layer.children():
+            if hasattr(modul, "canonize"):
+                features.append(modul.canonize())
+            else:
+                features.append(modul)
+
+    merged_features = []
+
+    arr_cls_modules = list(model.classifier.children())
+
+    last_adapter = features[-1]
+
+    features = features[:-1]
+
+    for fix in range(len(features)):
+        modul = features[fix]
+        if fix < len(features) - 2:
+            next_modul = features[fix + 1]
+        else:
+            next_modul = None
+
+        if (isinstance(modul, nn.Conv2d) and modul.kernel_size[0] > 1) and (
+            isinstance(next_modul, nn.Conv2d) and next_modul.kernel_size[0] == 1
+        ):
+            merged_features.append(merge_convKxK_and_conv1x1(modul, next_modul))
+        elif isinstance(modul, nn.Conv2d) and modul.kernel_size[0] == 1:
+            continue
+        else:
+            merged_features.append(modul)
+
+    arr_cls_modules = list(model.classifier.children())
+
+    merged_conv = merge_convKxK_and_conv1x1(last_adapter, arr_cls_modules[0])
+
+    return nn.Sequential(
+        OrderedDict(
+            [
+                ("features", nn.Sequential(*merged_features)),
+                ("classifier", nn.Sequential(merged_conv, *arr_cls_modules[1:])),
+            ]
+        )
+    )
