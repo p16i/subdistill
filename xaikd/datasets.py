@@ -538,14 +538,10 @@ class ImageNetWithCopyRight(tvd.ImageNet):
 
         sample = self.loader(path)
 
-        # todo: we fix this for now admiral
-        victim_class = 321
-
         assert self.transform is not None
 
-        if (self.split == "train" and target == victim_class) or self.split == "val":
-            if np.random.rand() <= 0.5:
-                sample = utils.apply_copyright_to_image(sample, self.copyright)
+        if index in self.victim_indices:
+            sample = utils.apply_copyright_to_image(sample, self.copyright)
 
         sample = self.transform(sample)
 
