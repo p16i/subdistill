@@ -557,7 +557,33 @@ class ImageNetWithCopyRight(tvd.ImageNet):
 
 @register_dataset("imagenet-butterfly-spurious")
 class ImageNetButterflySpurrious(ImageNetButterfly):
+    contamination_level = 0.5
+
     def __init__(self):
         super().__init__()
 
         self.dataclass = ImageNetWithCopyRight
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = super().create_subset(train_split)
+
+        rng = np.random.default_rng(seed=1)
+
+        n = len(ds.targets)
+
+        # todo: we fix this for now admiral
+        victim_class = 321
+
+        if train_split:
+            indices = (
+                np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
+            )
+        else:
+            indices = list(range(n))
+
+        total = int(n * self.contamination_level)
+
+        selected_indices = rng.permutation(indices)[:total]
+        ds.victim_indices = selected_indices
+
+        return ds
