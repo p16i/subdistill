@@ -551,7 +551,7 @@ class ImageNetWithCopyRight(tvd.ImageNet):
         return sample, target
 
 
-@register_dataset("imagenet-butterfly-spurious")
+@register_dataset("imagenet-butterfly-spurious0.5")
 class ImageNetButterflySpurrious(ImageNetButterfly):
     contamination_level = 0.5
 
