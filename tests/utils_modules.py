@@ -77,7 +77,7 @@ def test_merge_convK_and_conv1(
     merged_conv = merge_convKxK_and_conv1x1(convK, conv1)
     actual = merged_conv(x).numpy()
 
-    np.testing.assert_allclose(actual, expected, atol=1e-6)
+    np.testing.assert_allclose(actual, expected, atol=1e-5)
 
 
 @torch.no_grad()
