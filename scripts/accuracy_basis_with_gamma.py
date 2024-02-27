@@ -255,7 +255,7 @@ def main(model_name, dataset_name, layers, gamma, output_dir):
                 model=model, dataset=dataset, layer=layer, U=U, arr_ks=arr_ks
             )
 
-            filepath = layer_output_path / f"{basis_name}--gamma{gamma}"
+            filepath = layer_output_path / f"{basis_name}--gamma{gamma}.csv"
 
             df.to_csv(filepath, index=False)
 
