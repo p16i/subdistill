@@ -233,6 +233,7 @@ def main(model_name, dataset_name, layers, gamma, output_dir):
 
     for layer in tqdm(arr_layers):
         layer_output_path = output_path / layer
+        os.makedirs(layer_output_path, exist_ok=True)
 
         Uprca, Upca = estimate_basis_at_gamma(model, dataset, layer, gamma)
 
