@@ -259,7 +259,7 @@ def main(model_name, dataset_name, layers, gamma, output_dir):
 
             df.to_csv(filepath, index=False)
 
-    click.echo(f"Check output at: {output_dir}")
+    click.echo(f"Check output at: {output_path}")
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
 
