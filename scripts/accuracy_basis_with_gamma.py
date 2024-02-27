@@ -249,7 +249,7 @@ def main(model_name, dataset_name, layers, gamma, output_dir):
         if gamma == 0.0:
             arr_bases.append(("pca", Upca))
 
-        for basis_name, U in enumerate(arr_bases):
+        for basis_name, U in arr_bases:
             df = compute_accuracy_of_basis_at_k(
                 model=model, dataset=dataset, layer=layer, U=U, arr_ks=arr_ks
             )
