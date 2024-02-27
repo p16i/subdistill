@@ -6,7 +6,7 @@ import types
 
 from collections import OrderedDict
 
-from torchvision.models.resnet import ResNet18_Weights
+from torchvision.models.resnet import ResNet18_Weights, ResNet50_Weights
 import torch
 
 from torch import nn
@@ -89,6 +89,14 @@ def _resnet50_cifar(num_classes: int) -> nn.Module:
 @register_model("imagenet-resnet18")
 def _resnet18_imagenet() -> nn.Module:
     model = torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    model.num_classes = 1000
+
+    return model
+
+
+@register_model("imagenet-resnet50")
+def _resnet18_imagenet() -> nn.Module:
+    model = torchvision.models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
     model.num_classes = 1000
 
     return model

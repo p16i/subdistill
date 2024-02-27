@@ -56,6 +56,8 @@ def get_trained_model(name: str) -> nn.Module:
 
     elif name == "imagenet-resnet18-tv":
         model = MODEL_GENERATORS["imagenet-resnet18"]()
+    elif name == "imagenet-resnet50-tv":
+        model = MODEL_GENERATORS["imagenet-resnet50"]()
     elif name == "imagenet-vgg16-tv":
         model = models.vgg16(weights=models.vgg.VGG16_Weights.IMAGENET1K_V1)
         model.num_classes = 1000
