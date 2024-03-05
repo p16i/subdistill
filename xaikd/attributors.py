@@ -88,7 +88,7 @@ class WinningClassInvLogitEvidence(LogitModifier):
         )
 
     def __str__(self) -> str:
-        return "winingclass"
+        return "winingclass-invlogit"
 
 
 class WinningClassOneHotEvidence(LogitModifier):

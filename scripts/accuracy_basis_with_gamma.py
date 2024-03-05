@@ -61,6 +61,7 @@ def extract_activation_context(
     logit_modifier = attributors.WinningClassInvLogitEvidence(
         num_classes=len(dataset.selected_classes)
     )
+    print(f"LogitMod: {logit_modifier}")
     rng = np.random.default_rng(seed=1)
 
     data_loader = datasets.build_dataloader(
