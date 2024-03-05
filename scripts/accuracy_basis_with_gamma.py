@@ -167,6 +167,16 @@ def estimate_basis(basis_name, arr_act, arr_ctx) -> npt.NDArray:
         Upca_K = Upca[:, :K]
         Uprca = estimate_basis("prcasortabs", arr_act @ Upca_K, arr_ctx @ Upca_K)
         U = Upca_K @ Uprca
+    elif re.match(r"v2pca([\.\d]+)prcasortabs", basis_name):
+        ratio = float(re.match(r"v2pca([\.\d]+)prcasortabs", basis_name).group(1))
+        K = int(np.floor(d * ratio))
+        print(f"Constructing `{basis_name}` (with K={K})")
+        Upca = estimate_basis("pca", arr_act, arr_ctx)
+        Upca_K = Upca[:, :K]
+        proj_mat = Upca_K @ Upca_K.T
+        Uprca = estimate_basis("prcasortabs", arr_act @ proj_mat, arr_ctx @ proj_mat)
+        assert Uprca.shape == (d, d)
+        U = proj_mat @ Uprca
     else:
         raise ValueError(f"no basis={basis_name}")
 
