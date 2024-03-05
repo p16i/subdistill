@@ -165,7 +165,7 @@ def estimate_basis(basis_name, arr_act, arr_ctx) -> npt.NDArray:
         print(f"Constructing `{basis_name}` (with K={K})")
         Upca = estimate_basis("pca", arr_act, arr_ctx)
         Upca_K = Upca[:, :K]
-        Uprca = estimate_basis("prca-sortabs", arr_act @ Upca_K, arr_ctx @ Upca_K)
+        Uprca = estimate_basis("prcasortabs", arr_act @ Upca_K, arr_ctx @ Upca_K)
         U = Upca_K @ Uprca
     else:
         raise
