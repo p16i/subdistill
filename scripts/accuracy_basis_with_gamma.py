@@ -252,7 +252,7 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases):
             .tolist()
         )
 
-        for basis_name, U in arr_basis_names:
+        for basis_name in arr_basis_names:
             U = estimate_basis(
                 basis_name=basis_name,
                 arr_act=arr_act,
