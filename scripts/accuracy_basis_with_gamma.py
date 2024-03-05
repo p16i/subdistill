@@ -153,13 +153,13 @@ def estimate_basis(basis_name, arr_act, arr_ctx) -> npt.NDArray:
     if basis_name == "pca":
         _, eigvecs = arr_act.T @ arr_act
         U = eigvecs[:, ::-1].copy()
-    elif basis_name == "prca-sortabs":
+    elif basis_name == "prcasortabs":
         eigvals, eigvecs = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
 
         indices = np.argsort(-np.abs(eigvals))
 
         U = eigvecs[:, indices].copy()
-    elif re.match(r"pca([\.\d]+)-prca-sortabs", basis_name):
+    elif re.match(r"pca([\.\d]+)prcasortabs", basis_name):
         ratio = float(re.match(r"pca([\.\d]+)-prca-sortabs", basis_name).group(1))
         K = np.floor(d * ratio)
         print(f"Constructing `{basis_name}` (with K={K})")
