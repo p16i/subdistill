@@ -58,7 +58,7 @@ def extract_activation_context(
     number_of_selected_spatial_locations=20,
     verbose=False,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-    logit_modifier = attributors.WinningClassEvidence(
+    logit_modifier = attributors.WinningClassOneHotEvidence(
         num_classes=len(dataset.selected_classes)
     )
     rng = np.random.default_rng(seed=1)
