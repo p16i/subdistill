@@ -1,3 +1,4 @@
+import re
 import typing
 import os
 import click
@@ -146,29 +147,30 @@ def fh_low_rank(U: npt.NDArray) -> typing.Tuple[torch.Tensor, typing.Callable]:
     return UUT, do
 
 
-def estimate_basis_at_gamma(
-    model: nn.Module, dataset: datasets.DatasetConfiguration, layer: str, gamma: float
-) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-    arr_act, arr_ctx = extract_activation_context(
-        model=model, layer=layer, dataset=dataset, gamma=gamma, device=DEVICE
-    )
+def estimate_basis(basis_name, arr_act, arr_ctx) -> npt.NDArray:
+    _, d = arr_act.shape
 
-    ccov = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+    if basis_name == "pca":
+        _, eigvecs = arr_act.T @ arr_act
+        U = eigvecs[:, ::-1].copy()
+    elif basis_name == "prca-sortabs":
+        eigvals, eigvecs = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
 
-    eigvals, eigvecs = np.linalg.eigh(ccov)
+        indices = np.argsort(-np.abs(eigvals))
 
-    assert eigvals.shape == (arr_act.shape[1],)
+        U = eigvecs[:, indices].copy()
+    elif re.match(r"pca([\.\d]+)-prca-sortabs", basis_name):
+        ratio = float(re.match(r"pca([\.\d]+)-prca-sortabs", basis_name).group(1))
+        K = np.floor(d * ratio)
+        print(f"Constructing `{basis_name}` (with K={K})")
+        Upca = estimate_basis("pca", arr_act, arr_ctx)
+        Upca_K = Upca[:, :K]
+        Uprca = estimate_basis("prca-sortabs", arr_act @ Upca_K, arr_ctx @ Upca_K)
+        U = Upca_K @ Uprca
+    else:
+        raise
 
-    indices = np.argsort(-np.abs(eigvals))
-
-    Uprca = np.copy(eigvecs[:, indices])
-
-    _, pca_eigvecs = np.linalg.eigh(arr_act.T @ arr_act)
-
-    # remark: Upca is the same for all gammas.
-    Upca = np.flip(pca_eigvecs, axis=1).copy()
-
-    return Uprca, Upca
+    return U
 
 
 def compute_accuracy_of_basis_at_k(
@@ -212,9 +214,10 @@ def compute_accuracy_of_basis_at_k(
 @click.option("--dataset-name", type=str)
 @click.option("--model-name", type=str)
 @click.option("--layers", type=str)
-@click.option("--gamma", type=float)
+@click.option("--bases", type=str)
+@click.option("--gamma", type=float, default=0.25)
 @click.option("--output-dir", type=str)
-def main(model_name, dataset_name, layers, gamma, output_dir):
+def main(model_name, dataset_name, layers, gamma, output_dir, bases):
     arguments = locals()
     start_time = datetime.now()
 
@@ -223,6 +226,8 @@ def main(model_name, dataset_name, layers, gamma, output_dir):
     click.echo(f">> model={model_name};  dataset={dataset_name}")
 
     output_path = Path(output_dir) / dataset_name / model_name
+
+    arr_basis_names = bases.split(",")
 
     dataset = datasets.construct(dataset_name)
 
@@ -235,9 +240,11 @@ def main(model_name, dataset_name, layers, gamma, output_dir):
         layer_output_path = output_path / layer
         os.makedirs(layer_output_path, exist_ok=True)
 
-        Uprca, Upca = estimate_basis_at_gamma(model, dataset, layer, gamma)
+        arr_act, arr_ctx = extract_activation_context(
+            model=model, layer=layer, dataset=dataset, gamma=gamma, device=DEVICE
+        )
 
-        dims = Uprca.shape[0]
+        _, dims = arr_act.shape
 
         arr_ks = (
             np.unique(np.array(utils.logspace(dims) + list(range(1, 31 + 1))))
@@ -245,12 +252,12 @@ def main(model_name, dataset_name, layers, gamma, output_dir):
             .tolist()
         )
 
-        arr_bases = [("prca-sortabs", Uprca)]
-
-        if gamma == 0.0:
-            arr_bases.append(("pca", Upca))
-
-        for basis_name, U in arr_bases:
+        for basis_name, U in arr_basis_names:
+            U = estimate_basis(
+                basis_name=basis_name,
+                arr_act=arr_act,
+                arr_ctx=arr_ctx,
+            )
             df = compute_accuracy_of_basis_at_k(
                 model=model, dataset=dataset, layer=layer, U=U, arr_ks=arr_ks
             )
