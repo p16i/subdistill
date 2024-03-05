@@ -258,6 +258,7 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases):
 
         arr_act = arr_act / ((np.mean(arr_act**2) ** (1 / 2)) * (d ** (1 / 4)))
         arr_ctx = arr_ctx / ((np.mean(arr_ctx**2) ** (1 / 2)) * (d ** (1 / 4)))
+        print(f"Normalizing Factor; act={np.mean(arr_act**2):.2e}, ctx={np.mean(arr_ctx**2):.2e}")
 
         _, dims = arr_act.shape
 
