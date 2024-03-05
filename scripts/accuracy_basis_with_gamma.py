@@ -161,7 +161,7 @@ def estimate_basis(basis_name, arr_act, arr_ctx) -> npt.NDArray:
         U = eigvecs[:, indices].copy()
     elif re.match(r"pca([\.\d]+)prcasortabs", basis_name):
         ratio = float(re.match(r"pca([\.\d]+)prcasortabs", basis_name).group(1))
-        K = np.floor(d * ratio)
+        K = int(np.floor(d * ratio))
         print(f"Constructing `{basis_name}` (with K={K})")
         Upca = estimate_basis("pca", arr_act, arr_ctx)
         Upca_K = Upca[:, :K]
