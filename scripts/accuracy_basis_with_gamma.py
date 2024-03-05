@@ -254,9 +254,10 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases):
         arr_act, arr_ctx = extract_activation_context(
             model=model, layer=layer, dataset=dataset, gamma=gamma, device=DEVICE
         )
+        _, d = arr_act.shape
 
-        arr_act /= np.linalg.norm(arr_act, axis=1, keepdims=True)
-        arr_ctx /= np.linalg.norm(arr_ctx, axis=1, keepdims=True)
+        arr_act = arr_act / ((np.mean(arr_act**2) ** (1 / 2)) * (d ** (1 / 4)))
+        arr_ctx = arr_ctx / ((np.mean(arr_ctx**2) ** (1 / 2)) * (d ** (1 / 4)))
 
         _, dims = arr_act.shape
 
