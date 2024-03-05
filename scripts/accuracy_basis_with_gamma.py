@@ -168,7 +168,7 @@ def estimate_basis(basis_name, arr_act, arr_ctx) -> npt.NDArray:
         Uprca = estimate_basis("prcasortabs", arr_act @ Upca_K, arr_ctx @ Upca_K)
         U = Upca_K @ Uprca
     else:
-        raise
+        raise ValueError(f"no basis={basis_name}")
 
     return U
 
