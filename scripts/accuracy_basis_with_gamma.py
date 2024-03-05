@@ -58,7 +58,7 @@ def extract_activation_context(
     number_of_selected_spatial_locations=20,
     verbose=False,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-    logit_modifier = attributors.WinningClassInvLogitEvidence(
+    logit_modifier = attributors.WinningClassEvidence(
         num_classes=len(dataset.selected_classes)
     )
     print(f"LogitMod: {logit_modifier}")
@@ -254,6 +254,9 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases):
         arr_act, arr_ctx = extract_activation_context(
             model=model, layer=layer, dataset=dataset, gamma=gamma, device=DEVICE
         )
+
+        arr_act /= np.linalg.norm(arr_act, axis=1, keepdims=True)
+        arr_ctx /= np.linalg.norm(arr_ctx, axis=1, keepdims=True)
 
         _, dims = arr_act.shape
 
