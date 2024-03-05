@@ -151,10 +151,10 @@ def estimate_basis(basis_name, arr_act, arr_ctx) -> npt.NDArray:
     _, d = arr_act.shape
 
     if basis_name == "pca":
-        _, eigvecs = arr_act.T @ arr_act
+        _, eigvecs = np.linalg.eigh(arr_act.T @ arr_act)
         U = eigvecs[:, ::-1].copy()
     elif basis_name == "prcasortabs":
-        eigvals, eigvecs = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+        eigvals, eigvecs = np.linalg.eigh(arr_act.T @ arr_ctx + arr_ctx.T @ arr_act)
 
         indices = np.argsort(-np.abs(eigvals))
 
