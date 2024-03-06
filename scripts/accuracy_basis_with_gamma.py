@@ -25,6 +25,56 @@ from zennit.torchvision import ResNetCanonizer
 from zennit.composites import EpsilonGammaBox
 from zennit.attribution import Gradient
 
+from zennit.composites import (
+    EpsilonGammaBox,
+    SpecialFirstLayerMapComposite,
+    layer_map_base,
+)
+from zennit.rules import Gamma, ZBox
+from zennit.types import Convolution
+
+
+class GammaGammaBox(SpecialFirstLayerMapComposite):
+    def __init__(
+        self,
+        low,
+        high,
+        epsilon=1e-6,
+        gamma=0.25,
+        stabilizer=1e-6,
+        layer_map=None,
+        first_map=None,
+        zero_params=None,
+        canonizers=None,
+    ):
+        if layer_map is None:
+            layer_map = []
+        if first_map is None:
+            first_map = []
+
+        rule_kwargs = {"zero_params": zero_params}
+        layer_map = (
+            layer_map
+            + layer_map_base(stabilizer)
+            + [
+                (Convolution, Gamma(gamma=gamma, stabilizer=stabilizer, **rule_kwargs)),
+                (
+                    torch.nn.Linear,
+                    Gamma(gamma=gamma, stabilizer=stabilizer, **rule_kwargs),
+                ),
+            ]
+        )
+        first_map = first_map + [
+            (
+                Convolution,
+                ZBox(low=low, high=high, stabilizer=stabilizer, **rule_kwargs),
+            )
+        ]
+        super().__init__(
+            layer_map=layer_map, first_map=first_map, canonizers=canonizers
+        )
+
+
 DEVICE = utils.get_device()
 
 
@@ -44,7 +94,7 @@ def make_attributor_for(
 
     print(f"Instantiating EpsilonGammaBox(gamma={gamma})")
 
-    composite = EpsilonGammaBox(low=low, high=high, canonizers=canonizers, gamma=gamma)
+    composite = GammaGammaBox(low=low, high=high, canonizers=canonizers, gamma=gamma)
 
     return Gradient(model=model, composite=composite)
 
