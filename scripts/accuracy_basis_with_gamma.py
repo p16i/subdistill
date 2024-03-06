@@ -55,13 +55,10 @@ def extract_activation_context(
     dataset: datasets.DatasetConfiguration,
     gamma: float,
     device: str,
+    logit_modifier: attributors.LogitModifier,
     number_of_selected_spatial_locations=20,
     verbose=False,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-    logit_modifier = attributors.WinningClassEvidence(
-        num_classes=len(dataset.selected_classes)
-    )
-    print(f"LogitMod: {logit_modifier}")
     rng = np.random.default_rng(seed=1)
 
     data_loader = datasets.build_dataloader(
@@ -228,7 +225,8 @@ def compute_accuracy_of_basis_at_k(
 @click.option("--bases", type=str)
 @click.option("--gamma", type=float, default=0.25)
 @click.option("--output-dir", type=str)
-def main(model_name, dataset_name, layers, gamma, output_dir, bases):
+@click.option("--logit-mod", type=str, default="winning")
+def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
     arguments = locals()
     start_time = datetime.now()
 
@@ -236,7 +234,7 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases):
 
     click.echo(f">> model={model_name};  dataset={dataset_name}")
 
-    output_path = Path(output_dir) / dataset_name / model_name
+    output_path = Path(output_dir) / dataset_name / model_name / logit_mod
 
     arr_basis_names = bases.split(",")
 
@@ -247,18 +245,36 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases):
 
     model.to(DEVICE)
 
+    if logit_mod == "winninglogit":
+        logit_modifier = attributors.WinningClassEvidence(
+            num_classes=len(dataset.selected_classes)
+        )
+    elif logit_mod == "winningonehot":
+        logit_modifier = attributors.WinningClassOneHotEvidence(
+            num_classes=len(dataset.selected_classes)
+        )
+    elif logit_mod == "zeroevidence":
+        logit_modifier = attributors.ZeroEvidence(
+            num_classes=len(dataset.selected_classes)
+        )
+    else:
+        raise NotImplementedError(f"no logit_mod={logit_mod}")
+
+    print(f"LogitMod: {logit_modifier}")
+
     for layer in tqdm(arr_layers):
         layer_output_path = output_path / layer
         os.makedirs(layer_output_path, exist_ok=True)
 
         arr_act, arr_ctx = extract_activation_context(
-            model=model, layer=layer, dataset=dataset, gamma=gamma, device=DEVICE
+            model=model,
+            layer=layer,
+            dataset=dataset,
+            gamma=gamma,
+            device=DEVICE,
+            logit_modifier=logit_modifier,
         )
         _, d = arr_act.shape
-
-        arr_act = arr_act / ((np.mean(arr_act**2) ** (1 / 2)) * (d ** (1 / 4)))
-        arr_ctx = arr_ctx / ((np.mean(arr_ctx**2) ** (1 / 2)) * (d ** (1 / 4)))
-        print(f"Normalizing Factor; act={np.mean(arr_act**2):.2e}, ctx={np.mean(arr_ctx**2):.2e}")
 
         _, dims = arr_act.shape
 

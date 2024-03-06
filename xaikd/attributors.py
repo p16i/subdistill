@@ -104,6 +104,18 @@ class WinningClassOneHotEvidence(LogitModifier):
         return "winingclass-onehot"
 
 
+class ZeroEvidence(LogitModifier):
+    def __init__(self, num_classes: int) -> None:
+        self.num_classes = num_classes
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        return torch.zeros_like(logits).to(logits.device)
+
+    def __str__(self) -> str:
+        return "zeroevidence"
+
+
 class DifferenceTop2WinningClassesEvidence(LogitModifier):
     def __init__(self, num_classes: int) -> None:
         self.num_classes = num_classes
