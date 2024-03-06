@@ -249,6 +249,10 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
         logit_modifier = attributors.WinningClassEvidence(
             num_classes=len(dataset.selected_classes)
         )
+    elif logit_mod == "winninglogitotherneg":
+        logit_modifier = attributors.WinningClassEvidenceOtherNegatives(
+            num_classes=len(dataset.selected_classes)
+        )
     elif logit_mod == "winningonehot":
         logit_modifier = attributors.WinningClassOneHotEvidence(
             num_classes=len(dataset.selected_classes)
