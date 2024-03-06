@@ -98,7 +98,7 @@ class WinningClassEvidenceOtherNegatives(LogitModifier):
         logit_winning = logits * F.one_hot(wining_targets, self.num_classes).to(
             logits.device
         )
-        other = torch.clamp_max(logits - logit_winning, 0)
+        other = torch.clamp_min(logits - logit_winning, 0)
 
         return logit_winning - other
 
