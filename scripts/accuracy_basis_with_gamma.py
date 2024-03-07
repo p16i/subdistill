@@ -308,6 +308,10 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
         logit_modifier = attributors.WinningClassOneHotEvidence(
             num_classes=len(dataset.selected_classes)
         )
+    elif logit_mod == "winninginv":
+        logit_modifier = attributors.WinningClassInvLogitEvidence(
+            num_classes=len(dataset.selected_classes)
+        )
     elif logit_mod == "allclasses":
         logit_modifier = attributors.ALlClassesEvidence(
             num_classes=len(dataset.selected_classes)
