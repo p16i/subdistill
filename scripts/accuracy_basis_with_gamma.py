@@ -94,7 +94,8 @@ def make_attributor_for(
 
     print(f"Instantiating EpsilonGammaBox(gamma={gamma})")
 
-    composite = GammaGammaBox(low=low, high=high, canonizers=canonizers, gamma=gamma)
+    # composite = GammaGammaBox(low=low, high=high, canonizers=canonizers, gamma=gamma)
+    composite = EpsilonGammaBox(low=low, high=high, canonizers=canonizers, gamma=gamma)
 
     return Gradient(model=model, composite=composite)
 
