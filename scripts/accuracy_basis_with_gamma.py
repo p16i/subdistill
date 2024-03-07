@@ -234,7 +234,7 @@ def compute_accuracy_of_basis_at_k(
 @click.option("--bases", type=str)
 @click.option("--gamma", type=float, default=0.25)
 @click.option("--output-dir", type=str)
-@click.option("--logit-mod", type=str, default="winning")
+@click.option("--logit-mod", type=str, default="winninglogit")
 def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
     arguments = locals()
     start_time = datetime.now()
