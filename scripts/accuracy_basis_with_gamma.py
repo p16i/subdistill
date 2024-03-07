@@ -21,7 +21,7 @@ from torch.nn import functional as F
 from xaikd import models, datasets, utils, attributors
 from xaikd.utils import metrics
 
-from zennit.torchvision import ResNetCanonizer
+from zennit.torchvision import ResNetCanonizer, VGGCanonizer
 from zennit.composites import EpsilonGammaBox
 from zennit.attribution import Gradient
 
@@ -48,8 +48,15 @@ def make_attributor_for(
 
     if isinstance(model, models.resnet.resnet.ResNet):
         canonizers = [ResNetCanonizer()]
+    elif isinstance(model, torchvision.models.vgg.VGG):
+        if isinstance(model.features[1], torch.nn.BatchNorm2d):
+            canonizers = [VGGCanonizer()]
+        else:
+            canonizers = []
     else:
         canonizers = []
+
+    print(f"Canonizers: {canonizers}")
 
     print(f"Instantiating EpsilonGammaBox(gamma={gamma})")
 
