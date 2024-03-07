@@ -126,7 +126,7 @@ class WinningClassInvLogitEvidence(LogitModifier):
     def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         logits = logits.clone()
         wining_targets = torch.argmax(logits, dim=1)
-        return (1 / logits) * F.one_hot(wining_targets, self.num_classes).to(
+        return (1 / logits**2) * F.one_hot(wining_targets, self.num_classes).to(
             logits.device
         )
 
