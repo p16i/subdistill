@@ -14,6 +14,7 @@ import pandas as pd
 
 import torch
 from torch.utils.data import DataLoader
+import torchvision
 from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
