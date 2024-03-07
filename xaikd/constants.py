@@ -112,5 +112,11 @@ ARCH_LAYER_DIMENSIONS = dict(
             "features.23": 512,
             "features.30": 512,
         },
+        vgg16bn={
+            "features.13": 128,
+            "features.23": 256,
+            "features.33": 512,
+            "features.43": 512,
+        },
     )
 )

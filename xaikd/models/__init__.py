@@ -81,7 +81,7 @@ def get_trained_model(name: str) -> nn.Module:
     num_classes = model.num_classes
 
     # cast native torchvision model to our `DistillableModel`
-    if arch in ["vgg11", "vgg16"]:
+    if arch in ["vgg11", "vgg16", "vgg16bn"]:
         setattr(model, "__last_layer", model.classifier[-1])
     elif arch in ["resnet18", "resnet50"]:
         setattr(model, "__last_layer", model.fc)
