@@ -244,7 +244,7 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
         arr_layers = layers.split(",")
 
     click.echo(f"> dataset={dataset_name}")
-    click.echo(f"> mode={model_name}, layers={arr_layers}")
+    click.echo(f"> model={model_name}, layers={arr_layers}")
 
     output_path = Path(output_dir) / dataset_name / model_name / logit_mod
 
