@@ -238,7 +238,8 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
     start_time = datetime.now()
 
     if layers is None:
-        arr_layers = list(constants.ARCH_LAYER_DIMENSIONS[model_name].keys())
+        _, arch, _ = model_name.split("-")
+        arr_layers = list(constants.ARCH_LAYER_DIMENSIONS[arch].keys())
     else:
         arr_layers = layers.split(",")
 
