@@ -6,7 +6,7 @@ import types
 
 from collections import OrderedDict
 
-from torchvision.models.resnet import ResNet18_Weights, ResNet50_Weights
+# from torchvision.models.resnet import ResNet18_Weights, ResNet50_Weights
 import torch
 
 from torch import nn
@@ -86,17 +86,41 @@ def _resnet50_cifar(num_classes: int) -> nn.Module:
     return model
 
 
-@register_model("imagenet-resnet18")
+@register_model("imagenet-resnet18-tv")
 def _resnet18_imagenet() -> nn.Module:
-    model = torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    model = torchvision.models.resnet18(weights=resnet.ResNet18_Weights.IMAGENET1K_V1)
     model.num_classes = 1000
 
     return model
 
 
-@register_model("imagenet-resnet50")
-def _resnet18_imagenet() -> nn.Module:
-    model = torchvision.models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
+@register_model("imagenet-resnet34-tv")
+def _resnet34_imagenet() -> nn.Module:
+    model = torchvision.models.resnet34(weights=resnet.ResNet34_Weights.IMAGENET1K_V1)
+    model.num_classes = 1000
+
+    return model
+
+
+@register_model("imagenet-resnet50-tv")
+def _resnet50_imagenet() -> nn.Module:
+    model = torchvision.models.resnet50(weights=resnet.ResNet50_Weights.IMAGENET1K_V1)
+    model.num_classes = 1000
+
+    return model
+
+
+@register_model("imagenet-resnet101-tv")
+def _resnet101_imagenet() -> nn.Module:
+    model = torchvision.models.resnet101(weights=resnet.ResNet101_Weights.IMAGENET1K_V1)
+    model.num_classes = 1000
+
+    return model
+
+
+@register_model("imagenet-resnet152-tv")
+def _resnet152_imagenet() -> nn.Module:
+    model = torchvision.models.resnet152(weights=resnet.ResNet152_Weights.IMAGENET1K_V1)
     model.num_classes = 1000
 
     return model
