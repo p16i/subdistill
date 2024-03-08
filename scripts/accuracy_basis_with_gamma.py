@@ -47,19 +47,9 @@ def make_attributor_for(
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
-    if isinstance(model, models.resnet.resnet.ResNet):
-        canonizers = [ResNetCanonizer()]
-    elif isinstance(model, torchvision.models.vgg.VGG):
-        if isinstance(model.features[1], torch.nn.BatchNorm2d):
-            canonizers = [VGGCanonizer()]
-        else:
-            canonizers = []
-    else:
-        canonizers = []
+    canonizers = attributors.get_arch_specific_canonizer(model)
 
-    print(f"Canonizers: {canonizers}")
-
-    print(f"Instantiating EpsilonGammaBox(gamma={gamma})")
+    print(f"Instantiating EpsilonGammaBox(gamma={gamma},canonizers={canonizers})")
 
     composite = EpsilonGammaBox(low=low, high=high, canonizers=canonizers, gamma=gamma)
 
@@ -291,6 +281,14 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
 
     print(f"LogitMod: {logit_modifier}")
 
+    ref_acc, _ = metrics.accuracy(
+        model,
+        dataloader=datasets.build_dataloader(dataset.create_subset(train_split=False)),
+        num_classes=dataset.num_classes,
+        device=DEVICE,
+    )
+    print(f"> ref_acc={ref_acc}")
+
     for layer in tqdm(arr_layers):
         layer_output_path = output_path / layer
         os.makedirs(layer_output_path, exist_ok=True)
@@ -322,6 +320,8 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
             df = compute_accuracy_of_basis_at_k(
                 model=model, dataset=dataset, layer=layer, U=U, arr_ks=arr_ks
             )
+
+            df["ref_acc"] = ref_acc
 
             filepath = layer_output_path / f"{basis_name}--gamma{gamma}.csv"
 

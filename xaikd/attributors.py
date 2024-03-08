@@ -27,14 +27,11 @@ from xaikd.models.interfaces import DistillableModel
 
 def get_arch_specific_canonizer(model: nn.Sequential) -> typing.List[Canonizer]:
     if isinstance(model, models.resnet.ResNet):
-        canonizers = [ResNetCanonizer()]
+        return [ResNetCanonizer()]
     elif isinstance(model, torchvision.models.vgg.VGG):
         if utils.modules.has_batchnorm(model):
-            canonizers = [VGGCanonizer()]
-        else:
-            canonizers = []
-
-    return canonizers
+            return [VGGCanonizer()]
+    return []
 
 
 def make_attributor_for(
