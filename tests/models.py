@@ -15,6 +15,9 @@ from xaikd import models, constants, utils
         "imagenet-resnet101-tv",
         "imagenet-resnet152-tv",
         "imagenet-vgg11-tv",
+        "imagenet-vgg11bn-tv",
+        "imagenet-vgg13-tv",
+        "imagenet-vgg13bn-tv",
         "imagenet-vgg16-tv",
         "imagenet-vgg16bn-tv",
     ],
@@ -28,6 +31,7 @@ def test_get_models(slug):
     assert model is not None
     assert getattr(model, "__name") == slug
     assert len(getattr(model, "__layer_dimension").keys()) > 0
+    assert isinstance(getattr(model, "__last_layer"), torch.nn.Module)
 
     device = utils.get_device()
 
@@ -61,3 +65,9 @@ def test_get_models(slug):
 
         finally:
             hook.remove()
+
+    # verify that modify output work
+    with torch.no_grad():
+        utils.modify_last_layer_for_subclasses(model, list(range(8)))
+        output = model(data).cpu().numpy()
+        assert output.shape == (5, 8)
