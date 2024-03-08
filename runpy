@@ -1,11 +1,21 @@
 #!/bin/bash
 
 export WANDB_DIR=/tmp
+export WANDB_CACHE_DIR=/tmp/.cache/wandb
 
 # make result more deterministic
 export CUBLAS_WORKSPACE_CONFIG=:4096:8
 
+export APPTAINER_BINDPATH="/home/space/datasets"
+
+if [[ $WITH_DATA -eq 1 ]]; then
+    if [ ! -f "/tmp/imagenet.sqfs" ]; then
+        echo "copy data.."
+        time cp ~/datasets/imagenet.sqfs /tmp/
+    fi
+    APPTAINER_BINDPATH="$APPTAINER_BINDPATH,/tmp/imagenet.sqfs:/home/space/datasets/imagenet_torchvision/data:image-src=/"
+fi
+
 apptainer run \
-    --bind /home/space/datasets \
-    --nv ./containers/py310.sif \
+    --nv ./containers/py310v0.0.2.sif \
     "$@"
