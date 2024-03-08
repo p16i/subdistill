@@ -13,7 +13,7 @@ from pathlib import Path
 from PIL import Image
 
 
-from . import interceptor
+from . import interceptor, modules
 
 
 T = typing.TypeVar("T")
