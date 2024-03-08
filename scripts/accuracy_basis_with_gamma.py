@@ -19,7 +19,7 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, utils, attributors
+from xaikd import models, datasets, utils, attributors, constants
 from xaikd.utils import metrics
 
 from zennit.torchvision import ResNetCanonizer, VGGCanonizer
@@ -237,9 +237,13 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
     arguments = locals()
     start_time = datetime.now()
 
-    arr_layers = layers.split(",")
+    if layers is None:
+        arr_layers = list(constants.ARCH_LAYER_DIMENSIONS[model_name].keys())
+    else:
+        arr_layers = layers.split(",")
 
-    click.echo(f">> model={model_name};  dataset={dataset_name}")
+    click.echo(f"> dataset={dataset_name}")
+    click.echo(f"> mode={model_name}, layers={arr_layers}")
 
     output_path = Path(output_dir) / dataset_name / model_name / logit_mod
 
