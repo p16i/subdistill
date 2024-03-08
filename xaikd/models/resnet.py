@@ -6,7 +6,7 @@ import types
 
 from collections import OrderedDict
 
-from torchvision.models.resnet import ResNet18_Weights
+from torchvision.models.resnet import ResNet18_Weights, ResNet50_Weights
 import torch
 
 from torch import nn
@@ -89,6 +89,14 @@ def _resnet50_cifar(num_classes: int) -> nn.Module:
 @register_model("imagenet-resnet18")
 def _resnet18_imagenet() -> nn.Module:
     model = torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
+    model.num_classes = 1000
+
+    return model
+
+
+@register_model("imagenet-resnet50")
+def _resnet18_imagenet() -> nn.Module:
+    model = torchvision.models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
     model.num_classes = 1000
 
     return model
@@ -327,6 +335,7 @@ def _generate_resnet18_manual_block(
     arr_dims: typing.List[int],
     num_classes: int,
     for_cifar: bool,
+    parameterization_with="bn",
 ) -> nn.Module:
     # todo: hard-corded everything for now.
     resnet18 = torchvision.models.resnet.resnet18()
@@ -385,7 +394,16 @@ def _generate_resnet18_manual_block(
             dilate=False,
         )
 
-        parameterization_module = nn.BatchNorm2d(num_features=dims)
+        if parameterization_with == "bn":
+            parameterization_module = nn.BatchNorm2d(num_features=dims)
+        elif parameterization_with == "linnob":
+            parameterization_module = nn.Conv2d(
+                in_channels=dims, out_channels=dims, kernel_size=1, bias=False
+            )
+        elif parameterization_with == "id":
+            parameterization_module = nn.Identity()
+        else:
+            raise
 
         # # todo: this is temporary;
         # todo: remove this after also in other derivative of the architecture.
@@ -409,25 +427,31 @@ def _generate_resnet18_manual_block(
     return model
 
 
-# @register_model("resnet18dims16-16-8-5")
-# def _cifarresnet18c2lin(num_classes: int):
-#     return _generate_resnet18_manual_block(
-#         arr_dims=[16, 16, 8, 5], num_classes=num_classes, for_cifar=True
-#     )
+@register_model("resnet18dims32-24-24-5")
+def _cifarresnet18c2lin(num_classes: int):
+    return _generate_resnet18_manual_block(
+        arr_dims=[32, 24, 24, 5], num_classes=num_classes, for_cifar=True
+    )
 
 
-# @register_model("resnet18dims24-24-16-5")
-# def _cifarresnet18c2lin(num_classes: int):
-#     return _generate_resnet18_manual_block(
-#         arr_dims=[24, 24, 16, 5], num_classes=num_classes, for_cifar=True
-#     )
+@register_model("resnet18dims32-24-24-5-linnob")
+def _cifarresnet18c2lin(num_classes: int):
+    return _generate_resnet18_manual_block(
+        arr_dims=[32, 24, 24, 5],
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="linnob",
+    )
 
 
-# @register_model("resnet18dims32-32-24-5")
-# def _cifarresnet18c2lin(num_classes: int):
-#     return _generate_resnet18_manual_block(
-#         arr_dims=[32, 32, 24, 5], num_classes=num_classes, for_cifar=True
-#     )
+@register_model("resnet18dims32-24-24-5-id")
+def _cifarresnet18c2lin(num_classes: int):
+    return _generate_resnet18_manual_block(
+        arr_dims=[32, 24, 24, 5],
+        num_classes=num_classes,
+        for_cifar=True,
+        parameterization_with="id",
+    )
 
 
 @register_model("resnet18dims16-8-8-5")
@@ -448,13 +472,6 @@ def _cifarresnet18c2lin(num_classes: int):
 def _cifarresnet18c2lin(num_classes: int):
     return _generate_resnet18_manual_block(
         arr_dims=[24, 16, 16, 5], num_classes=num_classes, for_cifar=True
-    )
-
-
-@register_model("resnet18dims32-24-24-5")
-def _cifarresnet18c2lin(num_classes: int):
-    return _generate_resnet18_manual_block(
-        arr_dims=[32, 24, 24, 5], num_classes=num_classes, for_cifar=True
     )
 
 

@@ -2,6 +2,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.nn.modules import batchnorm
+import numpy as np
+from copy import deepcopy
 
 from scipy.stats import ortho_group
 
@@ -85,3 +87,63 @@ class Conv2dRotation(nn.Module):
 
     def forward(self, x):
         return F.conv2d(x, self.weight.unsqueeze(2).unsqueeze(3))
+
+
+def convert_bn_to_conv(bn: nn.BatchNorm2d) -> nn.Conv2d:
+    bn_mean = bn.running_mean.clone()
+    bn_std = (bn.running_var.clone() + bn.eps) ** 0.5
+
+    if bn.affine:
+        bn_scale = bn.weight.clone()
+        bn_shift = bn.bias.clone()
+    else:
+        bn_scale = 1
+        bn_shift = 0
+
+    W_bn = torch.diag(bn_scale / bn_std)
+
+    b_bn = -(bn_scale / bn_std) * bn_mean + bn_shift
+
+    d = b_bn.shape[0]
+
+    conv_bn = nn.Conv2d(d, d, kernel_size=1)
+
+    conv_bn.weight = nn.Parameter(W_bn.unsqueeze(2).unsqueeze(3))
+    conv_bn.bias = nn.Parameter(b_bn)
+
+    return conv_bn
+
+
+def merge_conv_and_bn(conv: nn.Conv2d, bn: nn.BatchNorm2d) -> nn.Conv2d:
+    conv_bn = convert_bn_to_conv(bn)
+
+    return merge_convKxK_and_conv1x1(conv, conv_bn)
+
+
+def merge_convKxK_and_conv1x1(convK: nn.Conv2d, conv1: nn.Conv2d) -> nn.Conv2d:
+    np.testing.assert_allclose(np.array(conv1.padding), 0)
+    np.testing.assert_allclose(conv1.kernel_size, 1)
+
+    Wk = getattr(convK, "weight")
+    if convK.bias is not None:
+        bk = convK.bias
+    else:
+        bk = torch.zeros(size=(convK.out_channels,)).to(Wk.device)
+
+    # shape: [out_channels, in_channels, 1, 1]
+    W1 = getattr(conv1, "weight")
+    # remove spatial dimensions
+    W1 = W1.squeeze()
+    b1 = getattr(conv1, "bias")
+
+    # essentially, the new filter is the multiplication
+    # of the Wk and W1 at every spatial location
+    Wh = torch.einsum("jiwh,kj->kiwh", Wk, W1)
+
+    bh = W1 @ bk + b1
+
+    merged_conv = deepcopy(convK)
+    merged_conv.weight = nn.Parameter(Wh)
+    merged_conv.bias = nn.Parameter(bh)
+
+    return merged_conv

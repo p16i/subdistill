@@ -197,6 +197,7 @@ def build_dataloaders(
 @click.option("--lambda-layer", type=float, default=None)
 @click.option("--contamination-level", default=0.0, type=float)
 @click.option("--use-val-split", type=bool, default=False, is_flag=True)
+@click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
 @click.option(
     "--learning-bases-from-clean-data", type=bool, default=False, is_flag=True
 )
@@ -217,6 +218,7 @@ def main(
     contamination_level,
     use_val_split,
     learning_bases_from_clean_data,
+    enable_checkpointing,
 ):
     arguments = locals()
 
@@ -372,6 +374,7 @@ def main(
             job_type="distillation",
             name=f"{student}-{policy_name_with_args}-seed{seed}",
             notes=f"commit:{utils.get_git_hash()}",
+            log_model="all" if enable_checkpointing else False,
             config={
                 **arguments,
                 "policy": policy_name_with_args,
@@ -396,6 +399,7 @@ def main(
             log_dir=log_dir,
             logger=logger,
             seed=seed,
+            enable_checkpointing=enable_checkpointing,
         )
 
         # todo: save student to artifacts!

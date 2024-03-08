@@ -10,6 +10,8 @@ import numpy as np
 
 from pathlib import Path
 
+from PIL import Image
+
 
 from . import interceptor
 
@@ -197,3 +199,35 @@ def get_dimensions_at_layers(
 
 def get_git_hash() -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
+
+
+def apply_copyright_to_image(img: Image, watermark: Image) -> Image:
+    # this makes sure that we do NOT override the input image.
+    img = img.copy()
+
+    img_w, img_h = img.size
+    cw, ch = img_w // 2, img_h // 2
+    scale_size = 256
+    crop_size = 224
+
+    mw, mh = watermark.size
+
+    ratio = scale_size / mw
+
+    minsize = np.min([img_w, img_h])
+    ratio2 = minsize / scale_size
+
+    nmw = int(mw * ratio * ratio2)
+    nmh = int(mh * ratio * ratio2)
+    watermark = watermark.convert("L")
+    watermark = watermark.resize((nmw, nmh))
+
+    img.paste(
+        watermark,
+        (
+            cw - nmw // 2,
+            ch + int(ratio2 * crop_size // 2) - nmh,
+        ),
+    )
+
+    return img

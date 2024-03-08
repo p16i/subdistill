@@ -11,7 +11,7 @@ from torch.nn import functional as F
 from torchvision import models, transforms
 from torch.utils.data import DataLoader
 
-from zennit.torchvision import ResNetCanonizer
+from zennit.torchvision import ResNetCanonizer, VGGCanonizer
 from zennit.composites import EpsilonGammaBox
 from zennit.attribution import Gradient
 
@@ -33,8 +33,15 @@ def make_attributor_for(
 
     if isinstance(model, models.resnet.ResNet):
         canonizers = [ResNetCanonizer()]
+    elif isinstance(model, torchvision.models.vgg.VGG):
+        if isinstance(model.features[1], torch.nn.BatchNorm2d):
+            canonizers = [VGGCanonizer()]
+        else:
+            canonizers = []
     else:
         canonizers = []
+
+    print(f"Canonizers: {canonizers}")
 
     composite = EpsilonGammaBox(low=low, high=high, canonizers=canonizers)
 
@@ -63,6 +70,18 @@ class TargetClassEvidence(LogitModifier):
         return "oneclass"
 
 
+class ALlClassesEvidence(LogitModifier):
+    def __init__(self, num_classes: int) -> None:
+        self.num_classes = num_classes
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        return logits
+
+    def __str__(self) -> str:
+        return "allclasses"
+
+
 class WinningClassEvidence(LogitModifier):
     def __init__(self, num_classes: int) -> None:
         self.num_classes = num_classes
@@ -74,6 +93,64 @@ class WinningClassEvidence(LogitModifier):
 
     def __str__(self) -> str:
         return "winingclass"
+
+
+class WinningClassEvidenceOtherNegatives(LogitModifier):
+    def __init__(self, num_classes: int) -> None:
+        self.num_classes = num_classes
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        wining_targets = torch.argmax(logits, dim=1)
+        logit_winning = logits * F.one_hot(wining_targets, self.num_classes).to(
+            logits.device
+        )
+        other = torch.clamp_min(logits - logit_winning, 0)
+
+        return logit_winning - other
+
+    def __str__(self) -> str:
+        return "winingclass"
+
+
+class WinningClassOneHotEvidence(LogitModifier):
+    def __init__(self, num_classes: int) -> None:
+        self.num_classes = num_classes
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        wining_targets = torch.argmax(logits, dim=1)
+        return F.one_hot(wining_targets, self.num_classes).to(logits.device)
+
+    def __str__(self) -> str:
+        return "winingclass-onehot"
+
+
+class WinningClassInvLogitEvidence(LogitModifier):
+    def __init__(self, num_classes: int) -> None:
+        self.num_classes = num_classes
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        wining_targets = torch.argmax(logits, dim=1)
+        return (1 / logits**2) * F.one_hot(wining_targets, self.num_classes).to(
+            logits.device
+        )
+
+    def __str__(self) -> str:
+        return "winingclass-invlogit"
+
+
+class ZeroEvidence(LogitModifier):
+    def __init__(self, num_classes: int) -> None:
+        self.num_classes = num_classes
+
+    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        logits = logits.clone()
+        return torch.zeros_like(logits).to(logits.device)
+
+    def __str__(self) -> str:
+        return "zeroevidence"
 
 
 class DifferenceTop2WinningClassesEvidence(LogitModifier):

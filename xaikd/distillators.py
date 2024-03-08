@@ -23,7 +23,7 @@ from xaikd.utils import metrics
 
 from torchmetrics import Accuracy, MeanMetric
 
-from pytorch_lightning.callbacks import LearningRateMonitor
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 
 class Teacher(object):
@@ -250,11 +250,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")
 
-    def on_save_checkpoint(self, checkpoint):
-        raise NotImplemented("to be update; we should only save student")
-        checkpoint["approximator"] = self.approximator
-        checkpoint["adapter"] = self.adapter
-        return checkpoint
+    # def on_save_checkpoint(self, checkpoint):
+    #     print(checkpoint.keys())
+    #     raise
+    #     return dict(student=self.student)
 
 
 class Layerwise:
@@ -298,7 +297,7 @@ class Layerwise:
         lambda_kd: float,
         lambda_layer: float,
         seed: int,
-        # enable_checkpointing=False,
+        enable_checkpointing: bool,
         # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
         student.to(device)
@@ -337,14 +336,24 @@ class Layerwise:
 
         print(f"Training log is saved to `{log_dir}`")
 
+        callback_checkpoint = (
+            [
+                ModelCheckpoint(monitor="val_acc", mode="max"),
+            ]
+            if enable_checkpointing
+            else []
+        )
+
         trainer = pl.Trainer(
             accelerator=device,
             max_epochs=epochs,
             logger=logger,
             log_every_n_steps=1,
-            enable_checkpointing=False,
             deterministic="warn",
-            callbacks=[LearningRateMonitor(logging_interval="step")],
+            callbacks=[
+                LearningRateMonitor(logging_interval="step"),
+                *callback_checkpoint,
+            ],
         )
 
         trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)

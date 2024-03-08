@@ -115,6 +115,9 @@ def estimate_acc_for_basis(
     default="pca,prca-sortabs,random",
 )
 @click.option("--seed", default=1, type=int)
+@click.option(
+    "--logit-mod", default="winning", type=click.Choice(["winning", "target"])
+)
 @click.option("--training-size", default=1.0, type=float)
 def main(
     model: nn.Module,
@@ -125,6 +128,7 @@ def main(
     basis_mode: str,
     basis_names: typing.List[str],
     training_size: float,
+    logit_mod,
 ):
     pl.seed_everything(seed)
     arguments = locals()
@@ -152,7 +156,16 @@ def main(
     click.echo(f"Basis Centering Mode: {basis_mode}")
     click.echo(f"with bases: {basis_names}")
 
-    logit_modifier = attributors.WinningClassEvidence(num_classes=dataset.num_classes)
+    if logit_mod == "winning":
+        logit_modifier = attributors.WinningClassEvidence(
+            num_classes=dataset.num_classes
+        )
+    elif logit_mod == "target":
+        logit_modifier = attributors.TargetClassEvidence(
+            num_classes=dataset.num_classes
+        )
+    else:
+        raise
 
     original_acc, original_xent = metrics.accuracy(
         model,
