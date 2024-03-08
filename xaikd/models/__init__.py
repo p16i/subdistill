@@ -56,8 +56,13 @@ def get_trained_model(name: str) -> nn.Module:
 
     elif name == "imagenet-resnet18-tv":
         model = MODEL_GENERATORS["imagenet-resnet18"]()
+    elif name == "imagenet-resnet50-tv":
+        model = MODEL_GENERATORS["imagenet-resnet50"]()
     elif name == "imagenet-vgg16-tv":
         model = models.vgg16(weights=models.vgg.VGG16_Weights.IMAGENET1K_V1)
+        model.num_classes = 1000
+    elif name == "imagenet-vgg16bn-tv":
+        model = models.vgg16_bn(weights=models.vgg.VGG16_BN_Weights.IMAGENET1K_V1)
         model.num_classes = 1000
     elif "imagenet-resnet18-random" in name:
         # use regex to parse the number
@@ -76,7 +81,7 @@ def get_trained_model(name: str) -> nn.Module:
     num_classes = model.num_classes
 
     # cast native torchvision model to our `DistillableModel`
-    if arch in ["vgg11", "vgg16"]:
+    if arch in ["vgg11", "vgg16", "vgg16bn"]:
         setattr(model, "__last_layer", model.classifier[-1])
     elif arch in ["resnet18", "resnet50"]:
         setattr(model, "__last_layer", model.fc)

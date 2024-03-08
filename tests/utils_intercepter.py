@@ -63,16 +63,14 @@ def test_resnet_layer_interception(slug, layer):
 
 
 @pytest.mark.parametrize(
-    "model_name,layers",
+    "model_name,layers,input_size",
     [
-        (
-            "cifar100-vgg11-v1",
-            ("features.10", "features.15", "features.20"),
-        )
+        # ("cifar100-vgg11-v1", ("features.10", "features.15", "features.20"), (32, 32)),
+        ("imagenet-vgg16-tv", ("features.9", "features.16"), (224, 224)),
     ],
 )
 @pytest.mark.slow()
-def test_vgg_layer_interception(model_name, layers):
+def test_vgg_layer_interception(model_name, layers, input_size):
     print(f"Testing on {DEVICE}")
 
     for layer in layers:
@@ -82,7 +80,7 @@ def test_vgg_layer_interception(model_name, layers):
         model1 = models.get_trained_model(model_name).to(DEVICE)
         model2 = models.get_trained_model(model_name).to(DEVICE)
 
-        dummy_input = torch.randn((10, 3, 32, 32)).to(DEVICE)
+        dummy_input = torch.randn((5, 3, *input_size)).to(DEVICE)
 
         model2_first_path = model2.features[: layer_index + 1]
 
@@ -93,6 +91,8 @@ def test_vgg_layer_interception(model_name, layers):
             module, hook = interceptor.attach_hook_intercept_layer_output(
                 model1, layer, should_retain_grad=False
             )
+
+            assert isinstance(module, torch.nn.MaxPool2d)
 
             logits = model1(dummy_input)
             output = getattr(module, "__output")
