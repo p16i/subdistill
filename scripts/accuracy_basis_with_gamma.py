@@ -288,7 +288,9 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
 
     ref_acc, _ = metrics.accuracy(
         model,
-        dataloader=datasets.build_dataloader(dataset.create_subset(train_split=False)),
+        dataloader=datasets.build_dataloader(
+            dataset.create_subset(train_split=False), shuffle=False
+        ),
         num_classes=dataset.num_classes,
         device=DEVICE,
     )
