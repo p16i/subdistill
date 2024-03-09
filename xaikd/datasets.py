@@ -515,6 +515,23 @@ class ImageNetColubridSnake(ImageNetSuperClass):
     selected_classes = [555, 569, 717, 864, 867]
 
 
+@register_dataset("imagenet-truckbutterfly")
+class ImageNetColubridSnake(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [555, 569, 717, 864, 867] + [321, 322, 323, 324, 325, 326]
+
+
+@register_dataset("imagenet-random5")
+class ImageNetColubridSnake(ImageNetSuperClass):
+    selected_classes = [10, 50, 300, 700, 900]
+
+
+@register_dataset("imagenet-adminral_ringlet")
+class ImageNetColubridSnake(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [321, 322]
+
+
 class ImageNetWithCopyRight(tvd.ImageNet):
     copyright = default_loader(
         str(
