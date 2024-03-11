@@ -71,3 +71,34 @@ def test_get_models(slug):
         utils.modify_last_layer_for_subclasses(model, list(range(8)))
         output = model(data).cpu().numpy()
         assert output.shape == (5, 8)
+
+
+def _test_split_model(slug, layer):
+    device = utils.get_device()
+    model = models.get_trained_model(slug)
+    model.to(device)
+
+    head, classifier = models.vgg.split_model_at(model, layer)
+    if "imagenet" in slug:
+        input = torch.randn(10, 3, 224, 224)
+    else:
+        input = torch.randn(10, 3, 32, 32)
+
+    input = input.to(device)
+
+    with torch.no_grad():
+        actual = classifier(head(input)).cpu().numpy()
+        expected = model(input).cpu().numpy()
+
+        np.testing.assert_allclose(actual, expected)
+
+
+@pytest.mark.parametrize(
+    "model,layer",
+    [
+        ("imagenet-vgg16-tv", "features.23"),
+        ("imagenet-resnet18-tv", "layer2"),
+    ],
+)
+def test_split_model(model, layer):
+    _test_split_model(model, layer)

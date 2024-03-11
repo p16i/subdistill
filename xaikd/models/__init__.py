@@ -102,3 +102,14 @@ def get_layer_output_dimensions(model: nn.Module, layer: str) -> int:
 
 
 from . import resnet, vgg
+
+
+def split_model_at_layer(
+    model, layer: str
+) -> typing.Tuple[nn.Sequential, nn.Sequential]:
+    if isinstance(model, resnet.resnet.ResNet):
+        return resnet.split_model_at(model, layer)
+    elif isinstance(model, vgg.models.VGG):
+        return vgg.split_model_at(model, layer)
+    else:
+        raise ValueError(f"no available split_model for layer={layer} model={model}")
