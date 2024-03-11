@@ -32,6 +32,7 @@ class DistillableResNet(interfaces.DistillableModel, resnet.ResNet):
         return model
 
     def split_at(self, layer: str) -> typing.Tuple[nn.Module, nn.Module, nn.Module]:
+        raise NotImplementedError("obsolete")
         assert len(layer.split(".")) == 1
 
         assert isinstance(self, resnet.ResNet)
@@ -54,6 +55,31 @@ class DistillableResNet(interfaces.DistillableModel, resnet.ResNet):
         )
 
         return head, layer_module, classifier
+
+
+def split_model_at(
+    model: resnet.ResNet, layer: str
+) -> typing.Tuple[nn.Sequential, nn.Sequential]:
+    assert isinstance(model, resnet.ResNet)
+
+    assert len(layer.split(".")) == 1
+
+    layer_ix = int(layer[-1])
+
+    layers = [model.layer1, model.layer2, model.layer3, model.layer4]
+
+    layers_in_head = layers[:layer_ix] if layer_ix > 0 else []
+    layers_in_classifier = layers[layer_ix:]
+
+    head = nn.Sequential(
+        model.conv1, model.bn1, model.relu, model.maxpool, *layers_in_head
+    )
+
+    classifier = nn.Sequential(
+        *layers_in_classifier, model.avgpool, nn.Flatten(start_dim=1), model.fc
+    )
+
+    return head, classifier
 
 
 @register_model("cifar-resnet18")

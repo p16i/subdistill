@@ -120,34 +120,34 @@ class DistillableVGG(interfaces.DistillableModel):
 
     #     return x
 
-    # def split_at(self, layer: str):
-    #     assert hasattr(self, layer)
-
-    #     layer_ix = int(layer[-1]) - 1
-
-    #     layers = [self.layer1, self.layer2, self.layer3, self.layer4, self.layer5]
-
-    #     layers_in_head = layers[:layer_ix] if layer_ix > 0 else []
-    #     layers_in_classifier = layers[layer_ix + 1 :]
-
-    #     layer_module = layers[layer_ix]
-
-    #     head = nn.Sequential(*layers_in_head)
-
-    #     classifier = nn.Sequential(
-    #         *layers_in_classifier,
-    #         self.avgpool,
-    #         nn.Flatten(start_dim=1),
-    #         self.classifier,
-    #     )
-
-    #     return head, layer_module, classifier
-
     @classmethod
     def cast(cls, model: models.vgg.VGG):
         assert isinstance(model, models.vgg.VGG)
 
         return DistillableVGG(model)
+
+
+def split_model_at(
+    model: models.VGG, layer: str
+) -> typing.Tuple[nn.Sequential, nn.Sequential]:
+    assert isinstance(model, models.VGG)
+
+    # layer in format `features.k``
+    layer_ix = int(layer.split(".")[1])
+
+    layers_in_head = model.features[: layer_ix + 1]
+    layers_in_classifier = model.features[layer_ix + 1 :]
+
+    head = nn.Sequential(*layers_in_head)
+
+    classifier = nn.Sequential(
+        *layers_in_classifier,
+        model.avgpool,
+        nn.Flatten(start_dim=1),
+        model.classifier,
+    )
+
+    return head, classifier
 
 
 @register_model("vgg11")
