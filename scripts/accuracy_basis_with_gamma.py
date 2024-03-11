@@ -19,7 +19,7 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, utils, attributors, constants
+from xaikd import models, datasets, utils, attributors, constants, prcaopt
 from xaikd.utils import metrics
 
 from zennit.torchvision import ResNetCanonizer, VGGCanonizer
@@ -192,9 +192,12 @@ def compute_accuracy_of_basis_at_k(
     model: nn.Module,
     dataset: datasets.DatasetConfiguration,
     layer: str,
-    U: npt.NDArray,
+    basis_name: str,
+    arr_act: npt.NDArray,
+    arr_ctx: npt.NDArray,
     arr_ks: typing.List[int],
 ) -> pd.DataFrame:
+    ds_train = dataset.create_subset(train_split=True)
     ds_val = dataset.create_subset(train_split=False)
     dl = datasets.build_dataloader(ds_val, shuffle=False)
 
@@ -202,8 +205,31 @@ def compute_accuracy_of_basis_at_k(
 
     rows = []
 
-    for k in tqdm(arr_ks):
+    _, d = arr_act.shape
+
+    for i, k in tqdm(enumerate(arr_ks)):
+        if basis_name == "prcaopt":
+            U = prcaopt.learn_prca_opt(
+                model=model,
+                layer=layer,
+                ds_train=ds_train,
+                _arr_act=arr_act,
+                k=k,
+                device=DEVICE,
+            )
+
+            assert U.shape == (d, k)
+
+        elif i == 0:
+            U = estimate_basis(
+                basis_name=basis_name,
+                arr_act=arr_act,
+                arr_ctx=arr_ctx,
+            )
+            assert U.shape == (d, d)
+
         Uk = U[:, :k]
+
         try:
             UUT, hook_func = fh_low_rank(Uk)
             hook = module.register_forward_hook(hook_func)
@@ -319,13 +345,14 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
         )
 
         for basis_name in arr_basis_names:
-            U = estimate_basis(
+            df = compute_accuracy_of_basis_at_k(
+                model=model,
+                dataset=dataset,
+                layer=layer,
                 basis_name=basis_name,
                 arr_act=arr_act,
                 arr_ctx=arr_ctx,
-            )
-            df = compute_accuracy_of_basis_at_k(
-                model=model, dataset=dataset, layer=layer, U=U, arr_ks=arr_ks
+                arr_ks=arr_ks,
             )
 
             df["ref_acc"] = ref_acc
