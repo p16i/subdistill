@@ -89,7 +89,7 @@ def learn_prca_opt(
 
             loss = loss.detach().cpu().numpy()
 
-            pgb.set_description(f"k={k}: loss={loss:.4f} ")
+            pgb.set_description(f"PRCAOpt: k={k}; loss={loss:.4f} ")
 
             U.data = decorrelate(U - lr * U.grad)
 

@@ -207,7 +207,7 @@ def compute_accuracy_of_basis_at_k(
 
     _, d = arr_act.shape
 
-    for i, k in tqdm(enumerate(arr_ks)):
+    for i, k in tqdm(enumerate(arr_ks), total=len(arr_ks)):
         if basis_name == "prcaopt":
             U = prcaopt.learn_prca_opt(
                 model=model,
