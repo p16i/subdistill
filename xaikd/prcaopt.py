@@ -59,7 +59,6 @@ def learn_prca_opt(
         ds_train,
         shuffle=True,
     )
-    dl_val = datasets.build_dataloader(ds_val, shuffle=False)
 
     lr = 1e-3
     acc = 0
