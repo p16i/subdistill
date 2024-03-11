@@ -208,9 +208,9 @@ def compute_accuracy_of_basis_at_k(
     _, d = arr_act.shape
 
     if basis_name == "prcaopt":
-        arr_ks: typing.List[int] = filter(arr_ks, lambda k: k % 2 == 0)
+        arr_ks = list(filter(lambda k: k % 2 == 0, arr_ks))
 
-    print(f"arr_ks={arr_ks}")
+    print(f"basis={basis_name}, arr_ks={arr_ks}")
 
     for i, k in tqdm(enumerate(arr_ks), total=len(arr_ks)):
         if basis_name == "prcaopt":
