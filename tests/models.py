@@ -73,12 +73,12 @@ def test_get_models(slug):
         assert output.shape == (5, 8)
 
 
-def _test_split_model(slug, layer):
+def _test_split_model(slug, layer, split_func):
     device = utils.get_device()
     model = models.get_trained_model(slug)
     model.to(device)
 
-    head, classifier = models.vgg.split_model_at(model, layer)
+    head, classifier = split_func(model, layer)
     if "imagenet" in slug:
         input = torch.randn(10, 3, 224, 224)
     else:
@@ -101,4 +101,4 @@ def _test_split_model(slug, layer):
     ],
 )
 def test_split_model(model, layer):
-    _test_split_model(model, layer)
+    _test_split_model(model, layer, models.split_model_at_layer)

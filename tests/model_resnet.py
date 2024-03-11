@@ -22,4 +22,4 @@ import models as test_models
 @pytest.mark.parametrize("layer", ["layer1", "layer2", "layer3", "layer4"])
 @pytest.mark.slow
 def test_split_resnet_model(slug, layer):
-    test_models._test_split_model(slug, layer)
+    test_models._test_split_model(slug, layer, models.resnet.split_model_at)
