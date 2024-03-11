@@ -7,6 +7,7 @@ import torch
 from xaikd import datasets, models
 
 from torch.nn import Sequential
+from torch.nn import functional as F
 from torch.utils.data import Dataset
 
 
