@@ -509,6 +509,52 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         return loss_mse
 
 
+@register_layer_policy("basis-identity-learnable")
+class OrthogonalBasisIdentityLearnablePolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+
+        W = basis.artifact["eigvecs"][:, :k]
+
+        print("make basis-identitity's weight learnable")
+        self.transformer_teacher_feats = nn.Conv2d(
+            in_channels=teacher_dims, out_channels=k, kernel_size=1, bias=False
+        )
+        self.transformer_teacher_feats.weight = nn.Parameter(
+            W.T.unsqueeze(2).unsqueeze(3)
+        )
+
+        self.transformer_student_feats = nn.Identity()
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.basis.artifact["scale"][:k].max()
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_layer_policy("random")
 class OrthogonalRandomPolicy(LayerPolicy):
     def __init__(
