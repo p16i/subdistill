@@ -510,9 +510,26 @@ class ImageNetColubridSnake(ImageNetSuperClass):
 
 
 @register_dataset("imagenet-truck")
-class ImageNetColubridSnake(ImageNetSuperClass):
+class ImageNetTruck(ImageNetSuperClass):
     # remark: the targets are defined in the ImageNet dataset.
     selected_classes = [555, 569, 717, 864, 867]
+
+
+@register_dataset("imagenet-truckbutterfly")
+class ImageNetTruckButterfly(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [555, 569, 717, 864, 867] + [321, 322, 323, 324, 325, 326]
+
+
+@register_dataset("imagenet-random5")
+class ImageNetRandom5(ImageNetSuperClass):
+    selected_classes = [10, 50, 300, 700, 900]
+
+
+@register_dataset("imagenet-admiral_ringlet")
+class ImageNetAdmiralRingLet(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [321, 322]
 
 
 class ImageNetWithCopyRight(tvd.ImageNet):

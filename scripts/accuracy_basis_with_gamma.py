@@ -19,7 +19,7 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, utils, attributors
+from xaikd import models, datasets, utils, attributors, constants, prcaopt
 from xaikd.utils import metrics
 
 from zennit.torchvision import ResNetCanonizer, VGGCanonizer
@@ -47,19 +47,9 @@ def make_attributor_for(
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
-    if isinstance(model, models.resnet.resnet.ResNet):
-        canonizers = [ResNetCanonizer()]
-    elif isinstance(model, torchvision.models.vgg.VGG):
-        if isinstance(model.features[1], torch.nn.BatchNorm2d):
-            canonizers = [VGGCanonizer()]
-        else:
-            canonizers = []
-    else:
-        canonizers = []
+    canonizers = attributors.get_arch_specific_canonizer(model)
 
-    print(f"Canonizers: {canonizers}")
-
-    print(f"Instantiating EpsilonGammaBox(gamma={gamma})")
+    print(f"Instantiating EpsilonGammaBox(gamma={gamma},canonizers={canonizers})")
 
     composite = EpsilonGammaBox(low=low, high=high, canonizers=canonizers, gamma=gamma)
 
@@ -202,9 +192,12 @@ def compute_accuracy_of_basis_at_k(
     model: nn.Module,
     dataset: datasets.DatasetConfiguration,
     layer: str,
-    U: npt.NDArray,
+    basis_name: str,
+    arr_act: npt.NDArray,
+    arr_ctx: npt.NDArray,
     arr_ks: typing.List[int],
 ) -> pd.DataFrame:
+    ds_train = dataset.create_subset(train_split=True)
     ds_val = dataset.create_subset(train_split=False)
     dl = datasets.build_dataloader(ds_val, shuffle=False)
 
@@ -212,8 +205,36 @@ def compute_accuracy_of_basis_at_k(
 
     rows = []
 
-    for k in tqdm(arr_ks):
+    _, d = arr_act.shape
+
+    if basis_name == "prcaopt":
+        arr_ks = list(filter(lambda k: k % 2 == 0, arr_ks))
+
+    print(f"basis={basis_name}, arr_ks={arr_ks}")
+
+    for i, k in tqdm(enumerate(arr_ks), total=len(arr_ks)):
+        if basis_name == "prcaopt":
+            U = prcaopt.learn_prca_opt(
+                model=model,
+                layer=layer,
+                ds_train=ds_train,
+                _arr_act=arr_act,
+                k=k,
+                device=DEVICE,
+            )
+
+            assert U.shape == (d, k)
+
+        elif i == 0:
+            U = estimate_basis(
+                basis_name=basis_name,
+                arr_act=arr_act,
+                arr_ctx=arr_ctx,
+            )
+            assert U.shape == (d, d)
+
         Uk = U[:, :k]
+
         try:
             UUT, hook_func = fh_low_rank(Uk)
             hook = module.register_forward_hook(hook_func)
@@ -247,9 +268,14 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
     arguments = locals()
     start_time = datetime.now()
 
-    arr_layers = layers.split(",")
+    if layers is None:
+        _, arch, _ = model_name.split("-")
+        arr_layers = list(constants.ARCH_LAYER_DIMENSIONS[arch].keys())
+    else:
+        arr_layers = layers.split(",")
 
-    click.echo(f">> model={model_name};  dataset={dataset_name}")
+    click.echo(f"> dataset={dataset_name}")
+    click.echo(f"> model={model_name}, layers={arr_layers}")
 
     output_path = Path(output_dir) / dataset_name / model_name / logit_mod
 
@@ -291,6 +317,16 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
 
     print(f"LogitMod: {logit_modifier}")
 
+    ref_acc, _ = metrics.accuracy(
+        model,
+        dataloader=datasets.build_dataloader(
+            dataset.create_subset(train_split=False), shuffle=False
+        ),
+        num_classes=dataset.num_classes,
+        device=DEVICE,
+    )
+    print(f"> ref_acc={ref_acc}")
+
     for layer in tqdm(arr_layers):
         layer_output_path = output_path / layer
         os.makedirs(layer_output_path, exist_ok=True)
@@ -314,14 +350,17 @@ def main(model_name, dataset_name, layers, gamma, output_dir, bases, logit_mod):
         )
 
         for basis_name in arr_basis_names:
-            U = estimate_basis(
+            df = compute_accuracy_of_basis_at_k(
+                model=model,
+                dataset=dataset,
+                layer=layer,
                 basis_name=basis_name,
                 arr_act=arr_act,
                 arr_ctx=arr_ctx,
+                arr_ks=arr_ks,
             )
-            df = compute_accuracy_of_basis_at_k(
-                model=model, dataset=dataset, layer=layer, U=U, arr_ks=arr_ks
-            )
+
+            df["ref_acc"] = ref_acc
 
             filepath = layer_output_path / f"{basis_name}--gamma{gamma}.csv"
 

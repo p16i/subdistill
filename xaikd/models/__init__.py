@@ -53,17 +53,8 @@ def get_trained_model(name: str) -> nn.Module:
         model.load_state_dict(
             torch.hub.load_state_dict_from_url(url, file_name=f"{name}.pth")
         )
-
-    elif name == "imagenet-resnet18-tv":
-        model = MODEL_GENERATORS["imagenet-resnet18"]()
-    elif name == "imagenet-resnet50-tv":
-        model = MODEL_GENERATORS["imagenet-resnet50"]()
-    elif name == "imagenet-vgg16-tv":
-        model = models.vgg16(weights=models.vgg.VGG16_Weights.IMAGENET1K_V1)
-        model.num_classes = 1000
-    elif name == "imagenet-vgg16bn-tv":
-        model = models.vgg16_bn(weights=models.vgg.VGG16_BN_Weights.IMAGENET1K_V1)
-        model.num_classes = 1000
+    elif name in MODEL_GENERATORS.keys():
+        model = MODEL_GENERATORS[name]()
     elif "imagenet-resnet18-random" in name:
         # use regex to parse the number
         seed = int(name.split("-")[-1].replace("random", ""))
@@ -81,9 +72,9 @@ def get_trained_model(name: str) -> nn.Module:
     num_classes = model.num_classes
 
     # cast native torchvision model to our `DistillableModel`
-    if arch in ["vgg11", "vgg16", "vgg16bn"]:
+    if "vgg" in arch:
         setattr(model, "__last_layer", model.classifier[-1])
-    elif arch in ["resnet18", "resnet50"]:
+    elif "resnet" in arch:
         setattr(model, "__last_layer", model.fc)
 
     model.num_classes = num_classes
@@ -111,3 +102,14 @@ def get_layer_output_dimensions(model: nn.Module, layer: str) -> int:
 
 
 from . import resnet, vgg
+
+
+def split_model_at_layer(
+    model, layer: str
+) -> typing.Tuple[nn.Sequential, nn.Sequential]:
+    if isinstance(model, resnet.resnet.ResNet):
+        return resnet.split_model_at(model, layer)
+    elif isinstance(model, vgg.models.VGG):
+        return vgg.split_model_at(model, layer)
+    else:
+        raise ValueError(f"no available split_model for layer={layer} model={model}")

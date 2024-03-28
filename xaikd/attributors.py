@@ -8,9 +8,11 @@ import numpy as np
 import torch
 from torch import nn
 from torch.nn import functional as F
+import torchvision
 from torchvision import models, transforms
 from torch.utils.data import DataLoader
 
+from zennit.canonizers import Canonizer
 from zennit.torchvision import ResNetCanonizer, VGGCanonizer
 from zennit.composites import EpsilonGammaBox
 from zennit.attribution import Gradient
@@ -23,6 +25,15 @@ from xaikd import datasets
 from xaikd.models.interfaces import DistillableModel
 
 
+def get_arch_specific_canonizer(model: nn.Sequential) -> typing.List[Canonizer]:
+    if isinstance(model, models.resnet.ResNet):
+        return [ResNetCanonizer()]
+    elif isinstance(model, torchvision.models.vgg.VGG):
+        if utils.modules.has_batchnorm(model):
+            return [VGGCanonizer()]
+    return []
+
+
 def make_attributor_for(
     model: nn.Module,
     input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]],
@@ -31,17 +42,7 @@ def make_attributor_for(
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
-    if isinstance(model, models.resnet.ResNet):
-        canonizers = [ResNetCanonizer()]
-    elif isinstance(model, torchvision.models.vgg.VGG):
-        if isinstance(model.features[1], torch.nn.BatchNorm2d):
-            canonizers = [VGGCanonizer()]
-        else:
-            canonizers = []
-    else:
-        canonizers = []
-
-    print(f"Canonizers: {canonizers}")
+    canonizers = get_arch_specific_canonizer(model)
 
     composite = EpsilonGammaBox(low=low, high=high, canonizers=canonizers)
 

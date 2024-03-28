@@ -4,7 +4,9 @@ from torch import nn
 import numpy as np
 import pytest
 
+from xaikd import models
 from xaikd.utils.modules import (
+    has_batchnorm,
     convert_bn_to_conv,
     merge_conv_and_bn,
     merge_convKxK_and_conv1x1,
@@ -124,3 +126,19 @@ def test_merge_conv_and_bn(
     actual = merged_conv(x_test).numpy()
 
     np.testing.assert_allclose(actual, expected, atol=1e-5)
+
+
+@pytest.mark.parametrize(
+    "arch,expected",
+    [
+        ("imagenet-vgg11-tv", False),
+        ("imagenet-vgg11bn-tv", True),
+        ("imagenet-vgg16-tv", False),
+        ("imagenet-vgg16bn-tv", True),
+        ("imagenet-resnet18-tv", True),
+    ],
+)
+def test_has_batchnorm(arch, expected):
+    actual = has_batchnorm(models.get_trained_model(arch))
+
+    assert actual == expected

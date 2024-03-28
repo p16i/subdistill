@@ -8,6 +8,15 @@ from copy import deepcopy
 from scipy.stats import ortho_group
 
 
+def has_batchnorm(model: nn.Module) -> bool:
+    answer = False
+    for m in model.children():
+        if isinstance(m, nn.BatchNorm2d) or has_batchnorm(m):
+            return True
+
+    return answer
+
+
 # ref: https://github.com/pytorch/pytorch/blob/main/torch/nn/modules/batchnorm.py#L121
 class Centering2D(batchnorm._BatchNorm):
     # This module is similar to BatchNorm except that it performs
