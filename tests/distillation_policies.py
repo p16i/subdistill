@@ -52,6 +52,31 @@ def test_policy_when_spatial_dimensions_different(teacher_dims, student_dims):
         assert False, "some exception occurs!"
 
 
+@pytest.mark.parametrize("teacher_dims", [10])
+@pytest.mark.parametrize("student_dims", [6])
+@pytest.mark.parametrize("policy", ["fitnet", "fitnet-1l", "vid", "attention-transfer"])
+def test_baseline_policy_callable(teacher_dims, student_dims, policy):
+    batch_size = 10
+    device = "cpu"
+    kwargs = dict(
+        teacher_dims=teacher_dims,
+        student_dims=student_dims,
+        device=device,
+    )
+
+    policy = distillation_policies.get_layer_policy(policy, **kwargs)
+
+    teacher_feats = torch.randn(batch_size, teacher_dims, 10, 10)
+    student_feats = torch.randn(batch_size, student_dims, 5, 5)
+
+    try:
+        policy(teacher_feats, student_feats)
+        assert True
+    except:
+        raise
+        assert False, "some exception occurs!"
+
+
 @pytest.mark.parametrize("teacher_dims,student_dims", [(10, 5), (20, 2)])
 def test_basis_identity_learnable(teacher_dims, student_dims):
     rng = np.random.default_rng(seed=1)
