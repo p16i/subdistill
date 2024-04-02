@@ -2,7 +2,11 @@ import pytest
 import numpy as np
 import torch
 
-from xaikd import distillation_policies
+import tempfile
+from pathlib import Path
+
+from xaikd import distillation_policies, bases
+from xaikd import utils as putils
 
 
 @pytest.mark.parametrize(
@@ -46,3 +50,42 @@ def test_policy_when_spatial_dimensions_different(teacher_dims, student_dims):
     except:
         raise
         assert False, "some exception occurs!"
+
+
+@pytest.mark.parametrize("teacher_dims,student_dims", [(10, 5), (20, 2)])
+def test_basis_identity_learnable(teacher_dims, student_dims):
+    rng = np.random.default_rng(seed=1)
+    batch_size = 8
+    device = "cpu"
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        output_dir = Path(tmpdirname)
+        act = rng.random((batch_size, teacher_dims))
+        print(act.shape)
+        basis = bases.get_basis("random--uncentered", seed=1)
+
+        basis.fit(activation=act, context=act, mean=0, device=device)
+
+        basis.save(output_dir)
+        basis.load(output_dir)
+
+        kwargs = dict(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+
+        policy = distillation_policies.get_layer_policy(
+            "basis-identity-learnable", **kwargs
+        )
+
+        expected_num_learnable_params = teacher_dims * student_dims
+
+        _, actual_num_learnable_params = putils.count_params_in_list_params(
+            policy.parameters()
+        )
+
+        np.testing.assert_allclose(
+            actual_num_learnable_params, expected_num_learnable_params
+        )
