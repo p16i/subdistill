@@ -158,7 +158,7 @@ def main(model_name, dataset_name, output_dir, bases):
     click.echo(f"> dataset={dataset_name}")
     click.echo(f"> model={model_name}, layers={arr_layers}")
 
-    output_path = Path(output_dir) / dataset_name / model_name / logit_mod
+    output_path = Path(output_dir) / dataset_name / model_name
 
     arr_basis_names = bases.split(",")
 
