@@ -120,6 +120,7 @@ class PCALookAhead(BasisTransform):
                 Uinit=self.eigvecs[:, :k],
                 k=k,
                 verbose=False,
+                device=DEVICE,
             )
             self._cache[k] = U
 
