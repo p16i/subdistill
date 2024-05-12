@@ -79,7 +79,7 @@ class PCA(BasisTransform):
 class PRCASortAbs(BasisTransform):
     def __init__(self, model, layer, arr_act, arr_ctx, dataloader):
 
-        ccov = arr_act @ arr_ctx + arr_ctx.T @ arr_act
+        ccov = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
 
         eigvals, eigvecs = np.linalg.eigh(ccov)
 
