@@ -115,8 +115,7 @@ class PCALookAhead(BasisTransform):
         if not k in self._cache:
             U = prcaopt.learn_prca_opt(
                 model=self.model,
-                fn=self.layer,
-                location=self.layer,
+                layer=self.layer,
                 dataloader=self.dataloader,
                 Uinit=self.eigvecs[:, :k],
                 k=k,
