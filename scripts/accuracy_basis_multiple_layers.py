@@ -148,7 +148,7 @@ def get_basis_transform(
 @click.option("--model-name", type=str)
 @click.option("--bases", type=str, default="pca,prcasortabs,pcalookahead")
 @click.option("--output-dir", type=str)
-def main(model_name, dataset_name, output_dir, bases, logit_mod):
+def main(model_name, dataset_name, output_dir, bases):
     arguments = locals()
     start_time = datetime.now()
 
