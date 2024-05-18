@@ -216,7 +216,7 @@ def compute_accuracy_of_basis_at_k(
         if basis_name == "prcaopt":
             U = prcaopt.learn_prca_opt(
                 model=model,
-                layer=layer,
+                fn=layer,
                 ds_train=ds_train,
                 _arr_act=arr_act,
                 k=k,
