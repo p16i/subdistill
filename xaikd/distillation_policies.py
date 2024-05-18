@@ -77,7 +77,9 @@ class Policy(nn.Module, ABC):
         transformed_teacher_feats = self.transformer_teacher_feats(teacher_feats)
         transformed_student_feats = self.transformer_student_feats(student_feats)
 
-        assert transformed_student_feats.shape == transformed_teacher_feats.shape
+        assert (
+            transformed_student_feats.shape == transformed_teacher_feats.shape
+        ), f"{transformed_student_feats.shape}; {transformed_teacher_feats.shape}"
 
         return self.criterion(transformed_teacher_feats, transformed_student_feats)
 
@@ -257,6 +259,18 @@ class FitNet(LayerPolicy):
             nn.BatchNorm2d(num_features=teacher_dims),
             # cf. https://github.com/yoshitomo-matsubara/torchdistill/blob/ba62248b48cefeea24f1ef774a870f338711a9d9/configs/sample/ilsvrc2012/fitnet/resnet18_from_resnet152.yaml#L122
             nn.ReLU(),
+        )
+
+
+@register_layer_policy("fitnet-1l")
+class FitNetTwoLayers(FitNet):
+    def _build_student_feats_transfomer(
+        self, teacher_dims: int, student_dims: int
+    ) -> nn.Module:
+        return nn.Conv2d(
+            out_channels=teacher_dims,
+            in_channels=student_dims,
+            kernel_size=1,
         )
 
 
@@ -507,6 +521,31 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+@register_layer_policy("basis-identity-learnable")
+class OrthogonalBasisIdentityLearnablePolicy(OrthogonalBasisIdentityPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+        super().__init__(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+
+        k = student_dims
+        W = basis.artifact["eigvecs"][:, :k]
+
+        print("make basis-identitity's weight learnable")
+        self.transformer_teacher_feats = nn.Conv2d(
+            in_channels=teacher_dims, out_channels=k, kernel_size=1, bias=False
+        )
+        self.transformer_teacher_feats.weight = nn.Parameter(
+            W.T.unsqueeze(2).unsqueeze(3)
+        )
+        self.transformer_student_feats = nn.Identity()
 
 
 @register_layer_policy("random")
