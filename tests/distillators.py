@@ -66,8 +66,9 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
         ),
     ],
 )
+@pytest.mark.parametrize("detach_output", [False, True])
 def test_distillation_runnable_and_correct(
-    teacher_model_name, student_model_name, layers
+    teacher_model_name, student_model_name, layers, detach_output
 ):
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
@@ -132,6 +133,7 @@ def test_distillation_runnable_and_correct(
         val_dataloader=val_loader,
         device=device,
         weight_decay=0.0,
+        detach_layer_output_in_forward_hook=detach_output,
     )
 
     with tempfile.TemporaryDirectory() as tmpdirname:
