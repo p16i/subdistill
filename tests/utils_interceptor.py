@@ -2,9 +2,12 @@ import pytest
 from types import MethodType
 
 import torch
+from torch import nn
 
 from xaikd import models, utils
 from xaikd.utils import interceptor
+
+from collections import OrderedDict
 
 
 DEVICE = utils.get_device()
@@ -147,3 +150,38 @@ def test_student_extra_interception(
 
         finally:
             hook.remove()
+
+
+@pytest.mark.parametrize("detach_output", [True, False])
+def test_forward_hook_partition_parameter_update(detach_output):
+    torch.manual_seed(1)
+
+    x = torch.randn(10, 2)
+
+    model = nn.Sequential(
+        OrderedDict(
+            [
+                ("layer1", nn.Linear(in_features=2, out_features=3)),
+                ("layer2", nn.Linear(in_features=3, out_features=10)),
+            ]
+        )
+    )
+
+    try:
+        _, hook = interceptor.attach_hook_intercept_layer_output(
+            model, "layer1", should_retain_grad=False, detach_output=detach_output
+        )
+        loss = model(x).sum()
+        loss.backward()
+    finally:
+        hook.remove()
+
+    assert not model.layer2.weight.grad is None
+    assert not model.layer2.bias.grad is None
+
+    if detach_output:
+        assert model.layer1.weight.grad is None
+        assert model.layer1.bias.grad is None
+    else:
+        assert not model.layer1.weight.grad is None
+        assert not model.layer1.bias.grad is None
