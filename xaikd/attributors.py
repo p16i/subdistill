@@ -237,7 +237,7 @@ def extract_activation_context(
 
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
-            model, layer, should_retain_grad=True
+            model, layer, should_retain_grad=True, detach_output=False
         )
 
         with make_attributor_for(model, dataset.input_statistics) as attributor:
