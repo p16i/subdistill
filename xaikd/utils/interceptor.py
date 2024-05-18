@@ -65,7 +65,7 @@ def get_output(module: nn.Module) -> torch.Tensor:
 
 
 def forward_and_intercept_intermediate_layers(
-    model: nn.Module, inp: torch.Tensor, layers: typing.List[str]
+    model: nn.Module, inp: torch.Tensor, layers: typing.List[str], detach_output: bool
 ) -> typing.Tuple[torch.Tensor, typing.List[torch.Tensor]]:
     # todo: add unit tests
     # - all outputs we get are correct
@@ -78,7 +78,10 @@ def forward_and_intercept_intermediate_layers(
         # attach hooks to those layers
         for layer in layers:
             module, hook = attach_hook_intercept_layer_output(
-                model=model, layer=layer, should_retain_grad=False
+                model=model,
+                layer=layer,
+                should_retain_grad=False,
+                detach_output=detach_output,
             )
             arr_modules.append(module)
             arr_hooks.append(hook)
