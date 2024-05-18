@@ -214,7 +214,8 @@ def test_distillation_runnable_and_correct(
 
 
 @pytest.mark.parametrize("layers", [["layer3"], ["layer3", "layer4"]])
-def test_get_parameters(layers):
+@pytest.mark.parametrize("detach_output", [True, False])
+def test_get_parameters(layers, detach_output):
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
         "cifar100-people"
     )
@@ -266,6 +267,7 @@ def test_get_parameters(layers):
         lambda_task=1,
         lr=1e-5,
         num_classes=dataset.num_classes,
+        detach_layer_output_in_forward_hook=detach_output,
     )
 
     actual_num_params = utils.count_params_in_list_params(
