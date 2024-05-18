@@ -53,6 +53,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_task: float,
         lambda_kd: float,
         num_classes: int,
+        detach_layer_output_in_forward_hook: bool,
     ):
         super().__init__()
 
@@ -73,6 +74,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.lambda_layer = lambda_layer
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
+        self.detach_layer_output_in_forward_hook = detach_layer_output_in_forward_hook
 
         print(
             f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} )"
@@ -129,6 +131,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 self.teacher.model,
                 x,
                 layers=self.layer_policy_collection.teacher_layers,
+                detach_output=False,
             )
 
         (
@@ -138,6 +141,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.student,
             x,
             layers=self.layer_policy_collection.student_layers,
+            detach_output=self.detach_layer_output_in_forward_hook,
         )
 
         loss_task = F.cross_entropy(student_logits, y)
@@ -265,6 +269,7 @@ class Layerwise:
         val_dataloader: DataLoader,
         device: str,
         weight_decay: float,
+        detach_layer_output_in_forward_hook: bool,
     ) -> None:
         self.dataset = dataset
         self.train_dataloader = train_dataloader
@@ -283,6 +288,7 @@ class Layerwise:
             )
 
         self.weight_decay = weight_decay
+        self.detach_layer_output_in_forward_hook = detach_layer_output_in_forward_hook
 
     def distill(
         self,
@@ -332,6 +338,7 @@ class Layerwise:
             lambda_kd=lambda_kd,
             lambda_layer=lambda_layer,
             num_classes=self.dataset.num_classes,
+            detach_layer_output_in_forward_hook=self.detach_layer_output_in_forward_hook,
         )
 
         print(f"Training log is saved to `{log_dir}`")

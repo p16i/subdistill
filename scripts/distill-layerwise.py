@@ -198,6 +198,7 @@ def build_dataloaders(
 @click.option("--contamination-level", default=0.0, type=float)
 @click.option("--use-val-split", type=bool, default=False, is_flag=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
+@click.option("--detach-layer-output", type=bool, default=False)
 @click.option(
     "--learning-bases-from-clean-data", type=bool, default=False, is_flag=True
 )
@@ -219,6 +220,7 @@ def main(
     use_val_split,
     learning_bases_from_clean_data,
     enable_checkpointing,
+    detach_layer_output,
 ):
     arguments = locals()
 
@@ -277,7 +279,7 @@ def main(
         student_layer_dims_mapping.items(),
     ):
         print(
-            f"> maping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim})"
+            f"> mapping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim}, detach_layer_output={detach_layer_output})"
         )
 
     if learning_bases_from_clean_data:
@@ -356,6 +358,7 @@ def main(
             val_dataloader=val_loader,
             device=device,
             weight_decay=0.0,
+            detach_layer_output_in_forward_hook=detach_layer_output,
         )
 
         student_slug = "--".join(
