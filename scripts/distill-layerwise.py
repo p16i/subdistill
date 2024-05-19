@@ -89,7 +89,15 @@ def learn_basese(
         for basis_name in basis_names:
             click.echo(f"[layer={layer}] fitting basis={basis_name}")
             basis = bases.get_basis(basis_name, seed=seed)
-            basis.fit(arr_act, arr_ctx, mean=mean, device=device)
+            basis.fit(
+                arr_act,
+                arr_ctx,
+                mean=mean,
+                device=device,
+                model=teacher_model,
+                layer=layer,
+                dataloader=train_loader,
+            )
             basis.save(layer_output_dir)
 
 
