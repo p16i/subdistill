@@ -214,7 +214,7 @@ def compute_accuracy_of_basis_at_k(
 
     for i, k in tqdm(enumerate(arr_ks), total=len(arr_ks)):
         if basis_name == "prcaopt":
-            U = pcalookahead.learn_prca_opt(
+            U = pcalookahead.fit(
                 model=model,
                 fn=layer,
                 ds_train=ds_train,

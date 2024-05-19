@@ -113,7 +113,7 @@ class PCALookAhead(BasisTransform):
     def rank_k_encoder(self, k: int):
 
         if not k in self._cache:
-            U = pcalookahead.learn_prca_opt(
+            U = pcalookahead.fit(
                 model=self.model,
                 layer=self.layer,
                 dataloader=self.dataloader,
