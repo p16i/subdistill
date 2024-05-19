@@ -781,3 +781,9 @@ class PCALookAhead(Basis):
             mode=mode,
             device=device,
         )
+
+    def save(self, output_dir: Path):
+        pass
+
+    def load(self, artifact_dir: Path, device="cpu"):
+        pass
