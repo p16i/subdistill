@@ -10,10 +10,11 @@ from scipy.stats import ortho_group
 
 import torch
 from torch.nn import functional as F
+from torch.utils.data import DataLoader
 from abc import ABC
 
 from . import learners
-from xaikd import utils
+from xaikd import utils, pcalookahead
 
 
 from enum import Enum
@@ -100,6 +101,7 @@ class Basis(ABC):
         context: typing.Union[npt.NDArray, None],
         mean: typing.Union[npt.NDArray, None],
         device: str,
+        **kwargs
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         pass
 
@@ -235,6 +237,7 @@ class Identity(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray]:
         if self.centering:
             activation = activation - mean
@@ -258,6 +261,7 @@ class Random(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         if self.centering:
             activation = activation - mean
@@ -284,6 +288,7 @@ class RandomPerm(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         if self.centering:
             activation = activation - mean
@@ -315,6 +320,7 @@ class CanonicalBasis(Basis):
         context: npt.NDArray,
         mean: typing.Union[npt.NDArray, None],
         device: str,
+        **kwargs
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         n, d = activation.shape
 
@@ -454,6 +460,7 @@ class PCA(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs
     ):
         """_summary_
 
@@ -509,6 +516,7 @@ class PCAInverse(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs
     ):
         """_summary_
 
@@ -564,6 +572,7 @@ class PRCA(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
@@ -621,6 +630,7 @@ class PRCAVariant(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
@@ -715,3 +725,57 @@ class PCAPRCAAbs(PCAPRCAVariant):
 class PCAPRCARecon(PCAPRCAVariant):
     mode = "recon"
     beta = 0.0
+
+
+@register_basis("pcalookahead")
+class PCALookAhead(Basis):
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
+        model: torch.nn.Module,
+        layer: str,
+        dataloader: DataLoader,
+    ):
+        self.arr_act = activation
+        self.arr_ctx = context
+        self.mean = mean
+
+        self._cache = dict()
+
+        self.model = model
+        self.layer = layer
+        self.dataloader = dataloader
+
+    def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
+        if not k in self._cache:
+            U = None
+            _, eigvecs = np.array(self.arr_act.T @ self.arr_act))
+
+            eigvecs = (eigvecs[, ::-1].copy())
+            Uinit = eigvecs[:, :k]
+            
+            U = pcalookahead.fit(
+                model=self.model,
+                layer=self.layer,
+                dataloader=self.dataloader,
+                Uinit=Uinit,
+                k=k,
+                verbose=False,
+                device=device
+            )
+            U = torch.from_numpy(U)
+            scale = self._compute_scale(self.arr_act, U)
+            self._cache[k] = (U, scale)
+        else:
+            U, scale = self._cache[k]
+
+        return Adapter(
+            U=U,
+            mean=torch.from_numpy(self.mean).reshape(1, -1, 1, 1),
+            scale=scale,
+            mode=mode,
+            device=device,
+        )
