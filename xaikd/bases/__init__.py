@@ -753,7 +753,6 @@ class PCALookAhead(Basis):
         self.model = model
         self.layer = layer
         self.dataloader = dataloader
-        self.artifacts = dict(scale=self.scale)
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         assert self.centering == False, "we only support `uncetered` version"
