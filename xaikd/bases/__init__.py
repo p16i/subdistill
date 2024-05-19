@@ -755,7 +755,7 @@ class PCALookAhead(Basis):
         assert self.centering == False, "we only support `uncetered` version"
 
         if not k in self._cache:
-            _, eigvecs = np.array(self.arr_act.T @ self.arr_act)
+            _, eigvecs = np.linalg.eigh(self.arr_act.T @ self.arr_act)
 
             eigvecs = np.flip(eigvecs, axis=1)
             Uinit = eigvecs[:, :k]
