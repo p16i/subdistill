@@ -779,7 +779,7 @@ class PCALookAhead(Basis):
         return Adapter(
             U=torch.from_numpy(U),
             mean=torch.zeros(d),
-            scale=scale,
+            scale=torch.from_numpy(scale),
             mode=mode,
             device=device,
         )
