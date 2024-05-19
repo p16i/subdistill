@@ -179,6 +179,9 @@ class Basis(ABC):
     def __str__(self) -> str:
         return getattr(self, "__name")
 
+    def get_scale_for_k(self, k: int) -> npt.NDArray[float]:
+        return self.artifact["scale"][:k]
+
 
 def get_basis(slug, **kwargs) -> Basis:
     name_slug, centering_slug = slug.split("--")
@@ -774,10 +777,12 @@ class PCALookAhead(Basis):
         else:
             U, scale = self._cache[k]
 
+        d, k = U.shape
+
         return Adapter(
             U=torch.from_numpy(U),
-            mean=torch.from_numpy(self.mean).reshape(1, -1, 1, 1),
-            scale=scale,
+            mean=torch.zeros(d),
+            scale=torch.from_numpy(scale),
             mode=mode,
             device=device,
         )
@@ -787,3 +792,8 @@ class PCALookAhead(Basis):
 
     def load(self, artifact_dir: Path, device="cpu"):
         pass
+
+    def get_scale_for_k(self, k: int) -> npt.NDArray[float]:
+        _, scale = self._cache[k]
+
+        return scale
