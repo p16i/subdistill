@@ -774,9 +774,11 @@ class PCALookAhead(Basis):
         else:
             U, scale = self._cache[k]
 
+        d, k = U.shape
+
         return Adapter(
             U=torch.from_numpy(U),
-            mean=torch.from_numpy(self.mean).reshape(1, -1, 1, 1),
+            mean=torch.zeros(d),
             scale=scale,
             mode=mode,
             device=device,
