@@ -180,7 +180,7 @@ class Basis(ABC):
         return getattr(self, "__name")
 
     def get_scale_for_k(self, k: int) -> npt.NDArray[float]:
-        return self.artifact["scale"][:, :k]
+        return self.artifact["scale"][:k]
 
 
 def get_basis(slug, **kwargs) -> Basis:
