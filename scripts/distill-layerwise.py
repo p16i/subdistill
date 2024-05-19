@@ -356,7 +356,8 @@ def main(
             if "basis" in policy_name:
                 basis_name = policy_slugs[-1]
 
-                if basis_name == "pcalookahead":
+                if basis_name == "pcalookahead--uncentered":
+                    print(">>>> pcalookadhead <<<<")
                     basis = arr_learned_bases[f"{layer}-{basis_name}"]
                 else:
                     basis = bases.get_basis(basis_name, seed=seed)
