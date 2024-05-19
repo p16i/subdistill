@@ -758,7 +758,7 @@ class PCALookAhead(Basis):
             _, eigvecs = np.linalg.eigh(self.arr_act.T @ self.arr_act)
 
             eigvecs = np.flip(eigvecs, axis=1)
-            Uinit = eigvecs[:, :k]
+            Uinit = eigvecs[:, :k].copy()
 
             U = pcalookahead.fit(
                 model=self.model,
