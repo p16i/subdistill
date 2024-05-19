@@ -101,7 +101,7 @@ class Basis(ABC):
         context: typing.Union[npt.NDArray, None],
         mean: typing.Union[npt.NDArray, None],
         device: str,
-        **kwargs
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         pass
 
@@ -288,7 +288,7 @@ class RandomPerm(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
-        **kwargs
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         if self.centering:
             activation = activation - mean
@@ -320,7 +320,7 @@ class CanonicalBasis(Basis):
         context: npt.NDArray,
         mean: typing.Union[npt.NDArray, None],
         device: str,
-        **kwargs
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         n, d = activation.shape
 
@@ -460,7 +460,7 @@ class PCA(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
-        **kwargs
+        **kwargs,
     ):
         """_summary_
 
@@ -516,7 +516,7 @@ class PCAInverse(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
-        **kwargs
+        **kwargs,
     ):
         """_summary_
 
@@ -572,7 +572,7 @@ class PRCA(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
-        **kwargs
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
@@ -630,7 +630,7 @@ class PRCAVariant(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
-        **kwargs
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
@@ -729,6 +729,8 @@ class PCAPRCARecon(PCAPRCAVariant):
 
 @register_basis("pcalookahead")
 class PCALookAhead(Basis):
+    # todo: add test
+    # - make sure it traible
     def fit(
         self,
         activation: npt.NDArray,
@@ -751,12 +753,11 @@ class PCALookAhead(Basis):
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         if not k in self._cache:
-            U = None
-            _, eigvecs = np.array(self.arr_act.T @ self.arr_act))
+            _, eigvecs = np.array(self.arr_act.T @ self.arr_act)
 
-            eigvecs = (eigvecs[, ::-1].copy())
+            eigvecs = np.flip(eigvecs, axis=1)
             Uinit = eigvecs[:, :k]
-            
+
             U = pcalookahead.fit(
                 model=self.model,
                 layer=self.layer,
@@ -764,16 +765,15 @@ class PCALookAhead(Basis):
                 Uinit=Uinit,
                 k=k,
                 verbose=False,
-                device=device
+                device=device,
             )
-            U = torch.from_numpy(U)
             scale = self._compute_scale(self.arr_act, U)
             self._cache[k] = (U, scale)
         else:
             U, scale = self._cache[k]
 
         return Adapter(
-            U=U,
+            U=torch.from_numpy(U),
             mean=torch.from_numpy(self.mean).reshape(1, -1, 1, 1),
             scale=scale,
             mode=mode,
