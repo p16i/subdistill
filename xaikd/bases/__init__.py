@@ -179,6 +179,9 @@ class Basis(ABC):
     def __str__(self) -> str:
         return getattr(self, "__name")
 
+    def get_scale_for_k(self, k: int) -> npt.NDArray[float]:
+        return self.artifact["scale"][:, :k]
+
 
 def get_basis(slug, **kwargs) -> Basis:
     name_slug, centering_slug = slug.split("--")
@@ -750,6 +753,7 @@ class PCALookAhead(Basis):
         self.model = model
         self.layer = layer
         self.dataloader = dataloader
+        self.artifacts = dict(scale=self.scale)
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         assert self.centering == False, "we only support `uncetered` version"
@@ -789,3 +793,8 @@ class PCALookAhead(Basis):
 
     def load(self, artifact_dir: Path, device="cpu"):
         pass
+
+    def get_scale_for_k(self, k: int) -> npt.NDArray[float]:
+        _, scale = self._cache[k]
+
+        return scale
