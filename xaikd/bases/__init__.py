@@ -752,6 +752,8 @@ class PCALookAhead(Basis):
         self.dataloader = dataloader
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
+        assert self.centering == False, "we only support `uncetered` version"
+
         if not k in self._cache:
             _, eigvecs = np.array(self.arr_act.T @ self.arr_act)
 
