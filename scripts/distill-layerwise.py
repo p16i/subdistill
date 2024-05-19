@@ -358,7 +358,7 @@ def main(
 
                 if basis_name == "pcalookahead--uncentered":
                     print(">>>> pcalookadhead <<<<")
-                    basis = arr_learned_bases[f"{layer}-{basis_name}"]
+                    basis = arr_learned_bases[f"{teacher_layer}-{basis_name}"]
                 else:
                     basis = bases.get_basis(basis_name, seed=seed)
                     layer_output_dir = output_dir / f"layer-{teacher_layer}"
