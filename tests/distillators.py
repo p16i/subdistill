@@ -66,9 +66,9 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
         ),
     ],
 )
-@pytest.mark.parametrize("parameter_partition_update", ["@1", "@0"])
+@pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
 def test_distillation_runnable_and_correct(
-    teacher_model_name, student_model_name, layers, parameter_partition_update
+    teacher_model_name, student_model_name, layers, parameter_partition_mode
 ):
     epochs = 1
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
@@ -134,7 +134,7 @@ def test_distillation_runnable_and_correct(
         val_dataloader=val_loader,
         device=device,
         weight_decay=0.0,
-        parameter_partition_mode=paramater_partition_update,
+        parameter_partition_mode=parameter_partition_mode,
     )
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -215,8 +215,8 @@ def test_distillation_runnable_and_correct(
 
 
 @pytest.mark.parametrize("layers", [["layer3"], ["layer3", "layer4"]])
-@pytest.mark.parametrize("parameter_partition_update", ["@1", "@0"])
-def test_get_parameters(layers, parameter_partition_update):
+@pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
+def test_get_parameters(layers, parameter_partition_mode):
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
         "cifar100-people"
     )
@@ -268,7 +268,7 @@ def test_get_parameters(layers, parameter_partition_update):
         lambda_task=1,
         lr=1e-5,
         num_classes=dataset.num_classes,
-        parameter_partition_mode=parameter_partition_update,
+        parameter_partition_mode=parameter_partition_mode,
     )
 
     actual_num_params = utils.count_params_in_list_params(
