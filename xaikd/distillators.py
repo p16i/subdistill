@@ -32,9 +32,6 @@ def should_detach_output(partition_mode: str, current_epoch: int) -> bool:
     expected_epoch = int(expected_epoch)
 
     output = current_epoch < expected_epoch
-    print(
-        f">>> partition_mode={partition_mode},current_epoch={current_epoch} -> parameter_partition={output}"
-    )
 
     return output
 
