@@ -10,10 +10,11 @@ from scipy.stats import ortho_group
 
 import torch
 from torch.nn import functional as F
+from torch.utils.data import DataLoader
 from abc import ABC
 
 from . import learners
-from xaikd import utils
+from xaikd import utils, pcalookahead
 
 
 from enum import Enum
@@ -100,6 +101,7 @@ class Basis(ABC):
         context: typing.Union[npt.NDArray, None],
         mean: typing.Union[npt.NDArray, None],
         device: str,
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         pass
 
@@ -177,6 +179,9 @@ class Basis(ABC):
     def __str__(self) -> str:
         return getattr(self, "__name")
 
+    def get_scale_for_k(self, k: int) -> npt.NDArray[float]:
+        return self.artifact["scale"][:k]
+
 
 def get_basis(slug, **kwargs) -> Basis:
     name_slug, centering_slug = slug.split("--")
@@ -235,6 +240,7 @@ class Identity(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray]:
         if self.centering:
             activation = activation - mean
@@ -258,6 +264,7 @@ class Random(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         if self.centering:
             activation = activation - mean
@@ -284,6 +291,7 @@ class RandomPerm(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         if self.centering:
             activation = activation - mean
@@ -315,6 +323,7 @@ class CanonicalBasis(Basis):
         context: npt.NDArray,
         mean: typing.Union[npt.NDArray, None],
         device: str,
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         n, d = activation.shape
 
@@ -454,6 +463,7 @@ class PCA(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs,
     ):
         """_summary_
 
@@ -509,6 +519,7 @@ class PCAInverse(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs,
     ):
         """_summary_
 
@@ -564,6 +575,7 @@ class PRCA(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
@@ -621,6 +633,7 @@ class PRCAVariant(Basis):
         context: npt.NDArray,
         mean: npt.NDArray,
         device: str,
+        **kwargs,
     ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
         """_summary_ Summary
 
@@ -715,3 +728,72 @@ class PCAPRCAAbs(PCAPRCAVariant):
 class PCAPRCARecon(PCAPRCAVariant):
     mode = "recon"
     beta = 0.0
+
+
+@register_basis("pcalookahead")
+class PCALookAhead(Basis):
+    # todo: add test
+    # - make sure it traible
+    def fit(
+        self,
+        activation: npt.NDArray,
+        context: npt.NDArray,
+        mean: npt.NDArray,
+        device: str,
+        model: torch.nn.Module,
+        layer: str,
+        dataloader: DataLoader,
+    ):
+        self.arr_act = activation
+        self.arr_ctx = context
+        self.mean = mean
+
+        self._cache = dict()
+
+        self.model = model
+        self.layer = layer
+        self.dataloader = dataloader
+
+    def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
+        assert self.centering == False, "we only support `uncetered` version"
+
+        if not k in self._cache:
+            _, eigvecs = np.linalg.eigh(self.arr_act.T @ self.arr_act)
+
+            eigvecs = np.flip(eigvecs, axis=1)
+            Uinit = eigvecs[:, :k].copy()
+
+            U = pcalookahead.fit(
+                model=self.model,
+                layer=self.layer,
+                dataloader=self.dataloader,
+                Uinit=Uinit,
+                k=k,
+                verbose=False,
+                device=device,
+            )
+            scale = self._compute_scale(self.arr_act, U)
+            self._cache[k] = (U, scale)
+        else:
+            U, scale = self._cache[k]
+
+        d, k = U.shape
+
+        return Adapter(
+            U=torch.from_numpy(U),
+            mean=torch.zeros(d),
+            scale=torch.from_numpy(scale),
+            mode=mode,
+            device=device,
+        )
+
+    def save(self, output_dir: Path):
+        pass
+
+    def load(self, artifact_dir: Path, device="cpu"):
+        pass
+
+    def get_scale_for_k(self, k: int) -> npt.NDArray[float]:
+        _, scale = self._cache[k]
+
+        return scale

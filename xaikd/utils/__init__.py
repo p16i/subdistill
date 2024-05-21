@@ -175,7 +175,7 @@ def get_dimensions_at_layers(
     try:
         for layer in layers:
             module, hook = interceptor.attach_hook_intercept_layer_output(
-                model, layer, should_retain_grad=False
+                model, layer, should_retain_grad=False, detach_output=False
             )
             hooks.append(hook)
             modules.append(module)

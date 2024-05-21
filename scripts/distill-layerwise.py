@@ -52,7 +52,7 @@ def learn_basese(
     device: str,
     output_dir: Path,
     seed: int,
-):
+) -> typing.Dict[str, bases.Basis]:
     basis_names = list(
         map(
             lambda p: p.split(":")[1],
@@ -63,6 +63,8 @@ def learn_basese(
         return
 
     # prepare bases
+    arr_learned_bases = dict()
+
     for layer in layers:
         layer_output_dir = output_dir / f"layer-{layer}"
         os.makedirs(layer_output_dir, exist_ok=True)
@@ -89,8 +91,20 @@ def learn_basese(
         for basis_name in basis_names:
             click.echo(f"[layer={layer}] fitting basis={basis_name}")
             basis = bases.get_basis(basis_name, seed=seed)
-            basis.fit(arr_act, arr_ctx, mean=mean, device=device)
+            basis.fit(
+                arr_act,
+                arr_ctx,
+                mean=mean,
+                device=device,
+                model=teacher_model,
+                layer=layer,
+                dataloader=train_loader,
+            )
             basis.save(layer_output_dir)
+
+            arr_learned_bases[f"{layer}-{basis_name}"] = basis
+
+    return arr_learned_bases
 
 
 def build_dataloaders(
@@ -198,6 +212,7 @@ def build_dataloaders(
 @click.option("--contamination-level", default=0.0, type=float)
 @click.option("--use-val-split", type=bool, default=False, is_flag=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
+@click.option("--detach-layer-output", type=bool, default=False)
 @click.option(
     "--learning-bases-from-clean-data", type=bool, default=False, is_flag=True
 )
@@ -219,6 +234,7 @@ def main(
     use_val_split,
     learning_bases_from_clean_data,
     enable_checkpointing,
+    detach_layer_output,
 ):
     arguments = locals()
 
@@ -232,7 +248,7 @@ def main(
 
     output_dir = (
         Path(output_dir)
-        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-cleanDSBasis{learning_bases_from_clean_data}-seed{seed}"
+        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-cleanDSBasis{learning_bases_from_clean_data}-detachLayerOutput{detach_layer_output}-seed{seed}"
         / teacher
     )
 
@@ -277,7 +293,7 @@ def main(
         student_layer_dims_mapping.items(),
     ):
         print(
-            f"> maping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim})"
+            f"> mapping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim}, detach_layer_output={detach_layer_output})"
         )
 
     if learning_bases_from_clean_data:
@@ -289,7 +305,7 @@ def main(
     else:
         train_loader_for_learning_bases = train_loader
 
-    learn_basese(
+    arr_learned_bases = learn_basese(
         teacher_model=teacher_model,
         dataset=dataset,
         train_loader=train_loader_for_learning_bases,
@@ -339,9 +355,14 @@ def main(
 
             if "basis" in policy_name:
                 basis_name = policy_slugs[-1]
-                basis = bases.get_basis(basis_name, seed=seed)
-                layer_output_dir = output_dir / f"layer-{teacher_layer}"
-                basis.load(layer_output_dir)
+
+                if basis_name == "pcalookahead--uncentered":
+                    print(">>>> pcalookadhead <<<<")
+                    basis = arr_learned_bases[f"{teacher_layer}-{basis_name}"]
+                else:
+                    basis = bases.get_basis(basis_name, seed=seed)
+                    layer_output_dir = output_dir / f"layer-{teacher_layer}"
+                    basis.load(layer_output_dir)
 
                 kwargs["basis"] = basis
 
@@ -356,6 +377,7 @@ def main(
             val_dataloader=val_loader,
             device=device,
             weight_decay=0.0,
+            detach_layer_output_in_forward_hook=detach_layer_output,
         )
 
         student_slug = "--".join(
