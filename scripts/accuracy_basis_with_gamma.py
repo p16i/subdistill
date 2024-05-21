@@ -19,7 +19,7 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, utils, attributors, constants, prcaopt
+from xaikd import models, datasets, pcalookahead, utils, attributors, constants
 from xaikd.utils import metrics
 
 from zennit.torchvision import ResNetCanonizer, VGGCanonizer
@@ -214,7 +214,7 @@ def compute_accuracy_of_basis_at_k(
 
     for i, k in tqdm(enumerate(arr_ks), total=len(arr_ks)):
         if basis_name == "prcaopt":
-            U = prcaopt.learn_prca_opt(
+            U = pcalookahead.fit(
                 model=model,
                 fn=layer,
                 ds_train=ds_train,

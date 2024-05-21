@@ -52,7 +52,7 @@ def learn_basese(
     device: str,
     output_dir: Path,
     seed: int,
-):
+) -> typing.Dict[str, bases.Basis]:
     basis_names = list(
         map(
             lambda p: p.split(":")[1],
@@ -63,6 +63,8 @@ def learn_basese(
         return
 
     # prepare bases
+    arr_learned_bases = dict()
+
     for layer in layers:
         layer_output_dir = output_dir / f"layer-{layer}"
         os.makedirs(layer_output_dir, exist_ok=True)
@@ -89,8 +91,20 @@ def learn_basese(
         for basis_name in basis_names:
             click.echo(f"[layer={layer}] fitting basis={basis_name}")
             basis = bases.get_basis(basis_name, seed=seed)
-            basis.fit(arr_act, arr_ctx, mean=mean, device=device)
+            basis.fit(
+                arr_act,
+                arr_ctx,
+                mean=mean,
+                device=device,
+                model=teacher_model,
+                layer=layer,
+                dataloader=train_loader,
+            )
             basis.save(layer_output_dir)
+
+            arr_learned_bases[f"{layer}-{basis_name}"] = basis
+
+    return arr_learned_bases
 
 
 def build_dataloaders(
@@ -291,7 +305,7 @@ def main(
     else:
         train_loader_for_learning_bases = train_loader
 
-    learn_basese(
+    arr_learned_bases = learn_basese(
         teacher_model=teacher_model,
         dataset=dataset,
         train_loader=train_loader_for_learning_bases,
@@ -341,9 +355,14 @@ def main(
 
             if "basis" in policy_name:
                 basis_name = policy_slugs[-1]
-                basis = bases.get_basis(basis_name, seed=seed)
-                layer_output_dir = output_dir / f"layer-{teacher_layer}"
-                basis.load(layer_output_dir)
+
+                if basis_name == "pcalookahead--uncentered":
+                    print(">>>> pcalookadhead <<<<")
+                    basis = arr_learned_bases[f"{teacher_layer}-{basis_name}"]
+                else:
+                    basis = bases.get_basis(basis_name, seed=seed)
+                    layer_output_dir = output_dir / f"layer-{teacher_layer}"
+                    basis.load(layer_output_dir)
 
                 kwargs["basis"] = basis
 

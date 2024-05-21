@@ -19,7 +19,7 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, utils, attributors, constants, prcaopt
+from xaikd import models, datasets, pcalookahead, utils, attributors, constants
 from xaikd.utils import metrics
 
 
@@ -113,7 +113,7 @@ class PCALookAhead(BasisTransform):
     def rank_k_encoder(self, k: int):
 
         if not k in self._cache:
-            U = prcaopt.learn_prca_opt(
+            U = pcalookahead.fit(
                 model=self.model,
                 layer=self.layer,
                 dataloader=self.dataloader,

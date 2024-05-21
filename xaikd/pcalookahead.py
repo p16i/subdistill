@@ -13,7 +13,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.nn.utils.parametrizations import orthogonal
 
 
-def learn_prca_opt(
+def fit(
     model: torch.nn.Module,
     layer: str,
     dataloader: DataLoader,
@@ -24,6 +24,8 @@ def learn_prca_opt(
     verbose=False,
     device="cpu",
 ) -> npt.NDArray:
+    lr = 1e-3
+
     rng = torch.Generator()
     rng.manual_seed(seed)
 
@@ -38,8 +40,6 @@ def learn_prca_opt(
     ortho_layer = orthogonal(linear_layer).to(device)
 
     first_module, second_module = models.split_model_at_layer(model, layer)
-
-    lr = 1e-3
 
     optimizer = torch.optim.Adam(ortho_layer.parameters(), lr=lr)
 

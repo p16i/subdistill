@@ -1,0 +1,3 @@
+cifar10-resnet18-p1
+cifar10-resnet18-simclr_finetuned_all1
+cifar10-resnet18-simclr_finetuned_fc1
