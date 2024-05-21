@@ -66,10 +66,11 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
         ),
     ],
 )
-@pytest.mark.parametrize("detach_output", [False, True])
+@pytest.mark.parametrize("parameter_partition_update", ["@1", "@0"])
 def test_distillation_runnable_and_correct(
-    teacher_model_name, student_model_name, layers, detach_output
+    teacher_model_name, student_model_name, layers, parameter_partition_update
 ):
+    epochs = 1
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
     teacher_model = models.get_trained_model(teacher_model_name)
@@ -133,7 +134,7 @@ def test_distillation_runnable_and_correct(
         val_dataloader=val_loader,
         device=device,
         weight_decay=0.0,
-        parameter_partition_mode=detach_output,
+        parameter_partition_mode=paramater_partition_update,
     )
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -142,7 +143,7 @@ def test_distillation_runnable_and_correct(
                 student_model_name, num_classes=dataset.num_classes
             ),
             layer_policies=layer_policies,
-            epochs=1,
+            epochs=epochs,
             lambda_task=1.0,
             lambda_kd=1.0,
             lambda_layer=1.0,
@@ -214,8 +215,8 @@ def test_distillation_runnable_and_correct(
 
 
 @pytest.mark.parametrize("layers", [["layer3"], ["layer3", "layer4"]])
-@pytest.mark.parametrize("detach_output", [True, False])
-def test_get_parameters(layers, detach_output):
+@pytest.mark.parametrize("parameter_partition_update", ["@1", "@0"])
+def test_get_parameters(layers, parameter_partition_update):
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
         "cifar100-people"
     )
@@ -267,7 +268,7 @@ def test_get_parameters(layers, detach_output):
         lambda_task=1,
         lr=1e-5,
         num_classes=dataset.num_classes,
-        parameter_partition_mode=detach_output,
+        parameter_partition_mode=parameter_partition_update,
     )
 
     actual_num_params = utils.count_params_in_list_params(
