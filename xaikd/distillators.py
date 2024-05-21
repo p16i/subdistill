@@ -26,6 +26,19 @@ from torchmetrics import Accuracy, MeanMetric
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
 
+def should_detach_output(partition_mode: str, current_epoch: int) -> bool:
+    # partition_mode = @<int>
+    _, expected_epoch = partition_mode.split("@")
+    expected_epoch = int(expected_epoch)
+
+    output = current_epoch < expected_epoch
+    print(
+        f">>> partition_mode={partition_mode},current_epoch={current_epoch} -> parameter_partition={output}"
+    )
+
+    return output
+
+
 class Teacher(object):
     """The class is a wrapper to a PyTorch model.
     Its purpose is to prevent Lightning to set the wrapped model to training mode.
@@ -53,7 +66,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_task: float,
         lambda_kd: float,
         num_classes: int,
-        detach_layer_output_in_forward_hook: bool,
+        parameter_partition_mode: str,
     ):
         super().__init__()
 
@@ -74,7 +87,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.lambda_layer = lambda_layer
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
-        self.detach_layer_output_in_forward_hook = detach_layer_output_in_forward_hook
+        self.parameter_partition_mode = parameter_partition_mode
 
         print(
             f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} )"
@@ -141,7 +154,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.student,
             x,
             layers=self.layer_policy_collection.student_layers,
-            detach_output=self.detach_layer_output_in_forward_hook,
+            detach_output=should_detach_output(
+                self.parameter_partition_mode, self.current_epoch
+            ),
         )
 
         loss_task = F.cross_entropy(student_logits, y)
@@ -269,7 +284,7 @@ class Layerwise:
         val_dataloader: DataLoader,
         device: str,
         weight_decay: float,
-        detach_layer_output_in_forward_hook: bool,
+        parameter_partition_mode: str,
     ) -> None:
         self.dataset = dataset
         self.train_dataloader = train_dataloader
@@ -288,7 +303,7 @@ class Layerwise:
             )
 
         self.weight_decay = weight_decay
-        self.detach_layer_output_in_forward_hook = detach_layer_output_in_forward_hook
+        self.parameter_partition_mode = parameter_partition_mode
 
     def distill(
         self,
@@ -338,7 +353,7 @@ class Layerwise:
             lambda_kd=lambda_kd,
             lambda_layer=lambda_layer,
             num_classes=self.dataset.num_classes,
-            detach_layer_output_in_forward_hook=self.detach_layer_output_in_forward_hook,
+            parameter_partition_mode=self.parameter_partition_mode,
         )
 
         print(f"Training log is saved to `{log_dir}`")

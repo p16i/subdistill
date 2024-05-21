@@ -133,7 +133,7 @@ def test_distillation_runnable_and_correct(
         val_dataloader=val_loader,
         device=device,
         weight_decay=0.0,
-        detach_layer_output_in_forward_hook=detach_output,
+        parameter_partition_mode=detach_output,
     )
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -267,7 +267,7 @@ def test_get_parameters(layers, detach_output):
         lambda_task=1,
         lr=1e-5,
         num_classes=dataset.num_classes,
-        detach_layer_output_in_forward_hook=detach_output,
+        parameter_partition_mode=detach_output,
     )
 
     actual_num_params = utils.count_params_in_list_params(
@@ -281,3 +281,22 @@ def test_get_parameters(layers, detach_output):
     expected_num_params = utils.count_params_in_list_params(expected_params)
 
     assert actual_num_params == expected_num_params
+
+
+@pytest.mark.parametrize(
+    "partition_mode,current_epoch,expected",
+    [
+        ("@10", 9, True),
+        ("@10", 10, False),
+        ("@80", 2, True),
+        ("@80", 10, True),
+        ("@80", 79, True),
+        ("@80", 80, False),
+    ],
+)
+def test_should_detach_output(partition_mode, current_epoch, expected):
+    actual = distillators.should_detach_output(
+        partition_mode=partition_mode, current_epoch=current_epoch
+    )
+
+    np.testing.assert_equal(actual, expected)

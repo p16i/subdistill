@@ -212,7 +212,7 @@ def build_dataloaders(
 @click.option("--contamination-level", default=0.0, type=float)
 @click.option("--use-val-split", type=bool, default=False, is_flag=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
-@click.option("--detach-layer-output", type=bool, default=False)
+@click.option("--parameter-partition-mode", type=str)
 @click.option(
     "--learning-bases-from-clean-data", type=bool, default=False, is_flag=True
 )
@@ -234,7 +234,7 @@ def main(
     use_val_split,
     learning_bases_from_clean_data,
     enable_checkpointing,
-    detach_layer_output,
+    parameter_partition_mode,
 ):
     arguments = locals()
 
@@ -248,7 +248,7 @@ def main(
 
     output_dir = (
         Path(output_dir)
-        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-cleanDSBasis{learning_bases_from_clean_data}-detachLayerOutput{detach_layer_output}-seed{seed}"
+        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-cleanDSBasis{learning_bases_from_clean_data}-partitionMode{parameter_partition_mode}-seed{seed}"
         / teacher
     )
 
@@ -293,7 +293,7 @@ def main(
         student_layer_dims_mapping.items(),
     ):
         print(
-            f"> mapping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim}, detach_layer_output={detach_layer_output})"
+            f"> mapping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim}, parameter_partition_mode={parameter_partition_mode})"
         )
 
     if learning_bases_from_clean_data:
@@ -377,7 +377,7 @@ def main(
             val_dataloader=val_loader,
             device=device,
             weight_decay=0.0,
-            detach_layer_output_in_forward_hook=detach_layer_output,
+            parameter_partition_mode=parameter_partition_mode,
         )
 
         student_slug = "--".join(
