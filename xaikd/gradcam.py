@@ -14,7 +14,13 @@ def get_module_before_global_pool(model: nn.Module):
 
     if hasattr(model, "__layer_before_avgpool"):
         # this is for student model
-        return getattr(model, getattr(model, "__layer_before_avgpool"))
+        layer_name, index = getattr(model, "__layer_before_avgpool").split(".")
+        index = int(index)
+        module = getattr(model, layer_name)[index]
+
+        assert isinstance(module, nn.ReLU)
+
+        return module
     elif isinstance(model, ResNet):
         return model.layer4
     elif isinstance(model, VGG):
