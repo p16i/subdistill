@@ -50,7 +50,7 @@ def compute_cam(
         module = get_module_before_global_pool(model)
 
         _, hook = utils.interceptor.attach_hook_intercept_module(
-            module, should_retain_grad=False, detach_output=False
+            module, should_retain_grad=True, detach_output=False
         )
 
         logits = model(x) * F.one_hot(y, num_classes=num_classes)
