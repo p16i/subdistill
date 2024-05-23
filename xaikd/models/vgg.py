@@ -398,6 +398,16 @@ def _vgg8diag(num_classes: int) -> nn.Module:
     return _build_model_imagenet(arr_dims=[32, 24, 24, 10], num_classes=num_classes)
 
 
+@register_model("vggcustomimagenetdims-64-48-48-20")
+def _vggbigdiag(num_classes: int) -> nn.Module:
+    return _build_model_imagenet(arr_dims=[64, 48, 48, 20], num_classes=num_classes)
+
+
+@register_model("vggcustomimagenetdims-128-96-96-40")
+def _vggbigdiag(num_classes: int) -> nn.Module:
+    return _build_model_imagenet(arr_dims=[128, 96, 96, 40], num_classes=num_classes)
+
+
 def canonize_model(model: nn.Module) -> nn.Module:
     # at the moment, this is for vggcustomimagenetdims
     features = []
