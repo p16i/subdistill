@@ -27,7 +27,16 @@ def compute_cam(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Ten
 
     hook = None
 
-    last_layer: int = getattr(model, "__last_layer").weight.shape[0]
+    last_layer = getattr(model, "__last_layer")
+
+    if isinstance(last_layer, str):
+        layer_name, index = last_layer.split(".")
+        index = int(index)
+        last_layer = getattr(model, layer_name)[index]
+
+    assert isinstance(last_layer, nn.Linear)
+
+    num_classes: int = last_layer.weight.shape[0]
 
     try:
         module = get_module_before_global_pool(model)
@@ -36,7 +45,7 @@ def compute_cam(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Ten
             module, should_retain_grad=True, detach_output=False
         )
 
-        logits = model(x) * F.one_hot(y, num_classes=last_layer)
+        logits = model(x) * F.one_hot(y, num_classes=num_classes)
 
         logits.sum().backward()
 
