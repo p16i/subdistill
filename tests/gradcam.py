@@ -37,8 +37,6 @@ def test_grad_cam_untrained_model(model_name):
     y = torch.tensor([8])
     model(x)
 
-    return
-
     cam = gradcam.compute_cam(model=model, x=x, y=y)
 
     assert not torch.isnan(cam).any()

@@ -44,8 +44,13 @@ def compute_cam(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Ten
         grad = output.grad
 
         assert len(grad.shape) == 4
+        assert grad.shape == output.shape
 
-        gradcam = output * grad.mean(dim=(2, 3), keepdim=True)
+        b, d, w, h = output.shape
+
+        gradcam = (output * grad.mean(dim=(2, 3), keepdim=True)).sum(dim=1)
+
+        assert gradcam.shape == (b, w, h)
 
     finally:
         if hook is not None:
