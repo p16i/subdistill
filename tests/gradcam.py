@@ -2,7 +2,7 @@ import pytest
 
 import torch
 
-from xaikd import models, gradcam, utils
+from xaikd import models, gradcam
 
 
 @pytest.mark.parametrize(
@@ -14,16 +14,12 @@ from xaikd import models, gradcam, utils
 )
 def test_grad_cam_trained_model(model_name):
 
-    device = utils.get_device()
-
     model = models.get_trained_model(model_name)
-    model.to(device)
 
-    with torch.no_grad():
-        x = torch.randn(1, 3, 224, 224).to(device)
-        y = torch.tensor([100]).to(device)
+    x = torch.randn(1, 3, 224, 224)
+    y = torch.tensor([100])
 
-    cam = gradcam.compute_cam(model=model, x=x, y=y).detach().cpu()
+    cam = gradcam.compute_cam(model=model, x=x, y=y)
 
     assert not torch.isnan(cam).any()
 
@@ -36,9 +32,9 @@ def test_grad_cam_untrained_model(model_name):
 
     model = models.get_untrained_model(model_name, num_classes=10)
 
-    with torch.no_grad():
-        x = torch.randn(1, 3, 224, 224)
-        y = torch.tensor([8])
+    x = torch.randn(1, 3, 224, 224)
+    y = torch.tensor([8])
+    model(x)
 
     cam = gradcam.compute_cam(model=model, x=x, y=y)
 
