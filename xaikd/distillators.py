@@ -212,7 +212,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         lambda_e2 = 1
 
-        if lambda_e2 > 0:
+        if lambda_e2 > 0 and prefix == "train":
 
             teacher_cams = gradcam.compute_cam(
                 model=self.teacher.model,
@@ -240,6 +240,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             loss_e2 = 1 - cosine
             print(f"loss_2e = {loss_e2}")
+        else:
+            # todo: better condiing
+            loss_e2 = 0
 
         loss = (
             self.lambda_task * loss_task
