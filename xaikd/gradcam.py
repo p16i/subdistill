@@ -54,7 +54,7 @@ def compute_cam(
         )
 
         logits = model(x) * F.one_hot(y, num_classes=num_classes)
-
+        # todo: perhaps, this is better to implement via autograd
         logits.sum().backward(retain_graph=retain_graph)
 
         output = utils.interceptor.get_output(module)
