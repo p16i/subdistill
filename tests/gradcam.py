@@ -2,7 +2,7 @@ import pytest
 
 import torch
 
-from xaikd import models, gradcam
+from xaikd import models, gradcam, utils
 
 
 @pytest.mark.parametrize(
@@ -12,9 +12,13 @@ from xaikd import models, gradcam
         "imagenet-resnet18-tv",
     ],
 )
-def test_grad_cam_trained_model(model_name):
+@pytest.mark.parametrize("freeze_model", [False, True])
+def test_grad_cam_trained_model(model_name, freeze_model):
 
-    model = models.get_trained_model(model_name)
+    if freeze_model:
+        model = utils.freeze_model(models.get_trained_model(model_name))
+    else:
+        model = models.get_trained_model(model_name)
 
     x = torch.randn(1, 3, 224, 224)
     y = torch.tensor([100])
