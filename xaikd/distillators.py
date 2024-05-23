@@ -216,13 +216,13 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             teacher_cams = gradcam.compute_cam(
                 model=self.teacher.model,
-                x=x.clone().requires_grad_(True),
+                x=x,
                 y=teacher_y_pred,
             )
 
             student_cams = gradcam.compute_cam(
                 model=self.student,
-                x=x.clone().requires_grad_(True),
+                x=x,
                 y=teacher_y_pred,
             )
             assert len(teacher_cams.shape) == len(student_cams.shape) == 3
