@@ -33,7 +33,11 @@ def parse_layer_string(txt: str) -> typing.Tuple[typing.List[str], typing.List[s
     teacher_layers = []
     student_layers = []
 
-    for layer in txt.split(","):
+    slugs = list(filter(lambda x: x, txt.split(",")))
+    if len(slugs) == 0:
+        return [], []
+
+    for layer in slugs:
         slugs = layer.split(":")
 
         if len(slugs) == 1:

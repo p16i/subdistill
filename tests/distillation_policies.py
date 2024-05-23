@@ -13,6 +13,7 @@ from xaikd import utils as putils
     "string,expected_teacher_layers,expected_student_layers",
     [
         ("layer1,layer2", ["layer1", "layer2"], ["layer1", "layer2"]),
+        ("", [], []),
         ("layer1:layer1*,layer2:layer2*", ["layer1", "layer2"], ["layer1*", "layer2*"]),
     ],
 )
