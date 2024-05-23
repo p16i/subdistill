@@ -239,8 +239,12 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             cosine = (student_cams * teacher_cams).sum(dim=1)
             cosine = cosine.mean()
 
+            assert (cosine.abs() <= 1).all()
+
             loss_e2 = 1 - cosine
         else:
+            # we don't compute for val_split
+            # because pytorchlightning seems to disable grad for val split
             # todo: better condiing
             loss_e2 = 0
 
