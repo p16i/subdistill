@@ -31,7 +31,6 @@ def test_grad_cam_trained_model(model_name):
 def test_grad_cam_untrained_model(model_name):
 
     model = models.get_untrained_model(model_name, num_classes=10)
-    # print(model)
 
     x = torch.randn(1, 3, 224, 224)
     y = torch.tensor([8])
