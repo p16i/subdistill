@@ -46,6 +46,9 @@ def attach_hook_intercept_module(
 
         setattr(mod, ATTRIBUTE_INTERCEPTED_OUTPUT, output)
         if should_retain_grad:
+            if not output.requires_grad:
+                output.requires_grad_(True)
+
             output.retain_grad()
 
         if detach_output:
