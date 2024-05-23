@@ -18,7 +18,7 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 
 
-from xaikd import distillation_policies, utils, datasets, bases, models
+from xaikd import distillation_policies, utils, datasets, bases, models, gradcam
 from xaikd.utils import metrics
 
 from torchmetrics import Accuracy, MeanMetric
@@ -207,19 +207,51 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                         on_epoch=True,
                     )
 
+        teacher_y_pred = torch.argmax(teacher_logits, dim=1).detach().cpu()
+        student_y_pred = torch.argmax(student_logits, dim=1).detach().cpu()
+
+        lambda_e2 = 1
+
+        if lambda_e2 > 0:
+
+            teacher_cams = gradcam.compute_cam(
+                model=self.teacher.model,
+                x=x,
+                y=teacher_y_pred,
+            )
+
+            student_cams = gradcam.compute_cam(
+                model=self.student,
+                x=x,
+                y=teacher_y_pred,
+            )
+            assert len(teacher_cams.shape) == len(student_cams.shape) == 3
+
+            # flatten spatial locations
+            teacher_cams = teacher_cams.flatten(start_dim=1)
+            # unit norm
+            teacher_cams = F.normalize(teacher_cams, dim=1)
+
+            student_cams = student_cams.flatten(start_dim=1)
+            student_cams = F.normalize(student_cams, dim=1)
+
+            cosine = (student_cams * teacher_cams).sum(dim=1)
+            cosine = cosine.mean()
+
+            loss_e2 = 1 - cosine
+            print(f"loss_2e = {loss_e2}")
+
         loss = (
             self.lambda_task * loss_task
             + self.lambda_kd * loss_kd
             + self.lambda_layer * loss_layer
+            + lambda_e2 * loss_e2
         )
 
         self.log(f"{prefix}_loss_task", loss_task, on_epoch=True)
         self.log(f"{prefix}_loss_kd", loss_kd, on_epoch=True)
         self.log(f"{prefix}_loss_layer", loss_layer, on_epoch=True)
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
-
-        teacher_y_pred = torch.argmax(teacher_logits, dim=1).detach().cpu()
-        student_y_pred = torch.argmax(student_logits, dim=1).detach().cpu()
 
         self.metric[f"{prefix}_acc"].update(student_y_pred, y.cpu())
         self.metric[f"{prefix}_agreement"].update(student_y_pred == teacher_y_pred)
