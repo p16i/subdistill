@@ -207,8 +207,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                         on_epoch=True,
                     )
 
-        teacher_y_pred = torch.argmax(teacher_logits, dim=1).detach().cpu()
-        student_y_pred = torch.argmax(student_logits, dim=1).detach().cpu()
+        teacher_y_pred = torch.argmax(teacher_logits, dim=1).detach()
+        student_y_pred = torch.argmax(student_logits, dim=1).detach()
 
         lambda_e2 = 1
 
@@ -217,7 +217,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             teacher_cams = gradcam.compute_cam(
                 model=self.teacher.model,
                 x=x,
-                y=teacher_y_pred,
+                y=teacher_y_pred.to(device),
             )
 
             student_cams = gradcam.compute_cam(
@@ -252,6 +252,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.log(f"{prefix}_loss_kd", loss_kd, on_epoch=True)
         self.log(f"{prefix}_loss_layer", loss_layer, on_epoch=True)
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
+
+        teacher_y_pred = teacher_y_pred.cpu()
+        student_y_pred = student_y_pred.cpu()
 
         self.metric[f"{prefix}_acc"].update(student_y_pred, y.cpu())
         self.metric[f"{prefix}_agreement"].update(student_y_pred == teacher_y_pred)
