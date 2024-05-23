@@ -62,6 +62,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_layer: float,
         lambda_task: float,
         lambda_kd: float,
+        lambda_e2: float,
         num_classes: int,
         parameter_partition_mode: str,
     ):
@@ -84,6 +85,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.lambda_layer = lambda_layer
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
+        self.lambda_e2 = lambda_e2
         self.parameter_partition_mode = parameter_partition_mode
 
         print(
@@ -210,9 +212,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         teacher_y_pred = torch.argmax(teacher_logits, dim=1).detach().cpu()
         student_y_pred = torch.argmax(student_logits, dim=1).detach().cpu()
 
-        lambda_e2 = 1
-
-        if lambda_e2 > 0 and prefix == "train":
+        if self.lambda_e2 > 0 and prefix == "train":
 
             teacher_cams = gradcam.compute_cam(
                 model=self.teacher.model,
@@ -220,7 +220,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 y=teacher_y_pred.to(x.device),
                 retain_graph=False,
             )
-
             student_cams = gradcam.compute_cam(
                 model=self.student,
                 x=x,
@@ -241,7 +240,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             cosine = cosine.mean()
 
             loss_e2 = 1 - cosine
-            print(f"loss_2e = {loss_e2}")
         else:
             # todo: better condiing
             loss_e2 = 0
@@ -250,7 +248,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.lambda_task * loss_task
             + self.lambda_kd * loss_kd
             + self.lambda_layer * loss_layer
-            + lambda_e2 * loss_e2
+            + self.lambda_e2 * loss_e2
         )
 
         self.log(f"{prefix}_loss_task", loss_task, on_epoch=True)
@@ -351,6 +349,7 @@ class Layerwise:
         lambda_task: float,
         lambda_kd: float,
         lambda_layer: float,
+        lambda_e2: float,
         seed: int,
         enable_checkpointing: bool,
         # callbacks=[],
@@ -386,6 +385,7 @@ class Layerwise:
             lambda_task=lambda_task,
             lambda_kd=lambda_kd,
             lambda_layer=lambda_layer,
+            lambda_e2=lambda_e2,
             num_classes=self.dataset.num_classes,
             parameter_partition_mode=self.parameter_partition_mode,
         )

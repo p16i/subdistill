@@ -209,6 +209,7 @@ def build_dataloaders(
 @click.option("--lambda-task", default=0.0, type=float)
 @click.option("--lambda-kd", default=1.0, type=float)
 @click.option("--lambda-layer", type=float, default=None)
+@click.option("--lambda-e2r", type=float, default=None)
 @click.option("--contamination-level", default=0.0, type=float)
 @click.option("--use-val-split", type=bool, default=False, is_flag=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
@@ -230,6 +231,7 @@ def main(
     lambda_task,
     lambda_kd,
     lambda_layer,
+    lambda_e2,
     contamination_level,
     use_val_split,
     learning_bases_from_clean_data,
@@ -416,6 +418,7 @@ def main(
             lambda_task=lambda_task,
             lambda_kd=lambda_kd,
             lambda_layer=policy_lambda_layer,
+            lambda_e2=lambda_e2,
             device=device,
             lr=lr,
             log_dir=log_dir,
