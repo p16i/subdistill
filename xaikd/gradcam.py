@@ -29,7 +29,9 @@ def get_module_before_global_pool(model: nn.Module):
         raise
 
 
-def compute_cam(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
+def compute_cam(
+    model: nn.Module, x: torch.Tensor, y: torch.Tensor, retain_graph=False
+) -> torch.Tensor:
 
     hook = None
 
@@ -48,12 +50,12 @@ def compute_cam(model: nn.Module, x: torch.Tensor, y: torch.Tensor) -> torch.Ten
         module = get_module_before_global_pool(model)
 
         _, hook = utils.interceptor.attach_hook_intercept_module(
-            module, should_retain_grad=True, detach_output=False
+            module, should_retain_grad=False, detach_output=False
         )
 
         logits = model(x) * F.one_hot(y, num_classes=num_classes)
 
-        logits.sum().backward()
+        logits.sum().backward(retain_graph=retain_graph)
 
         output = utils.interceptor.get_output(module)
         grad = output.grad
