@@ -569,4 +569,8 @@ def _cifarresnet18c2lin(num_classes: int):
 
 @register_model("resnet18")
 def _resnet18(num_classes: int):
-    return resnet.resnet18(num_classes=num_classes)
+    model = resnet.resnet18(num_classes=num_classes)
+
+    setattr(model, "__last_layer", model.fc)
+
+    return model
