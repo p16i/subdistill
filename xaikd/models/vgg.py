@@ -386,6 +386,10 @@ def _build_model_imagenet(
 
     model = nn.Sequential(OrderedDict(layers))
 
+    # todo: we should do better here.
+    setattr(model, "__layer_before_avgpool", "layer4")
+    setattr(model, "__last_layer", classifier[-1])
+
     return model
 
 
