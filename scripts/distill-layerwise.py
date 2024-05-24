@@ -213,6 +213,7 @@ def build_dataloaders(
 @click.option("--use-val-split", type=bool, default=False, is_flag=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
 @click.option("--parameter-partition-mode", type=str)
+@click.option("--ignore-layer-loss-fullupdate", type=bool)
 @click.option(
     "--learning-bases-from-clean-data", type=bool, default=False, is_flag=True
 )
@@ -235,6 +236,7 @@ def main(
     learning_bases_from_clean_data,
     enable_checkpointing,
     parameter_partition_mode,
+    ignore_layer_loss_fullupdate,
 ):
     arguments = locals()
 
@@ -422,6 +424,7 @@ def main(
             logger=logger,
             seed=seed,
             enable_checkpointing=enable_checkpointing,
+            ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
         )
 
         # todo: save student to artifacts!

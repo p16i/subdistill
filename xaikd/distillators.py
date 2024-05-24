@@ -64,6 +64,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_kd: float,
         num_classes: int,
         parameter_partition_mode: str,
+        ignore_layer_loss_fullupdate: bool,
     ):
         super().__init__()
 
@@ -85,6 +86,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
         self.parameter_partition_mode = parameter_partition_mode
+        self.ignore_layer_loss_fullupdate = ignore_layer_loss_fullupdate
 
         print(
             f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} )"
@@ -160,7 +162,23 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         loss_kd = self.last_layer_policy(teacher_logits, student_logits)
 
         loss_layer = 0
-        for lix, policy in enumerate(self.layer_policy_collection.policies):
+
+        is_fullupdate = not should_detach_output(
+            partition_mode=self.parameter_partition_mode,
+            current_epoch=self.current_epoch,
+        )
+
+        if self.ignore_layer_loss_fullupdate and is_fullupdate:
+            layer_policies = []
+            if batch_idx == 0:
+                print(
+                    f"[ignore_layer_loss_fullupdate={self.ignore_layer_loss_fullupdate}, is_fullupdate={is_fullupdate}] ignore layerwise loss!!"
+                )
+        else:
+            layer_policies = self.layer_policy_collection.policies
+
+        for lix, policy in enumerate(layer_policies):
+
             _loss_layer = policy(
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
@@ -316,6 +334,7 @@ class Layerwise:
         lambda_layer: float,
         seed: int,
         enable_checkpointing: bool,
+        ignore_layer_loss_fullupdate: bool,
         # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
         student.to(device)
@@ -351,6 +370,7 @@ class Layerwise:
             lambda_layer=lambda_layer,
             num_classes=self.dataset.num_classes,
             parameter_partition_mode=self.parameter_partition_mode,
+            ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
         )
 
         print(f"Training log is saved to `{log_dir}`")
