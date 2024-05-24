@@ -375,11 +375,11 @@ def _build_model_imagenet(
         nn.ReLU(),
         nn.AdaptiveAvgPool2d((7, 7)),
         nn.Flatten(start_dim=1),
-        nn.Linear(in_features=7 * 7 * last_d, out_features=last_d),
-        nn.ReLU(),
-        nn.Linear(in_features=last_d, out_features=last_d),
-        nn.ReLU(),
-        nn.Linear(in_features=last_d, out_features=num_classes),
+        nn.Linear(in_features=7 * 7 * last_d, out_features=num_classes),
+        # nn.ReLU(),
+        # nn.Linear(in_features=last_d, out_features=last_d),
+        # nn.ReLU(),
+        # nn.Linear(in_features=last_d, out_features=num_classes),
     )
 
     layers.append(("classifier", classifier))
