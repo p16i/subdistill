@@ -172,7 +172,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             layer_policies = []
             if batch_idx == 0:
                 print(
-                    f"[ignore_layer_loss_fullupdate={self.ignore_layer_loss_fullupdate}, is_fullupdate={is_fullupdate}] ignore layerwise loss!!"
+                    f"[Epoch {self.current_epoch}: ignore_layer_loss_fullupdate={self.ignore_layer_loss_fullupdate}, is_fullupdate={is_fullupdate}] ignore layerwise loss!!"
                 )
         else:
             layer_policies = self.layer_policy_collection.policies
