@@ -373,7 +373,7 @@ class Layerwise:
 
         callback_checkpoint = (
             [
-                ModelCheckpoint(monitor="val_acc", mode="max"),
+                ModelCheckpoint(monitor=None),
             ]
             if enable_checkpointing
             else []
