@@ -373,7 +373,7 @@ class Layerwise:
 
         callback_checkpoint = (
             [
-                ModelCheckpoint(monitor="global_step", save_top_k=2, mode="max"),
+                ModelCheckpoint(every_n_epochs=epochs),  # here, we save only last epoch
             ]
             if enable_checkpointing
             else []
