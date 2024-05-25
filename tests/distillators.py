@@ -70,6 +70,7 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
 def test_distillation_runnable_and_correct(
     teacher_model_name, student_model_name, layers, parameter_partition_mode
 ):
+    ignore_layer_loss_fullupdate = False
     epochs = 1
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
@@ -153,6 +154,7 @@ def test_distillation_runnable_and_correct(
             logger=TensorBoardLogger(tmpdirname),
             seed=1,
             enable_checkpointing=False,
+            ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
         )
 
     # post-training assertions
@@ -217,6 +219,7 @@ def test_distillation_runnable_and_correct(
 @pytest.mark.parametrize("layers", [["layer3"], ["layer3", "layer4"]])
 @pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
 def test_get_parameters(layers, parameter_partition_mode):
+    ignore_layer_loss_fullupdate = False
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
         "cifar100-people"
     )
@@ -269,6 +272,7 @@ def test_get_parameters(layers, parameter_partition_mode):
         lr=1e-5,
         num_classes=dataset.num_classes,
         parameter_partition_mode=parameter_partition_mode,
+        ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
     )
 
     actual_num_params = utils.count_params_in_list_params(
