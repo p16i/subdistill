@@ -29,6 +29,7 @@ def test_pcalookahead_trainable():
     dataset = datasets.construct("cifar100-people")
     model = models.get_trained_model("cifar100-resnet18-v1")
     utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+    model.to(device)
 
     ds, _ = random_split(dataset.create_subset(train_split=False), [0.1, 0.9])
 
