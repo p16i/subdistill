@@ -48,7 +48,7 @@ def make_attributor_for(
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
-    canonizers = attributors.get_arch_specific_canonizer(model)
+    canonizers = attributors.get_arch_specific_composite(model)
 
     print(f"Instantiating EpsilonGammaBox(gamma={gamma},canonizers={canonizers})")
 
