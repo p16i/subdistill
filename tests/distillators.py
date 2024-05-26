@@ -137,7 +137,7 @@ def test_distillation_runnable_and_correct(
     with tempfile.TemporaryDirectory() as tmpdirname:
         student, results = distillator.distill(
             student=models.get_untrained_model(
-                student_model_name, num_classes=dataset.num_classes
+                constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
             ),
             layer_policies=layer_policies,
             epochs=epochs,

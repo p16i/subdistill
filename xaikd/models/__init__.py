@@ -101,7 +101,7 @@ def get_layer_output_dimensions(model: nn.Module, layer: str) -> int:
     return getattr(model, "__layer_dimension")[layer]
 
 
-from . import resnet, vgg, nfnet
+from . import resnet, vgg, nfnet, students
 
 
 def split_model_at_layer(
@@ -111,5 +111,7 @@ def split_model_at_layer(
         return resnet.split_model_at(model, layer)
     elif isinstance(model, vgg.models.VGG):
         return vgg.split_model_at(model, layer)
+    elif isinstance(model, nfnet.NormFreeNet):
+        return nfnet.split_model_at(model, layer)
     else:
         raise ValueError(f"no available split_model for layer={layer} model={model}")
