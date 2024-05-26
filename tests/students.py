@@ -3,37 +3,40 @@ import pytest
 import torch
 
 from xaikd import models
-from xaikd.models.vgg import canonize_model
+from xaikd.models.students import canonize_student_model
 
 
 @torch.no_grad()
-def test():
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "student-32-24-16-8",
+        "student-40-32-24-16",
+        "student-48-40-32-24",
+    ],
+)
+def test_student_callable(slug):
     torch.manual_seed(1)
     x = torch.rand((7, 3, 224, 224))
-    student_vgg = models.get_untrained_model(
-        "vggcustomimagenetdims-32-24-24-10", num_classes=10
-    )
+    student = models.get_untrained_model(slug, num_classes=10)
 
-    output = student_vgg(x)
-    print("output.shape", output.shape)
+    output = student(x)
 
     assert output.shape == (7, 10)
 
 
 @torch.no_grad()
-def test_canonize_vgg_student():
+def test_canonize_student():
     torch.manual_seed(1)
     x_train = torch.rand(5, 3, 224, 224)
     num_classes = 6
 
-    model = models.get_untrained_model(
-        "vggcustomimagenetdims-32-24-24-10", num_classes=num_classes
-    )
+    model = models.get_untrained_model("student-32-24-16-8", num_classes=num_classes)
     model(x_train)
 
     model.eval()
 
-    canonized_model = canonize_model(model)
+    canonized_model = canonize_student_model(model)
 
     canonized_model.eval()
 
