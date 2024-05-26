@@ -34,7 +34,7 @@ def test_pcalookahead_trainable():
 
     dataloader = datasets.build_dataloader(ds, shuffle=False)
 
-    logit_modifier = attributors.WinningClassEvidence(len(dataset.num_classes))
+    logit_modifier = attributors.WinningClassEvidence(len(dataset.selected_classes))
 
     arr_act, _ = attributors.extract_activation_context(
         model=model,
