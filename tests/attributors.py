@@ -48,11 +48,16 @@ class CIFAR100VerySmall(datasets.CIFAR100):
 )
 def test_correct_canonizer(arch, expected):
     model = models.get_trained_model(arch)
-    actual_canonizers = attributors.get_arch_specific_composite(model)
+    hb = torch.ones(3).reshape(1, -1, 1, 1)
+    lb = -hb
 
-    assert len(actual_canonizers) == len(expected)
-    for canon, type in zip(actual_canonizers, expected):
-        assert isinstance(canon, type)
+    composite = attributors.get_arch_specific_composite(model, lb=lb, hb=hb)
+
+    canonizers = composite.canonizers
+
+    assert len(canonizers) == len(expected)
+    for canonizer, type in zip(canonizers, expected):
+        assert isinstance(canonizer, type)
 
 
 @pytest.mark.gpu()
