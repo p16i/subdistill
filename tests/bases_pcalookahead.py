@@ -54,6 +54,6 @@ def test_pcalookahead_trainable():
         **dict(model=model, layer=layer, dataloader=dataloader)
     )
 
-    pcaah.construct_adapter(k=d - 2, mode=bases.AdapterMode.ENCODER, device="cpu")
+    pcaah.construct_adapter(k=d - 2, mode=bases.AdapterMode.ENCODER, device=device)
 
     assert True
