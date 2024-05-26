@@ -11,12 +11,27 @@ from torchvision import models
 from . import register_model, interfaces
 
 
-from xaikd.utils.modules import (
-    Centering2D,
-    DiagonalScaling,
-    merge_conv_and_bn,
-    merge_convKxK_and_conv1x1,
-)
+def split_model_at(
+    model: models.VGG, layer: str
+) -> typing.Tuple[nn.Sequential, nn.Sequential]:
+    assert isinstance(model, models.VGG)
+
+    # layer in format `features.k``
+    layer_ix = int(layer.split(".")[1])
+
+    layers_in_head = model.features[: layer_ix + 1]
+    layers_in_classifier = model.features[layer_ix + 1 :]
+
+    head = nn.Sequential(*layers_in_head)
+
+    classifier = nn.Sequential(
+        *layers_in_classifier,
+        model.avgpool,
+        nn.Flatten(start_dim=1),
+        model.classifier,
+    )
+
+    return head, classifier
 
 
 @register_model("imagenet-vgg11-tv")
