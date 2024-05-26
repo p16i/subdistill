@@ -176,6 +176,26 @@ class Identity(Orthogonal):
         return np.eye(d)
 
 
+@register_basis("random")
+class Random(Orthogonal):
+
+    def fit(self, arr_act, arr_ctx, **kwargs):
+        seed = kwargs["seed"]
+
+        self.rng = np.random.default_rng(seed=seed)
+        super().fit(arr_act, arr_ctx, **kwargs)
+
+    def _solve(
+        self,
+        arr_act,
+        arr_ctx,
+    ):
+        _, d = arr_act.shape
+        U = ortho_group.rvs(dim=d, random_state=self.rng)
+
+        return U
+
+
 @register_basis("pca")
 class PCA(Orthogonal):
     def _solve(
