@@ -2,23 +2,17 @@ import numpy as np
 import pytest
 import torch
 
-from xaikd import models
+from xaikd import models, constants
 from xaikd.models.students import canonize_student_model
 
 
 @torch.no_grad()
-@pytest.mark.parametrize(
-    "slug",
-    [
-        "student-32-24-16-8",
-        "student-40-32-24-16",
-        "student-48-40-32-24",
-    ],
-)
-def test_student_callable(slug):
+@pytest.mark.parametrize("arr_dims", constants.ARR_STUDENT_DIMENSIONS)
+def test_student_callable(arr_dims):
     torch.manual_seed(1)
     x = torch.rand((7, 3, 224, 224))
-    student = models.get_untrained_model(slug, num_classes=10)
+    slug = "-".join(np.array(arr_dims).astype(str))
+    student = models.get_untrained_model(f"student-{slug}", num_classes=10)
 
     output = student(x)
 

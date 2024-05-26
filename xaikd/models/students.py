@@ -9,10 +9,12 @@ import numpy as np
 from functools import partial
 
 
+from xaikd import constants
 from xaikd.utils.modules import (
     merge_conv_and_bn,
     merge_convKxK_and_conv1x1,
 )
+
 
 from . import register_model, MODEL_GENERATORS
 
@@ -178,11 +180,7 @@ def canonize_student_model(model: StudentModel) -> nn.Module:
 
 def _generate_model_function():
 
-    for arr_dims in [
-        [32, 24, 16, 8],
-        [40, 32, 24, 16],
-        [48, 40, 32, 24],
-    ]:
+    for arr_dims in constants.ARR_STUDENT_DIMENSIONS:
 
         slug = "-".join(np.array(arr_dims).astype(str).tolist())
         MODEL_GENERATORS[f"student-{slug}"] = partial(StudentModel, arr_dims=arr_dims)

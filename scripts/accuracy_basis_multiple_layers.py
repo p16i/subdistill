@@ -19,29 +19,25 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, utils, attributors, constants, bases
+from xaikd import models, datasets, utils, attributors, constants, bases, constants
 
 from xaikd.utils import metrics
 
 
-BASIS_MODE = "uncentered"
-
 DEVICE = utils.get_device()
-ARR_LAYER_DIMENSIONS = [
-    (64, 56, 48, 40),
-    (48, 40, 32, 24),
-    (40, 32, 24, 16),
-    (32, 24, 16, 8),
-    (24, 16, 8, 4),
-]
 
 
 @click.command()
 @click.option("--dataset-name", type=str)
 @click.option("--model-name", type=str)
 @click.option("--basis-names", type=str, default="pca,prca-sortabs,pcalookahead")
+@click.option(
+    "--basis-mode",
+    type=click.Choice(["centered", "uncentered"]),
+    default="uncentered",
+)
 @click.option("--output-dir", type=str)
-def main(model_name, dataset_name, output_dir, basis_names):
+def main(model_name, dataset_name, output_dir, basis_names, basis_mode):
     arguments = locals()
     start_time = datetime.now()
 
@@ -87,7 +83,7 @@ def main(model_name, dataset_name, output_dir, basis_names):
 
     for basis_name in tqdm(arr_basis_names):
 
-        basis_output_path = output_path / basis_name
+        basis_output_path = output_path / f"{basis_name}--{basis_mode}"
         os.makedirs(basis_output_path, exist_ok=True)
 
         basis_ref_acc, _ = metrics.accuracy(
@@ -114,7 +110,7 @@ def main(model_name, dataset_name, output_dir, basis_names):
                 device=DEVICE,
                 logit_modifier=logit_modifier,
             )
-            layer_basis = bases.get_basis(f"{basis_name}--{BASIS_MODE}")
+            layer_basis = bases.get_basis(f"{basis_name}--{basis_mode}")
             layer_basis.fit(
                 arr_act=arr_act,
                 arr_ctx=arr_ctx,
@@ -126,7 +122,7 @@ def main(model_name, dataset_name, output_dir, basis_names):
 
             arr_layer_bases.append(layer_basis)
 
-        for layer_dimensions in ARR_LAYER_DIMENSIONS:
+        for layer_dimensions in constants.ARR_STUDENT_DIMENSIONS:
             assert len(layer_dimensions) == len(arr_layers)
 
             arr_hooks = []

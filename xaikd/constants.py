@@ -3,6 +3,13 @@ from pathlib import Path
 
 PACKAGE_DIR = Path(os.path.dirname(__file__))
 
+ARR_STUDENT_DIMENSIONS = [
+    (32, 24, 16, 8),
+    (40, 32, 24, 16),
+    (48, 40, 32, 24),
+    (56, 48, 40, 32),
+]
+
 BASIS_NAMES = [
     "pca--centered",
     "prca--centered",
