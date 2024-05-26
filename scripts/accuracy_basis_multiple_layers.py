@@ -114,8 +114,8 @@ def main(model_name, dataset_name, output_dir, basis_names):
                 device=DEVICE,
                 logit_modifier=logit_modifier,
             )
-            basis = bases.get_basis(f"{basis_name}--{BASIS_MODE}")
-            basis.fit(
+            layer_basis = bases.get_basis(f"{basis_name}--{BASIS_MODE}")
+            layer_basis.fit(
                 arr_act=arr_act,
                 arr_ctx=arr_ctx,
                 # this is mainly for pcalookahead
