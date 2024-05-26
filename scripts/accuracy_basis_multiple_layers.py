@@ -103,7 +103,7 @@ def main(model_name, dataset_name, output_dir, basis_names):
 
         arr_statistics = []
 
-        arr_layer_bases: list[BasisTransform] = []
+        arr_layer_bases: list[bases.Basis] = []
         for layer in arr_layers:
             arr_act, arr_ctx = attributors.extract_activation_context(
                 model=model,
@@ -114,8 +114,8 @@ def main(model_name, dataset_name, output_dir, basis_names):
                 device=DEVICE,
                 logit_modifier=logit_modifier,
             )
-            layer_basis = bases.get_basis(f"{basis_name}--{BASIS_MODE}")
-            layer_basis.fit(
+            basis = bases.get_basis(f"{basis_name}--{BASIS_MODE}")
+            basis.fit(
                 arr_act=arr_act,
                 arr_ctx=arr_ctx,
                 # this is mainly for pcalookahead
@@ -137,7 +137,7 @@ def main(model_name, dataset_name, output_dir, basis_names):
                     module = utils.interceptor.get_module(model=model, layer_str=layer)
 
                     hook = module.register_forward_hook(
-                        layer_basis.get_hook_rank_k_transformation(k=k, device=DEVICE)
+                        layer_basis.construct_fh_rank_k_projection(k, device=DEVICE)
                     )
                     arr_hooks.append(hook)
 
