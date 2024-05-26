@@ -46,14 +46,7 @@ def get_arch_specific_composite(
         else:
             return EpsilonGammaBox(low=lb, high=hb, canonizers=[])
     elif isinstance(model, timm.models.nfnet.NormFreeNet):
-        return Composite(
-            module_map=partial(nfnetlrp.module_map, model=model, gamma=0.1, eps=0.01),
-            canonizers=[
-                nfnetlrp.NormFreeBlockCanonizer(),
-                nfnetlrp.SEModuleCanonizer(),
-                nfnetlrp.ScaledStdConv2dSameCanonizer(),
-            ],
-        )
+        return nfnetlrp.EpsilonGammaBox(lb=lb, hb=hb)
     else:
         raise NotImplementedError("")
 
