@@ -536,7 +536,7 @@ class OrthogonalBasisIdentityLearnablePolicy(OrthogonalBasisIdentityPolicy):
         )
 
         k = student_dims
-        W = basis.artifact["eigvecs"][:, :k]
+        W = torch.from_numpy(basis.U[:, :k]).float()
 
         print("make basis-identitity's weight learnable")
         self.transformer_teacher_feats = nn.Conv2d(

@@ -123,9 +123,6 @@ def get_basis(slug, **kwargs) -> Basis:
     name_slug, centering_slug = slug.split("--")
     centering = True if centering_slug == "centered" else False
 
-    if name_slug == ["random"]:
-        assert "seed" in kwargs, "`seed` must be specify for `random` basis."
-
     assert centering_slug in ["uncentered", "centered"], f"Value `{centering_slug}`"
 
     basis = BASES[name_slug](centering=centering, **kwargs)
@@ -180,6 +177,8 @@ class Identity(Orthogonal):
 class Random(Orthogonal):
 
     def fit(self, arr_act, arr_ctx, **kwargs):
+        assert "seed" in kwargs, "please specify `seed`"
+
         seed = kwargs["seed"]
 
         self.rng = np.random.default_rng(seed=seed)
