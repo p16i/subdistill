@@ -97,8 +97,8 @@ class Basis(ABC):
         return np.mean((x @ U) ** 2, axis=0)
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
-        U = torch.from_numpy(self.U[:, :k])
-        mean = torch.from_numpy(self.mean)
+        U = torch.from_numpy(self.U[:, :k]).float()
+        mean = torch.from_numpy(self.mean).float()
 
         return Adapter(U=U, mean=mean, mode=mode, device=device)
 
@@ -269,8 +269,8 @@ class PCALookAhead(PCA):
         d, k = U.shape
 
         return Adapter(
-            U=torch.from_numpy(U),
-            mean=torch.zeros(d),
+            U=torch.from_numpy(U).float(),
+            mean=torch.zeros(d).float(),
             mode=mode,
             device=device,
         )
