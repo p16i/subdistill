@@ -19,7 +19,8 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, pcalookahead, utils, attributors, constants
+from xaikd import models, datasets, utils, attributors, constants
+from xaikd.bases import pcalookahead
 from xaikd.utils import metrics
 
 from zennit.torchvision import ResNetCanonizer, VGGCanonizer
