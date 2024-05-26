@@ -48,7 +48,7 @@ class CIFAR100VerySmall(datasets.CIFAR100):
 )
 def test_correct_canonizer(arch, expected):
     model = models.get_trained_model(arch)
-    actual_canonizers = attributors.get_arch_specific_canonizer(model)
+    actual_canonizers = attributors.get_arch_specific_composite(model)
 
     assert len(actual_canonizers) == len(expected)
     for canon, type in zip(actual_canonizers, expected):
