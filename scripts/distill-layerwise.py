@@ -196,8 +196,9 @@ def build_dataloaders(
     "--layers", default="layer1,layer2,layer3,layer4", type=str, required=True
 )
 @click.option(
-    "--layer-policy",
+    "--layer-policies",
     type=str,
+    default="basis-identity:pca--uncentered,basis-identity:prca-sortabs--uncentered,basis-identity:random--uncentered,attention-transfer,vid,fitnet,nothing",
     required=True,
 )
 @click.option("--output-dir", type=str, required=True)
@@ -220,7 +221,7 @@ def main(
     teacher,
     student,
     dataset,
-    layer_policy,
+    layer_policies,
     output_dir,
     seed,
     epochs,
@@ -244,6 +245,8 @@ def main(
     start_time = datetime.now()
 
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
+
+    layer_policies = layer_policies.split(",")
 
     output_dir = (
         Path(output_dir)
@@ -310,157 +313,165 @@ def main(
         train_loader=train_loader_for_learning_bases,
         logit_mod=logit_mod,
         layers=teacher_layers,
-        layer_policies=layer_policy,
+        layer_policies=layer_policies,
         device=device,
         output_dir=output_dir,
         seed=seed,
     )
 
-    # this make sure that we use the same initial student model for all policy.
-    pl.seed_everything(seed)
+    # do distillation
+    for policy_name_with_args in tqdm(layer_policies, desc="Distillation"):
+        # this make sure that we use the same initial student model for all policy.
+        pl.seed_everything(seed)
 
-    policy_slugs = layer_policy.split(":")
+        policy_slugs = policy_name_with_args.split(":")
 
-    print(f"[policy={layer_policy}]")
-    if lambda_layer is None:
-        policy_lambda_layer = constants.get_lamba_layer_for_policy_student(
-            layer_policy, student
+        print(f"[policy={policy_name_with_args}]")
+        if lambda_layer is None:
+            policy_lambda_layer = constants.get_lamba_layer_for_policy_student(
+                policy_name_with_args, student
+            )
+            print(f"> lambda_layer={policy_lambda_layer} (specified via `constants`)")
+        else:
+            policy_lambda_layer = lambda_layer
+            print(
+                f"[> lambda_layer={policy_lambda_layer} (specified via `command line`)"
+            )
+
+        policy_name = policy_slugs[0]
+
+        student_model = models.get_untrained_model(
+            student, num_classes=dataset.num_classes
         )
-        print(f"> lambda_layer={policy_lambda_layer} (specified via `constants`)")
-    else:
-        policy_lambda_layer = lambda_layer
-        print(f"[> lambda_layer={policy_lambda_layer} (specified via `command line`)")
 
-    layer_policy = policy_slugs[0]
+        layer_policies = []
+        for teacher_layer, student_layer in zip(teacher_layers, student_layers):
+            teacher_layer_dims = teacher_layer_dims_mapping[teacher_layer]
+            student_layer_dims = student_layer_dims_mapping[student_layer]
 
-    student_model = models.get_untrained_model(student, num_classes=dataset.num_classes)
+            kwargs = dict(
+                teacher_dims=teacher_layer_dims,
+                student_dims=student_layer_dims,
+                device=device,
+            )
 
-    layer_policy = []
-    for teacher_layer, student_layer in zip(teacher_layers, student_layers):
-        teacher_layer_dims = teacher_layer_dims_mapping[teacher_layer]
-        student_layer_dims = student_layer_dims_mapping[student_layer]
+            if "basis" in policy_name:
+                basis_name = policy_slugs[-1]
 
-        kwargs = dict(
-            teacher_dims=teacher_layer_dims,
-            student_dims=student_layer_dims,
+                if basis_name == "pcalookahead--uncentered":
+                    print(">>>> pcalookadhead <<<<")
+                    basis = arr_learned_bases[f"{teacher_layer}-{basis_name}"]
+                else:
+                    basis = bases.get_basis(basis_name, seed=seed)
+                    layer_output_dir = output_dir / f"layer-{teacher_layer}"
+                    basis.load(layer_output_dir)
+
+                kwargs["basis"] = basis
+
+            policy = distillation_policies.get_layer_policy(policy_name, **kwargs)
+
+            layer_policies.append(policy)
+
+        distillator = distillators.Layerwise(
+            teacher=teacher_model,
+            dataset=dataset,
+            train_dataloader=train_loader_with_aug,
+            val_dataloader=val_loader,
             device=device,
+            weight_decay=0.0,
+            parameter_partition_mode=parameter_partition_mode,
         )
 
-        if "basis" in layer_policy:
-            basis_name = policy_slugs[-1]
+        student_slug = "--".join(
+            [
+                student,
+                "-".join(policy_slugs),
+                f"lmd_task{lambda_task}-lmd_kd{lambda_kd}-lmd_layer{policy_lambda_layer}",
+            ]
+        )
 
-            if basis_name == "pcalookahead--uncentered":
-                print(">>>> pcalookadhead <<<<")
-                basis = arr_learned_bases[f"{teacher_layer}-{basis_name}"]
-            else:
-                basis = bases.get_basis(basis_name, seed=seed)
-                layer_output_dir = output_dir / f"layer-{teacher_layer}"
-                basis.load(layer_output_dir)
+        log_dir = output_dir / "distilled-models" / student_slug
+        logger = WandbLogger(
+            save_dir=WANDB_DIR,
+            project=WANDB_PROJECT,
+            group=arguments["output_dir"],
+            job_type="distillation",
+            name=f"{student}-{policy_name_with_args}-seed{seed}",
+            notes=f"commit:{utils.get_git_hash()}",
+            log_model="all" if enable_checkpointing else False,
+            config={
+                **arguments,
+                "policy": policy_name_with_args,
+                "policy_lambda_layer": policy_lambda_layer,
+                "output_dir": output_dir,
+            },
+        )
 
-            kwargs["basis"] = basis
-
-        policy = distillation_policies.get_layer_policy(layer_policy, **kwargs)
-
-        layer_policy.append(policy)
-
-    distillator = distillators.Layerwise(
-        teacher=teacher_model,
-        dataset=dataset,
-        train_dataloader=train_loader_with_aug,
-        val_dataloader=val_loader,
-        device=device,
-        weight_decay=0.0,
-        parameter_partition_mode=parameter_partition_mode,
-    )
-
-    student_slug = "--".join(
-        [
-            student,
-            "-".join(policy_slugs),
-            f"lmd_task{lambda_task}-lmd_kd{lambda_kd}-lmd_layer{policy_lambda_layer}",
-        ]
-    )
-
-    log_dir = output_dir / "distilled-models" / student_slug
-    logger = WandbLogger(
-        save_dir=WANDB_DIR,
-        project=WANDB_PROJECT,
-        group=arguments["output_dir"],
-        job_type="distillation",
-        name=f"{student}-{layer_policy}-seed{seed}",
-        notes=f"commit:{utils.get_git_hash()}",
-        log_model="all" if enable_checkpointing else False,
-        config={
-            **arguments,
-            "policy": layer_policy,
-            "policy_lambda_layer": policy_lambda_layer,
-            "output_dir": output_dir,
-        },
-    )
-
-    trained_student, results = distillator.distill(
-        student=student_model,
-        layer_policies=distillation_policies.LayerPolicyCollection(
-            teacher_layers=teacher_layers,
-            student_layers=student_layers,
-            policies=layer_policy,
-        ),
-        epochs=epochs,
-        lambda_task=lambda_task,
-        lambda_kd=lambda_kd,
-        lambda_layer=policy_lambda_layer,
-        device=device,
-        lr=lr,
-        log_dir=log_dir,
-        logger=logger,
-        seed=seed,
-        enable_checkpointing=enable_checkpointing,
-        ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
-    )
-
-    last_epoch_val_acc = results["arr_metrics"]["val_acc"][-1]
-    last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
-
-    print(
-        f"Result: [distill with:  `{layer_policy}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
-    )
-
-    for k, v in results.items():
-        logger.experiment.summary[k] = v
-
-    # log prediction
-    # remark: this prediction is the of the latest model, which is NOT necesseary
-    # the best.
-    with torch.no_grad():
-        teacher_model.to(device)
-        trained_student.to(device)
-
-        assert teacher_model.training == trained_student.training == False
-
-        arr_targets = []
-        arr_student_pred = []
-        arr_teacher_pred = []
-
-        for x, y in val_loader:
-            x = x.to(device)
-            teacher_pred = torch.argmax(teacher_model(x), dim=1).cpu()
-            student_pred = torch.argmax(trained_student(x), dim=1).cpu()
-            arr_targets.extend(y.numpy().tolist())
-            arr_teacher_pred.extend(teacher_pred.numpy().tolist())
-            arr_student_pred.extend(student_pred.numpy().tolist())
-
-        logger.log_table(
-            "prediction",
-            dataframe=pd.DataFrame.from_dict(
-                dict(
-                    target=arr_targets,
-                    student_pred=arr_student_pred,
-                    teacher_pred=arr_teacher_pred,
-                )
+        trained_student, results = distillator.distill(
+            student=student_model,
+            layer_policies=distillation_policies.LayerPolicyCollection(
+                teacher_layers=teacher_layers,
+                student_layers=student_layers,
+                policies=layer_policies,
             ),
+            epochs=epochs,
+            lambda_task=lambda_task,
+            lambda_kd=lambda_kd,
+            lambda_layer=policy_lambda_layer,
+            device=device,
+            lr=lr,
+            log_dir=log_dir,
+            logger=logger,
+            seed=seed,
+            enable_checkpointing=enable_checkpointing,
+            ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
         )
 
-    wandb.finish()
+        # todo: save student to artifacts!
+
+        last_epoch_val_acc = results["arr_metrics"]["val_acc"][-1]
+        last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
+
+        print(
+            f"Result: [distill with:  `{policy_name_with_args}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
+        )
+
+        for k, v in results.items():
+            logger.experiment.summary[k] = v
+
+        # log prediction
+        # remark: this prediction is the of the latest model, which is NOT necesseary
+        # the best.
+        with torch.no_grad():
+            teacher_model.to(device)
+            trained_student.to(device)
+
+            assert teacher_model.training == trained_student.training == False
+
+            arr_targets = []
+            arr_student_pred = []
+            arr_teacher_pred = []
+
+            for x, y in val_loader:
+                x = x.to(device)
+                teacher_pred = torch.argmax(teacher_model(x), dim=1).cpu()
+                student_pred = torch.argmax(trained_student(x), dim=1).cpu()
+                arr_targets.extend(y.numpy().tolist())
+                arr_teacher_pred.extend(teacher_pred.numpy().tolist())
+                arr_student_pred.extend(student_pred.numpy().tolist())
+
+            logger.log_table(
+                "prediction",
+                dataframe=pd.DataFrame.from_dict(
+                    dict(
+                        target=arr_targets,
+                        student_pred=arr_student_pred,
+                        teacher_pred=arr_teacher_pred,
+                    )
+                ),
+            )
+
+        wandb.finish()
 
     click.echo(f"Check Results at: {output_dir}")
 
