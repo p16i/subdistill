@@ -10,6 +10,8 @@ ARR_STUDENT_DIMENSIONS = [
     (56, 48, 40, 32),
 ]
 
+STUDENT_MODEL_FOR_TESTING = "student-32-24-16-8"
+
 # BASIS_NAMES = [
 #     "pca--centered",
 #     "prca--centered",

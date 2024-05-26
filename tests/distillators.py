@@ -42,33 +42,29 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
 @pytest.mark.gpu()
 @pytest.mark.slow()
 @pytest.mark.parametrize(
-    "teacher_model_name,student_model_name,layers",
+    "teacher_model_name,layers",
     [
         (
             "cifar100-resnet18-v1",
-            "resnet18xscifarcompr2",
             "layer1,layer2,layer3,layer4",
         ),
         (
             "cifar100-resnet50-v1",
-            "resnet18xscifarcompr1",
             "layer1,layer2,layer3,layer4",
         ),
         (
             "cifar100-vgg11-v1",
-            "vgg8xs",
-            "features.10:features.8,features.15:features.11,features.20:features.14",
+            "features.10:layer2,features.15:layer3,features.20:layer4",
         ),
         (
             "cifar100-resnet18-v1",
-            "vgg8xs",
-            "layer3:features.8",
+            "layer3:layer3",
         ),
     ],
 )
 @pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
 def test_distillation_runnable_and_correct(
-    teacher_model_name, student_model_name, layers, parameter_partition_mode
+    teacher_model_name, layers, parameter_partition_mode
 ):
     ignore_layer_loss_fullupdate = False
     epochs = 1
@@ -99,7 +95,7 @@ def test_distillation_runnable_and_correct(
     )
     student_dims_mapping = utils.get_dimensions_at_layers(
         models.get_untrained_model(
-            student_model_name, num_classes=dataset.num_classes
+            constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
         ).eval(),
         train_loader,
         student_layers,
@@ -230,7 +226,7 @@ def test_get_parameters(layers, parameter_partition_mode):
 
     teacher_model = models.get_trained_model("cifar100-resnet18-v1")
     student = models.get_untrained_model(
-        "resnet18xscifarcompr2", num_classes=dataset.num_classes
+        constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
     )
 
     train_loader = datasets.build_dataloader(
@@ -242,7 +238,7 @@ def test_get_parameters(layers, parameter_partition_mode):
     )
     student_dims_mapping = utils.get_dimensions_at_layers(
         models.get_untrained_model(
-            "resnet18xscifarcompr2", num_classes=dataset.num_classes
+            constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
         ).eval(),
         train_loader,
         layers,
