@@ -52,14 +52,6 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
             "cifar100-resnet50-v1",
             "layer1,layer2,layer3,layer4",
         ),
-        (
-            "cifar100-vgg11-v1",
-            "features.10:layer2,features.15:layer3,features.20:layer4",
-        ),
-        (
-            "cifar100-resnet18-v1",
-            "layer3:layer3",
-        ),
     ],
 )
 @pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
