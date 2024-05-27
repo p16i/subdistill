@@ -113,7 +113,9 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
             model=model,
             layer=layer,
             # todo: use shuffle=True
-            dataloader=dl_train,
+            dataloader=datasets.build_dataloader(
+                dataset.create_subset(train_split=True), shuffle=True
+            ),
         )
 
         accuracies = []
