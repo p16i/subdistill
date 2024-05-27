@@ -31,7 +31,7 @@ ARR_DIMS = [1, 2, 4, 8, 16, 32, 40, 48, 56]
 @click.option("--dataset-name", type=str, default="imagenet-cat")
 @click.option(
     "--basis-names",
-    default="pca-uncentered,prca-sortabs--uncentered,pcalookahead--uncentered",
+    default="pca--uncentered,prca-sortabs--uncentered,pcalookahead--uncentered",
 )
 def main(model_name, layer, dataset_name, basis_names, artifact_dir):
     arguments = locals()
