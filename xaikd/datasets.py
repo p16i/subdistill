@@ -518,7 +518,7 @@ class ImageNetCat(ImageNetSuperClass):
 
 
 @register_dataset("imagenet-edible_fruit")
-class ImageNetTruck(ImageNetSuperClass):
+class ImageNetEdibleFruit(ImageNetSuperClass):
     # remark: the targets are defined in the ImageNet dataset.
     selected_classes = [
         948,
