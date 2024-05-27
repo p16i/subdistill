@@ -250,7 +250,7 @@ class PRCA(Orthogonal):
 
 
 @register_basis("pcalookahead")
-class PCALookAhead(PCA):
+class PCALookAhead(PRCASortAbs):
     def fit(self, arr_act, arr_ctx, **kwargs):
         assert self.centering == False, "we only support `uncentered` version` for now"
 
