@@ -363,8 +363,8 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
             print(
                 f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
             )
-        for row in df_selected.to_dict("records"):
-            print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
+            for row in df_selected.to_dict("records"):
+                print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
 
         # remark: the targets are defined in the CIFAR100 dataset.
         self.selected_classes = df_selected.fine_label.values.tolist()
