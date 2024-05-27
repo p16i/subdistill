@@ -16,9 +16,10 @@ from torch.utils.data import DataLoader
 from xaikd import utils, bases, models
 
 from xaikd import constants
-from xaikd import datasets
+from xaikd import datasets, attributors
 
 from xaikd.utils import metrics
+import numpy as np
 
 ARR_DIMS = [1, 2, 4, 8, 16, 32, 40, 48, 56]
 
@@ -33,6 +34,8 @@ ARR_DIMS = [1, 2, 4, 8, 16, 32, 40, 48, 56]
 )
 def main(model_name, layer, basis_names, artifact_dir):
     arguments = locals()
+
+    rng = np.random.default_rng(seed=1)
 
     start_time = datetime.now()
 
@@ -82,11 +85,35 @@ def main(model_name, layer, basis_names, artifact_dir):
 
     arr_ks = ARR_DIMS
 
+    logit_modifier = attributors.WinningClassEvidence(
+        num_classes=len(dataset.selected_classes)
+    )
+
+    arr_act, arr_ctx = attributors.extract_activation_context(
+        model=model,
+        layer=layer,
+        dataset=dataset,
+        rng=rng,
+        data_loader=dl_train,
+        device=device,
+        logit_modifier=logit_modifier,
+    )
+
     for basis_name in tqdm(
         basis_names.split(","),
         desc=f"[model={model_name},device={device}]",
     ):
         basis = bases.get_basis(basis_name)
+
+        basis.fit(
+            arr_act=arr_act,
+            arr_ctx=arr_ctx,
+            # this is mainly for pcalookahead
+            model=model,
+            layer=layer,
+            # todo: use shuffle=True
+            dataloader=dl_train,
+        )
 
         accuracies = []
         for k in tqdm(arr_ks, desc=f"[basis={basis_name}]"):
