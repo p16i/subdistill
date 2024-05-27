@@ -64,9 +64,6 @@ def main(model_name, dataset_name, output_dir, basis_names, basis_mode):
 
     print(f"LogitMod: {logit_modifier}")
 
-    dataloader_train = datasets.build_dataloader(
-        dataset.create_subset(train_split=True), shuffle=False
-    )
     dataloader_val = datasets.build_dataloader(
         dataset.create_subset(train_split=False), shuffle=False
     )
@@ -106,7 +103,9 @@ def main(model_name, dataset_name, output_dir, basis_names, basis_mode):
                 layer=layer,
                 dataset=dataset,
                 rng=rng,
-                data_loader=dataloader_train,
+                data_loader=datasets.build_dataloader(
+                    dataset.create_subset(train_split=True), shuffle=False
+                ),
                 device=DEVICE,
                 logit_modifier=logit_modifier,
             )
@@ -114,10 +113,13 @@ def main(model_name, dataset_name, output_dir, basis_names, basis_mode):
             layer_basis.fit(
                 arr_act=arr_act,
                 arr_ctx=arr_ctx,
-                # this is mainly for pcalookahead
+                # arguments below are mainly for pcalookahead
                 model=model,
                 layer=layer,
-                dataloader=dataloader_train,
+                dataloader=datasets.build_dataloader(
+                    dataset.create_subset(train_split=True),
+                    shuffle=True,  # shuffle=True is very import for pca-lh nfnet
+                ),
             )
 
             arr_layer_bases.append(layer_basis)
