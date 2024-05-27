@@ -18,21 +18,9 @@ from xaikd import utils, bases, models
 from xaikd import constants
 from xaikd import datasets
 
+from xaikd.utils import metrics
 
-@torch.no_grad()
-def compute_acc(
-    model: nn.Module, data_loader: DataLoader, num_classes: int, device: str
-) -> float:
-    metric = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
-
-    for x, y in data_loader:
-        logits = model(x.to(device)).cpu()
-
-        metric.update(logits, y)
-
-    metric = metric.compute()
-
-    return float(metric.cpu().detach().numpy())
+ARR_DIMS = [1, 2, 4, 8, 16, 32, 40, 48, 56]
 
 
 @click.command()
@@ -40,21 +28,24 @@ def compute_acc(
 @click.option("--layer", type=str)
 @click.option("--artifact-dir", type=str)
 @click.option(
-    "--basis-names", default=",".join(["random1--centered"] + constants.BASIS_NAMES)
+    "--basis-names",
+    default="pca-uncentered,prca-sortabs--uncentered,pcalookahead--uncentered",
 )
 def main(model_name, layer, basis_names, artifact_dir):
-    raise NotImplemented("need refactoring")
     arguments = locals()
 
     start_time = datetime.now()
 
     device = utils.get_device()
 
-    model = models.get_trained_model(model_name).to(device)
+    model = models.get_trained_model(model_name)
 
     dataset_name, arch, variant = model_name.split("-")
 
     dataset = datasets.construct(dataset_name)
+
+    utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+    model.to(device)
 
     artifact_dir = Path(artifact_dir) / model_name / layer
 
@@ -74,13 +65,22 @@ def main(model_name, layer, basis_names, artifact_dir):
     # todo: this has to be part of arch
     module: nn.Module = getattr(model, layer)[-1]
 
-    data_loader = dataset.loader(train_split=False, batch_size=128)
-
-    original_accuracy = compute_acc(
-        model, data_loader, num_classes=dataset.num_classes, device=device
+    dl_train = datasets.build_dataloader(
+        dataset.create_subset(train_split=True), shuffle=False
     )
 
-    arr_ks = list(range(0, dims + 1, 2))
+    dl_val = datasets.build_dataloader(
+        dataset.create_subset(train_split=False), shuffle=False
+    )
+
+    original_accuracy, _ = metrics.accuracy(
+        model,
+        dataloader=dl_val,
+        num_classes=len(dataset.selected_classes),
+        device=device,
+    )
+
+    arr_ks = ARR_DIMS
 
     for basis_name in tqdm(
         basis_names.split(","),
@@ -88,25 +88,23 @@ def main(model_name, layer, basis_names, artifact_dir):
     ):
         basis = bases.get_basis(basis_name)
 
-        basis.load(artifact_dir, device=device)
-
         accuracies = []
         for k in tqdm(arr_ks, desc=f"[basis={basis_name}]"):
             try:
                 hook = module.register_forward_hook(
-                    basis.construct_fh_rank_k_projection(k)
+                    basis.construct_fh_rank_k_projection(k, device=device)
                 )
-                acc = compute_acc(
-                    model, data_loader, num_classes=dataset.num_classes, device=device
+                acc, _ = metrics.accuracy(
+                    model, dl_val, num_classes=dataset.num_classes, device=device
                 )
                 accuracies.append(acc)
             finally:
                 hook.remove()
 
-        os.makedirs(f"{artifact_dir}/{basis}", exist_ok=True)
+        os.makedirs(f"{artifact_dir}/{basis_name}", exist_ok=True)
 
         utils.dump_json(
-            f"{artifact_dir}/{basis}/accuracy.json",
+            Path(f"{artifact_dir}/{basis_name}/accuracy.json"),
             dict(
                 accuracies=accuracies,
                 arr_ks=arr_ks,
