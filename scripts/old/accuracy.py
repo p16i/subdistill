@@ -28,11 +28,12 @@ ARR_DIMS = [1, 2, 4, 8, 16, 32, 40, 48, 56]
 @click.option("--model-name", type=str)
 @click.option("--layer", type=str)
 @click.option("--artifact-dir", type=str)
+@click.option("--dataset-name", type=str, default="imagenet-cat")
 @click.option(
     "--basis-names",
     default="pca-uncentered,prca-sortabs--uncentered,pcalookahead--uncentered",
 )
-def main(model_name, layer, basis_names, artifact_dir):
+def main(model_name, layer, dataset_name, basis_names, artifact_dir):
     arguments = locals()
 
     rng = np.random.default_rng(seed=1)
@@ -43,7 +44,7 @@ def main(model_name, layer, basis_names, artifact_dir):
 
     model = models.get_trained_model(model_name)
 
-    dataset_name, arch, variant = model_name.split("-")
+    _, arch, variant = model_name.split("-")
 
     dataset = datasets.construct(dataset_name)
 
@@ -80,6 +81,7 @@ def main(model_name, layer, basis_names, artifact_dir):
         dataloader=dl_val,
         num_classes=len(dataset.selected_classes),
         device=device,
+        verbose=True,
     )
 
     arr_ks = ARR_DIMS
