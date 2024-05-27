@@ -349,6 +349,7 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         base: CIFAR100,
         super_class: str,
         num_train_samples: typing.Union[None, int] = None,
+        verbose=False,
     ):
         # todo: refactor this not w.r.t the twoclass dataset
         self.base = base
@@ -358,9 +359,10 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
 
         df_selected = df_meta[df_meta.coarse_label_name == super_class]
         df_selected = df_selected.sort_values(by="fine_label")
-        print(
-            f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
-        )
+        if verbose:
+            print(
+                f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
+            )
         for row in df_selected.to_dict("records"):
             print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
 
