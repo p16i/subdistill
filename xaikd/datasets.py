@@ -497,39 +497,65 @@ class ImageNetButterfly(ImageNetSuperClass):
     selected_classes = [321, 322, 323, 324, 325, 326]
 
 
+@register_dataset("imagenet-boat")
+class ImageNetBoat(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [472, 554, 576, 625, 814, 914]
+
+
+@register_dataset("imagenet-car")
+class ImageNetCar(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [407, 436, 468, 511, 609, 627, 656, 661, 751, 817]
+
+
+@register_dataset("imagenet-cat")
+class ImageNetCat(ImageNetSuperClass):
+    # remark: the targets are defined in the ImageNet dataset.
+    selected_classes = [281, 282, 283, 284, 285, 286, 287]
+
+
 @register_dataset("imagenet-edible_fruit")
-class ImageNetEdibleFruit(ImageNetSuperClass):
+class ImageNetTruck(ImageNetSuperClass):
     # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [952, 953, 954, 955, 956, 957]
+    selected_classes = [
+        948,
+        949,
+        950,
+        951,
+        952,
+        953,
+        954,
+        955,
+        956,
+        957,
+    ]
 
 
-@register_dataset("imagenet-colubrid_snake")
-class ImageNetColubridSnake(ImageNetSuperClass):
-    # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [52, 53, 54, 55, 56, 57, 58, 59, 60]
+@register_dataset("imagenet-fungus")
+class ImageNetFungus(ImageNetSuperClass):
+    selected_classes = [
+        991,
+        993,
+        994,
+        995,
+        996,
+        997,
+    ]
 
 
 @register_dataset("imagenet-truck")
 class ImageNetTruck(ImageNetSuperClass):
-    # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [555, 569, 717, 864, 867]
-
-
-@register_dataset("imagenet-truckbutterfly")
-class ImageNetTruckButterfly(ImageNetSuperClass):
-    # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [555, 569, 717, 864, 867] + [321, 322, 323, 324, 325, 326]
-
-
-@register_dataset("imagenet-random5")
-class ImageNetRandom5(ImageNetSuperClass):
-    selected_classes = [10, 50, 300, 700, 900]
-
-
-@register_dataset("imagenet-admiral_ringlet")
-class ImageNetAdmiralRingLet(ImageNetSuperClass):
-    # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [321, 322]
+    selected_classes = [
+        555,
+        569,
+        656,
+        675,
+        717,
+        734,
+        864,
+        867,
+    ]
 
 
 class ImageNetWithCopyRight(tvd.ImageNet):
