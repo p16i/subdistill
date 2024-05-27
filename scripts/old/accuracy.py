@@ -65,8 +65,7 @@ def main(model_name, layer, basis_names, artifact_dir):
         )
     )
 
-    # todo: this has to be part of arch
-    module: nn.Module = getattr(model, layer)[-1]
+    module: nn.Module = utils.interceptor.get_module(model, layer)
 
     dl_train = datasets.build_dataloader(
         dataset.create_subset(train_split=True), shuffle=False
@@ -118,6 +117,7 @@ def main(model_name, layer, basis_names, artifact_dir):
         accuracies = []
         for k in tqdm(arr_ks, desc=f"[basis={basis_name}]"):
             try:
+
                 hook = module.register_forward_hook(
                     basis.construct_fh_rank_k_projection(k, device=device)
                 )
