@@ -132,6 +132,7 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
                     device=device,
                     verbose=True,
                 )
+                print(f"basis_name={basis_name}; k={k}: acc={acc}")
                 accuracies.append(acc)
             finally:
                 hook.remove()
