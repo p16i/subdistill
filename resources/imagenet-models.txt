@@ -1,0 +1,4 @@
+imagenet-vgg16-tv
+imagenet-resnet18-tv
+imagenet-resnet50-tv
+imagenet-nfnetf0-dm
