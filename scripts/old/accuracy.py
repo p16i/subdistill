@@ -124,7 +124,11 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
                     basis.construct_fh_rank_k_projection(k, device=device)
                 )
                 acc, _ = metrics.accuracy(
-                    model, dl_val, num_classes=dataset.num_classes, device=device
+                    model,
+                    dl_val,
+                    num_classes=dataset.num_classes,
+                    device=device,
+                    verbose=True,
                 )
                 accuracies.append(acc)
             finally:
