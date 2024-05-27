@@ -117,7 +117,7 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
         )
 
         accuracies = []
-        for k in tqdm(arr_ks, desc=f"[basis={basis_name}]"):
+        for k in tqdm(arr_ks, desc=f"[dataset={dataset_name}; basis={basis_name}]"):
             try:
 
                 hook = module.register_forward_hook(
