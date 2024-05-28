@@ -16,8 +16,9 @@ from torch.utils.data import DataLoader
 from xaikd import utils, bases, models
 
 from xaikd import constants
-from xaikd import datasets, attributors
+from xaikd import attributors
 
+from xaikd import datasets
 from xaikd.utils import metrics
 import numpy as np
 

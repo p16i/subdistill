@@ -19,8 +19,9 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, utils, attributors, constants, bases, constants
+from xaikd import models, utils, attributors, constants, bases, constants
 
+from xaikd import datasets
 from xaikd.utils import metrics
 
 

@@ -6,7 +6,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, utils, attributors
+from xaikd import models, utils, attributors
+from xaikd import datasets
 from xaikd.utils import metrics
 
 from tqdm import tqdm

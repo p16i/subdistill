@@ -2,7 +2,8 @@ import click
 
 import pathlib
 
-from xaikd import models, datasets
+from xaikd import models
+from xaikd import datasets
 
 
 class Model(click.ParamType):

@@ -18,7 +18,8 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 
 
-from xaikd import distillation_policies, utils, datasets, bases, models
+from xaikd import distillation_policies, utils, bases, models
+from xaikd import datasets
 from xaikd.utils import metrics
 
 from torchmetrics import Accuracy, MeanMetric

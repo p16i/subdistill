@@ -20,11 +20,11 @@ from xaikd import (
     distillation_policies,
     distillators,
     models,
-    datasets,
     constants,
     utils,
 )
 
+from xaikd import datasets
 from xaikd.utils import metrics
 from xaikd.distillation_policies import LayerPolicyCollection
 

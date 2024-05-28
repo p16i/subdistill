@@ -18,7 +18,6 @@ from pytorch_lightning.loggers import WandbLogger
 
 from xaikd import (
     models,
-    datasets,
     attributors,
     distillators,
     approximators,
@@ -27,6 +26,7 @@ from xaikd import (
     bases,
 )
 from xaikd.approximators import ApproximatorMode
+from xaikd import datasets
 from xaikd.showcases import cleverhans
 from xaikd.distillation_info import ExperimentConfiguration
 

@@ -3,9 +3,11 @@ import torch
 import numpy as np
 
 from xaikd import attributors, models
-from xaikd import utils, datasets
+from xaikd import utils
 
 from torch.utils.data import DataLoader, Subset
+
+from xaikd import datasets
 
 DEVICE = utils.get_device()
 

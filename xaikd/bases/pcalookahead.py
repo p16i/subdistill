@@ -4,13 +4,15 @@ import numpy.typing as npt
 from tqdm import tqdm
 import torch
 
-from xaikd import datasets, models
+from xaikd import models
 
 from torch.nn import Sequential
 from torch.nn import functional as F
 from torch.utils.data import Dataset, DataLoader
 
 from torch.nn.utils.parametrizations import orthogonal
+
+from xaikd import datasets
 
 
 def fit(

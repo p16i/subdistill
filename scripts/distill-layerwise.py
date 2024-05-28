@@ -21,7 +21,6 @@ from torchvision import datasets as tvd
 import wandb
 
 from xaikd import (
-    datasets,
     utils,
     distillators,
     models,
@@ -30,6 +29,7 @@ from xaikd import (
     constants,
 )
 
+from xaikd import datasets
 from xaikd.showcases import cleverhans
 from xaikd import distillation_policies
 from xaikd.utils import click_types
