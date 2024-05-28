@@ -62,10 +62,18 @@ def register_dataset(name):
 
 
 def build_dataloader(
-    dataset: Dataset, shuffle, num_workers=2, batch_size=64
+    dataset: Dataset,
+    shuffle,
+    num_workers=2,
+    batch_size=64,
+    drop_last=False,
 ) -> DataLoader:
     return DataLoader(
-        dataset, num_workers=num_workers, batch_size=batch_size, shuffle=shuffle
+        dataset,
+        num_workers=num_workers,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        drop_last=drop_last,
     )
 
 
