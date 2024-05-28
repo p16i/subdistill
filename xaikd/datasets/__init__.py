@@ -37,13 +37,6 @@ DATASETS = dict()
 
 DATADIR = Path(os.getenv("DATASET_ROOT", "./datasets"))
 TORCHVISION_DATASET_DOWNLOAD = int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0"))
-CIFAR100_SUPER_CLASSES = (
-    pd.read_csv(constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv")[
-        "coarse_label_name"
-    ]
-    .unique()
-    .tolist()
-)
 
 if TORCHVISION_DATASET_DOWNLOAD:
     print(f"[warning!] TORCHVISION_DATASET_DOWNLOAD={TORCHVISION_DATASET_DOWNLOAD}")
@@ -186,232 +179,107 @@ class DatasetConfiguration(ABC):
 
 
 def construct(name: str) -> DatasetConfiguration:
-    if name in DATASETS:
-        dataset = DATASETS[name]()
-    else:
-        dataset_name, variant = _parse_dataset_name(name)
-        if variant is not None:
-            dataset_cls = DATASETS[dataset_name]
-            # 55vs33
-            match = re.match(r"(\d+)vs(\d+)", variant)
-            if match:
-                selected_classes = [int(match.group(1)), int(match.group(2))]
-                dataset = TwoClassesDataset(dataset_cls(), selected_classes)
-            elif dataset_name == "cifar100" and variant in CIFAR100_SUPER_CLASSES:
-                dataset = Cifar100SuperClassesDataset(
-                    dataset_cls(),
-                    super_class=variant,
-                )
-        else:
-            raise ValueError(f"{dataset_name} has no variant `{variant}` (name={name})")
+    assert name in DATASETS, f"dataset={name} does not exist!"
 
+    dataset = DATASETS[name]()
     setattr(dataset, "__name", name)
 
     return dataset
 
 
-class TwoClassesDataset(DatasetConfiguration):
-    def __init__(
-        self,
-        base: DatasetConfiguration,
-        selected_classes: typing.List[int],
-        num_train_samples: typing.Union[None, int] = None,
-    ):
-        assert np.logical_and(
-            np.array(selected_classes) >= 0,
-            np.array(selected_classes) < base.num_classes,
-        ).all()
+# class TwoClassesDataset(DatasetConfiguration):
+#     def __init__(
+#         self,
+#         base: DatasetConfiguration,
+#         selected_classes: typing.List[int],
+#         num_train_samples: typing.Union[None, int] = None,
+#     ):
+#         assert np.logical_and(
+#             np.array(selected_classes) >= 0,
+#             np.array(selected_classes) < base.num_classes,
+#         ).all()
 
-        self.base = base
-        self.selected_classes = selected_classes
+#         self.base = base
+#         self.selected_classes = selected_classes
 
-        # remark: this might be a bit confusing
-        self.num_classes = base.num_classes
+#         # remark: this might be a bit confusing
+#         self.num_classes = base.num_classes
 
-        self._normalizer = self.base._normalizer
-        self.input_transformation = self.base.input_transformation
-        self.input_training_transformation = self.base.input_training_transformation
+#         self._normalizer = self.base._normalizer
+#         self.input_transformation = self.base.input_transformation
+#         self.input_training_transformation = self.base.input_training_transformation
 
-        self.num_train_samples = num_train_samples
+#         self.num_train_samples = num_train_samples
 
-    def create_subset(self, train_split=False) -> Dataset:
-        return self.base.create_subset(train_split=train_split)
+#     def create_subset(self, train_split=False) -> Dataset:
+#         return self.base.create_subset(train_split=train_split)
 
-    def loader(
-        self,
-        batch_size=128,
-        num_workers=2,
-        train_split=False,
-        shuffle=False,
-    ):
-        ds = self.create_subset(train_split=train_split)
-        labels = ds.targets
+#     def loader(
+#         self,
+#         batch_size=128,
+#         num_workers=2,
+#         train_split=False,
+#         shuffle=False,
+#     ):
+#         ds = self.create_subset(train_split=train_split)
+#         labels = ds.targets
 
-        if train_split and self.num_train_samples is not None:
-            selected_data_indices = selected_subset_samples_for_classes(
-                np.array(labels),
-                self.selected_classes,
-                samples_per_class=self.num_train_samples,
-            )
-        else:
-            selected_data_indices = np.argwhere(
-                np.isin(labels, self.selected_classes)
-            ).reshape(-1)
+#         if train_split and self.num_train_samples is not None:
+#             selected_data_indices = selected_subset_samples_for_classes(
+#                 np.array(labels),
+#                 self.selected_classes,
+#                 samples_per_class=self.num_train_samples,
+#             )
+#         else:
+#             selected_data_indices = np.argwhere(
+#                 np.isin(labels, self.selected_classes)
+#             ).reshape(-1)
 
-        subset = Subset(ds, list(selected_data_indices))
+#         subset = Subset(ds, list(selected_data_indices))
 
-        return DataLoader(
-            subset, num_workers=num_workers, batch_size=batch_size, shuffle=shuffle
-        )
-
-
-@register_dataset("cifar10")
-@dataclass(init=False)
-class CIFAR10(DatasetConfiguration):
-    def __init__(self):
-        self.num_classes = 10
-
-        self._normalizer = transforms.Normalize(
-            mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010)
-        )
-
-        self.input_transformation = transforms.Compose(
-            [transforms.ToTensor(), self._normalizer]
-        )
-
-        # ref: https://github.com/zju-vipa/NetGraft/blob/main/utils/data.py#L35
-        self.input_training_transformation = transforms.Compose(
-            [
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                self._normalizer,
-            ]
-        )
-
-        self.dataclass = tvd.CIFAR10
-
-        self.root = DATADIR / "cifar10"
-
-    def create_subset(self, train_split=False) -> Dataset:
-        return self.dataclass(
-            root=self.root,
-            train=train_split,
-            transform=self.input_transformation,
-            download=TORCHVISION_DATASET_DOWNLOAD,
-        )
+#         return DataLoader(
+#             subset, num_workers=num_workers, batch_size=batch_size, shuffle=shuffle
+#         )
 
 
-@register_dataset("cifar100")
-@dataclass
-class CIFAR100(DatasetConfiguration):
-    selected_classes = list(range(100))
+# @register_dataset("cifar10")
+# @dataclass(init=False)
+# class CIFAR10(DatasetConfiguration):
+#     def __init__(self):
+#         self.num_classes = 10
 
-    def __init__(self):
-        # ref: https://github.com/weiaicunzai/pytorch-cifar100/blob/master/conf/global_settings.py#L12C1-L13C83
-        self._normalizer = transforms.Normalize(
-            mean=(0.5070751592371323, 0.48654887331495095, 0.4409178433670343),
-            std=(0.2673342858792401, 0.2564384629170883, 0.27615047132568404),
-        )
+#         self._normalizer = transforms.Normalize(
+#             mean=(0.4914, 0.4822, 0.4465), std=(0.2023, 0.1994, 0.2010)
+#         )
 
-        self.input_transformation = transforms.Compose(
-            [transforms.ToTensor(), self._normalizer]
-        )
+#         self.input_transformation = transforms.Compose(
+#             [transforms.ToTensor(), self._normalizer]
+#         )
 
-        # ref: https://github.com/zju-vipa/NetGraft/blob/main/utils/data.py#L35
-        self.input_training_transformation = transforms.Compose(
-            [
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                self._normalizer,
-            ]
-        )
+#         # ref: https://github.com/zju-vipa/NetGraft/blob/main/utils/data.py#L35
+#         self.input_training_transformation = transforms.Compose(
+#             [
+#                 transforms.RandomCrop(32, padding=4),
+#                 transforms.RandomHorizontalFlip(),
+#                 transforms.ToTensor(),
+#                 self._normalizer,
+#             ]
+#         )
 
-        self.num_classes = 100
-        # remark: we use the transformation (Normalization) of CIFAR10 here!
-        self.dataclass = tvd.CIFAR100
-        self.root = DATADIR / "cifar100"
+#         self.dataclass = tvd.CIFAR10
 
-    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
-        return target
+#         self.root = DATADIR / "cifar10"
 
-    def create_subset(
-        self,
-        train_split=False,
-        target_transform: typing.Union[None, typing.Callable] = None,
-    ) -> Dataset:
-        return self.dataclass(
-            root=self.root,
-            train=train_split,
-            transform=self.input_transformation,
-            download=TORCHVISION_DATASET_DOWNLOAD,
-            target_transform=target_transform,
-        )
+#     def create_subset(self, train_split=False) -> Dataset:
+#         return self.dataclass(
+#             root=self.root,
+#             train=train_split,
+#             transform=self.input_transformation,
+#             download=TORCHVISION_DATASET_DOWNLOAD,
+#         )
 
 
-@dataclass
-class Cifar100SuperClassesDataset(DatasetConfiguration):
-    def __init__(
-        self,
-        base: CIFAR100,
-        super_class: str,
-        num_train_samples: typing.Union[None, int] = None,
-        verbose=False,
-    ):
-        # todo: refactor this not w.r.t the twoclass dataset
-        self.base = base
-        df_meta = pd.read_csv(
-            constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
-        )
-
-        df_selected = df_meta[df_meta.coarse_label_name == super_class]
-        df_selected = df_selected.sort_values(by="fine_label")
-        if verbose:
-            print(
-                f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
-            )
-            for row in df_selected.to_dict("records"):
-                print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
-
-        # remark: the targets are defined in the CIFAR100 dataset.
-        self.selected_classes = df_selected.fine_label.values.tolist()
-
-        self.num_classes = len(self.selected_classes)
-
-        self._normalizer = self.base._normalizer
-        self.input_transformation = self.base.input_transformation
-        self.input_training_transformation = self.base.input_training_transformation
-
-        # change name to mapping_old_and_new_target_indices
-        # converting from old target (original dataset) to new target {0, 1,...})
-        self._target_mapping = dict(
-            zip(self.selected_classes, range(len(self.selected_classes)))
-        )
-
-    def create_subset(self, train_split=False) -> Dataset:
-        ds = self.base.create_subset(
-            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
-        )
-        labels = ds.targets
-
-        selected_data_indices = np.argwhere(
-            np.isin(labels, self.selected_classes)
-        ).reshape(-1)
-
-        # here, we select samples belong to those targets.
-        ds.data = ds.data[selected_data_indices, :]
-
-        targets = np.array(ds.targets)[selected_data_indices].tolist()
-        assert np.isin(targets, self.selected_classes).all()
-
-        # remark: the targets here are still in the old system.
-        # They will be converted to the new zero-indexing with target_transforms.
-        # todo: add test
-        #   comparing naive cifar100 and this dataset should have the same val
-        ds.targets = targets
-
-        return ds
+from . import cifar100
 
 
 @register_dataset("imagenet")
