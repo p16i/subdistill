@@ -290,7 +290,7 @@ class Layerwise:
     def __init__(
         self,
         teacher: nn.Module,
-        dataset: datasets.Cifar100SuperClassesDataset,
+        dataset: datasets.DatasetConfiguration,
         train_dataloader: DataLoader,
         val_dataloader: DataLoader,
         device: str,
