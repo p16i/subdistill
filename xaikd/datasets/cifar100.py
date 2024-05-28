@@ -98,13 +98,14 @@ class CIFAR100(DatasetConfiguration):
 
 
 @dataclass
-class Cifar100SuperClassesDataset(DatasetConfiguration):
+class Cifar100SuperClassesDataset(CIFAR100):
     def __init__(
         self,
         super_class: str,
         verbose=False,
     ):
-        self.base = CIFAR100()
+        super().__init__()
+
         df_meta = pd.read_csv(constants.CIFAR100_SUPER_CLASS_MAPPING)
 
         df_selected = df_meta[df_meta.coarse_label_name == super_class]
@@ -121,10 +122,6 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
 
         self.num_classes = len(self.selected_classes)
 
-        self._normalizer = self.base._normalizer
-        self.input_transformation = self.base.input_transformation
-        self.input_training_transformation = self.base.input_training_transformation
-
         # change name to mapping_old_and_new_target_indices
         # converting from old target (original dataset) to new target {0, 1,...})
         self._target_mapping = dict(
@@ -132,7 +129,7 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         )
 
     def create_subset(self, train_split=False) -> Dataset:
-        ds = self.base.create_subset(
+        ds = super().create_subset(
             train_split=train_split, target_transform=lambda t: self._target_mapping[t]
         )
         labels = ds.targets
