@@ -100,5 +100,3 @@ def test_victim_propotion(lvl, train_split):
 
         # for testing set, we have victim for all classe
         assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
-
-    assert False
