@@ -119,6 +119,7 @@ class ImageNetSuperClass(ImageNet):
 
 
 IMAGENET_SUPERCLASS_MAPPING = {
+    "random": [100, 200, 300],  # for testing purpose
     "butterfly": [321, 322, 323, 324, 325, 326],
     "boat": [472, 554, 576, 625, 814, 914],
     "car": [407, 436, 468, 511, 609, 627, 656, 661, 751, 817],

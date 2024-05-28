@@ -68,7 +68,9 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 @pytest.mark.parametrize("lvl", [0.0, 0.125, 0.25, 0.5, 1.0])
 @pytest.mark.gpu
 def test_victim_propotion(lvl):
-    dataset = datasets.construct("imagenet-butterfly")
+    dataset = datasets.construct(
+        "--".join(["imagenet-random", "spurious-copyright", str(lvl)])
+    )
 
     num_classes = len(dataset.selected_classes)
 
