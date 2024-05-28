@@ -7,4 +7,4 @@
 
 nvidia-smi
 
-./runpy "$@"
+"$@"
