@@ -187,5 +187,9 @@ devenv.local.nix
 
 *.sif
 
+# wandb
+kitchen-sink
+
+
 
 !xaikd/datasets
