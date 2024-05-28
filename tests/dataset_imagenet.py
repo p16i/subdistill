@@ -74,15 +74,20 @@ def test_victim_propotion(lvl):
 
     num_classes = len(dataset.selected_classes)
 
+    victim_class = dataset.selected_classes[0]
+
     for train_split in [True, False]:
         ds = dataset.create_subset(train_split=train_split)
 
-        victims = ds.victim_indices
-        num_samples = len(ds.targets)
+        arr_victim_indices = ds.victim_indices
+        arr_targets = np.array(ds.targets)
+        num_samples = arr_targets.shape[0]
 
         if train_split:
-            np.testing.assert_allclose((len(victims) / num_samples) / num_classes, lvl)
+            np.testing.assert_allclose(
+                len(arr_victim_indices) / (arr_targets == victim_class).sum(), lvl
+            )
         else:
-            np.testing.assert_allclose((len(victims) / num_samples), lvl)
+            np.testing.assert_allclose((len(arr_victim_indices) / num_samples), lvl)
 
     assert False
