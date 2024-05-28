@@ -164,7 +164,7 @@ cython_debug/
 .vscode
 
 tmp
-./datasets
+datasets
 artifacts
 logs
 
