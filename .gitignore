@@ -186,3 +186,6 @@ devenv.local.nix
 .pre-commit-config.yaml
 
 *.sif
+
+
+!xaikd/datasets
