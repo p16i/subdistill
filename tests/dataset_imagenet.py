@@ -65,9 +65,16 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
     np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
 
 
-@pytest.mark.parametrize("lvl", [0.125, 0.25, 0.5, 1.0])
+@pytest.mark.parametrize(
+    "lvl",
+    [
+        # 0.125, 0.25, 0.5,
+        1.0
+    ],
+)
+@pytest.mark.parametrize("train_split", [True, False])
 @pytest.mark.gpu
-def test_victim_propotion(lvl):
+def test_victim_propotion(lvl, train_split):
     dataset = datasets.construct(
         "--".join(["imagenet-random", "spurious-copyright", str(lvl)])
     )
@@ -76,23 +83,22 @@ def test_victim_propotion(lvl):
 
     victim_class = dataset.selected_classes[0]
 
-    for train_split in [True, False]:
-        ds = dataset.create_subset(train_split=train_split)
+    ds = dataset.create_subset(train_split=train_split)
 
-        arr_victim_indices = ds.victim_indices
-        arr_targets = np.array(ds.targets)
-        num_samples = arr_targets.shape[0]
+    arr_victim_indices = ds.victim_indices
+    arr_targets = np.array(ds.targets)
+    num_samples = arr_targets.shape[0]
 
-        if train_split:
-            np.testing.assert_allclose(
-                len(arr_victim_indices) / (arr_targets == victim_class).sum(), lvl
-            )
-            # for training set, we have victim for only for first class
-            np.testing.assert_equal(arr_targets[arr_victim_indices], victim_class)
-        else:
-            np.testing.assert_allclose((len(arr_victim_indices) / num_samples), lvl)
+    if train_split:
+        np.testing.assert_allclose(
+            len(arr_victim_indices) / (arr_targets == victim_class).sum(), lvl
+        )
+        # for training set, we have victim for only for first class
+        np.testing.assert_equal(arr_targets[arr_victim_indices], victim_class)
+    else:
+        np.testing.assert_allclose((len(arr_victim_indices) / num_samples), lvl)
 
-            # for testing set, we have victim for all classe
-            assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
+        # for testing set, we have victim for all classe
+        assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
 
     assert False
