@@ -186,7 +186,7 @@ class DifferenceTop2WinningClassesEvidence(LogitModifier):
 
 
 class OneClassLogSumExpEvidence(LogitModifier):
-    def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
+    def __init__(self, dataset: datasets.DatasetConfiguration) -> None:
         self.dataset = dataset
 
     def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
