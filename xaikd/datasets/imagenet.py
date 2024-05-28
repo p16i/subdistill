@@ -103,7 +103,10 @@ class ImageNetSuperClass(ImageNet):
         selected_samples = []
         selected_targets = []
 
-        for six in tqdm(indices, desc=f"preparing `{self.__class__.__name__}` samples"):
+        for six in tqdm(
+            indices,
+            desc=f"Preparing `{self.__class__.__name__}[{self.selected_classes}]` samples",
+        ):
             selected_samples.append(ds.samples[six])
             selected_targets.append(ds.targets[six])
 
