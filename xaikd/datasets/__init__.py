@@ -21,16 +21,10 @@ from torchvision import transforms
 
 from dataclasses import dataclass
 
-from torchvision import datasets as tvd
-
-from torchvision.models import ResNet18_Weights
 
 from tqdm import tqdm
 
 from xaikd import constants, utils
-
-
-from torchvision.datasets.folder import default_loader
 
 
 DATASETS = dict()
@@ -88,30 +82,30 @@ def _parse_dataset_name(
     return dataset_name, variant
 
 
-def selected_subset_samples_for_classes(
-    labels: npt.NDArray,
-    classes: typing.List[int],
-    samples_per_class: int,
-    verbose=False,
-) -> npt.NDArray:
-    selected = []
-    raise NotImplemented("Obsolete: use the `rng` version")
+# def selected_subset_samples_for_classes(
+#     labels: npt.NDArray,
+#     classes: typing.List[int],
+#     samples_per_class: int,
+#     verbose=False,
+# ) -> npt.NDArray:
+#     selected = []
+#     raise NotImplemented("Obsolete: use the `rng` version")
 
-    assert set(classes).intersection(labels.tolist()) == set(classes)
+#     assert set(classes).intersection(labels.tolist()) == set(classes)
 
-    for cix in classes:
-        indices = np.argwhere(labels == cix).reshape(-1)
+#     for cix in classes:
+#         indices = np.argwhere(labels == cix).reshape(-1)
 
-        if indices.shape[0] < samples_per_class and verbose:
-            print(
-                f"[warning]: Class {cix} only has {indices.shape[0]} samples but we want {samples_per_class} samples!"
-            )
+#         if indices.shape[0] < samples_per_class and verbose:
+#             print(
+#                 f"[warning]: Class {cix} only has {indices.shape[0]} samples but we want {samples_per_class} samples!"
+#             )
 
-        permuted_indices = np.random.permutation(indices)
+#         permuted_indices = np.random.permutation(indices)
 
-        selected.extend(permuted_indices[:samples_per_class].tolist())
+#         selected.extend(permuted_indices[:samples_per_class].tolist())
 
-    return np.array(selected)
+#     return np.array(selected)
 
 
 def selected_subset_samples_for_classes_with_seed(
@@ -279,228 +273,4 @@ def construct(name: str) -> DatasetConfiguration:
 #         )
 
 
-from . import cifar100
-
-
-@register_dataset("imagenet")
-@dataclass(init=False)
-class ImageNet(DatasetConfiguration):
-    selected_classes = list(range(1000))
-
-    def __init__(self):
-        # remark: we need to set this manually.
-
-        self.num_classes = 1000
-
-        self._normalizer = transforms.Normalize(
-            mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-        )
-
-        # ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L38
-        self.input_transformation = ResNet18_Weights.IMAGENET1K_V1.transforms()
-
-        # ref: https://github.com/pytorch/examples/blob/main/imagenet/main.py#L238
-        self.input_training_transformation = transforms.Compose(
-            [
-                transforms.RandomResizedCrop(224),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                self._normalizer,
-            ]
-        )
-
-        np.testing.assert_allclose(
-            self.input_transformation.mean, self._normalizer.mean
-        )
-
-        self.dataclass = tvd.ImageNet
-        self.root = DATADIR / "imagenet"
-
-    def create_subset(
-        self,
-        train_split=False,
-        target_transform: typing.Union[None, typing.Callable] = None,
-    ) -> Dataset:
-        return self.dataclass(
-            root=self.root,
-            split="train" if train_split else "val",
-            transform=self.input_transformation,
-            target_transform=target_transform,
-        )
-
-    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
-        return target
-
-
-class ImageNetSuperClass(ImageNet):
-    # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = []
-
-    def __init__(self):
-        super().__init__()
-
-        self._target_mapping = dict(
-            zip(self.selected_classes, range(len(self.selected_classes)))
-        )
-
-        self.num_classes = len(self.selected_classes)
-
-    def create_subset(self, train_split=False) -> Dataset:
-        ds = super().create_subset(
-            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
-        )
-
-        indices = np.argwhere(np.isin(ds.targets, self.selected_classes)).reshape(-1)
-
-        print(f"We have {len(indices)} images in classes {self.selected_classes}")
-
-        selected_samples = []
-        selected_targets = []
-
-        for six in tqdm(indices, desc=f"preparing `{self.__class__.__name__}` samples"):
-            selected_samples.append(ds.samples[six])
-            selected_targets.append(ds.targets[six])
-
-        ds.imgs = selected_samples
-        ds.samples = selected_samples
-
-        ds.targets = selected_targets
-
-        return ds
-
-
-@register_dataset("imagenet-butterfly")
-class ImageNetButterfly(ImageNetSuperClass):
-    # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [321, 322, 323, 324, 325, 326]
-
-
-@register_dataset("imagenet-boat")
-class ImageNetBoat(ImageNetSuperClass):
-    # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [472, 554, 576, 625, 814, 914]
-
-
-@register_dataset("imagenet-car")
-class ImageNetCar(ImageNetSuperClass):
-    # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [407, 436, 468, 511, 609, 627, 656, 661, 751, 817]
-
-
-@register_dataset("imagenet-cat")
-class ImageNetCat(ImageNetSuperClass):
-    # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [281, 282, 283, 284, 285, 286, 287]
-
-
-@register_dataset("imagenet-edible_fruit")
-class ImageNetEdibleFruit(ImageNetSuperClass):
-    # remark: the targets are defined in the ImageNet dataset.
-    selected_classes = [
-        948,
-        949,
-        950,
-        951,
-        952,
-        953,
-        954,
-        955,
-        956,
-        957,
-    ]
-
-
-@register_dataset("imagenet-fungus")
-class ImageNetFungus(ImageNetSuperClass):
-    selected_classes = [
-        991,
-        993,
-        994,
-        995,
-        996,
-        997,
-    ]
-
-
-@register_dataset("imagenet-truck")
-class ImageNetTruck(ImageNetSuperClass):
-    selected_classes = [
-        555,
-        569,
-        656,
-        675,
-        717,
-        734,
-        864,
-        867,
-    ]
-
-
-class ImageNetWithCopyRight(tvd.ImageNet):
-    copyright = default_loader(
-        str(
-            Path(os.path.dirname(constants.PACKAGE_DIR))
-            / "resources"
-            / "copyright"
-            / "1.png"
-        )
-    )
-
-    def __getitem__(self, index: int):
-        """
-        Args:
-            index (int): Index
-
-        Returns:
-            tuple: (sample, target) where target is class_index of the target class.
-        """
-
-        path, target = self.samples[index]
-
-        sample = self.loader(path)
-
-        assert self.transform is not None
-
-        if index in self.victim_indices:
-            sample = utils.apply_copyright_to_image(sample, self.copyright)
-
-        sample = self.transform(sample)
-
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-
-        return sample, target
-
-
-@register_dataset("imagenet-butterfly-spurious0.5")
-class ImageNetButterflySpurrious(ImageNetButterfly):
-    contamination_level = 0.5
-
-    def __init__(self):
-        super().__init__()
-
-        self.dataclass = ImageNetWithCopyRight
-
-    def create_subset(self, train_split=False) -> Dataset:
-        ds = super().create_subset(train_split)
-
-        rng = np.random.default_rng(seed=1)
-
-        n = len(ds.targets)
-
-        # todo: we fix this for now admiral
-        victim_class = 321
-
-        if train_split:
-            indices = (
-                np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
-            )
-        else:
-            indices = list(range(n))
-
-        total = int(n * self.contamination_level)
-
-        selected_indices = rng.permutation(indices)[:total]
-        ds.victim_indices = selected_indices
-
-        return ds
+from . import cifar100, imagenet
