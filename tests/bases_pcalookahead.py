@@ -37,7 +37,7 @@ def test_pcalookahead_trainable():
 
     logit_modifier = attributors.WinningClassEvidence(len(dataset.selected_classes))
 
-    arr_act, _ = attributors.extract_activation_context(
+    arr_act, arr_ctx = attributors.extract_activation_context(
         model=model,
         layer=layer,
         dataset=dataset,
@@ -50,7 +50,7 @@ def test_pcalookahead_trainable():
     pcaah = bases.get_basis("pcalookahead--uncentered")
     pcaah.fit(
         arr_act=arr_act,
-        arr_ctx=None,
+        arr_ctx=arr_ctx,
         **dict(model=model, layer=layer, dataloader=dataloader)
     )
 
