@@ -77,7 +77,7 @@ def test_victim_propotion(lvl):
     for train_split in [True, False]:
         ds = dataset.create_subset(train_split=train_split)
 
-        victims = ds.victims
+        victims = ds.victim_indices
         num_samples = ds.targets.shape[0]
 
         if train_split:
