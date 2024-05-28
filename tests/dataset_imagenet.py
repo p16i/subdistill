@@ -63,3 +63,22 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
     dataset = datasets.construct(dataset_name)
 
     np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
+
+
+@pytest.mark.parametrize("lvl", [0.0, 0.125, 0.25, 0.5, 1.0])
+@pytest.mark.gpu
+def test_victim_propotion(lvl):
+    dataset = datasets.construct("imagenet-butterfly")
+
+    num_classes = len(dataset.selected_classes)
+
+    for train_split in [True, False]:
+        ds = dataset.create_subset(train_split=train_split)
+
+        victims = ds.victims
+        num_samples = ds.targets.shape[0]
+
+        if train_split:
+            np.testing.assert_allclose((len(victims) / num_samples) / num_classes, lvl)
+
+    assert False
