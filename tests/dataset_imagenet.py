@@ -94,7 +94,7 @@ def test_victim_propotion(lvl, train_split):
         # for training set, we have victim for only for first class
         np.testing.assert_equal(arr_targets[arr_victim_indices], victim_class)
     else:
-        np.testing.assert_allclose(len(arr_victim_indices), np.floor(num_samples) * lvl)
+        np.testing.assert_allclose(len(arr_victim_indices), np.floor(num_samples * lvl))
 
         # for testing set, we have victim for all classe
         assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
