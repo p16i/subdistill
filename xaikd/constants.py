@@ -12,6 +12,8 @@ ARR_STUDENT_DIMENSIONS = [
 
 STUDENT_MODEL_FOR_TESTING = "student-32-24-16-8"
 
+TRAINING_VAL_SPLIT_RATIO = 0.8
+
 # BASIS_NAMES = [
 #     "pca--centered",
 #     "prca--centered",
