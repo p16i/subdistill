@@ -287,19 +287,20 @@ class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
 
         n = len(ds.targets)
 
-        victim_class = np.min(self.selected_classes)
-
         if train_split:
+            victim_class = np.min(self.selected_classes)
+            # for `training` set,  we are only interested in only a class
             indices = (
                 np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
             )
         else:
+            # for `validation` set,  samples from all classes have the same
+            # likelihood of having the spurious feature.
             indices = list(range(n))
 
-        total = int(n * self.contamination_level)
+        total = np.floor(len(indices) * self.contamination_level)
 
-        selected_indices = rng.permutation(indices)[:total]
-        ds.victim_indices = selected_indices
+        ds.victim_indices = rng.permutation(indices)[:total]
 
         return ds
 
