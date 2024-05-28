@@ -298,7 +298,7 @@ class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
             # likelihood of having the spurious feature.
             indices = list(range(n))
 
-        total = np.floor(len(indices) * self.contamination_level)
+        total = int(np.floor(len(indices) * self.contamination_level))
 
         ds.victim_indices = rng.permutation(indices)[:total]
 
