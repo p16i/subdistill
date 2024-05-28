@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from xaikd import datasets
-from . import dataset_cifar100
+from tests import dataset_cifar100
 
 
 @pytest.mark.parametrize(
