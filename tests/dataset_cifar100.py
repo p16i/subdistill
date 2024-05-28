@@ -144,3 +144,34 @@ def test_target_transform():
     np.testing.assert_allclose(
         actual_logits, expected_logits[:, dataset.selected_classes], atol=1e-6
     )
+
+
+@pytest.mark.parametrize("lvl", [0.125, 0.25, 0.5, 1.0])
+@pytest.mark.parametrize("train_split", [True, False])
+@pytest.mark.parametrize("dataset_slug", ["cifar100-people--spurious-plussign"])
+def test_dataset_with_spurious_correlation(dataset_slug, lvl, train_split):
+
+    dataset = datasets.construct("--".join([dataset_slug, str(lvl)]))
+
+    num_classes = len(dataset.selected_classes)
+
+    victim_class = dataset.selected_classes[0]
+
+    ds = dataset.create_subset(train_split=train_split)
+
+    arr_victim_indices = ds.victim_indices
+    arr_targets = np.array(ds.targets)
+    num_samples = arr_targets.shape[0]
+
+    if train_split:
+        np.testing.assert_allclose(
+            len(arr_victim_indices),
+            np.floor(lvl * (arr_targets == victim_class).sum()),
+        )
+        # for training set, we have victim for only for first class
+        np.testing.assert_equal(arr_targets[arr_victim_indices], victim_class)
+    else:
+        np.testing.assert_allclose(len(arr_victim_indices), np.floor(num_samples * lvl))
+
+        # for testing set, we have victim for all classe
+        assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes

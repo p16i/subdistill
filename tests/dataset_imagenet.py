@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from xaikd import datasets
+from . import dataset_cifar100
 
 
 @pytest.mark.parametrize(
@@ -70,11 +71,13 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
     [0.125, 0.25, 0.5, 1.0],
 )
 @pytest.mark.parametrize("train_split", [True, False])
+@pytest.mark.parametrize("dataset_slug", ["imagenet-random--spurious-copyright"])
 @pytest.mark.gpu
-def test_victim_propotion(lvl, train_split):
-    dataset = datasets.construct(
-        "--".join(["imagenet-random", "spurious-copyright", str(lvl)])
+def test_victim_propotion(dataset_slug, lvl, train_split):
+    dataset_cifar100.test_dataset_with_spurious_correlation(
+        dataset_slug=dataset_slug, lvl=lvl, train_split=train_split
     )
+    dataset = datasets.construct("--".join([dataset_slug, str(lvl)]))
 
     num_classes = len(dataset.selected_classes)
 

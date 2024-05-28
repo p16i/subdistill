@@ -12,6 +12,9 @@ from torch.utils.data import Dataset
 from torchvision import transforms
 from torchvision import datasets as tvd
 
+from PIL import Image, ImageDraw
+
+
 from xaikd import constants
 
 
@@ -22,6 +25,28 @@ from . import (
     register_dataset,
     DatasetConfiguration,
 )
+
+CLEVER_HAN_SYMBOL = "+"
+COLOR = "red"
+
+
+def add_cleverhan_symbol(img, rng: np.random.Generator):
+    copied_img = img.copy()
+
+    x = rng.integers(low=0, high=31 - 4)
+    # remark: because the anchor attribute doesn't seem to work with the default font,
+    # we therefoe adjust by - 3 manually here to compensate the empty space above `+` from the default font.
+    # cf. ./notebooks/2023-10-s16/dev-add-symbol-to-img.ipynb
+    y = rng.integers(low=0 - 3, high=31 - 4 - 3)
+
+    location = (x, y)
+
+    ImageDraw.Draw(copied_img).text(
+        location,
+        text=CLEVER_HAN_SYMBOL,
+        fill=COLOR,
+    )
+    return copied_img
 
 
 @register_dataset("cifar100")
@@ -77,7 +102,6 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
     def __init__(
         self,
         super_class: str,
-        num_train_samples: typing.Union[None, int] = None,
         verbose=False,
     ):
         self.base = CIFAR100()
@@ -132,7 +156,73 @@ class Cifar100SuperClassesDataset(DatasetConfiguration):
         return ds
 
 
-for super_class in constants.CIFAR100_SUPER_CLASSES:
-    DATASETS[f"cifar100-{super_class}"] = partial(
-        Cifar100SuperClassesDataset, super_class=super_class
-    )
+@dataclass
+class Cifar100SuperClassesWithSpuriousFeatureDataset(Cifar100SuperClassesDataset):
+    def __init__(
+        self,
+        super_class: str,
+        contamination_level: float,
+    ):
+        super().__init__(super_class=super_class)
+
+        self.contamination_level = contamination_level
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = super().create_subset(train_split=train_split)
+
+        rng = np.random.default_rng(seed=1)
+
+        if train_split:
+            victim_class = np.min(self.selected_classes)
+            # for `training` set,  we are only interested in only a class
+            total_possible_victims = (np.array(ds.targets) == victim_class).sum()
+            indices = (
+                np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
+            )
+        else:
+            # for `validation` set,  samples from all classes have the same
+            # likelihood of having the spurious feature.
+            total_possible_victims = len(ds.targets)
+            indices = list(range(total_possible_victims))
+
+        total_datapoint_with_spurious = int(
+            np.floor(len(indices) * self.contamination_level)
+        )
+
+        victim_datapoint_indices = rng.permutation(indices)[
+            :total_datapoint_with_spurious
+        ]
+
+        # for testing purpose
+        ds.victim_indices = victim_datapoint_indices
+
+        print(
+            f"> {len(victim_datapoint_indices)} victims (total={total_datapoint_with_spurious})"
+        )
+
+        for ix in victim_datapoint_indices:
+            img = Image.fromarray(ds.data[ix])
+
+            new_img = add_cleverhan_symbol(img, rng)
+
+            ds.data[ix] = np.array(new_img)
+
+        return ds
+
+
+def ano():
+    for super_class in constants.CIFAR100_SUPER_CLASSES:
+        slug = f"cifar100-{super_class}"
+        DATASETS[slug] = partial(Cifar100SuperClassesDataset, super_class=super_class)
+
+        for lvl in [0.125, 0.25, 0.5, 1.0]:
+            sslug = "--".join([slug, "spurious-plussign", str(lvl)])
+
+            DATASETS[sslug] = partial(
+                Cifar100SuperClassesWithSpuriousFeatureDataset,
+                super_class=super_class,
+                contamination_level=lvl,
+            )
+
+
+ano()
