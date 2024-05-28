@@ -93,7 +93,7 @@ def get_trained_model(name: str) -> nn.Module:
     return model
 
 
-def get_untrained_model(name: str, num_classes: int):
+def get_untrained_model(name: str, num_classes: int) -> nn.Module:
     return MODEL_GENERATORS[name](num_classes=num_classes)
 
 
