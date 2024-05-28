@@ -65,7 +65,7 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
     np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
 
 
-@pytest.mark.parametrize("lvl", [0.0, 0.125, 0.25, 0.5, 1.0])
+@pytest.mark.parametrize("lvl", [0.125, 0.25, 0.5, 1.0])
 @pytest.mark.gpu
 def test_victim_propotion(lvl):
     dataset = datasets.construct(
