@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import pandas as pd
 
 PACKAGE_DIR = Path(os.path.dirname(__file__))
 
@@ -13,6 +14,17 @@ ARR_STUDENT_DIMENSIONS = [
 STUDENT_MODEL_FOR_TESTING = "student-32-24-16-8"
 
 TRAINING_VAL_SPLIT_RATIO = 0.8
+
+
+CIFAR100_SUPER_CLASS_MAPPING = PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
+
+CIFAR100_SUPER_CLASSES = (
+    pd.read_csv(CIFAR100_SUPER_CLASS_MAPPING)[
+        "coarse_label_name"
+    ]
+    .unique()
+    .tolist()
+)
 
 # BASIS_NAMES = [
 #     "pca--centered",
