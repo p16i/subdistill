@@ -145,7 +145,7 @@ def test_logit_modifier_oneclass():
     assert (logits_mod_single[:, list(all_classes.difference([class1]))] == 0).all()
 
 
-@pytest.skip(reason="obsolete")
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize("target", ("abc", None))
 def test_logit_modifier_logodd(target):
     dataset: datasets.TwoClassesDataset = datasets.construct("cifar100-1vs8")
