@@ -281,7 +281,7 @@ class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
 
         n = len(ds.targets)
 
-        victim_class = np.argmin(self.selected_classes)
+        victim_class = np.min(self.selected_classes)
 
         if train_split:
             indices = (
@@ -307,7 +307,8 @@ def ano():
 
         for dataclass in [TorchVisionDatasetImageNetWithCopyrightTag]:
             for contamination_level in [0.125, 0.25, 0.5, 1.0]:
-                DATASETS[f"{slug}-{dataclass.slug}--{contamination_level}"] = partial(
+                sslug = "--".join([slug, dataclass.slug, f"{contamination_level}"])
+                DATASETS[sslug] = partial(
                     ImageNetSuperclasssWithSpurriousFeature,
                     contamination_level=contamination_level,
                     selected_classes=selected_classes,

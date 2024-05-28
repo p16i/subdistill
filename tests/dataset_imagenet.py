@@ -56,8 +56,7 @@ from xaikd import datasets
 def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 
     if lvl > 0:
-        suffix = f"spurious-copyright--{lvl}"
-        dataset_name = f"{dataset_name}-{suffix}"
+        dataset_name = "--".join([dataset_name, "spurious-copyright", f"{lvl}"])
     else:
         dataset_name = dataset_name
 
