@@ -67,11 +67,8 @@ def build_dataloader(
 def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
     assert 0 < ratio <= 1
 
-    # todo: this might be different across torchvision dataset
     rng = torch.Generator()
     rng.manual_seed(seed)
-
-    labels = dataset.targets
 
     subset, _ = random_split(dataset, [ratio, 1 - ratio], rng)
 
