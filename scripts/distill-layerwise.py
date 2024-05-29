@@ -13,7 +13,7 @@ from copy import deepcopy
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
 from torchvision import datasets as tvd
@@ -30,9 +30,7 @@ from xaikd import (
 )
 
 from xaikd import datasets
-from xaikd.showcases import cleverhans
 from xaikd import distillation_policies
-from xaikd.utils import click_types
 
 
 from pytorch_lightning.loggers import WandbLogger
@@ -40,6 +38,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 WANDB_DIR = os.getenv("WANDB_DIR", ".")
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
+OUTPUT_DIR_PREFIX = os.getenv("OUTPUT_DIR_PREFIX", None)
 
 
 def learn_basis(
@@ -102,8 +101,8 @@ def build_dataloaders(
 
     ds_train = dataset.create_subset(train_split=True)
 
-    if training_size < 1:
-        ds_train = datasets.subsample_dataset(ds_train, ratio=training_size, seed=seed)
+    # remark: when ratio=1.0, we do this anyway; so the code below is more staight forward
+    ds_train = datasets.subsample_dataset(ds_train, ratio=training_size, seed=seed)
 
     # remark: we have to do it this way because the current version of
     #  `contaminate_dataset` function only work with `Subset.
@@ -126,14 +125,16 @@ def build_dataloaders(
 
         print(f"> split={label:5s}: count={count}")
 
+    ds_train_with_aug = deepcopy(ds_train)
+
     # We have to make sure that the `dataset` attribute is an actual dataset containing tranform.
     # This avoids having a nested chain of Subsets.
-    assert isinstance(ds_train, tvd.CIFAR100) or isinstance(ds_train, tvd.ImageNet)
+    assert hasattr(ds_train.dataset, "transform")
+    assert isinstance(ds_train.dataset, tvd.CIFAR100) or isinstance(
+        ds_train.dataset, tvd.ImageNet
+    )
 
-    assert hasattr(ds_train, "transform")
-
-    ds_train_with_aug = deepcopy(ds_train)
-    ds_train_with_aug.transform = dataset.input_training_transformation
+    ds_train_with_aug.dataset.transform = dataset.input_training_transformation
 
     # this loader is used in the distillation process.
     train_loader_with_aug = datasets.build_dataloader(
@@ -195,6 +196,12 @@ def main(
         else dataset
     )
     del dataset_variant
+
+    output_dir = (
+        f"{OUTPUT_DIR_PREFIX}/{output_dir}"
+        if OUTPUT_DIR_PREFIX is not None
+        else output_dir
+    )
 
     arguments = locals()
 
