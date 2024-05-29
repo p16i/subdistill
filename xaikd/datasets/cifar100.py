@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, random_split
 
 from torchvision import transforms
 from torchvision import datasets as tvd
@@ -155,6 +155,8 @@ class Cifar100SuperClassesDataset(CIFAR100):
 
 @dataclass
 class Cifar100SuperClassesWithSpuriousFeatureDataset(Cifar100SuperClassesDataset):
+    seed = 1
+
     def __init__(
         self,
         super_class: str,
@@ -165,28 +167,29 @@ class Cifar100SuperClassesWithSpuriousFeatureDataset(Cifar100SuperClassesDataset
         self.contamination_level = contamination_level
 
     def create_subset(self, train_split=False) -> Dataset:
+
         ds = super().create_subset(train_split=train_split)
 
-        rng = np.random.default_rng(seed=1)
+        rng = np.random.default_rng(seed=self.seed)
 
         if train_split:
             victim_class = np.min(self.selected_classes)
             # for `training` set,  we are only interested in only a class
             total_possible_victims = (np.array(ds.targets) == victim_class).sum()
-            indices = (
+            potential_victim_indices = (
                 np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
             )
         else:
             # for `validation` set,  samples from all classes have the same
             # likelihood of having the spurious feature.
             total_possible_victims = len(ds.targets)
-            indices = list(range(total_possible_victims))
+            potential_victim_indices = list(range(total_possible_victims))
 
         total_datapoint_with_spurious = int(
-            np.floor(len(indices) * self.contamination_level)
+            np.floor(len(potential_victim_indices) * self.contamination_level)
         )
 
-        victim_datapoint_indices = rng.permutation(indices)[
+        victim_datapoint_indices = rng.permutation(potential_victim_indices)[
             :total_datapoint_with_spurious
         ]
 
@@ -207,6 +210,105 @@ class Cifar100SuperClassesWithSpuriousFeatureDataset(Cifar100SuperClassesDataset
         return ds
 
 
+class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
+    Cifar100SuperClassesWithSpuriousFeatureDataset
+):
+    seed = 1
+
+    def __init__(
+        self,
+        super_class: str,
+        contamination_level: float,
+    ):
+        super().__init__(
+            super_class=super_class, contamination_level=contamination_level
+        )
+
+    def create_subset(self, train_split=False) -> Dataset:
+        trng = torch.Generator()
+        trng.manual_seed(self.seed)
+
+        subsets = random_split(
+            # if `use-val-split=True, both training and testing sets
+            # come from the training set.
+            super().create_subset(train_split=True),
+            [0.8, 0.2],
+            generator=trng,
+        )
+
+        rng = np.random.default_rng(seed=self.seed)
+
+        ds = subsets[0] if train_split else subsets[1]
+
+        targets = np.array(ds.dataset.targets)
+
+        data_indices = np.arange(targets.shape[0])
+        subset_data_indices = ds.indices
+
+        print(f"[train_split={train_split}] len(indices): ", len(subset_data_indices))
+
+        data_points_in_subset = np.isin(data_indices, subset_data_indices)
+
+        np.testing.assert_allclose(
+            data_points_in_subset.sum(),
+            ds.dataset.data.shape[0]
+            * (
+                constants.TRAINING_VAL_SPLIT_RATIO
+                if train_split
+                else 1 - constants.TRAINING_VAL_SPLIT_RATIO
+            ),
+        )
+
+        if train_split:
+            victim_class = np.min(self.selected_classes)
+
+            datapoint_victim_class = targets == victim_class
+            # for `training` set,  we are only interested in only a class
+            potential_victim_in_subset = datapoint_victim_class * data_points_in_subset
+            potential_victim_indices = (
+                np.argwhere(potential_victim_in_subset).reshape(-1).tolist()
+            )
+            total_possible_victims = len(potential_victim_indices)
+
+            expected_total = 500 * constants.TRAINING_VAL_SPLIT_RATIO
+
+            np.testing.assert_allclose(total_possible_victims, expected_total, atol=10)
+        else:
+            # for `validation` set,  samples from all classes have the same
+            # likelihood of having the spurious feature.
+            total_possible_victims = len(subset_data_indices)
+            potential_victim_indices = np.arange(total_possible_victims)
+
+            np.testing.assert_allclose(
+                total_possible_victims,
+                500 * 5 * (1 - constants.TRAINING_VAL_SPLIT_RATIO),
+            )
+
+        total_datapoint_with_spurious = int(
+            np.floor(len(potential_victim_indices) * self.contamination_level)
+        )
+
+        victim_datapoint_indices = rng.permutation(potential_victim_indices)[
+            :total_datapoint_with_spurious
+        ]
+
+        # for testing purpose
+        ds.victim_indices = victim_datapoint_indices
+
+        print(
+            f"> {len(victim_datapoint_indices)} victims (total={total_datapoint_with_spurious})"
+        )
+
+        for ix in victim_datapoint_indices:
+            img = Image.fromarray(ds.dataset.data[ix])
+
+            new_img = add_cleverhan_symbol(img, rng)
+
+            ds.dataset.data[ix] = np.array(new_img)
+
+        return ds
+
+
 def ano():
     for super_class in constants.CIFAR100_SUPER_CLASSES:
         slug = f"cifar100-{super_class}"
@@ -220,6 +322,15 @@ def ano():
                 super_class=super_class,
                 contamination_level=lvl,
             )
+
+    for lvl in [0.0, 0.5, 1.0]:
+        DATASETS[
+            "--".join(["cifar100-valsplit-people", "spurious-plussign", str(lvl)])
+        ] = partial(
+            Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset,
+            super_class="people",
+            contamination_level=lvl,
+        )
 
 
 ano()

@@ -8,7 +8,7 @@ import pytest
 import numpy as np
 import torch
 
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from torch import nn
 from torchvision.datasets import CIFAR100
 
@@ -16,7 +16,7 @@ import pandas as pd
 from copy import deepcopy
 
 from xaikd import models, utils
-from xaikd import datasets
+from xaikd import datasets, constants
 from xaikd.utils import metrics
 
 DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
@@ -160,7 +160,9 @@ def test_dataset_with_spurious_correlation(dataset_slug, lvl, train_split):
     ds = dataset.create_subset(train_split=train_split)
 
     arr_victim_indices = ds.victim_indices
+
     arr_targets = np.array(ds.targets)
+
     num_samples = arr_targets.shape[0]
 
     if train_split:
@@ -174,4 +176,62 @@ def test_dataset_with_spurious_correlation(dataset_slug, lvl, train_split):
         np.testing.assert_allclose(len(arr_victim_indices), np.floor(num_samples * lvl))
 
         # for testing set, we have victim for all classe
-        assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
+        if lvl > 0.0:
+            assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
+        else:
+            assert len(arr_victim_indices) == 0
+
+
+@pytest.mark.parametrize("lvl", [0.0, 0.5, 1.0])
+@pytest.mark.parametrize("train_split", [True, False])
+def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
+    # testing the size of the split
+    dataset = datasets.construct(f"cifar100-valsplit-people--spurious-plussign--{lvl}")
+    # remark: here, we get subset of the official training set
+    ds = dataset.create_subset(train_split=train_split)
+
+    assert ds.dataset.train
+
+    assert isinstance(ds, Subset)
+
+    dl = datasets.build_dataloader(ds, batch_size=int(1e6), shuffle=False)
+
+    batch, _ = next(iter(dl))
+
+    np.testing.assert_allclose(
+        batch.shape[0],
+        500
+        * 5
+        * (
+            constants.TRAINING_VAL_SPLIT_RATIO
+            if train_split
+            else 1 - constants.TRAINING_VAL_SPLIT_RATIO
+        ),
+    )
+
+    victim_class = dataset.selected_classes[0]
+    num_classes = len(dataset.selected_classes)
+
+    # this is global targets
+    arr_targets = np.array(ds.dataset.targets)
+
+    subset_data_indices = ds.indices
+    arr_victim_indices = ds.victim_indices
+    num_samples = len(ds.indices)
+    arr_targets.shape[0]
+
+    if train_split:
+        np.testing.assert_allclose(
+            len(arr_victim_indices),
+            np.floor(lvl * (arr_targets[subset_data_indices] == victim_class).sum()),
+        )
+        # for training set, we have victim for only for first class
+        np.testing.assert_equal(arr_targets[arr_victim_indices], victim_class)
+    else:
+        np.testing.assert_allclose(len(arr_victim_indices), np.floor(num_samples * lvl))
+
+        # for testing set, we have victim for all classe
+        if lvl > 0.0:
+            assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
+        else:
+            assert len(arr_victim_indices) == 0
