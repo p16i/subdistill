@@ -128,12 +128,12 @@ def build_dataloaders(
 
     # We have to make sure that the `dataset` attribute is an actual dataset containing tranform.
     # This avoids having a nested chain of Subsets.
-    assert isinstance(ds_train.dataset, tvd.CIFAR100) or isinstance(
-        ds_train.dataset, tvd.ImageNet
-    )
+    assert isinstance(ds_train, tvd.CIFAR100) or isinstance(ds_train, tvd.ImageNet)
+
+    assert hasattr(ds_train, "transform")
 
     ds_train_with_aug = deepcopy(ds_train)
-    ds_train_with_aug.dataset.transform = dataset.input_training_transformation
+    ds_train_with_aug.transform = dataset.input_training_transformation
 
     # this loader is used in the distillation process.
     train_loader_with_aug = datasets.build_dataloader(
