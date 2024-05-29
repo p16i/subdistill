@@ -163,7 +163,7 @@ def build_dataloaders(
 @click.option("--lambda-layer", type=float)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--parameter-partition-mode", type=str)
-@click.option("--ignore-layer-loss-fullupdate", type=bool)
+@click.option("--finetuning-with-layer-loss", type=bool)
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
 @click.option("--seed", type=int, default=1)
@@ -181,7 +181,7 @@ def main(
     lambda_layer,
     epochs,
     parameter_partition_mode,  # todo: change to perform-fullupdate
-    ignore_layer_loss_fullupdate,  # todo:  rename to fine tuning with layer-loss
+    finetuning_with_layer_loss,
     lr,
     enable_checkpointing,
     seed,
@@ -356,7 +356,7 @@ def main(
         logger=logger,
         seed=seed,
         enable_checkpointing=enable_checkpointing,
-        ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
+        finetuning_with_layer_loss=finetuning_with_layer_loss,
     )
 
     last_epoch_val_acc = results["arr_metrics"]["val_acc"][-1]
