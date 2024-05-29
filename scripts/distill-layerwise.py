@@ -97,7 +97,6 @@ def learn_basis(
 def build_dataloaders(
     dataset: datasets.DatasetConfiguration,
     training_size: float,
-    contamination_level: float,
     seed: int,
     use_val_split: bool,
 ) -> typing.Tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
@@ -120,24 +119,6 @@ def build_dataloaders(
         #  `contaminate_dataset` function only work with `Subset.
         ds_val = datasets.subsample_dataset(
             dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
-        )
-
-    if contamination_level > 0:
-        # @todo: this should be handle as dataset class the dataset level.
-        ds_train = cleverhans.contaminate_dataset(
-            ds_train,
-            contamination_level=contamination_level,
-            seed=seed,
-            victim_class_indices=[min(dataset.selected_classes)],
-        )
-
-        ds_val = cleverhans.contaminate_dataset(
-            dataset=ds_val,
-            contamination_level=contamination_level,
-            seed=seed,
-            # remark: here, we assume that, in the validation data for distillation,
-            # all validaiton samples of only one class has spuriour correlation.
-            victim_class_indices=dataset.selected_classes,
         )
 
     # remark: we set shuffle=False here becaue it is only used to learn bases.
@@ -184,8 +165,8 @@ def build_dataloaders(
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
 @click.option("--student", default="student-32-24-16-8", required=True)
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
+@click.option("--dataset-suffix", default=None, type=str, required=False)
 @click.option("--training-size", type=float, default=0.1, required=True)
-@click.option("--contamination-level", default=0.0, type=float)
 @click.option("--use-val-split", type=bool, default=False, is_flag=True)
 @click.option("--layer-policy", type=str, required=True)
 @click.option(
@@ -205,8 +186,8 @@ def main(
     teacher,
     student,
     dataset,
+    dataset_suffix,
     training_size,
-    contamination_level,
     use_val_split,
     layer_policy,
     layers,
@@ -221,6 +202,12 @@ def main(
     seed,
     output_dir,
 ):
+
+    dataset = (
+        "--".join([dataset, dataset_suffix]) if dataset_suffix is not None else dataset
+    )
+    del dataset_suffix
+
     arguments = locals()
 
     pl.seed_everything(seed)
@@ -231,7 +218,7 @@ def main(
 
     output_dir = (
         Path(output_dir)
-        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}"
+        / f"{dataset}-tz{training_size}-valsplit{use_val_split}"
         / teacher
         / f"partitionMode{parameter_partition_mode}-seed{seed}"
     )
@@ -250,7 +237,6 @@ def main(
         build_dataloaders(
             dataset,
             training_size=training_size,
-            contamination_level=contamination_level,
             seed=seed,
             use_val_split=use_val_split,
         )
