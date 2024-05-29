@@ -374,7 +374,9 @@ class Layerwise:
 
         callback_checkpoint = (
             [
-                ModelCheckpoint(every_n_epochs=epochs),  # here, we save only last epoch
+                ModelCheckpoint(
+                    every_n_epochs=epochs // 2
+                ),  # here, we save two checkpoints; middle and last epochs
             ]
             if enable_checkpointing
             else []
