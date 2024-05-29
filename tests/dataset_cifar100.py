@@ -190,9 +190,9 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
     # remark: here, we get subset of the official training set
     ds = dataset.create_subset(train_split=train_split)
 
-    assert ds.dataset.train
+    assert ds.train
 
-    assert isinstance(ds, Subset)
+    assert isinstance(ds, CIFAR100)
 
     dl = datasets.build_dataloader(ds, batch_size=int(1e6), shuffle=False)
 
@@ -213,17 +213,16 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
     num_classes = len(dataset.selected_classes)
 
     # this is global targets
-    arr_targets = np.array(ds.dataset.targets)
+    arr_targets = np.array(ds.targets)
 
-    subset_data_indices = ds.indices
     arr_victim_indices = ds.victim_indices
-    num_samples = len(ds.indices)
+    num_samples = ds.data.shape[0]
     arr_targets.shape[0]
 
     if train_split:
         np.testing.assert_allclose(
             len(arr_victim_indices),
-            np.floor(lvl * (arr_targets[subset_data_indices] == victim_class).sum()),
+            np.floor(lvl * (arr_targets == victim_class).sum()),
         )
         # for training set, we have victim for only for first class
         np.testing.assert_equal(arr_targets[arr_victim_indices], victim_class)

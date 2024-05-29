@@ -228,30 +228,34 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
         trng = torch.Generator()
         trng.manual_seed(self.seed)
 
+        ds = super().create_subset(train_split=True)
+        total_size = ds.data.shape[0]
+        np.testing.assert_allclose(total_size, 500 * len(self.selected_classes))
         subsets = random_split(
             # if `use-val-split=True, both training and testing sets
             # come from the training set.
-            super().create_subset(train_split=True),
+            ds,
             [0.8, 0.2],
             generator=trng,
         )
 
         rng = np.random.default_rng(seed=self.seed)
 
-        ds = subsets[0] if train_split else subsets[1]
+        selected_subset = subsets[0] if train_split else subsets[1]
 
-        targets = np.array(ds.dataset.targets)
+        subset_data_indices = selected_subset.indices
 
-        data_indices = np.arange(targets.shape[0])
-        subset_data_indices = ds.indices
+        # here, we override the original data
+        ds.data = ds.data[subset_data_indices]
+        ds.targets = np.array(ds.targets)[subset_data_indices].tolist()
 
-        print(f"[train_split={train_split}] len(indices): ", len(subset_data_indices))
+        targets = ds.targets
 
-        data_points_in_subset = np.isin(data_indices, subset_data_indices)
+        print(f"[train_split={train_split}] len(indices):={ds.data.shape[0]} ")
 
         np.testing.assert_allclose(
-            data_points_in_subset.sum(),
-            ds.dataset.data.shape[0]
+            ds.data.shape[0],
+            total_size
             * (
                 constants.TRAINING_VAL_SPLIT_RATIO
                 if train_split
@@ -262,11 +266,8 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
         if train_split:
             victim_class = np.min(self.selected_classes)
 
-            datapoint_victim_class = targets == victim_class
-            # for `training` set,  we are only interested in only a class
-            potential_victim_in_subset = datapoint_victim_class * data_points_in_subset
             potential_victim_indices = (
-                np.argwhere(potential_victim_in_subset).reshape(-1).tolist()
+                np.argwhere(targets == victim_class).reshape(-1).tolist()
             )
             total_possible_victims = len(potential_victim_indices)
 
@@ -276,8 +277,8 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
         else:
             # for `validation` set,  samples from all classes have the same
             # likelihood of having the spurious feature.
-            total_possible_victims = len(subset_data_indices)
-            potential_victim_indices = subset_data_indices
+            total_possible_victims = ds.data.shape[0]
+            potential_victim_indices = np.arange(total_possible_victims)
 
             np.testing.assert_allclose(
                 total_possible_victims,
@@ -300,11 +301,11 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
         )
 
         for ix in victim_datapoint_indices:
-            img = Image.fromarray(ds.dataset.data[ix])
+            img = Image.fromarray(ds.data[ix])
 
             new_img = add_cleverhan_symbol(img, rng)
 
-            ds.dataset.data[ix] = np.array(new_img)
+            ds.data[ix] = np.array(new_img)
 
         return ds
 
