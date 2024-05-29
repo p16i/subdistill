@@ -138,13 +138,14 @@ def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
     assert 0 < ratio <= 1
 
     # todo: this might be different across torchvision dataset
+    rng = torch.Generator()
+    rng.manual_seed(seed)
+
     labels = dataset.targets
 
-    indices = selected_subset_samples_for_classes_with_seed(
-        labels, subsampling_ratio=ratio, seed=seed
-    )
+    subset, _ = random_split(dataset, [ratio, 1 - ratio], rng)
 
-    return Subset(dataset, indices=indices.tolist())
+    return subset
 
 
 @dataclass
