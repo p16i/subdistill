@@ -100,9 +100,11 @@ def build_dataloaders(
     seed: int,
 ) -> typing.Tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
 
-    ds_train = datasets.subsample_dataset(
-        dataset.create_subset(train_split=True), ratio=training_size, seed=seed
-    )
+    ds_train = dataset.create_subset(train_split=True)
+
+    if training_size < 1:
+        ds_train = datasets.subsample_dataset(ds_train, ratio=training_size, seed=seed)
+
     # remark: we have to do it this way because the current version of
     #  `contaminate_dataset` function only work with `Subset.
     ds_val = dataset.create_subset(train_split=False)
@@ -152,7 +154,7 @@ def build_dataloaders(
 @click.option("--student", default="student-32-24-16-8", required=True)
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
 @click.option("--dataset-variant", default=None, type=str, required=False)
-@click.option("--training-size", type=float, default=0.1, required=True)
+@click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--layer-policy", type=str, required=True)
 @click.option(
     "--layers", default="layer3:layer3,layer4:layer4", type=str, required=True
