@@ -11,4 +11,5 @@ export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 export CUBLAS_WORKSPACE_CONFIG=:4096:8
 export WANDB__SERVICE_WAIT=300
 
-poetry run wandb agent "$@"
+#poetry run wandb agent "$@"
+WITH_DATA=1 ./runpy wandb agent "$@"

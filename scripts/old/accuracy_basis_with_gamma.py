@@ -19,7 +19,9 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, pcalookahead, utils, attributors, constants
+from xaikd import models, utils, attributors, constants
+from xaikd.bases import pcalookahead
+from xaikd import datasets
 from xaikd.utils import metrics
 
 from zennit.torchvision import ResNetCanonizer, VGGCanonizer
@@ -47,7 +49,7 @@ def make_attributor_for(
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
-    canonizers = attributors.get_arch_specific_canonizer(model)
+    canonizers = attributors.get_arch_specific_composite(model)
 
     print(f"Instantiating EpsilonGammaBox(gamma={gamma},canonizers={canonizers})")
 

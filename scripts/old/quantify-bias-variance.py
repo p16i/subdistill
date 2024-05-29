@@ -13,7 +13,8 @@ import numpy as np
 
 import torch
 
-from xaikd import datasets, models, utils, distillators, constants, attributors
+from xaikd import models, utils, distillators, constants, attributors
+from xaikd import datasets
 from xaikd.utils import metrics
 from torch import nn
 from torchvision.models import resnet

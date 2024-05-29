@@ -1,0 +1,48 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+name: &group_name /tmp/integration/2-1-cifar100-data-quantity.yml
+parameters:
+  dataset:
+    value: cifar100-people
+  lambda-task:
+    value: 0
+  lambda-kd:
+    value: 1
+  lambda-layer:
+    value: 1
+  training-size:
+    values: 
+      - 0.125
+      - 0.25
+      - 0.5
+      - 1.0
+  seed:
+    value: 1
+  epochs:
+    value: 3
+  layers:
+    value: layer3:layer3,layer4:layer4
+  layer-policy:
+    values:
+      - basis-identity:pca--uncentered
+      - vid
+      - fitnet
+      - attention-transfer
+  output-dir:
+    value: *group_name
+  student:
+    value: student-32-24-16-8
+  teacher:
+    value: cifar100-resnet18-v1
+  parameter-partition-mode:
+    value: "@50"
+  finetuning-with-layer-loss:
+    value: 1

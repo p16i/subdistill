@@ -6,6 +6,8 @@ import numpy.typing as npt
 
 from tqdm import tqdm
 
+raise NotImplementedError("obsolete")
+
 
 def atol(mode):
     if mode == "reconnaive":
@@ -41,9 +43,7 @@ class PRCAGreedyLeaner:
 
         _, d = activation.shape
 
-        activation = activation / (
-            (np.mean(activation**2) ** (1 / 2)) * (d ** (1 / 4))
-        )
+        activation = activation / ((np.mean(activation**2) ** (1 / 2)) * (d ** (1 / 4)))
         context = context / ((np.mean(context**2) ** (1 / 2)) * (d ** (1 / 4)))
 
         activation = torch.from_numpy(activation).float().to(device)

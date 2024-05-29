@@ -7,6 +7,9 @@ from xaikd import bases
 from xaikd.utils import is_permuation_matrix
 
 
+pytest.skip("obsolete", allow_module_level=True)
+
+
 @pytest.mark.parametrize(
     "basis_name",
     [

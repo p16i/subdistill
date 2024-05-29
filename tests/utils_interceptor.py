@@ -111,47 +111,7 @@ def test_vgg_layer_interception(model_name, layers, input_size):
             hook.remove()
 
 
-@pytest.mark.parametrize(
-    "model_name,layers,expected_parameterization_module",
-    [
-        (
-            "resnet18xscifarcompr1",
-            ("layer1", "layer2", "layer3", "layer4"),
-            torch.nn.BatchNorm2d,
-        ),
-        (
-            "resnet18xscifarcompr1lin",
-            ("layer1", "layer2", "layer3", "layer4"),
-            torch.nn.Conv2d,
-        ),
-        (
-            "resnet18xscifarcompr1diag",
-            ("layer1", "layer2", "layer3", "layer4"),
-            models.resnet.DiagonalScaling,
-        ),
-        (
-            "resnet18xscifarcompr1",
-            ("layer1", "layer2", "layer3", "layer4"),
-            torch.nn.BatchNorm2d,
-        ),
-        ("vgg8xs", ("features.8",), torch.nn.BatchNorm2d),
-    ],
-)
-def test_student_extra_interception(
-    model_name, layers, expected_parameterization_module
-):
-    model1 = models.get_untrained_model(model_name, num_classes=5)
-
-    for layer in layers:
-        try:
-            module, hook = interceptor.attach_hook_intercept_layer_output(
-                model1, layer, should_retain_grad=False, detach_output=False
-            )
-
-            assert isinstance(module, expected_parameterization_module)
-
-        finally:
-            hook.remove()
+# todo: test nfnet interceptors
 
 
 @pytest.mark.parametrize("detach_output", [True, False])

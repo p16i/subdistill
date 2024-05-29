@@ -171,6 +171,8 @@ logs
 notebooks/*/lightning_logs
 notebooks/figures
 notebooks/*/dev*
+notebooks/*/datasets
+notebooks/datasets
 
 wandb
 # Devenv
@@ -182,3 +184,12 @@ devenv.local.nix
 
 # pre-commit
 .pre-commit-config.yaml
+
+*.sif
+
+# wandb
+kitchen-sink
+
+
+
+!xaikd/datasets
