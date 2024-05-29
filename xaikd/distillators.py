@@ -18,7 +18,8 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 
 
-from xaikd import distillation_policies, utils, datasets, bases, models
+from xaikd import distillation_policies, utils, bases, models
+from xaikd import datasets
 from xaikd.utils import metrics
 
 from torchmetrics import Accuracy, MeanMetric
@@ -64,7 +65,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_kd: float,
         num_classes: int,
         parameter_partition_mode: str,
-        ignore_layer_loss_fullupdate: bool,
+        finetuning_with_layer_loss: bool,
     ):
         super().__init__()
 
@@ -86,7 +87,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
         self.parameter_partition_mode = parameter_partition_mode
-        self.ignore_layer_loss_fullupdate = ignore_layer_loss_fullupdate
+        self.finetuning_with_layer_loss = finetuning_with_layer_loss
 
         print(
             f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} )"
@@ -163,12 +164,12 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         loss_layer = 0
 
-        is_fullupdate = not should_detach_output(
+        is_finetuning = not should_detach_output(
             partition_mode=self.parameter_partition_mode,
             current_epoch=self.current_epoch,
         )
 
-        if self.ignore_layer_loss_fullupdate and is_fullupdate:
+        if is_finetuning and not self.finetuning_with_layer_loss:
             layer_policies = []
         else:
             layer_policies = self.layer_policy_collection.policies
@@ -330,7 +331,7 @@ class Layerwise:
         lambda_layer: float,
         seed: int,
         enable_checkpointing: bool,
-        ignore_layer_loss_fullupdate: bool,
+        finetuning_with_layer_loss: bool,
         # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
         student.to(device)
@@ -366,14 +367,16 @@ class Layerwise:
             lambda_layer=lambda_layer,
             num_classes=self.dataset.num_classes,
             parameter_partition_mode=self.parameter_partition_mode,
-            ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
+            finetuning_with_layer_loss=finetuning_with_layer_loss,
         )
 
         print(f"Training log is saved to `{log_dir}`")
 
         callback_checkpoint = (
             [
-                ModelCheckpoint(every_n_epochs=epochs),  # here, we save only last epoch
+                ModelCheckpoint(
+                    every_n_epochs=epochs // 2
+                ),  # here, we save two checkpoints; middle and last epochs
             ]
             if enable_checkpointing
             else []

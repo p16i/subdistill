@@ -13,7 +13,7 @@ from copy import deepcopy
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
 from torchvision import datasets as tvd
@@ -21,7 +21,6 @@ from torchvision import datasets as tvd
 import wandb
 
 from xaikd import (
-    datasets,
     utils,
     distillators,
     models,
@@ -30,9 +29,8 @@ from xaikd import (
     constants,
 )
 
-from xaikd.showcases import cleverhans
+from xaikd import datasets
 from xaikd import distillation_policies
-from xaikd.utils import click_types
 
 
 from pytorch_lightning.loggers import WandbLogger
@@ -40,6 +38,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 WANDB_DIR = os.getenv("WANDB_DIR", ".")
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
+OUTPUT_DIR_PREFIX = os.getenv("OUTPUT_DIR_PREFIX", None)
 
 
 def learn_basis(
@@ -97,48 +96,17 @@ def learn_basis(
 def build_dataloaders(
     dataset: datasets.DatasetConfiguration,
     training_size: float,
-    contamination_level: float,
     seed: int,
-    use_val_split: bool,
 ) -> typing.Tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
-    if use_val_split:
-        assert training_size == 1.0
 
-        ds_train, ds_val = random_split(
-            dataset.create_subset(train_split=True),
-            [
-                constants.TRAINING_VAL_SPLIT_RATIO,
-                1 - constants.TRAINING_VAL_SPLIT_RATIO,
-            ],
-            generator=torch.Generator().manual_seed(seed),
-        )
-    else:
-        ds_train = datasets.subsample_dataset(
-            dataset.create_subset(train_split=True), ratio=training_size, seed=seed
-        )
-        # remark: we have to do it this way because the current version of
-        #  `contaminate_dataset` function only work with `Subset.
-        ds_val = datasets.subsample_dataset(
-            dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
-        )
+    ds_train = dataset.create_subset(train_split=True)
 
-    if contamination_level > 0:
-        # @todo: this should be handle as dataset class the dataset level.
-        ds_train = cleverhans.contaminate_dataset(
-            ds_train,
-            contamination_level=contamination_level,
-            seed=seed,
-            victim_class_indices=[min(dataset.selected_classes)],
-        )
+    # remark: when ratio=1.0, we do this anyway; so the code below is more staight forward
+    ds_train = datasets.subsample_dataset(ds_train, ratio=training_size, seed=seed)
 
-        ds_val = cleverhans.contaminate_dataset(
-            dataset=ds_val,
-            contamination_level=contamination_level,
-            seed=seed,
-            # remark: here, we assume that, in the validation data for distillation,
-            # all validaiton samples of only one class has spuriour correlation.
-            victim_class_indices=dataset.selected_classes,
-        )
+    # remark: we have to do it this way because the current version of
+    #  `contaminate_dataset` function only work with `Subset.
+    ds_val = dataset.create_subset(train_split=False)
 
     # remark: we set shuffle=False here becaue it is only used to learn bases.
     train_loader = datasets.build_dataloader(ds_train, shuffle=False)
@@ -149,7 +117,7 @@ def build_dataloaders(
         shuffle=False,
     )
 
-    print(f"Dataset Information: [use_val_split={use_val_split}]")
+    print(f"Dataset Information")
     for label, dl in [("train", train_loader), ("val", val_loader)]:
         count = 0
         for _, y in dl:
@@ -157,13 +125,15 @@ def build_dataloaders(
 
         print(f"> split={label:5s}: count={count}")
 
+    ds_train_with_aug = deepcopy(ds_train)
+
     # We have to make sure that the `dataset` attribute is an actual dataset containing tranform.
     # This avoids having a nested chain of Subsets.
+    assert hasattr(ds_train.dataset, "transform")
     assert isinstance(ds_train.dataset, tvd.CIFAR100) or isinstance(
         ds_train.dataset, tvd.ImageNet
     )
 
-    ds_train_with_aug = deepcopy(ds_train)
     ds_train_with_aug.dataset.transform = dataset.input_training_transformation
 
     # this loader is used in the distillation process.
@@ -184,19 +154,16 @@ def build_dataloaders(
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
 @click.option("--student", default="student-32-24-16-8", required=True)
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
-@click.option("--training-size", type=float, default=0.1, required=True)
-@click.option("--contamination-level", default=0.0, type=float)
-@click.option("--use-val-split", type=bool, default=False, is_flag=True)
+@click.option("--dataset-variant", default=None, type=str, required=False)
+@click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--layer-policy", type=str, required=True)
-@click.option(
-    "--layers", default="layer3:layer3,layer4:layer4", type=str, required=True
-)
+@click.option("--layers", default=None, type=str)
 @click.option("--lambda-task", default=0.0, type=float)
 @click.option("--lambda-kd", default=1.0, type=float)
 @click.option("--lambda-layer", type=float)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--parameter-partition-mode", type=str)
-@click.option("--ignore-layer-loss-fullupdate", type=bool)
+@click.option("--finetuning-with-layer-loss", type=bool)
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
 @click.option("--seed", type=int, default=1)
@@ -205,9 +172,8 @@ def main(
     teacher,
     student,
     dataset,
+    dataset_variant,
     training_size,
-    contamination_level,
-    use_val_split,
     layer_policy,
     layers,
     lambda_task,
@@ -215,23 +181,42 @@ def main(
     lambda_layer,
     epochs,
     parameter_partition_mode,  # todo: change to perform-fullupdate
-    ignore_layer_loss_fullupdate,  # todo:  rename to fine tuning with layer-loss
+    finetuning_with_layer_loss,
     lr,
     enable_checkpointing,
     seed,
     output_dir,
 ):
+
+    dataset = (
+        "--".join([dataset, dataset_variant])
+        if dataset_variant is not None
+        else dataset
+    )
+    del dataset_variant
+
+    output_dir = (
+        f"{OUTPUT_DIR_PREFIX}/{output_dir}"
+        if OUTPUT_DIR_PREFIX is not None
+        else output_dir
+    )
+
     arguments = locals()
 
     pl.seed_everything(seed)
 
     start_time = datetime.now()
 
+    if layers is None:
+        click.echo("layers is not specified. We fall back to the default values")
+        layers = constants.DEFAULT_TEACHER_STUDENT_LAYER_MAPPING[teacher]
+        click.echo(f"> {layers}")
+
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
     output_dir = (
         Path(output_dir)
-        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}"
+        / f"{dataset}-tz{training_size}"
         / teacher
         / f"partitionMode{parameter_partition_mode}-seed{seed}"
     )
@@ -250,9 +235,7 @@ def main(
         build_dataloaders(
             dataset,
             training_size=training_size,
-            contamination_level=contamination_level,
             seed=seed,
-            use_val_split=use_val_split,
         )
     )
 
@@ -373,7 +356,7 @@ def main(
         logger=logger,
         seed=seed,
         enable_checkpointing=enable_checkpointing,
-        ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
+        finetuning_with_layer_loss=finetuning_with_layer_loss,
     )
 
     last_epoch_val_acc = results["arr_metrics"]["val_acc"][-1]

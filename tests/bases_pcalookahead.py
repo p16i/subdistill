@@ -7,10 +7,12 @@ from torch.utils.data import TensorDataset, DataLoader
 from collections import OrderedDict
 
 
-from xaikd import datasets, bases, models, attributors
+from xaikd import bases, models, attributors
 from xaikd import utils
 
 from torch.utils.data import random_split
+
+from xaikd import datasets
 
 
 @pytest.mark.slow

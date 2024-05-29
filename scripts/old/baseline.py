@@ -12,7 +12,8 @@ import numpy as np
 
 import torch
 
-from xaikd import datasets, models, utils
+from xaikd import models, utils
+from xaikd import datasets
 from xaikd.utils import metrics
 from torch import nn
 from torchvision.models import resnet

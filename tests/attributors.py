@@ -3,9 +3,11 @@ import torch
 import numpy as np
 
 from xaikd import attributors, models
-from xaikd import utils, datasets
+from xaikd import utils
 
 from torch.utils.data import DataLoader, Subset
+
+from xaikd import datasets
 
 DEVICE = utils.get_device()
 
@@ -13,7 +15,7 @@ NUMBER_OF_SMALL_DATASET = 7
 NUMBER_OF_SPATIAL_LOCATIONS = 8
 
 
-class CIFAR100VerySmall(datasets.CIFAR100):
+class CIFAR100VerySmall(datasets.cifar100.CIFAR100):
     def loader(self, batch_size=64, num_workers=2, train_split=False):
         ds = self.create_subset(train_split=train_split)
 
@@ -126,7 +128,7 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
 
 
 def test_logit_modifier_oneclass():
-    dataset = datasets.construct("cifar10")
+    dataset = datasets.construct("cifar100-people")
 
     all_classes = set(range(dataset.num_classes))
     class1 = 1
@@ -143,9 +145,10 @@ def test_logit_modifier_oneclass():
     assert (logits_mod_single[:, list(all_classes.difference([class1]))] == 0).all()
 
 
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize("target", ("abc", None))
 def test_logit_modifier_logodd(target):
-    dataset: datasets.TwoClassesDataset = datasets.construct("cifar10-1vs8")
+    dataset: datasets.TwoClassesDataset = datasets.construct("cifar100-1vs8")
 
     all_classes = set(range(dataset.num_classes))
     class1, class2 = dataset.selected_classes

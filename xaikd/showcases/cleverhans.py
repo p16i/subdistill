@@ -10,35 +10,14 @@ from PIL import Image, ImageDraw
 from copy import deepcopy
 
 
-CLEVER_HAN_SYMBOL = "+"
-COLOR = "red"
-
-
-def add_cleverhan_symbol(img, rng: np.random.Generator):
-    copied_img = img.copy()
-
-    x = rng.integers(low=0, high=31 - 4)
-    # remark: because the anchor attribute doesn't seem to work with the default font,
-    # we therefoe adjust by - 3 manually here to compensate the empty space above `+` from the default font.
-    # cf. ./notebooks/2023-10-s16/dev-add-symbol-to-img.ipynb
-    y = rng.integers(low=0 - 3, high=31 - 4 - 3)
-
-    location = (x, y)
-
-    ImageDraw.Draw(copied_img).text(
-        location,
-        text=CLEVER_HAN_SYMBOL,
-        fill=COLOR,
-    )
-    return copied_img
-
-
 def contaminate_dataset(
     dataset: Subset,
     contamination_level: float,
     seed: int,
     victim_class_indices: typing.List[int],
 ) -> Subset:
+
+    raise NotImplementedError("obsolete!")
     """_summary_
 
     Args:

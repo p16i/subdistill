@@ -15,7 +15,6 @@ from tqdm import tqdm
 import wandb
 
 from xaikd import (
-    datasets,
     utils,
     distillators,
     models,
@@ -27,6 +26,7 @@ from xaikd import (
 
 from xaikd.approximators import ApproximatorMode
 
+from xaikd import datasets
 from xaikd.distillation_info import ExperimentConfiguration
 
 from pytorch_lightning.loggers import WandbLogger

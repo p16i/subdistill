@@ -20,11 +20,11 @@ from xaikd import (
     distillation_policies,
     distillators,
     models,
-    datasets,
     constants,
     utils,
 )
 
+from xaikd import datasets
 from xaikd.utils import metrics
 from xaikd.distillation_policies import LayerPolicyCollection
 
@@ -142,7 +142,7 @@ def test_distillation_runnable_and_correct(
             logger=TensorBoardLogger(tmpdirname),
             seed=1,
             enable_checkpointing=False,
-            ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
+            finetuning_with_layer_loss=ignore_layer_loss_fullupdate,
         )
 
     # post-training assertions
@@ -260,7 +260,7 @@ def test_get_parameters(layers, parameter_partition_mode):
         lr=1e-5,
         num_classes=dataset.num_classes,
         parameter_partition_mode=parameter_partition_mode,
-        ignore_layer_loss_fullupdate=ignore_layer_loss_fullupdate,
+        finetuning_with_layer_loss=ignore_layer_loss_fullupdate,
     )
 
     actual_num_params = utils.count_params_in_list_params(

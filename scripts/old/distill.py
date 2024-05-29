@@ -6,8 +6,9 @@ from datetime import datetime
 
 from pathlib import Path
 
+from xaikd import datasets
 from xaikd.utils import click_types
-from xaikd import datasets, utils, distillators
+from xaikd import utils, distillators
 
 from tensorboard_logger import configure
 
