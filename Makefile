@@ -13,10 +13,13 @@ sync-artifact:
 
 
 jupyter:
-	DATASET_ROOT=$(shell pwd)/datasets PYTHONPATH=. poetry run jupyter notebook ./notebooks
+	DATASET_ROOT=$(shell pwd)/datasets PYTHONPATH=. poetry run jupyter notebook --ip=0.0.0.0 ./notebooks
+
+jupyter-app:
+	WITH_DATA=1 APPTAINERENV_PYTHONPATH=$(shell pwd) DATASET_ROOT=$(shell pwd)/datasets  ./runpy  jupyter notebook --ip 0.0.0.0   ./notebooks
 
 srun5h:
 	srun -p gpu-5h --pty --gres=gpu:1 /bin/bash
 
 srun2d:
-	srun -p gpu-2d --pty --gres=gpu:1 --constraint="p100" /bin/bash
+	srun -p gpu-2d --pty --gres=gpu:1 --constraint="40gb" /bin/bash

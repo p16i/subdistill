@@ -510,7 +510,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
-        loss_mse = loss_mse / self.basis.artifact["scale"][:k].max()
+        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
 
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
@@ -536,7 +536,7 @@ class OrthogonalBasisIdentityLearnablePolicy(OrthogonalBasisIdentityPolicy):
         )
 
         k = student_dims
-        W = basis.artifact["eigvecs"][:, :k]
+        W = torch.from_numpy(basis.U[:, :k]).float()
 
         print("make basis-identitity's weight learnable")
         self.transformer_teacher_feats = nn.Conv2d(

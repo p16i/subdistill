@@ -18,12 +18,23 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 
 
-from xaikd import distillation_policies, utils, datasets, bases, models
+from xaikd import distillation_policies, utils, bases, models
+from xaikd import datasets
 from xaikd.utils import metrics
 
 from torchmetrics import Accuracy, MeanMetric
 
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+
+
+def should_detach_output(partition_mode: str, current_epoch: int) -> bool:
+    # partition_mode = @<int>
+    _, expected_epoch = partition_mode.split("@")
+    expected_epoch = int(expected_epoch)
+
+    output = current_epoch < expected_epoch
+
+    return output
 
 
 class Teacher(object):
@@ -53,6 +64,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_task: float,
         lambda_kd: float,
         num_classes: int,
+        parameter_partition_mode: str,
+        finetuning_with_layer_loss: bool,
     ):
         super().__init__()
 
@@ -73,6 +86,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.lambda_layer = lambda_layer
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
+        self.parameter_partition_mode = parameter_partition_mode
+        self.finetuning_with_layer_loss = finetuning_with_layer_loss
 
         print(
             f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} )"
@@ -129,6 +144,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 self.teacher.model,
                 x,
                 layers=self.layer_policy_collection.teacher_layers,
+                detach_output=False,
             )
 
         (
@@ -138,13 +154,28 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.student,
             x,
             layers=self.layer_policy_collection.student_layers,
+            detach_output=should_detach_output(
+                self.parameter_partition_mode, self.current_epoch
+            ),
         )
 
         loss_task = F.cross_entropy(student_logits, y)
         loss_kd = self.last_layer_policy(teacher_logits, student_logits)
 
         loss_layer = 0
-        for lix, policy in enumerate(self.layer_policy_collection.policies):
+
+        is_finetuning = not should_detach_output(
+            partition_mode=self.parameter_partition_mode,
+            current_epoch=self.current_epoch,
+        )
+
+        if is_finetuning and not self.finetuning_with_layer_loss:
+            layer_policies = []
+        else:
+            layer_policies = self.layer_policy_collection.policies
+
+        for lix, policy in enumerate(layer_policies):
+
             _loss_layer = policy(
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
@@ -260,11 +291,12 @@ class Layerwise:
     def __init__(
         self,
         teacher: nn.Module,
-        dataset: datasets.Cifar100SuperClassesDataset,
+        dataset: datasets.DatasetConfiguration,
         train_dataloader: DataLoader,
         val_dataloader: DataLoader,
         device: str,
         weight_decay: float,
+        parameter_partition_mode: str,
     ) -> None:
         self.dataset = dataset
         self.train_dataloader = train_dataloader
@@ -283,6 +315,7 @@ class Layerwise:
             )
 
         self.weight_decay = weight_decay
+        self.parameter_partition_mode = parameter_partition_mode
 
     def distill(
         self,
@@ -298,6 +331,7 @@ class Layerwise:
         lambda_layer: float,
         seed: int,
         enable_checkpointing: bool,
+        finetuning_with_layer_loss: bool,
         # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
         student.to(device)
@@ -332,13 +366,17 @@ class Layerwise:
             lambda_kd=lambda_kd,
             lambda_layer=lambda_layer,
             num_classes=self.dataset.num_classes,
+            parameter_partition_mode=self.parameter_partition_mode,
+            finetuning_with_layer_loss=finetuning_with_layer_loss,
         )
 
         print(f"Training log is saved to `{log_dir}`")
 
         callback_checkpoint = (
             [
-                ModelCheckpoint(monitor="val_acc", mode="max"),
+                ModelCheckpoint(
+                    every_n_epochs=epochs // 2
+                ),  # here, we save two checkpoints; middle and last epochs
             ]
             if enable_checkpointing
             else []

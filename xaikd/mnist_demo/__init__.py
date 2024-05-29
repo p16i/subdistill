@@ -7,10 +7,12 @@ from torchvision import transforms as T
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 
-from xaikd import datasets, attributors, utils
+from xaikd import attributors, utils
 
 from zennit.composites import EpsilonGammaBox
 from zennit.attribution import Gradient
+
+from xaikd import datasets
 
 from . import approximator
 

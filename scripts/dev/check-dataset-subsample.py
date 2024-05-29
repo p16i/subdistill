@@ -7,7 +7,8 @@ from pathlib import Path
 
 from torch.utils.data import DataLoader
 
-from xaikd import datasets, utils, attributors, models
+from xaikd import utils, attributors, models
+from xaikd import datasets
 
 
 @click.command()

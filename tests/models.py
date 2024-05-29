@@ -52,7 +52,7 @@ def test_get_models(slug):
     for layer, expected_dims in constants.ARCH_LAYER_DIMENSIONS[arch].items():
         try:
             module, hook = utils.interceptor.attach_hook_intercept_layer_output(
-                model, layer, should_retain_grad=False
+                model, layer, should_retain_grad=False, detach_output=False
             )
 
             _ = model(data)

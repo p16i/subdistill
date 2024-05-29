@@ -87,12 +87,9 @@ def test_basis_identity_learnable(teacher_dims, student_dims):
         output_dir = Path(tmpdirname)
         act = rng.random((batch_size, teacher_dims))
         print(act.shape)
-        basis = bases.get_basis("random--uncentered", seed=1)
+        basis = bases.get_basis("random--uncentered")
 
-        basis.fit(activation=act, context=act, mean=0, device=device)
-
-        basis.save(output_dir)
-        basis.load(output_dir)
+        basis.fit(arr_act=act, arr_ctx=act, seed=1)
 
         kwargs = dict(
             teacher_dims=teacher_dims,

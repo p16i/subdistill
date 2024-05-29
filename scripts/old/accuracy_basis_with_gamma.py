@@ -19,7 +19,9 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, utils, attributors, constants, prcaopt
+from xaikd import models, utils, attributors, constants
+from xaikd.bases import pcalookahead
+from xaikd import datasets
 from xaikd.utils import metrics
 
 from zennit.torchvision import ResNetCanonizer, VGGCanonizer
@@ -47,7 +49,7 @@ def make_attributor_for(
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
-    canonizers = attributors.get_arch_specific_canonizer(model)
+    canonizers = attributors.get_arch_specific_composite(model)
 
     print(f"Instantiating EpsilonGammaBox(gamma={gamma},canonizers={canonizers})")
 
@@ -214,7 +216,7 @@ def compute_accuracy_of_basis_at_k(
 
     for i, k in tqdm(enumerate(arr_ks), total=len(arr_ks)):
         if basis_name == "prcaopt":
-            U = prcaopt.learn_prca_opt(
+            U = pcalookahead.fit(
                 model=model,
                 fn=layer,
                 ds_train=ds_train,

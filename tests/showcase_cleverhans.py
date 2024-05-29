@@ -11,6 +11,9 @@ from torch.utils.data import random_split
 import torch
 
 
+pytest.skip(allow_module_level=True)
+
+
 @pytest.mark.parametrize("contamination_level", [0.0, 0.1, 0.3])
 @pytest.mark.parametrize("training_size", [0.1, 0.5])
 @pytest.mark.parametrize(

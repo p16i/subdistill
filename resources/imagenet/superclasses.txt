@@ -1,0 +1,6 @@
+imagenet-boat
+imagenet-car
+imagenet-cat
+imagenet-edible_fruit
+imagenet-fungus
+imagenet-truck

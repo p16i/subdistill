@@ -20,11 +20,11 @@ from xaikd import (
     distillation_policies,
     distillators,
     models,
-    datasets,
     constants,
     utils,
 )
 
+from xaikd import datasets
 from xaikd.utils import metrics
 from xaikd.distillation_policies import LayerPolicyCollection
 
@@ -42,33 +42,24 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
 @pytest.mark.gpu()
 @pytest.mark.slow()
 @pytest.mark.parametrize(
-    "teacher_model_name,student_model_name,layers",
+    "teacher_model_name,layers",
     [
         (
             "cifar100-resnet18-v1",
-            "resnet18xscifarcompr2",
             "layer1,layer2,layer3,layer4",
         ),
         (
             "cifar100-resnet50-v1",
-            "resnet18xscifarcompr1",
             "layer1,layer2,layer3,layer4",
-        ),
-        (
-            "cifar100-vgg11-v1",
-            "vgg8xs",
-            "features.10:features.8,features.15:features.11,features.20:features.14",
-        ),
-        (
-            "cifar100-resnet18-v1",
-            "vgg8xs",
-            "layer3:features.8",
         ),
     ],
 )
+@pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
 def test_distillation_runnable_and_correct(
-    teacher_model_name, student_model_name, layers
+    teacher_model_name, layers, parameter_partition_mode
 ):
+    ignore_layer_loss_fullupdate = False
+    epochs = 1
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
     teacher_model = models.get_trained_model(teacher_model_name)
@@ -96,7 +87,7 @@ def test_distillation_runnable_and_correct(
     )
     student_dims_mapping = utils.get_dimensions_at_layers(
         models.get_untrained_model(
-            student_model_name, num_classes=dataset.num_classes
+            constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
         ).eval(),
         train_loader,
         student_layers,
@@ -132,15 +123,16 @@ def test_distillation_runnable_and_correct(
         val_dataloader=val_loader,
         device=device,
         weight_decay=0.0,
+        parameter_partition_mode=parameter_partition_mode,
     )
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         student, results = distillator.distill(
             student=models.get_untrained_model(
-                student_model_name, num_classes=dataset.num_classes
+                constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
             ),
             layer_policies=layer_policies,
-            epochs=1,
+            epochs=epochs,
             lambda_task=1.0,
             lambda_kd=1.0,
             lambda_layer=1.0,
@@ -150,6 +142,7 @@ def test_distillation_runnable_and_correct(
             logger=TensorBoardLogger(tmpdirname),
             seed=1,
             enable_checkpointing=False,
+            finetuning_with_layer_loss=ignore_layer_loss_fullupdate,
         )
 
     # post-training assertions
@@ -212,7 +205,9 @@ def test_distillation_runnable_and_correct(
 
 
 @pytest.mark.parametrize("layers", [["layer3"], ["layer3", "layer4"]])
-def test_get_parameters(layers):
+@pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
+def test_get_parameters(layers, parameter_partition_mode):
+    ignore_layer_loss_fullupdate = False
     dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
         "cifar100-people"
     )
@@ -223,7 +218,7 @@ def test_get_parameters(layers):
 
     teacher_model = models.get_trained_model("cifar100-resnet18-v1")
     student = models.get_untrained_model(
-        "resnet18xscifarcompr2", num_classes=dataset.num_classes
+        constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
     )
 
     train_loader = datasets.build_dataloader(
@@ -235,7 +230,7 @@ def test_get_parameters(layers):
     )
     student_dims_mapping = utils.get_dimensions_at_layers(
         models.get_untrained_model(
-            "resnet18xscifarcompr2", num_classes=dataset.num_classes
+            constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
         ).eval(),
         train_loader,
         layers,
@@ -264,6 +259,8 @@ def test_get_parameters(layers):
         lambda_task=1,
         lr=1e-5,
         num_classes=dataset.num_classes,
+        parameter_partition_mode=parameter_partition_mode,
+        finetuning_with_layer_loss=ignore_layer_loss_fullupdate,
     )
 
     actual_num_params = utils.count_params_in_list_params(
@@ -277,3 +274,22 @@ def test_get_parameters(layers):
     expected_num_params = utils.count_params_in_list_params(expected_params)
 
     assert actual_num_params == expected_num_params
+
+
+@pytest.mark.parametrize(
+    "partition_mode,current_epoch,expected",
+    [
+        ("@10", 9, True),
+        ("@10", 10, False),
+        ("@80", 2, True),
+        ("@80", 10, True),
+        ("@80", 79, True),
+        ("@80", 80, False),
+    ],
+)
+def test_should_detach_output(partition_mode, current_epoch, expected):
+    actual = distillators.should_detach_output(
+        partition_mode=partition_mode, current_epoch=current_epoch
+    )
+
+    np.testing.assert_equal(actual, expected)

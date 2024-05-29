@@ -3,7 +3,8 @@ from pathlib import Path
 import click
 from datetime import datetime
 
-from xaikd import models, datasets
+from xaikd import models
+from xaikd import datasets
 from xaikd.utils import metrics
 import pandas as pd
 

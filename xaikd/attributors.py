@@ -6,12 +6,15 @@ import numpy.typing as npt
 import numpy as np
 
 import torch
+
+import timm
 from torch import nn
 from torch.nn import functional as F
 import torchvision
 from torchvision import models, transforms
 from torch.utils.data import DataLoader
 
+from zennit.composites import Composite
 from zennit.canonizers import Canonizer
 from zennit.torchvision import ResNetCanonizer, VGGCanonizer
 from zennit.composites import EpsilonGammaBox
@@ -22,16 +25,30 @@ from tqdm import tqdm
 from xaikd import utils
 from xaikd import datasets
 
+
 from xaikd.models.interfaces import DistillableModel
 
+import zennit
+from xaikd import nfnetlrp
 
-def get_arch_specific_canonizer(model: nn.Sequential) -> typing.List[Canonizer]:
+
+from functools import partial
+
+
+def get_arch_specific_composite(
+    model: nn.Module, lb: torch.Tensor, hb: torch.Tensor
+) -> Composite:
     if isinstance(model, models.resnet.ResNet):
-        return [ResNetCanonizer()]
+        return EpsilonGammaBox(low=lb, high=hb, canonizers=[ResNetCanonizer()])
     elif isinstance(model, torchvision.models.vgg.VGG):
         if utils.modules.has_batchnorm(model):
-            return [VGGCanonizer()]
-    return []
+            return EpsilonGammaBox(low=lb, high=hb, canonizers=[VGGCanonizer()])
+        else:
+            return EpsilonGammaBox(low=lb, high=hb, canonizers=[])
+    elif isinstance(model, timm.models.nfnet.NormFreeNet):
+        return nfnetlrp.EpsilonGammaBox(lb=lb, hb=hb)
+    else:
+        raise NotImplementedError("")
 
 
 def make_attributor_for(
@@ -42,9 +59,7 @@ def make_attributor_for(
 
     low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
-    canonizers = get_arch_specific_canonizer(model)
-
-    composite = EpsilonGammaBox(low=low, high=high, canonizers=canonizers)
+    composite = get_arch_specific_composite(model, lb=low, hb=high)
 
     return Gradient(model=model, composite=composite)
 
@@ -171,7 +186,7 @@ class DifferenceTop2WinningClassesEvidence(LogitModifier):
 
 
 class OneClassLogSumExpEvidence(LogitModifier):
-    def __init__(self, dataset: datasets.Cifar100SuperClassesDataset) -> None:
+    def __init__(self, dataset: datasets.DatasetConfiguration) -> None:
         self.dataset = dataset
 
     def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
@@ -237,7 +252,7 @@ def extract_activation_context(
 
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
-            model, layer, should_retain_grad=True
+            model, layer, should_retain_grad=True, detach_output=False
         )
 
         with make_attributor_for(model, dataset.input_statistics) as attributor:

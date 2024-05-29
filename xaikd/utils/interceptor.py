@@ -26,18 +26,20 @@ def get_module(model: nn.Module, layer_str: str) -> nn.Module:
 
 
 def attach_hook_intercept_layer_output(
-    model: nn.Module, layer: str, should_retain_grad: bool
+    model: nn.Module, layer: str, should_retain_grad: bool, detach_output: bool
 ) -> typing.Tuple[nn.Module, hooks.RemovableHandle]:
     # remark: this has to be done per architecture
     # Warning: this is only for for ResNet18
     # todo: add `hook`'s returned type
     module = get_module(model, layer)
 
-    return attach_hook_intercept_module(module, should_retain_grad=should_retain_grad)
+    return attach_hook_intercept_module(
+        module, should_retain_grad=should_retain_grad, detach_output=detach_output
+    )
 
 
 def attach_hook_intercept_module(
-    module: nn.Module, should_retain_grad: bool
+    module: nn.Module, should_retain_grad: bool, detach_output: bool
 ) -> typing.Tuple[nn.Module, hooks.RemovableHandle]:
     def fh(mod, input, output):
         assert isinstance(output, torch.Tensor)
@@ -45,6 +47,9 @@ def attach_hook_intercept_module(
         setattr(mod, ATTRIBUTE_INTERCEPTED_OUTPUT, output)
         if should_retain_grad:
             output.retain_grad()
+
+        if detach_output:
+            return output.detach()
 
     hook = module.register_forward_hook(fh)
 
@@ -60,7 +65,7 @@ def get_output(module: nn.Module) -> torch.Tensor:
 
 
 def forward_and_intercept_intermediate_layers(
-    model: nn.Module, inp: torch.Tensor, layers: typing.List[str]
+    model: nn.Module, inp: torch.Tensor, layers: typing.List[str], detach_output: bool
 ) -> typing.Tuple[torch.Tensor, typing.List[torch.Tensor]]:
     # todo: add unit tests
     # - all outputs we get are correct
@@ -73,7 +78,10 @@ def forward_and_intercept_intermediate_layers(
         # attach hooks to those layers
         for layer in layers:
             module, hook = attach_hook_intercept_layer_output(
-                model=model, layer=layer, should_retain_grad=False
+                model=model,
+                layer=layer,
+                should_retain_grad=False,
+                detach_output=detach_output,
             )
             arr_modules.append(module)
             arr_hooks.append(hook)

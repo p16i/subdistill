@@ -19,136 +19,26 @@ from torchvision import transforms
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd import models, datasets, utils, attributors, constants, prcaopt
+from xaikd import models, utils, attributors, constants, bases, constants
+
+from xaikd import datasets
 from xaikd.utils import metrics
 
 
 DEVICE = utils.get_device()
-ARR_LAYER_DIMENSIONS = [
-    (64, 56, 48, 40),
-    (48, 40, 32, 24),
-    (40, 32, 24, 16),
-    (32, 24, 16, 8),
-    (24, 16, 8, 4),
-]
-
-
-class BasisTransform:
-    def rank_k_encoder(self, k: int):
-        raise
-
-    def rank_k_decoder(self, k: int):
-        raise
-
-    def get_hook_rank_k_transformation(self, k, device):
-
-        mat_enc = self.rank_k_encoder(k)
-        mat_dec = self.rank_k_decoder(k)
-
-        # X @ U @ U.T
-        mat = torch.from_numpy(mat_enc @ mat_dec)
-
-        mat = mat.unsqueeze(2).unsqueeze(3).to(device)
-
-        def hook_func(module, inp, out):
-            return F.conv2d(out, mat)
-
-        return hook_func
-
-
-class PCA(BasisTransform):
-
-    def __init__(self, model, layer, arr_act, arr_ctx, dataloader):
-
-        eigvals, eigvecs = np.linalg.eigh(arr_act.T @ arr_act)
-
-        # descending sort
-        sorted_indices = np.argsort(-eigvals)
-        self.eigvals = eigvals[sorted_indices]
-        self.eigvecs = eigvecs[:, sorted_indices]
-
-    def rank_k_encoder(self, k: int):
-        # X @ U
-        return self.eigvecs[:, :k]
-
-    def rank_k_decoder(self, k: int):
-        # Z @ U.T
-        return self.eigvecs[:, :k].T
-
-
-class PRCASortAbs(BasisTransform):
-    def __init__(self, model, layer, arr_act, arr_ctx, dataloader):
-
-        ccov = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
-
-        eigvals, eigvecs = np.linalg.eigh(ccov)
-
-        # descending sort
-        sorted_indices = np.argsort(-np.abs(eigvals))
-        self.eigvals = eigvals[sorted_indices]
-        self.eigvecs = eigvecs[:, sorted_indices]
-
-    def rank_k_encoder(self, k: int):
-        # X @ U
-        return self.eigvecs[:, :k]
-
-    def rank_k_decoder(self, k: int):
-        # Z @ U.T
-        return self.eigvecs[:, :k].T
-
-
-class PCALookAhead(BasisTransform):
-    def __init__(self, model, layer, arr_act, arr_ctx, dataloader):
-
-        self.model = model
-        self.layer = layer
-
-        _, eigvecs = np.linalg.eigh(arr_act.T @ arr_act)
-
-        self.eigvecs = eigvecs[:, ::-1].copy()
-        self.dataloader = dataloader
-
-        self._cache = dict()
-
-    def rank_k_encoder(self, k: int):
-
-        if not k in self._cache:
-            U = prcaopt.learn_prca_opt(
-                model=self.model,
-                layer=self.layer,
-                dataloader=self.dataloader,
-                Uinit=self.eigvecs[:, :k],
-                k=k,
-                verbose=False,
-                device=DEVICE,
-            )
-            self._cache[k] = U
-
-        return self._cache[k]
-
-    def rank_k_decoder(self, k: int):
-        return self.rank_k_encoder(k).T
-
-
-def get_basis_transform(
-    name: str, model, layer, arr_act, arr_ctx, dataloader
-) -> BasisTransform:
-    if name == "pca":
-        return PCA(model, layer, arr_act, arr_ctx, dataloader)
-    elif name == "prcasortabs":
-        return PRCASortAbs(model, layer, arr_act, arr_ctx, dataloader)
-    elif name == "pcalookahead":
-        return PCALookAhead(model, layer, arr_act, arr_ctx, dataloader)
-    else:
-        raise ValueError(f"basis={name} doesn't exist!")
 
 
 @click.command()
 @click.option("--dataset-name", type=str)
 @click.option("--model-name", type=str)
-@click.option("--bases", type=str, default="pca,prcasortabs,pcalookahead")
+@click.option("--basis-names", type=str, default="pca,prca-sortabs,pcalookahead")
+@click.option(
+    "--basis-mode",
+    type=click.Choice(["centered", "uncentered"]),
+    default="uncentered",
+)
 @click.option("--output-dir", type=str)
-def main(model_name, dataset_name, output_dir, bases):
+def main(model_name, dataset_name, output_dir, basis_names, basis_mode):
     arguments = locals()
     start_time = datetime.now()
 
@@ -160,7 +50,7 @@ def main(model_name, dataset_name, output_dir, bases):
 
     output_path = Path(output_dir) / dataset_name / model_name
 
-    arr_basis_names = bases.split(",")
+    arr_basis_names = basis_names.split(",")
 
     dataset = datasets.construct(dataset_name)
 
@@ -175,9 +65,6 @@ def main(model_name, dataset_name, output_dir, bases):
 
     print(f"LogitMod: {logit_modifier}")
 
-    dataloader_train = datasets.build_dataloader(
-        dataset.create_subset(train_split=True), shuffle=False
-    )
     dataloader_val = datasets.build_dataloader(
         dataset.create_subset(train_split=False), shuffle=False
     )
@@ -194,7 +81,7 @@ def main(model_name, dataset_name, output_dir, bases):
 
     for basis_name in tqdm(arr_basis_names):
 
-        basis_output_path = output_path / basis_name
+        basis_output_path = output_path / f"{basis_name}--{basis_mode}"
         os.makedirs(basis_output_path, exist_ok=True)
 
         basis_ref_acc, _ = metrics.accuracy(
@@ -210,33 +97,35 @@ def main(model_name, dataset_name, output_dir, bases):
 
         arr_statistics = []
 
-        arr_layer_bases: list[BasisTransform] = []
+        arr_layer_bases: list[bases.Basis] = []
         for layer in arr_layers:
             arr_act, arr_ctx = attributors.extract_activation_context(
                 model=model,
                 layer=layer,
                 dataset=dataset,
                 rng=rng,
-                data_loader=dataloader_train,
+                data_loader=datasets.build_dataloader(
+                    dataset.create_subset(train_split=True), shuffle=False
+                ),
                 device=DEVICE,
                 logit_modifier=logit_modifier,
             )
-
-            layer_basis = get_basis_transform(
-                basis_name,
-                model=model,
-                layer=layer,
+            layer_basis = bases.get_basis(f"{basis_name}--{basis_mode}")
+            layer_basis.fit(
                 arr_act=arr_act,
                 arr_ctx=arr_ctx,
+                # arguments below are mainly for pcalookahead
+                model=model,
+                layer=layer,
                 dataloader=datasets.build_dataloader(
                     dataset.create_subset(train_split=True),
-                    shuffle=True,  # this is only used for prcalookahead
+                    shuffle=True,  # shuffle=True is very import for pca-lh nfnet
                 ),
             )
 
             arr_layer_bases.append(layer_basis)
 
-        for layer_dimensions in ARR_LAYER_DIMENSIONS:
+        for layer_dimensions in constants.ARR_STUDENT_DIMENSIONS:
             assert len(layer_dimensions) == len(arr_layers)
 
             arr_hooks = []
@@ -247,7 +136,7 @@ def main(model_name, dataset_name, output_dir, bases):
                     module = utils.interceptor.get_module(model=model, layer_str=layer)
 
                     hook = module.register_forward_hook(
-                        layer_basis.get_hook_rank_k_transformation(k=k, device=DEVICE)
+                        layer_basis.construct_fh_rank_k_projection(k, device=DEVICE)
                     )
                     arr_hooks.append(hook)
 

@@ -14,8 +14,9 @@ from datetime import datetime
 
 from pathlib import Path
 
-from xaikd import utils, datasets, attributors, bases, constants, models
+from xaikd import utils, attributors, bases, constants, models
 
+from xaikd import datasets
 from xaikd.utils import click_types
 
 

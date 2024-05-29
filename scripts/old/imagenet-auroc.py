@@ -12,7 +12,8 @@ from datetime import datetime
 
 import torchmetrics
 
-from xaikd import datasets, utils
+from xaikd import utils
+from xaikd import datasets
 from xaikd.utils import click_types
 
 import torch

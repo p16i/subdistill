@@ -13,7 +13,7 @@ from copy import deepcopy
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
 
 from torchvision import datasets as tvd
@@ -21,7 +21,6 @@ from torchvision import datasets as tvd
 import wandb
 
 from xaikd import (
-    datasets,
     utils,
     distillators,
     models,
@@ -30,9 +29,8 @@ from xaikd import (
     constants,
 )
 
-from xaikd.showcases import cleverhans
+from xaikd import datasets
 from xaikd import distillation_policies
-from xaikd.utils import click_types
 
 
 from pytorch_lightning.loggers import WandbLogger
@@ -40,31 +38,34 @@ from pytorch_lightning.loggers import WandbLogger
 
 WANDB_DIR = os.getenv("WANDB_DIR", ".")
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
+OUTPUT_DIR_PREFIX = os.getenv("OUTPUT_DIR_PREFIX", None)
 
 
-def learn_basese(
+def learn_basis(
     teacher_model: nn.Module,
     dataset: datasets.DatasetConfiguration,
     train_loader: DataLoader,
+    train_loader_with_shuffle: DataLoader,
     logit_mod: attributors.LogitModifier,
     layers: typing.List[str],
-    layer_policies: typing.List[str],
+    layer_policy: str,
     device: str,
     output_dir: Path,
     seed: int,
-):
-    basis_names = list(
-        map(
-            lambda p: p.split(":")[1],
-            filter(lambda p: "basis" in p, layer_policies),
-        )
-    )
-    if len(basis_names) == 0:
-        return
-
+) -> typing.Dict[str, bases.Basis]:
     # prepare bases
+    arr_learned_bases = dict()
+
+    if "basis" not in layer_policy:
+        return arr_learned_bases
+
+    _, basis_name = layer_policy.split(":")
+
+    rng = np.random.default_rng(seed=seed)
+
     for layer in layers:
         layer_output_dir = output_dir / f"layer-{layer}"
+
         os.makedirs(layer_output_dir, exist_ok=True)
         arr_act, arr_ctx = attributors.extract_activation_context(
             model=teacher_model,
@@ -73,78 +74,50 @@ def learn_basese(
             dataset=dataset,
             logit_modifier=logit_mod,
             device=device,
-            rng=np.random.default_rng(seed=seed),
+            rng=rng,
         )
 
-        mean = np.mean(arr_act, axis=0)
+        click.echo(f"[layer={layer}] fitting basis={basis_name}")
+        basis = bases.get_basis(basis_name)
+        basis.fit(
+            arr_act,
+            arr_ctx,
+            # for pca-lookahead
+            model=teacher_model,
+            layer=layer,
+            dataloader=train_loader_with_shuffle,
+        )
 
-        path_mean = layer_output_dir / "act_mean.npy"
+        arr_learned_bases[f"{layer}"] = basis
 
-        if not os.path.exists(path_mean):
-            np.save(path_mean, mean)
-        else:
-            np.testing.assert_allclose(mean, np.load(path_mean), atol=1e-3)
-
-        print(f"we learn {len(basis_names)} bases: {basis_names}")
-        for basis_name in basis_names:
-            click.echo(f"[layer={layer}] fitting basis={basis_name}")
-            basis = bases.get_basis(basis_name, seed=seed)
-            basis.fit(arr_act, arr_ctx, mean=mean, device=device)
-            basis.save(layer_output_dir)
+    return arr_learned_bases
 
 
 def build_dataloaders(
     dataset: datasets.DatasetConfiguration,
     training_size: float,
-    contamination_level: float,
     seed: int,
-    use_val_split: bool,
-) -> typing.Tuple[DataLoader, DataLoader, DataLoader]:
-    if use_val_split:
-        assert training_size == 1.0
+) -> typing.Tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
 
-        # We set this because we also scale batch-size rather.
-        training_size = 0.8
-        ds_train, ds_val = random_split(
-            dataset.create_subset(train_split=True),
-            [training_size, 1 - training_size],
-            generator=torch.Generator().manual_seed(seed),
-        )
-    else:
-        ds_train = datasets.subsample_dataset(
-            dataset.create_subset(train_split=True), ratio=training_size, seed=seed
-        )
-        # remark: we have to do it this way because the current version of
-        #  `contaminate_dataset` function only work with `Subset.
-        ds_val = datasets.subsample_dataset(
-            dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
-        )
+    ds_train = dataset.create_subset(train_split=True)
 
-    if contamination_level > 0:
-        ds_train = cleverhans.contaminate_dataset(
-            ds_train,
-            contamination_level=contamination_level,
-            seed=seed,
-            victim_class_indices=[min(dataset.selected_classes)],
-        )
+    # remark: when ratio=1.0, we do this anyway; so the code below is more staight forward
+    ds_train = datasets.subsample_dataset(ds_train, ratio=training_size, seed=seed)
 
-        ds_val = cleverhans.contaminate_dataset(
-            dataset=ds_val,
-            contamination_level=contamination_level,
-            seed=seed,
-            # remark: here, we assume that, in the validation data for distillation,
-            # all validaiton samples of only one class has spuriour correlation.
-            victim_class_indices=dataset.selected_classes,
-        )
+    # remark: we have to do it this way because the current version of
+    #  `contaminate_dataset` function only work with `Subset.
+    ds_val = dataset.create_subset(train_split=False)
 
     # remark: we set shuffle=False here becaue it is only used to learn bases.
     train_loader = datasets.build_dataloader(ds_train, shuffle=False)
+    train_loader_with_shuffle = datasets.build_dataloader(ds_train, shuffle=True)
+
     val_loader = datasets.build_dataloader(
         ds_val,
         shuffle=False,
     )
 
-    print(f"Dataset Information: [use_val_split={use_val_split}]")
+    print(f"Dataset Information")
     for label, dl in [("train", train_loader), ("val", val_loader)]:
         count = 0
         for _, y in dl:
@@ -152,13 +125,15 @@ def build_dataloaders(
 
         print(f"> split={label:5s}: count={count}")
 
+    ds_train_with_aug = deepcopy(ds_train)
+
     # We have to make sure that the `dataset` attribute is an actual dataset containing tranform.
     # This avoids having a nested chain of Subsets.
+    assert hasattr(ds_train.dataset, "transform")
     assert isinstance(ds_train.dataset, tvd.CIFAR100) or isinstance(
         ds_train.dataset, tvd.ImageNet
     )
 
-    ds_train_with_aug = deepcopy(ds_train)
     ds_train_with_aug.dataset.transform = dataset.input_training_transformation
 
     # this loader is used in the distillation process.
@@ -169,71 +144,81 @@ def build_dataloaders(
         # we scale batch_size such that when training_size < 1.0,
         # we get the same number of update steps.
         batch_size=int(np.ceil(64 * training_size)),
+        drop_last=True,
     )
 
-    return train_loader, train_loader_with_aug, val_loader
+    return train_loader, train_loader_with_shuffle, train_loader_with_aug, val_loader
 
 
 @click.command()
-@click.option("--dataset", default="cifar100-people", type=str, required=True)
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
-@click.option("--student", default="resnet18xscifarcompr1", required=True)
-@click.option(
-    "--layers", default="layer1,layer2,layer3,layer4", type=str, required=True
-)
-@click.option(
-    "--layer-policies",
-    type=str,
-    default="basis-identity:pca--uncentered,basis-identity:prca-sortabs--uncentered,basis-identity:random--uncentered,attention-transfer,vid,fitnet,nothing",
-    required=True,
-)
-@click.option("--output-dir", type=str, required=True)
-@click.option("--training-size", type=float, default=0.1, required=True)
-@click.option("--epochs", type=int, default=100, required=True)
-@click.option("--seed", type=int, default=1)
-@click.option("--lr", type=float, default=0.0005, required=True)
+@click.option("--student", default="student-32-24-16-8", required=True)
+@click.option("--dataset", default="cifar100-people", type=str, required=True)
+@click.option("--dataset-variant", default=None, type=str, required=False)
+@click.option("--training-size", type=float, default=1.0, required=True)
+@click.option("--layer-policy", type=str, required=True)
+@click.option("--layers", default=None, type=str)
 @click.option("--lambda-task", default=0.0, type=float)
 @click.option("--lambda-kd", default=1.0, type=float)
-@click.option("--lambda-layer", type=float, default=None)
-@click.option("--contamination-level", default=0.0, type=float)
-@click.option("--use-val-split", type=bool, default=False, is_flag=True)
+@click.option("--lambda-layer", type=float)
+@click.option("--epochs", type=int, default=100, required=True)
+@click.option("--parameter-partition-mode", type=str)
+@click.option("--finetuning-with-layer-loss", type=bool)
+@click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
-@click.option(
-    "--learning-bases-from-clean-data", type=bool, default=False, is_flag=True
-)
+@click.option("--seed", type=int, default=1)
+@click.option("--output-dir", type=str, required=True)
 def main(
     teacher,
     student,
     dataset,
-    layer_policies,
-    output_dir,
-    seed,
-    epochs,
-    lr,
+    dataset_variant,
     training_size,
+    layer_policy,
     layers,
     lambda_task,
     lambda_kd,
     lambda_layer,
-    contamination_level,
-    use_val_split,
-    learning_bases_from_clean_data,
+    epochs,
+    parameter_partition_mode,  # todo: change to perform-fullupdate
+    finetuning_with_layer_loss,
+    lr,
     enable_checkpointing,
+    seed,
+    output_dir,
 ):
+
+    dataset = (
+        "--".join([dataset, dataset_variant])
+        if dataset_variant is not None
+        else dataset
+    )
+    del dataset_variant
+
+    output_dir = (
+        f"{OUTPUT_DIR_PREFIX}/{output_dir}"
+        if OUTPUT_DIR_PREFIX is not None
+        else output_dir
+    )
+
     arguments = locals()
 
     pl.seed_everything(seed)
 
     start_time = datetime.now()
 
-    teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
+    if layers is None:
+        click.echo("layers is not specified. We fall back to the default values")
+        layers = constants.DEFAULT_TEACHER_STUDENT_LAYER_MAPPING[teacher]
+        click.echo(f"> {layers}")
 
-    layer_policies = layer_policies.split(",")
+    teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
     output_dir = (
         Path(output_dir)
-        / f"{dataset}-clv{contamination_level}-tz{training_size}-valsplit{use_val_split}-cleanDSBasis{learning_bases_from_clean_data}-seed{seed}"
+        / f"{dataset}-tz{training_size}"
         / teacher
+        / f"partitionMode{parameter_partition_mode}-seed{seed}"
     )
 
     os.makedirs(output_dir, exist_ok=True)
@@ -246,12 +231,12 @@ def main(
 
     logit_mod = attributors.WinningClassEvidence(num_classes=dataset.num_classes)
 
-    train_loader, train_loader_with_aug, val_loader = build_dataloaders(
-        dataset,
-        training_size=training_size,
-        contamination_level=contamination_level,
-        seed=seed,
-        use_val_split=use_val_split,
+    train_loader, train_loader_with_shuffle, train_loader_with_aug, val_loader = (
+        build_dataloaders(
+            dataset,
+            training_size=training_size,
+            seed=seed,
+        )
     )
 
     # prepare teacher
@@ -277,176 +262,146 @@ def main(
         student_layer_dims_mapping.items(),
     ):
         print(
-            f"> maping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim})"
+            f"> mapping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim}, parameter_partition_mode={parameter_partition_mode})"
         )
 
-    if learning_bases_from_clean_data:
-        assert not use_val_split
-
-        train_loader_for_learning_bases = datasets.build_dataloader(
-            dataset.create_subset(train_split=True), shuffle=False
-        )
-    else:
-        train_loader_for_learning_bases = train_loader
-
-    learn_basese(
+    arr_learned_bases = learn_basis(
         teacher_model=teacher_model,
         dataset=dataset,
-        train_loader=train_loader_for_learning_bases,
+        train_loader=train_loader,
+        train_loader_with_shuffle=train_loader_with_shuffle,
         logit_mod=logit_mod,
         layers=teacher_layers,
-        layer_policies=layer_policies,
+        layer_policy=layer_policy,
         device=device,
         output_dir=output_dir,
         seed=seed,
     )
 
-    # do distillation
-    for policy_name_with_args in tqdm(layer_policies, desc="Distillation"):
-        # this make sure that we use the same initial student model for all policy.
-        pl.seed_everything(seed)
+    print(f"[policy={layer_policy}]")
 
-        policy_slugs = policy_name_with_args.split(":")
+    student_model = models.get_untrained_model(student, num_classes=dataset.num_classes)
 
-        print(f"[policy={policy_name_with_args}]")
-        if lambda_layer is None:
-            policy_lambda_layer = constants.get_lamba_layer_for_policy_student(
-                policy_name_with_args, student
-            )
-            print(f"> lambda_layer={policy_lambda_layer} (specified via `constants`)")
+    arr_layer_policies = []
+    for teacher_layer, student_layer in zip(teacher_layers, student_layers):
+        teacher_layer_dims = teacher_layer_dims_mapping[teacher_layer]
+        student_layer_dims = student_layer_dims_mapping[student_layer]
+
+        kwargs = dict(
+            teacher_dims=teacher_layer_dims,
+            student_dims=student_layer_dims,
+            device=device,
+        )
+
+        if "basis" in layer_policy:
+
+            kwargs["basis"] = arr_learned_bases[f"{teacher_layer}"]
+
+            policy_name, _ = layer_policy.split(":")
         else:
-            policy_lambda_layer = lambda_layer
-            print(
-                f"[> lambda_layer={policy_lambda_layer} (specified via `command line`)"
-            )
+            policy_name = layer_policy
+        policy = distillation_policies.get_layer_policy(policy_name, **kwargs)
 
-        policy_name = policy_slugs[0]
+        arr_layer_policies.append(policy)
 
-        student_model = models.get_untrained_model(
-            student, num_classes=dataset.num_classes
-        )
+    distillator = distillators.Layerwise(
+        teacher=teacher_model,
+        dataset=dataset,
+        train_dataloader=train_loader_with_aug,
+        val_dataloader=val_loader,
+        device=device,
+        weight_decay=0.0,
+        parameter_partition_mode=parameter_partition_mode,
+    )
 
-        layer_policies = []
-        for teacher_layer, student_layer in zip(teacher_layers, student_layers):
-            teacher_layer_dims = teacher_layer_dims_mapping[teacher_layer]
-            student_layer_dims = student_layer_dims_mapping[student_layer]
+    student_slug = "--".join(
+        [
+            student,
+            layer_policy,
+            f"lmd_task{lambda_task}-lmd_kd{lambda_kd}-lmd_layer{lambda_layer}",
+        ]
+    )
 
-            kwargs = dict(
-                teacher_dims=teacher_layer_dims,
-                student_dims=student_layer_dims,
-                device=device,
-            )
+    log_dir = output_dir / "distilled-models" / student_slug
+    logger = WandbLogger(
+        save_dir=WANDB_DIR,
+        project=WANDB_PROJECT,
+        group=arguments["output_dir"],
+        job_type="distillation",
+        name=f"{student}-{layer_policy}-seed{seed}",
+        notes=f"commit:{utils.get_git_hash()}",
+        log_model="all" if enable_checkpointing else False,
+        config={
+            **arguments,
+            "policy": layer_policy,
+            "lambda_layer": lambda_layer,
+            "output_dir": output_dir,
+        },
+    )
 
-            if "basis" in policy_name:
-                basis_name = policy_slugs[-1]
-                basis = bases.get_basis(basis_name, seed=seed)
-                layer_output_dir = output_dir / f"layer-{teacher_layer}"
-                basis.load(layer_output_dir)
+    trained_student, results = distillator.distill(
+        student=student_model,
+        layer_policies=distillation_policies.LayerPolicyCollection(
+            teacher_layers=teacher_layers,
+            student_layers=student_layers,
+            policies=arr_layer_policies,
+        ),
+        epochs=epochs,
+        lambda_task=lambda_task,
+        lambda_kd=lambda_kd,
+        lambda_layer=lambda_layer,
+        device=device,
+        lr=lr,
+        log_dir=log_dir,
+        logger=logger,
+        seed=seed,
+        enable_checkpointing=enable_checkpointing,
+        finetuning_with_layer_loss=finetuning_with_layer_loss,
+    )
 
-                kwargs["basis"] = basis
+    last_epoch_val_acc = results["arr_metrics"]["val_acc"][-1]
+    last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
 
-            policy = distillation_policies.get_layer_policy(policy_name, **kwargs)
+    print(
+        f"Result: [distill with:  `{layer_policy}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
+    )
 
-            layer_policies.append(policy)
+    for k, v in results.items():
+        logger.experiment.summary[k] = v
 
-        distillator = distillators.Layerwise(
-            teacher=teacher_model,
-            dataset=dataset,
-            train_dataloader=train_loader_with_aug,
-            val_dataloader=val_loader,
-            device=device,
-            weight_decay=0.0,
-        )
+    # log prediction
+    # remark: this prediction is the of the latest model, which is NOT necesseary
+    # the best.
+    with torch.no_grad():
+        teacher_model.to(device)
+        trained_student.to(device)
 
-        student_slug = "--".join(
-            [
-                student,
-                "-".join(policy_slugs),
-                f"lmd_task{lambda_task}-lmd_kd{lambda_kd}-lmd_layer{policy_lambda_layer}",
-            ]
-        )
+        assert teacher_model.training == trained_student.training == False
 
-        log_dir = output_dir / "distilled-models" / student_slug
-        logger = WandbLogger(
-            save_dir=WANDB_DIR,
-            project=WANDB_PROJECT,
-            group=arguments["output_dir"],
-            job_type="distillation",
-            name=f"{student}-{policy_name_with_args}-seed{seed}",
-            notes=f"commit:{utils.get_git_hash()}",
-            log_model="all" if enable_checkpointing else False,
-            config={
-                **arguments,
-                "policy": policy_name_with_args,
-                "policy_lambda_layer": policy_lambda_layer,
-                "output_dir": output_dir,
-            },
-        )
+        arr_targets = []
+        arr_student_pred = []
+        arr_teacher_pred = []
 
-        trained_student, results = distillator.distill(
-            student=student_model,
-            layer_policies=distillation_policies.LayerPolicyCollection(
-                teacher_layers=teacher_layers,
-                student_layers=student_layers,
-                policies=layer_policies,
+        for x, y in val_loader:
+            x = x.to(device)
+            teacher_pred = torch.argmax(teacher_model(x), dim=1).cpu()
+            student_pred = torch.argmax(trained_student(x), dim=1).cpu()
+            arr_targets.extend(y.numpy().tolist())
+            arr_teacher_pred.extend(teacher_pred.numpy().tolist())
+            arr_student_pred.extend(student_pred.numpy().tolist())
+
+        logger.log_table(
+            "prediction",
+            dataframe=pd.DataFrame.from_dict(
+                dict(
+                    target=arr_targets,
+                    student_pred=arr_student_pred,
+                    teacher_pred=arr_teacher_pred,
+                )
             ),
-            epochs=epochs,
-            lambda_task=lambda_task,
-            lambda_kd=lambda_kd,
-            lambda_layer=policy_lambda_layer,
-            device=device,
-            lr=lr,
-            log_dir=log_dir,
-            logger=logger,
-            seed=seed,
-            enable_checkpointing=enable_checkpointing,
         )
 
-        # todo: save student to artifacts!
-
-        last_epoch_val_acc = results["arr_metrics"]["val_acc"][-1]
-        last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
-
-        print(
-            f"Result: [distill with:  `{policy_name_with_args}`] acc={last_epoch_val_acc:.4f} agreement={last_epoch_val_agreement:.4f}"
-        )
-
-        for k, v in results.items():
-            logger.experiment.summary[k] = v
-
-        # log prediction
-        # remark: this prediction is the of the latest model, which is NOT necesseary
-        # the best.
-        with torch.no_grad():
-            teacher_model.to(device)
-            trained_student.to(device)
-
-            assert teacher_model.training == trained_student.training == False
-
-            arr_targets = []
-            arr_student_pred = []
-            arr_teacher_pred = []
-
-            for x, y in val_loader:
-                x = x.to(device)
-                teacher_pred = torch.argmax(teacher_model(x), dim=1).cpu()
-                student_pred = torch.argmax(trained_student(x), dim=1).cpu()
-                arr_targets.extend(y.numpy().tolist())
-                arr_teacher_pred.extend(teacher_pred.numpy().tolist())
-                arr_student_pred.extend(student_pred.numpy().tolist())
-
-            logger.log_table(
-                "prediction",
-                dataframe=pd.DataFrame.from_dict(
-                    dict(
-                        target=arr_targets,
-                        student_pred=arr_student_pred,
-                        teacher_pred=arr_teacher_pred,
-                    )
-                ),
-            )
-
-        wandb.finish()
+    wandb.finish()
 
     click.echo(f"Check Results at: {output_dir}")
 

@@ -7,21 +7,17 @@ from xaikd import bases
 import torch
 
 from scipy.stats import ortho_group
-import tempfile
-
-from pathlib import Path
 
 
 def test_adapter():
     d = 20
     U = torch.from_numpy(ortho_group.rvs(d)).float()
     mean = torch.randn(d).float()
-    std = torch.rand(d).float()
     encoder = bases.Adapter(
-        U=U, mean=mean, scale=std, mode=bases.AdapterMode.ENCODER, device="cpu"
+        U=U, mean=mean, mode=bases.AdapterMode.ENCODER, device="cpu"
     )
     decoder = bases.Adapter(
-        U=U, mean=mean, scale=std, mode=bases.AdapterMode.DECODER, device="cpu"
+        U=U, mean=mean, mode=bases.AdapterMode.DECODER, device="cpu"
     )
 
     x = torch.randn(20, d, 1, 1)
@@ -30,59 +26,44 @@ def test_adapter():
 
 
 @pytest.mark.parametrize("mode", ["centered", "uncentered"])
-@pytest.mark.parametrize("k", [5, 10, 20])
-def test_adapter_identity(mode, k):
-    d = 20
+@pytest.mark.parametrize("basis_name", ["pca", "prca-sortabs"])
+@pytest.mark.parametrize("d", [5, 10, 20])
+def test_adapter_identity(basis_name, mode, d):
 
-    np.random.seed(1)
-    arr_act = np.random.rand(32, d)
-    mean = np.mean(arr_act, axis=0)
+    rng = np.random.default_rng(seed=1)
+    arr_act = rng.random(size=(32, d))
+    arr_ctx = rng.random(size=(32, d))
 
-    basis = bases.get_basis(f"identity--{mode}")
+    basis = bases.get_basis(f"{basis_name}--{mode}")
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        tmpdirname = Path(tmpdirname)
-        np.save(tmpdirname / "act_mean", mean)
-        basis.fit(arr_act, None, mean=mean, device="cpu")
-        basis.save(tmpdirname)
-        basis.load(tmpdirname)
+    basis.fit(arr_act, arr_ctx, device="cpu")
 
-        encoder = basis.construct_adapter(
-            k, mode=bases.AdapterMode.ENCODER, device="cpu"
-        )
-        decoder = basis.construct_adapter(
-            k, mode=bases.AdapterMode.DECODER, device="cpu"
-        )
+    encoder = basis.construct_adapter(d, mode=bases.AdapterMode.ENCODER, device="cpu")
+    decoder = basis.construct_adapter(d, mode=bases.AdapterMode.DECODER, device="cpu")
 
-        x = torch.randn(20, d, 1, 1)
+    x = torch.randn(20, d, 1, 1)
 
-        np.testing.assert_allclose(decoder(encoder(x)), x, atol=1e-5)
+    np.testing.assert_allclose(decoder(encoder(x)), x, atol=1e-5)
 
 
-@pytest.mark.parametrize("basis_name", ["pca", "prca-recon", "prca-abs"])
+@pytest.mark.parametrize("basis_name", ["pca", "prca-sortabs"])
 def test_trainable_parameters_in_adapter(basis_name):
     seed = 1
     basis_name = f"{basis_name}--centered"
 
-    basis = bases.get_basis(basis_name, seed=1)
+    basis = bases.get_basis(basis_name)
 
-    np.random.seed(1)
+    rng = np.random.default_rng(seed=1)
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        tmpdirname = Path(tmpdirname)
-        act = np.random.randn(47, 16)
-        mean = np.mean(act, axis=0)
-        ctx = np.random.randn(47, 16)
+    act = rng.random(size=(47, 16))
+    mean = np.mean(act, axis=0)
+    ctx = rng.random(size=(47, 16))
 
-        np.save(tmpdirname / "act_mean.npy", mean)
+    basis.fit(act, ctx)
 
-        basis.fit(act, ctx, mean=mean, device="cpu")
-        basis.save(tmpdirname)
-        basis.load(tmpdirname)
+    for mode in [bases.AdapterMode.ENCODER, bases.AdapterMode.DECODER]:
+        adapter = basis.construct_adapter(k=8, mode=mode, device="cpu")
 
-        for mode in [bases.AdapterMode.ENCODER, bases.AdapterMode.DECODER]:
-            adapter = basis.construct_adapter(k=8, mode=mode, device="cpu")
+        total, trainable = count_params_in_model(adapter)
 
-            total, trainable = count_params_in_model(adapter)
-
-            assert total == trainable == 0
+        assert total == trainable == 0
