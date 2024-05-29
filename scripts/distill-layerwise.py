@@ -98,28 +98,14 @@ def build_dataloaders(
     dataset: datasets.DatasetConfiguration,
     training_size: float,
     seed: int,
-    use_val_split: bool,
 ) -> typing.Tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
-    if use_val_split:
-        assert training_size == 1.0
 
-        ds_train, ds_val = random_split(
-            dataset.create_subset(train_split=True),
-            [
-                constants.TRAINING_VAL_SPLIT_RATIO,
-                1 - constants.TRAINING_VAL_SPLIT_RATIO,
-            ],
-            generator=torch.Generator().manual_seed(seed),
-        )
-    else:
-        ds_train = datasets.subsample_dataset(
-            dataset.create_subset(train_split=True), ratio=training_size, seed=seed
-        )
-        # remark: we have to do it this way because the current version of
-        #  `contaminate_dataset` function only work with `Subset.
-        ds_val = datasets.subsample_dataset(
-            dataset=dataset.create_subset(train_split=False), ratio=1.0, seed=1
-        )
+    ds_train = datasets.subsample_dataset(
+        dataset.create_subset(train_split=True), ratio=training_size, seed=seed
+    )
+    # remark: we have to do it this way because the current version of
+    #  `contaminate_dataset` function only work with `Subset.
+    ds_val = dataset.create_subset(train_split=False)
 
     # remark: we set shuffle=False here becaue it is only used to learn bases.
     train_loader = datasets.build_dataloader(ds_train, shuffle=False)
@@ -130,7 +116,7 @@ def build_dataloaders(
         shuffle=False,
     )
 
-    print(f"Dataset Information: [use_val_split={use_val_split}]")
+    print(f"Dataset Information")
     for label, dl in [("train", train_loader), ("val", val_loader)]:
         count = 0
         for _, y in dl:
@@ -165,9 +151,8 @@ def build_dataloaders(
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
 @click.option("--student", default="student-32-24-16-8", required=True)
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
-@click.option("--dataset-suffix", default=None, type=str, required=False)
+@click.option("--dataset-variant", default=None, type=str, required=False)
 @click.option("--training-size", type=float, default=0.1, required=True)
-@click.option("--use-val-split", type=bool, default=False, is_flag=True)
 @click.option("--layer-policy", type=str, required=True)
 @click.option(
     "--layers", default="layer3:layer3,layer4:layer4", type=str, required=True
@@ -186,9 +171,8 @@ def main(
     teacher,
     student,
     dataset,
-    dataset_suffix,
+    dataset_variant,
     training_size,
-    use_val_split,
     layer_policy,
     layers,
     lambda_task,
@@ -204,9 +188,11 @@ def main(
 ):
 
     dataset = (
-        "--".join([dataset, dataset_suffix]) if dataset_suffix is not None else dataset
+        "--".join([dataset, dataset_variant])
+        if dataset_variant is not None
+        else dataset
     )
-    del dataset_suffix
+    del dataset_variant
 
     arguments = locals()
 
@@ -218,7 +204,7 @@ def main(
 
     output_dir = (
         Path(output_dir)
-        / f"{dataset}-tz{training_size}-valsplit{use_val_split}"
+        / f"{dataset}-tz{training_size}"
         / teacher
         / f"partitionMode{parameter_partition_mode}-seed{seed}"
     )
@@ -238,7 +224,6 @@ def main(
             dataset,
             training_size=training_size,
             seed=seed,
-            use_val_split=use_val_split,
         )
     )
 
