@@ -19,89 +19,17 @@ TRAINING_VAL_SPLIT_RATIO = 0.8
 CIFAR100_SUPER_CLASS_MAPPING = PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
 
 CIFAR100_SUPER_CLASSES = (
-    pd.read_csv(CIFAR100_SUPER_CLASS_MAPPING)[
-        "coarse_label_name"
-    ]
-    .unique()
-    .tolist()
+    pd.read_csv(CIFAR100_SUPER_CLASS_MAPPING)["coarse_label_name"].unique().tolist()
 )
 
-# BASIS_NAMES = [
-#     "pca--centered",
-#     "prca--centered",
-#     "prca-abs--centered",
-# ]
 
-# LAMBDA_LAYER_FOR_POLICIES = {
-#     "nothing": {"default": 0},
-#     "basis-identity:pca--uncentered": {
-#         "resnet18xscifarcompr1": 1000.0,
-#         "resnet18xscifarcompr2": 1000.0,
-#         "resnet18xscifarcompr4": 1000.0,
-#         "resnet18dims32-24-24-5": 1000.0,
-#         "resnet18dims24-16-16-5": 1000.0,
-#         "resnet18dims16-8-8-5": 1000.0,
-#         "resnet18dims64-48-48-10": 1,
-#         "resnet18dims48-32-32-10": 1,
-#         "resnet18dims32-16-16-10": 1,
-#     },
-#     "basis-identity:prca-sortabs--uncentered": {
-#         "resnet18xscifarcompr1": 1000.0,
-#         "resnet18xscifarcompr2": 1000.0,
-#         "resnet18xscifarcompr4": 1000.0,
-#         "resnet18dims32-24-24-5": 1000.0,
-#         "resnet18dims24-16-16-5": 1000.0,
-#         "resnet18dims16-8-8-5": 1000.0,
-#         "resnet18dims64-48-48-10": 1,
-#         "resnet18dims48-32-32-10": 1,
-#         "resnet18dims32-16-16-10": 1,
-#     },
-#     "basis-identity:random--uncentered": {
-#         "resnet18xscifarcompr1": 1000.0,
-#         "resnet18xscifarcompr2": 1000.0,
-#         "resnet18xscifarcompr4": 1,
-#         "resnet18dims32-24-24-5": 1000.0,
-#         "resnet18dims24-16-16-5": 1000.0,
-#         "resnet18dims16-8-8-5": 1000.0,
-#         "resnet18dims64-48-48-10": 1,
-#         "resnet18dims48-32-32-10": 1,
-#         "resnet18dims32-16-16-10": 1,
-#     },
-#     "vid": {
-#         "resnet18xscifarcompr1": 1000000.0,
-#         "resnet18xscifarcompr2": 1000000.0,
-#         "resnet18xscifarcompr4": 100000.0,
-#         "resnet18dims32-24-24-5": 1000000.0,
-#         "resnet18dims24-16-16-5": 1e6,
-#         "resnet18dims16-8-8-5": 1e6,
-#         "resnet18dims64-48-48-10": 1,
-#         "resnet18dims48-32-32-10": 1,
-#         "resnet18dims32-16-16-10": 1,
-#     },
-#     "attention-transfer": {
-#         "resnet18xscifarcompr1": 1000.0,
-#         "resnet18xscifarcompr2": 10.0,
-#         "resnet18xscifarcompr4": 10.0,
-#     },
-#     "fitnet": {
-#         "resnet18xscifarcompr1": 0.01,
-#         "resnet18xscifarcompr2": 0.001,
-#         "resnet18xscifarcompr4": 0.001,
-#     },
-# }
-
-
-# def get_lamba_layer_for_policy_student(policy: str, student: str) -> float:
-#     policy_lambda_layers: dict = LAMBDA_LAYER_FOR_POLICIES[policy]
-
-#     key = student if student in policy_lambda_layers else "default"
-
-#     lambda_layer = policy_lambda_layers[key]
-
-#     print(f"Retrieving `lambda_layer`(policy=`{policy}`, key=`{key}`)={lambda_layer}")
-
-#     return lambda_layer
-
+DEFAULT_TEACHER_STUDENT_LAYER_MAPPING = {
+    "cifar100-resnet18-v1": "layer3:layer3,layer4:layer4",
+    "imagenet-resnet18-tv": "layer3:layer3,layer4:layer4",
+    "imagenet-resnet50-tv": "layer3:layer3,layer4:layer4",
+    "imagenet-vgg16-tv": "features.23:layer3,features.30:layer4",
+    "imagenet-nfnetf0-dm": "stages.2:layer3,stages.3:layer4",
+}
 
 ARCH_LAYER_DIMENSIONS = dict(
     resnet18={

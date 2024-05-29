@@ -157,9 +157,7 @@ def build_dataloaders(
 @click.option("--dataset-variant", default=None, type=str, required=False)
 @click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--layer-policy", type=str, required=True)
-@click.option(
-    "--layers", default="layer3:layer3,layer4:layer4", type=str, required=True
-)
+@click.option("--layers", default=None, type=str)
 @click.option("--lambda-task", default=0.0, type=float)
 @click.option("--lambda-kd", default=1.0, type=float)
 @click.option("--lambda-layer", type=float)
@@ -208,6 +206,11 @@ def main(
     pl.seed_everything(seed)
 
     start_time = datetime.now()
+
+    if layers is None:
+        click.echo("layers is not specified. We fall back to the default values")
+        layers = constants.DEFAULT_TEACHER_STUDENT_LAYER_MAPPING[teacher]
+        click.echo(f"> {layers}")
 
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
