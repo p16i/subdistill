@@ -108,30 +108,31 @@ def _parse_dataset_name(
 #     return np.array(selected)
 
 
-def selected_subset_samples_for_classes_with_seed(
-    labels: npt.NDArray,
-    subsampling_ratio: float,
-    seed: int,
-) -> npt.NDArray:
-    selected = []
+# def selected_subset_samples_for_classes_with_seed(
+#     labels: npt.NDArray,
+#     subsampling_ratio: float,
+#     seed: int,
+# ) -> npt.NDArray:
+#     raise
+#     selected = []
 
-    assert 0 < subsampling_ratio <= 1.0
+#     assert 0 < subsampling_ratio <= 1.0
 
-    rng = np.random.default_rng(seed=seed)
+#     rng = np.random.default_rng(seed=seed)
 
-    unique_labels = np.unique(labels)
+#     unique_labels = np.unique(labels)
 
-    for cix in unique_labels:
-        indices = np.argwhere(labels == cix).reshape(-1)
-        num_samples_for_classes = np.floor(indices.shape[0] * subsampling_ratio).astype(
-            int
-        )
+#     for cix in unique_labels:
+#         indices = np.argwhere(labels == cix).reshape(-1)
+#         num_samples_for_classes = np.floor(indices.shape[0] * subsampling_ratio).astype(
+#             int
+#         )
 
-        permuted_indices = rng.permutation(indices)
+#         permuted_indices = rng.permutation(indices)
 
-        selected.extend(permuted_indices[:num_samples_for_classes].tolist())
+#         selected.extend(permuted_indices[:num_samples_for_classes].tolist())
 
-    return np.array(selected)
+#     return np.array(selected)
 
 
 def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
