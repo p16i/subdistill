@@ -277,7 +277,7 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
             # for `validation` set,  samples from all classes have the same
             # likelihood of having the spurious feature.
             total_possible_victims = len(subset_data_indices)
-            potential_victim_indices = np.arange(total_possible_victims)
+            potential_victim_indices = subset_data_indices
 
             np.testing.assert_allclose(
                 total_possible_victims,
