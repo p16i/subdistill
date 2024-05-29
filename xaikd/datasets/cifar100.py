@@ -211,7 +211,7 @@ class Cifar100SuperClassesWithSpuriousFeatureDataset(Cifar100SuperClassesDataset
 
 
 class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
-    Cifar100SuperClassesWithSpuriousFeatureDataset
+    Cifar100SuperClassesDataset
 ):
     seed = 1
 
@@ -220,9 +220,9 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
         super_class: str,
         contamination_level: float,
     ):
-        super().__init__(
-            super_class=super_class, contamination_level=contamination_level
-        )
+        super().__init__(super_class=super_class)
+
+        self.contamination_level = contamination_level
 
     def create_subset(self, train_split=False) -> Dataset:
         trng = torch.Generator()
