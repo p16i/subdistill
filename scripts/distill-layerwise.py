@@ -154,7 +154,7 @@ def build_dataloaders(
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
 @click.option("--student", default="student-32-24-16-8", required=True)
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
-@click.option("--dataset-variant", default=None, type=str, required=False)
+@click.option("--dataset-variant", default="", type=str, required=False)
 @click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--layer-policy", type=str, required=True)
 @click.option("--layers", default=None, type=str)
@@ -188,11 +188,7 @@ def main(
     output_dir,
 ):
 
-    dataset = (
-        "--".join([dataset, dataset_variant])
-        if dataset_variant is not None
-        else dataset
-    )
+    dataset = "--".join([dataset, dataset_variant]) if dataset_variant else dataset
     del dataset_variant
 
     output_dir = (
