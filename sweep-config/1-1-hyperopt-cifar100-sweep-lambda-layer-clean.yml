@@ -13,9 +13,12 @@ parameters:
   dataset:
     value: cifar100-valsplit-people
   dataset-variant:
-    values:
+    value:
       - spurious-plussign--0.0
-      - spurious-plussign--1.0
+  training-size:
+    values:
+      - 1.0
+      - 0.1
   lambda-layer:
     values:
       - 1
