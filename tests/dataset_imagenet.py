@@ -106,6 +106,7 @@ def test_victim_propotion(dataset_slug, lvl, train_split):
 
 @pytest.mark.parametrize("lvl", [0.0, 0.5, 1.0])
 @pytest.mark.parametrize("train_split", [True, False])
+@pytest.mark.slow
 def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
     total_train_samples = len(
         datasets.construct("imagenet-butterfly").create_subset(train_split=True).targets
