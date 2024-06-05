@@ -8,14 +8,15 @@ method: grid
 metric:
   goal: minimize
   name: val_acc
-name: &group_name 1-hyperopt-sweep-lambda-layer
+name: &group_name sweep-output/1-hyperopt-lambda-layer
 parameters:
   dataset:
     value: cifar100-valsplit-people
   dataset-variant:
     values:
-      - spurious-plussign--0.0
-      - spurious-plussign--0.5
+      # - spurious-plussign--0.0
+      # - spurious-plussign--.5
+      - spurious-plussign--1.0
   lambda-layer:
     values:
       - 1
