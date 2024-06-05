@@ -329,8 +329,6 @@ class ImageNetSuperclasssValSplitWithSpurriousFeature(ImageNetSuperClass):
 
         ds: TorchVisionDatasetImageNetWithCopyrightTag
 
-        total_size = ds.data.shape[0]
-        np.testing.assert_allclose(total_size, 500 * len(self.selected_classes))
         subsets = random_split(
             # if `use-val-split=True, both training and testing sets
             # come from the training set.
@@ -345,12 +343,20 @@ class ImageNetSuperclasssValSplitWithSpurriousFeature(ImageNetSuperClass):
 
         subset_data_indices = selected_subset.indices
 
-        # here, we override the original data
-        ds.samples = ds.samples[subset_data_indices]
-        ds.imgs = ds.imgs[subset_data_indices]
-        ds.targets = np.array(ds.targets)[subset_data_indices].tolist()
+        arr_samples = []
+        arr_targets = []
 
-        n = len(ds.targets)
+        for ix in tqdm(
+            subset_data_indices,
+            desc=f"Subseting train data (train_split={train_split}) or `{self.__class__.__name__}[{self.selected_classes}]` samples",
+        ):
+            arr_samples.append(ds.samples[ix])
+            arr_targets.append(ds.targets[ix])
+
+        # here, we override the original data
+        ds.samples = arr_samples
+        ds.imgs = arr_samples
+        ds.targets = arr_targets
 
         if train_split:
             victim_class = np.min(self.selected_classes)
@@ -390,12 +396,16 @@ def ano():
     for dataclass in [TorchVisionDatasetImageNetWithCopyrightTag]:
         for contamination_level in [0.0, 0.5, 1.0]:
             sslug = "--".join(
-                ["imagenet-valsplit-butterfly", dataclass.slug, f"{contamination_level}"]
+                [
+                    "imagenet-valsplit-butterfly",
+                    dataclass.slug,
+                    f"{contamination_level}",
+                ]
             )
             DATASETS[sslug] = partial(
                 ImageNetSuperclasssWithSpurriousFeature,
                 contamination_level=contamination_level,
-                selected_classes=IMAGENET_SUPERCLASS_MAPPING["butterfly"]
+                selected_classes=IMAGENET_SUPERCLASS_MAPPING["butterfly"],
                 dataclass=dataclass,
             )
 
