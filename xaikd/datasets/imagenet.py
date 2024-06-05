@@ -403,7 +403,7 @@ def ano():
                 ]
             )
             DATASETS[sslug] = partial(
-                ImageNetSuperclasssWithSpurriousFeature,
+                ImageNetSuperclasssValSplitWithSpurriousFeature,
                 contamination_level=contamination_level,
                 selected_classes=IMAGENET_SUPERCLASS_MAPPING["butterfly"],
                 dataclass=dataclass,
