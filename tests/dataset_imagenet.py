@@ -112,7 +112,7 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
     )
     # testing the size of the split
     dataset = datasets.construct(
-        f"imagenet-valsplit-butterly--spurious-copyright--{lvl}"
+        f"imagenet-valsplit-butterfly--spurious-copyright--{lvl}"
     )
     # remark: here, we get subset of the official training set
     ds = dataset.create_subset(train_split=train_split)
