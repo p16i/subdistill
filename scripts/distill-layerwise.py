@@ -282,7 +282,7 @@ def main(
         seed=seed,
     )
 
-    print(f"[policy={layer_policy}]")
+    print(f"[policy={layer_policy}] with lambda-layer={lambda_layer}")
 
     student_model = models.get_untrained_model(student, num_classes=dataset.num_classes)
 
