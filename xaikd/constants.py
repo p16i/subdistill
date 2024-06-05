@@ -113,6 +113,7 @@ DEFAULT_LAMBDA_LAYER = {
     "dummy": {
         "policy-1": 0.1,
         "policy-2": 0.7,
+        "vid": 0.8,
     },
     "cifar100-clean": {
         "vid": 0.0,
