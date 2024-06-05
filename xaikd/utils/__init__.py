@@ -13,7 +13,11 @@ from pathlib import Path
 from PIL import Image
 
 
-from . import interceptor, modules
+from . import interceptor
+
+import yaml
+
+from xaikd import constants
 
 
 T = typing.TypeVar("T")
@@ -231,3 +235,22 @@ def apply_copyright_to_image(img: Image, watermark: Image) -> Image:
     )
 
     return img
+
+
+def resolve_lambda_layer(
+    policy_name: str,
+    lambda_layer: typing.Union[float, None],
+    default_config_key: typing.Union[str, None],
+) -> float:
+
+    if lambda_layer is not None:
+        return lambda_layer
+    else:
+        assert (
+            default_config_key is not None
+        ), "default_config should be specified when lambda_layer is none."
+
+        lambda_layer = constants.DEFAULT_LAMBDA_LAYER[default_config_key][policy_name]
+        print(f"Resolve `lambda_layer` from config:{default_config_key}[{policy_name}]")
+
+        return lambda_layer
