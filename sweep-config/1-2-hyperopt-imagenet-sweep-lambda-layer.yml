@@ -43,7 +43,3 @@ parameters:
     value: student-32-24-16-8
   teacher:
     value: imagenet-resnet18-tv
-  parameter-partition-mode:
-    value: "@0"
-  finetuning-with-layer-loss:
-    value: 1
