@@ -8,14 +8,13 @@ method: grid
 metric:
   goal: minimize
   name: val_acc
-name: &group_name 1-hyperopt-sweep-lambda-layer
+name: &group_name sweep-output/1-hyperopt-lambda-layer
 parameters:
   dataset:
     value: cifar100-valsplit-people
   dataset-variant:
-    values:
-      - spurious-plussign--0.0
-      - spurious-plussign--0.5
+    value:
+      - spurious-plussign--1.0
   lambda-layer:
     values:
       - 1
@@ -43,7 +42,3 @@ parameters:
     value: student-32-24-16-8
   teacher:
     value: cifar100-resnet18-v1
-  parameter-partition-mode:
-    value: "@0"
-  finetuning-with-layer-loss:
-    value: 1

@@ -38,7 +38,6 @@ from pytorch_lightning.loggers import WandbLogger
 
 WANDB_DIR = os.getenv("WANDB_DIR", ".")
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
-OUTPUT_DIR_PREFIX = os.getenv("OUTPUT_DIR_PREFIX", None)
 
 
 def learn_basis(
@@ -163,8 +162,8 @@ def build_dataloaders(
 @click.option("--lambda-layer", default=None, type=float)
 @click.option("--default-lambda-layer-config", default=None, type=str)
 @click.option("--epochs", type=int, default=100, required=True)
-@click.option("--parameter-partition-mode", type=str)
-@click.option("--finetuning-with-layer-loss", type=bool)
+@click.option("--parameter-partition-mode", type=str, default="@0")
+@click.option("--finetuning-with-layer-loss", type=bool, default=True)
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
 @click.option("--seed", type=int, default=1)
@@ -192,12 +191,6 @@ def main(
 
     dataset = "--".join([dataset, dataset_variant]) if dataset_variant else dataset
     del dataset_variant
-
-    output_dir = (
-        f"{OUTPUT_DIR_PREFIX}/{output_dir}"
-        if OUTPUT_DIR_PREFIX is not None
-        else output_dir
-    )
 
     lambda_layer = utils.resolve_lambda_layer(
         policy_name=layer_policy,
