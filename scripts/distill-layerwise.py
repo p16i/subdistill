@@ -163,7 +163,7 @@ def build_dataloaders(
 @click.option("--default-lambda-layer-config", default=None, type=str)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--parameter-partition-mode", type=str, default="@0")
-@click.option("--finetuning-with-layer-loss", type=bool)
+@click.option("--finetuning-with-layer-loss", type=bool, default=True)
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
 @click.option("--seed", type=int, default=1)
