@@ -3,6 +3,7 @@ import pytest
 
 from xaikd import datasets
 from tests import dataset_cifar100
+from torchvision.datasets import ImageNet
 
 
 @pytest.mark.parametrize(
@@ -101,3 +102,61 @@ def test_victim_propotion(dataset_slug, lvl, train_split):
 
         # for testing set, we have victim for all classe
         assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
+
+
+@pytest.mark.parametrize("lvl", [0.0, 0.5, 1.0])
+@pytest.mark.parametrize("train_split", [True, False])
+def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
+    total_train_samples = len(
+        datasets.construct("imagenet-butterfly").create_subset(train_split=True)
+    )
+    # testing the size of the split
+    dataset = datasets.construct(
+        f"imagenet-valsplit-butterly--spurious-copyright--{lvl}"
+    )
+    # remark: here, we get subset of the official training set
+    ds = dataset.create_subset(train_split=train_split)
+
+    assert ds.train
+
+    assert isinstance(ds, ImageNet)
+
+    dl = datasets.build_dataloader(ds, batch_size=int(1e6), shuffle=False)
+
+    batch, _ = next(iter(dl))
+
+    np.testing.assert_allclose(
+        batch.shape[0],
+        total_train_samples
+        * (
+            constants.TRAINING_VAL_SPLIT_RATIO
+            if train_split
+            else 1 - constants.TRAINING_VAL_SPLIT_RATIO
+        ),
+    )
+
+    victim_class = dataset.selected_classes[0]
+    num_classes = len(dataset.selected_classes)
+
+    # this is global targets
+    arr_targets = np.array(ds.targets)
+
+    arr_victim_indices = ds.victim_indices
+    num_samples = ds.data.shape[0]
+    arr_targets.shape[0]
+
+    if train_split:
+        np.testing.assert_allclose(
+            len(arr_victim_indices),
+            np.floor(lvl * (arr_targets == victim_class).sum()),
+        )
+        # for training set, we have victim for only for first class
+        np.testing.assert_equal(arr_targets[arr_victim_indices], victim_class)
+    else:
+        np.testing.assert_allclose(len(arr_victim_indices), np.floor(num_samples * lvl))
+
+        # for testing set, we have victim for all classe
+        if lvl > 0.0:
+            assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
+        else:
+            assert len(arr_victim_indices) == 0
