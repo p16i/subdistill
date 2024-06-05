@@ -13,8 +13,7 @@ parameters:
   dataset:
     value: cifar100-valsplit-people
   dataset-variant:
-    value:
-      - spurious-plussign--0.0
+    value: spurious-plussign--0.0
   training-size:
     values:
       - 1.0
