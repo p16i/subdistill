@@ -215,7 +215,6 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
 
     arr_victim_indices = ds.victim_indices
     num_samples = ds.data.shape[0]
-    arr_targets.shape[0]
 
     if train_split:
         np.testing.assert_allclose(

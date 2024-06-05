@@ -122,10 +122,10 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
 
     assert isinstance(ds, ImageNet)
 
-    subset_total_train_samples = len(ds.targets)
+    num_samples = len(ds.targets)
 
     np.testing.assert_allclose(
-        subset_total_train_samples,
+        num_samples,
         total_train_samples
         * (
             constants.TRAINING_VAL_SPLIT_RATIO
@@ -141,8 +141,6 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
     arr_targets = np.array(ds.targets)
 
     arr_victim_indices = ds.victim_indices
-    num_samples = ds.data.shape[0]
-    arr_targets.shape[0]
 
     if train_split:
         np.testing.assert_allclose(
