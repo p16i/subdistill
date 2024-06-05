@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, random_split
 
 from torchvision import transforms
 from torchvision import datasets as tvd
@@ -305,6 +305,77 @@ class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
         return ds
 
 
+class ImageNetSuperclasssValSplitWithSpurriousFeature(ImageNetSuperClass):
+    seed = 1
+
+    def __init__(
+        self,
+        selected_classes: typing.List[int],
+        contamination_level: float,
+        dataclass: typing.Type[tvd.ImageNet],
+    ):
+        super().__init__(selected_classes=selected_classes)
+
+        self.contamination_level = contamination_level
+
+        self.dataclass = dataclass
+
+    def create_subset(self, train_split=False) -> Dataset:
+        trng = torch.Generator()
+        trng.manual_seed(self.seed)
+
+        # always use training set
+        ds = super().create_subset(train_split=True)
+
+        ds: TorchVisionDatasetImageNetWithCopyrightTag
+
+        subsets = random_split(
+            # if `use-val-split=True, both training and testing sets
+            # come from the training set.
+            ds,
+            [0.8, 0.2],
+            generator=trng,
+        )
+
+        rng = np.random.default_rng(seed=1)
+
+        selected_subset = subsets[0] if train_split else subsets[1]
+
+        subset_data_indices = selected_subset.indices
+
+        arr_samples = []
+        arr_targets = []
+
+        for ix in tqdm(
+            subset_data_indices,
+            desc=f"Subseting train data (train_split={train_split}) or `{self.__class__.__name__}[{self.selected_classes}]` samples",
+        ):
+            arr_samples.append(ds.samples[ix])
+            arr_targets.append(ds.targets[ix])
+
+        # here, we override the original data
+        ds.samples = arr_samples
+        ds.imgs = arr_samples
+        ds.targets = arr_targets
+
+        if train_split:
+            victim_class = np.min(self.selected_classes)
+            # for `training` set,  we are only interested in only a class
+            indices = (
+                np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
+            )
+        else:
+            # for `validation` set,  samples from all classes have the same
+            # likelihood of having the spurious feature.
+            indices = list(range(len(ds.targets)))
+
+        total = int(np.floor(len(indices) * self.contamination_level))
+
+        ds.victim_indices = rng.permutation(indices)[:total]
+
+        return ds
+
+
 def ano():
 
     for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
@@ -321,6 +392,22 @@ def ano():
                     selected_classes=selected_classes,
                     dataclass=dataclass,
                 )
+
+    for dataclass in [TorchVisionDatasetImageNetWithCopyrightTag]:
+        for contamination_level in [0.0, 0.5, 1.0]:
+            sslug = "--".join(
+                [
+                    "imagenet-valsplit-butterfly",
+                    dataclass.slug,
+                    f"{contamination_level}",
+                ]
+            )
+            DATASETS[sslug] = partial(
+                ImageNetSuperclasssValSplitWithSpurriousFeature,
+                contamination_level=contamination_level,
+                selected_classes=IMAGENET_SUPERCLASS_MAPPING["butterfly"],
+                dataclass=dataclass,
+            )
 
 
 ano()

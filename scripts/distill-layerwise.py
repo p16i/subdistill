@@ -160,7 +160,8 @@ def build_dataloaders(
 @click.option("--layers", default=None, type=str)
 @click.option("--lambda-task", default=0.0, type=float)
 @click.option("--lambda-kd", default=1.0, type=float)
-@click.option("--lambda-layer", type=float)
+@click.option("--lambda-layer", default=None, type=float)
+@click.option("--default-lambda-layer-config", default=None, type=str)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--parameter-partition-mode", type=str)
 @click.option("--finetuning-with-layer-loss", type=bool)
@@ -179,6 +180,7 @@ def main(
     lambda_task,
     lambda_kd,
     lambda_layer,
+    default_lambda_layer_config,
     epochs,
     parameter_partition_mode,  # todo: change to perform-fullupdate
     finetuning_with_layer_loss,
@@ -195,6 +197,12 @@ def main(
         f"{OUTPUT_DIR_PREFIX}/{output_dir}"
         if OUTPUT_DIR_PREFIX is not None
         else output_dir
+    )
+
+    lambda_layer = utils.resolve_lambda_layer(
+        policy_name=layer_policy,
+        lambda_layer=lambda_layer,
+        default_config_key=default_lambda_layer_config,
     )
 
     arguments = locals()
@@ -274,7 +282,7 @@ def main(
         seed=seed,
     )
 
-    print(f"[policy={layer_policy}]")
+    print(f"[policy={layer_policy}] with lambda-layer={lambda_layer}")
 
     student_model = models.get_untrained_model(student, num_classes=dataset.num_classes)
 

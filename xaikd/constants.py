@@ -107,3 +107,20 @@ ARCH_LAYER_DIMENSIONS = dict(
         "stages.3": 1536,
     },
 )
+
+
+DEFAULT_LAMBDA_LAYER = {
+    "dummy": {
+        "policy-1": 0.1,
+        "policy-2": 0.7,
+        "vid": 0.8,
+    },
+    "cifar100-clean": {
+        "vid": 0.0,
+        "attention-transfer": 0.0,
+        "fitnet": 0.0,
+        "basis-identity:pca--uncentered": 0.0,
+        "basis-identity:prca-sortabs--uncentered": 0.0,
+        "basis-identity:pcalookahead--uncentered": 0.0,
+    },
+}

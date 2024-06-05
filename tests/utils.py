@@ -4,9 +4,7 @@ from torch import nn
 
 import numpy as np
 
-from xaikd import utils
-from xaikd import models
-from xaikd import datasets
+from xaikd import utils, models, datasets, constants
 
 
 def test_subsample():
@@ -95,3 +93,39 @@ def test_get_dimensions(arch, expected):
     actual = utils.get_dimensions_at_layers(model, dl, layers=layers)
 
     np.testing.assert_equal(actual, expected)
+
+
+@pytest.mark.parametrize(
+    "lambda_layer,expected,policy_name,config_key",
+    [
+        (1, 1, None, None),
+        (
+            None,
+            constants.DEFAULT_LAMBDA_LAYER["dummy"]["policy-1"],
+            "policy-1",
+            "dummy",
+        ),
+    ],
+)
+def test_resolve_lambda_layer(lambda_layer, expected, policy_name, config_key):
+
+    actual = utils.resolve_lambda_layer(
+        lambda_layer=lambda_layer,
+        policy_name=policy_name,
+        default_config_key=config_key,
+    )
+
+    assert actual == expected
+
+
+def test_resolve_lambda_layer_failed():
+    lambda_layer = None
+    policy_name = None
+    config_key = None
+
+    with pytest.raises(Exception):
+        utils.resolve_lambda_layer(
+            lambda_layer=lambda_layer,
+            policy_name=policy_name,
+            default_config_key=config_key,
+        )
