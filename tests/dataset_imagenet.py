@@ -124,7 +124,6 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
     subset_total_train_samples = len(ds.targets)
 
     np.testing.assert_allclose(
-        batch.shape[0],
         subset_total_train_samples,
         total_train_samples
         * (
