@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from xaikd import datasets
+from xaikd import datasets, constants
 from tests import dataset_cifar100
 from torchvision.datasets import ImageNet
 
