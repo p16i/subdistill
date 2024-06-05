@@ -117,7 +117,7 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
     # remark: here, we get subset of the official training set
     ds = dataset.create_subset(train_split=train_split)
 
-    assert ds.train
+    assert ds.split == "train"
 
     assert isinstance(ds, ImageNet)
 
