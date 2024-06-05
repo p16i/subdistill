@@ -38,7 +38,6 @@ from pytorch_lightning.loggers import WandbLogger
 
 WANDB_DIR = os.getenv("WANDB_DIR", ".")
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
-OUTPUT_DIR_PREFIX = os.getenv("OUTPUT_DIR_PREFIX", None)
 
 
 def learn_basis(
@@ -192,12 +191,6 @@ def main(
 
     dataset = "--".join([dataset, dataset_variant]) if dataset_variant else dataset
     del dataset_variant
-
-    output_dir = (
-        f"{OUTPUT_DIR_PREFIX}/{output_dir}"
-        if OUTPUT_DIR_PREFIX is not None
-        else output_dir
-    )
 
     lambda_layer = utils.resolve_lambda_layer(
         policy_name=layer_policy,
