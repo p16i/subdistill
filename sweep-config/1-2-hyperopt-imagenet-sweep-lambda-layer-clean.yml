@@ -11,11 +11,13 @@ metric:
 name: &group_name sweep-output/1-hyperopt-lambda-layer
 parameters:
   dataset:
-    value: imagenet-butterfly
+    value: imagenet-valsplit-butterfly
   dataset-variant:
+    value: spurious-copyright--0.0
+  training-size:
     values:
-      - ""
-      - spurious-copyright--1.0
+      - 1.0
+      - 0.1
   lambda-layer:
     values:
       - 1
