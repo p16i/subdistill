@@ -116,6 +116,7 @@ DEFAULT_LAMBDA_LAYER = {
         "vid": 0.8,
     },
     "cifar100-clean": {
+        "nothing": 0,
         "fitnet": 1e5,
         "attention-transfer": 1e2,
         "vid": 1e2,
@@ -124,6 +125,7 @@ DEFAULT_LAMBDA_LAYER = {
         "basis-identity:pcalookahead--uncentered": 1e1,
     },
     "cifar100-small": {
+        "nothing": 0,
         "fitnet": 1e1,
         "attention-transfer": 1e2,
         "vid": 1e3,
@@ -132,6 +134,7 @@ DEFAULT_LAMBDA_LAYER = {
         "basis-identity:pcalookahead--uncentered": 1e2,
     },
     "cifar100-spurious": {
+        "nothing": 0,
         "fitnet": 1e5,
         "attention-transfer": 1e4,
         "vid": 1e5,
