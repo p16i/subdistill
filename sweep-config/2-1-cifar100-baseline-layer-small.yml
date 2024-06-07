@@ -41,7 +41,7 @@ parameters:
       - cifar100-vehicles_1
       - cifar100-vehicles_2
   dataset-variant:
-    value:  ""
+    value: ""
   training-size:
     value: 0.1
   layer-policy:

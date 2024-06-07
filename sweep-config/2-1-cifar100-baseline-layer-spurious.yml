@@ -41,7 +41,7 @@ parameters:
       - cifar100-vehicles_1
       - cifar100-vehicles_2
   dataset-variant:
-    value:  spurious-plussign--1.0
+    value: spurious-plussign--1.0
   training-size:
     value: 1.0 
   layer-policy:
