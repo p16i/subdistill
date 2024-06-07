@@ -8,10 +8,9 @@ method: grid
 metric:
   goal: minimize
   name: val_acc
-name: &group_name sweep-output/2-main-experiment
 parameters:
   output-dir:
-    value: *group_name
+    value: sweep-output/2-main-experiment
   teacher:
     value: cifar100-resnet18-v1
   student:
