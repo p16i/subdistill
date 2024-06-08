@@ -3,6 +3,7 @@ command:
   - python
   - ${program}
   - ${args}
+  - --enable-checkpointing
 program: scripts/distill-layerwise.py
 method: grid
 metric:
