@@ -57,4 +57,4 @@ parameters:
   lambda-kd:
       value: 1.0
   default-lambda-layer-config:
-    value: cifar100-clean
+    value: cifar100-spurious
