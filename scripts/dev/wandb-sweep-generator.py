@@ -21,7 +21,7 @@ def main(wandb_project, dry_run, config_files):
     if dry_run:
         click.echo(f"--- [dry-run={dry_run}] ----")
 
-    arr_config_files = glob(config_files)
+    arr_config_files = sorted(glob(config_files))
     click.echo(f"Found {len(arr_config_files)} config files!")
     click.echo("\n".join(list(map(lambda f: f" - {f}", arr_config_files))))
 
