@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 import pandas as pd
 
+import itertools
+
 PACKAGE_DIR = Path(os.path.dirname(__file__))
 
 ARR_STUDENT_DIMENSIONS = [
@@ -30,6 +32,10 @@ DEFAULT_TEACHER_STUDENT_LAYER_MAPPING = {
     "imagenet-vgg16-tv": "features.23:layer3,features.30:layer4",
     "imagenet-nfnetf0-dm": "stages.2:layer3,stages.3:layer4",
 }
+
+ARR_IMAGENET_COPYRIGHT2_CORNER_LOCATIONs = list(
+    itertools.product([-40, 40], [-100, 100])
+)
 
 ARCH_LAYER_DIMENSIONS = dict(
     resnet18={

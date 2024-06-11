@@ -264,6 +264,41 @@ class TorchVisionDatasetImageNetWithCopyrightTag(tvd.ImageNet):
         return sample, target
 
 
+class TorchVisionDatasetImageNetWithCopyrightTagV2(tvd.ImageNet):
+    victim_indices: typing.List[int]
+
+    slug = "spurious-copyright2"
+
+    def __getitem__(self, index: int):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+
+        path, target = self.samples[index]
+        # stem=n01440764_10026.JPEG
+        seed = int(Path(path).stem.split(".")[0].split("_")[-1])
+
+        rng = np.random.default_rng(seed=seed)
+
+        sample = self.loader(path)
+
+        assert self.transform is not None
+
+        if index in self.victim_indices:
+            sample = utils.apply_copyright2_to_image(sample, rng=rng)
+
+        sample = self.transform(sample)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return sample, target
+
+
 class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
 
     def __init__(
@@ -383,7 +418,7 @@ def ano():
         selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
         DATASETS[slug] = partial(ImageNetSuperClass, selected_classes=selected_classes)
 
-        for dataclass in [TorchVisionDatasetImageNetWithCopyrightTag]:
+        for dataclass in [TorchVisionDatasetImageNetWithCopyrightTag, TorchVisionDatasetImageNetWithCopyrightTagV2]:
             for contamination_level in [0.125, 0.25, 0.5, 1.0]:
                 sslug = "--".join([slug, dataclass.slug, f"{contamination_level}"])
                 DATASETS[sslug] = partial(
@@ -393,7 +428,7 @@ def ano():
                     dataclass=dataclass,
                 )
 
-    for dataclass in [TorchVisionDatasetImageNetWithCopyrightTag]:
+    for dataclass in [TorchVisionDatasetImageNetWithCopyrightTag, TorchVisionDatasetImageNetWithCopyrightTagV2]:
         for contamination_level in [0.0, 0.5, 1.0]:
             sslug = "--".join(
                 [

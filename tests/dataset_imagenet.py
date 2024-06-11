@@ -106,15 +106,20 @@ def test_victim_propotion(dataset_slug, lvl, train_split):
 
 @pytest.mark.parametrize("lvl", [0.0, 0.5, 1.0])
 @pytest.mark.parametrize("train_split", [True, False])
+@pytest.mark.parametrize(
+    "variant",
+    [
+        "spurious-copyright",
+        "spurious-copyright2",
+    ],
+)
 @pytest.mark.slow
-def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
+def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
     total_train_samples = len(
         datasets.construct("imagenet-butterfly").create_subset(train_split=True).targets
     )
     # testing the size of the split
-    dataset = datasets.construct(
-        f"imagenet-valsplit-butterfly--spurious-copyright--{lvl}"
-    )
+    dataset = datasets.construct(f"imagenet-valsplit-butterfly--{variant}--{lvl}")
     # remark: here, we get subset of the official training set
     ds = dataset.create_subset(train_split=train_split)
 
