@@ -208,7 +208,7 @@ def test_dataset_with_watermark_jpeg_spurious_correlation(lvl, train_split, vari
         total = len(ds)
 
         counts = np.bincount(ds.arr_data_spurious)
-        n_spurious_samples = np.floor(total * lvl * 0.33)
+        n_spurious_samples = np.floor(total * lvl * (1 / 3))
         np.testing.assert_allclose(
             counts,
             [

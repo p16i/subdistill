@@ -446,7 +446,7 @@ class ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures(ImageNetSuperClass):
             indices = list(range(n))
 
             total_per_type = int(
-                np.floor(len(indices) * 0.33 * self.contamination_level)
+                np.floor(len(indices) * (1 / 3) * self.contamination_level)
             )
 
             permuted_indices = rng.permutation(indices)
