@@ -21,6 +21,7 @@ from torchvision.datasets.folder import default_loader
 from tqdm import tqdm
 
 from xaikd import constants, utils
+from xaikd.utils import spurious_feature_generator
 
 from . import DATASETS, DATADIR, register_dataset, DatasetConfiguration
 
@@ -157,73 +158,6 @@ IMAGENET_SUPERCLASS_MAPPING = {
 }
 
 
-# @register_dataset("imagenet-butterfly")
-# class ImageNetButterfly(ImageNetSuperClass):
-#     # remark: the targets are defined in the ImageNet dataset.
-#     selected_classes = [321, 322, 323, 324, 325, 326]
-
-
-# @register_dataset("imagenet-boat")
-# class ImageNetBoat(ImageNetSuperClass):
-#     # remark: the targets are defined in the ImageNet dataset.
-#     selected_classes = [472, 554, 576, 625, 814, 914]
-
-
-# @register_dataset("imagenet-car")
-# class ImageNetCar(ImageNetSuperClass):
-#     # remark: the targets are defined in the ImageNet dataset.
-#     selected_classes = [407, 436, 468, 511, 609, 627, 656, 661, 751, 817]
-
-
-# @register_dataset("imagenet-cat")
-# class ImageNetCat(ImageNetSuperClass):
-#     # remark: the targets are defined in the ImageNet dataset.
-#     selected_classes = [281, 282, 283, 284, 285, 286, 287]
-
-
-# @register_dataset("imagenet-edible_fruit")
-# class ImageNetEdibleFruit(ImageNetSuperClass):
-#     # remark: the targets are defined in the ImageNet dataset.
-#     selected_classes = [
-#         948,
-#         949,
-#         950,
-#         951,
-#         952,
-#         953,
-#         954,
-#         955,
-#         956,
-#         957,
-#     ]
-
-
-# @register_dataset("imagenet-fungus")
-# class ImageNetFungus(ImageNetSuperClass):
-#     selected_classes = [
-#         991,
-#         993,
-#         994,
-#         995,
-#         996,
-#         997,
-#     ]
-
-
-# @register_dataset("imagenet-truck")
-# class ImageNetTruck(ImageNetSuperClass):
-#     selected_classes = [
-#         555,
-#         569,
-#         656,
-#         675,
-#         717,
-#         734,
-#         864,
-#         867,
-#     ]
-
-
 class TorchVisionDatasetImageNetWithCopyrightTag(tvd.ImageNet):
     victim_indices: typing.List[int]
 
@@ -254,7 +188,9 @@ class TorchVisionDatasetImageNetWithCopyrightTag(tvd.ImageNet):
         assert self.transform is not None
 
         if index in self.victim_indices:
-            sample = utils.apply_copyright_to_image(sample, self.copyright)
+            sample = spurious_feature_generator.imagenet_copyright(
+                sample, self.copyright
+            )
 
         sample = self.transform(sample)
 
@@ -264,10 +200,10 @@ class TorchVisionDatasetImageNetWithCopyrightTag(tvd.ImageNet):
         return sample, target
 
 
-class TorchVisionDatasetImageNetWithCopyrightTagV2(tvd.ImageNet):
+class TorchVisionDatasetImageNetWithWatermark(tvd.ImageNet):
     victim_indices: typing.List[int]
 
-    slug = "spurious-copyright2"
+    slug = "spurious-watermark"
 
     def __getitem__(self, index: int):
         """
@@ -279,17 +215,13 @@ class TorchVisionDatasetImageNetWithCopyrightTagV2(tvd.ImageNet):
         """
 
         path, target = self.samples[index]
-        # stem=n01440764_10026.JPEG
-        seed = int(Path(path).stem.split(".")[0].split("_")[-1])
-
-        rng = np.random.default_rng(seed=seed)
 
         sample = self.loader(path)
 
         assert self.transform is not None
 
         if index in self.victim_indices:
-            sample = utils.apply_copyright2_to_image(sample, rng=rng)
+            sample = spurious_feature_generator.imagenet_watermark(sample)
 
         sample = self.transform(sample)
 
@@ -418,7 +350,10 @@ def ano():
         selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
         DATASETS[slug] = partial(ImageNetSuperClass, selected_classes=selected_classes)
 
-        for dataclass in [TorchVisionDatasetImageNetWithCopyrightTag, TorchVisionDatasetImageNetWithCopyrightTagV2]:
+        for dataclass in [
+            TorchVisionDatasetImageNetWithCopyrightTag,
+            TorchVisionDatasetImageNetWithWatermark,
+        ]:
             for contamination_level in [0.125, 0.25, 0.5, 1.0]:
                 sslug = "--".join([slug, dataclass.slug, f"{contamination_level}"])
                 DATASETS[sslug] = partial(
@@ -428,7 +363,10 @@ def ano():
                     dataclass=dataclass,
                 )
 
-    for dataclass in [TorchVisionDatasetImageNetWithCopyrightTag, TorchVisionDatasetImageNetWithCopyrightTagV2]:
+    for dataclass in [
+        TorchVisionDatasetImageNetWithCopyrightTag,
+        TorchVisionDatasetImageNetWithWatermark,
+    ]:
         for contamination_level in [0.0, 0.5, 1.0]:
             sslug = "--".join(
                 [
