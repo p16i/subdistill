@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
 
-import pandas as pd
 import numpy as np
 
 import torch
@@ -158,7 +157,44 @@ IMAGENET_SUPERCLASS_MAPPING = {
 }
 
 
-class TorchVisionDatasetImageNetWithCopyrightTag(tvd.ImageNet):
+class TorchVisionDatasetImageNetWithSpuriousFeature(tvd.ImageNet):
+    victim_indices: typing.List[int]
+    slug: str
+
+    def modify_sample(
+        self, sample: spurious_feature_generator.TypeImage
+    ) -> spurious_feature_generator.TypeImage:
+        raise NotImplementedError("...")
+
+    def __getitem__(self, index: int):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+
+        path, target = self.samples[index]
+
+        sample = self.loader(path)
+
+        assert self.transform is not None
+
+        if index in self.victim_indices:
+            sample = self.modify_sample(sample)
+
+        sample = self.transform(sample)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return sample, target
+
+
+class TorchVisionDatasetImageNetWithCopyrightTag(
+    TorchVisionDatasetImageNetWithSpuriousFeature
+):
     victim_indices: typing.List[int]
 
     slug = "spurious-copyright"
@@ -172,63 +208,36 @@ class TorchVisionDatasetImageNetWithCopyrightTag(tvd.ImageNet):
         )
     )
 
-    def __getitem__(self, index: int):
-        """
-        Args:
-            index (int): Index
-
-        Returns:
-            tuple: (sample, target) where target is class_index of the target class.
-        """
-
-        path, target = self.samples[index]
-
-        sample = self.loader(path)
-
-        assert self.transform is not None
-
-        if index in self.victim_indices:
-            sample = spurious_feature_generator.imagenet_copyright(
-                sample, self.copyright
-            )
-
-        sample = self.transform(sample)
-
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-
-        return sample, target
+    def modify_sample(
+        self, sample: spurious_feature_generator.TypeImage
+    ) -> spurious_feature_generator.TypeImage:
+        return spurious_feature_generator.imagenet_copyright(sample, self.copyright)
 
 
-class TorchVisionDatasetImageNetWithWatermark(tvd.ImageNet):
+class TorchVisionDatasetImageNetWithWatermark(
+    TorchVisionDatasetImageNetWithSpuriousFeature
+):
     victim_indices: typing.List[int]
 
     slug = "spurious-watermark"
 
-    def __getitem__(self, index: int):
-        """
-        Args:
-            index (int): Index
+    def modify_sample(
+        self, sample: spurious_feature_generator.TypeImage
+    ) -> spurious_feature_generator.TypeImage:
+        return spurious_feature_generator.imagenet_watermark(sample)
 
-        Returns:
-            tuple: (sample, target) where target is class_index of the target class.
-        """
 
-        path, target = self.samples[index]
+class TorchVisionDatasetImageNetWithJPEGArtifact(
+    TorchVisionDatasetImageNetWithSpuriousFeature
+):
+    victim_indices: typing.List[int]
 
-        sample = self.loader(path)
+    slug = "spurious-jpeg"
 
-        assert self.transform is not None
-
-        if index in self.victim_indices:
-            sample = spurious_feature_generator.imagenet_watermark(sample)
-
-        sample = self.transform(sample)
-
-        if self.target_transform is not None:
-            target = self.target_transform(target)
-
-        return sample, target
+    def modify_sample(
+        self, sample: spurious_feature_generator.TypeImage
+    ) -> spurious_feature_generator.TypeImage:
+        return spurious_feature_generator.apply_jpeg_artifacts(sample)
 
 
 class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
@@ -353,6 +362,7 @@ def ano():
         for dataclass in [
             TorchVisionDatasetImageNetWithCopyrightTag,
             TorchVisionDatasetImageNetWithWatermark,
+            TorchVisionDatasetImageNetWithJPEGArtifact,
         ]:
             for contamination_level in [0.125, 0.25, 0.5, 1.0]:
                 sslug = "--".join([slug, dataclass.slug, f"{contamination_level}"])
@@ -366,6 +376,7 @@ def ano():
     for dataclass in [
         TorchVisionDatasetImageNetWithCopyrightTag,
         TorchVisionDatasetImageNetWithWatermark,
+        TorchVisionDatasetImageNetWithJPEGArtifact,
     ]:
         for contamination_level in [0.0, 0.5, 1.0]:
             sslug = "--".join(

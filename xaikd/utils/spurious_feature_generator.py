@@ -1,13 +1,18 @@
 import os
+import io
+
 from pathlib import Path
 
 import numpy as np
+
 from PIL import Image
+
+from PIL.Image import Image as TypeImage
 
 from xaikd import constants
 
 
-def imagenet_copyright(img: Image, watermark: Image) -> Image:
+def imagenet_copyright(img: TypeImage, watermark: TypeImage) -> TypeImage:
     # this makes sure that we do NOT override the input image.
     img = img.copy()
 
@@ -39,7 +44,7 @@ def imagenet_copyright(img: Image, watermark: Image) -> Image:
     return img
 
 
-def apply_copyright2_to_image(img: Image, rng: np.random.Generator) -> Image:
+def apply_copyright2_to_image(img: TypeImage, rng: np.random.Generator) -> TypeImage:
     location = tuple(rng.choice(constants.ARR_IMAGENET_COPYRIGHT2_CORNER_LOCATIONs))
 
     watermark = Image.open(
@@ -83,7 +88,7 @@ def apply_copyright2_to_image(img: Image, rng: np.random.Generator) -> Image:
     return img
 
 
-def imagenet_watermark(img: Image) -> Image:
+def imagenet_watermark(img: TypeImage) -> TypeImage:
     watermark = Image.open(
         str(
             Path(os.path.dirname(constants.PACKAGE_DIR))
@@ -121,3 +126,14 @@ def imagenet_watermark(img: Image) -> Image:
     )
 
     return img
+
+
+def apply_jpeg_artifacts(img: TypeImage) -> TypeImage:
+
+    # this makes sure that we do NOT override the input images
+    img = img.copy()
+
+    buffered = io.BytesIO()
+    img.save(buffered, format="jpeg", optimize=True, quality=5)
+
+    return Image.open(buffered)

@@ -110,7 +110,8 @@ def test_victim_propotion(dataset_slug, lvl, train_split):
     "variant",
     [
         "spurious-copyright",
-        "spurious-copyright2",
+        "spurious-watermark",
+        "spurious-jpeg",
     ],
 )
 @pytest.mark.slow
@@ -142,7 +143,6 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
     victim_class = dataset.selected_classes[0]
     num_classes = len(dataset.selected_classes)
 
-    # this is global targets
     arr_targets = np.array(ds.targets)
 
     arr_victim_indices = ds.victim_indices
