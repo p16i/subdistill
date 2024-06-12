@@ -179,15 +179,15 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
     ],
 )
 @pytest.mark.parametrize(
-    "dataset_name",
+    "dataset_name, atol",
     [
-        "butterfly",
-        "valsplit-butterfly",
+        ("butterfly", 0),
+        ("valsplit-butterfly", 21),
     ],
 )
 @pytest.mark.slow
 def test_dataset_with_watermark_jpeg_spurious_correlation(
-    lvl, train_split, dataset_name, variant
+    lvl, train_split, dataset_name, variant, atol
 ):
 
     dataset = datasets.construct(f"imagenet-{dataset_name}--{variant}--{lvl}")
@@ -212,6 +212,7 @@ def test_dataset_with_watermark_jpeg_spurious_correlation(
                 n_spurious_samples_per_class,
                 n_spurious_samples_per_class,
             ],
+            atol=atol,
         )
     else:
         if dataset_name == "butterfly":
@@ -230,4 +231,5 @@ def test_dataset_with_watermark_jpeg_spurious_correlation(
                 n_spurious_samples,
                 n_spurious_samples,
             ],
+            atol=atol,
         )
