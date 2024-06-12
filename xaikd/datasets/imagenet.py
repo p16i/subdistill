@@ -237,7 +237,7 @@ class TorchVisionDatasetImageNetWithJPEGArtifact(
     def modify_sample(
         self, sample: spurious_feature_generator.TypeImage
     ) -> spurious_feature_generator.TypeImage:
-        return spurious_feature_generator.apply_jpeg_artifacts(sample)
+        return spurious_feature_generator.jpeg_artifact(sample)
 
 
 class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
@@ -352,6 +352,126 @@ class ImageNetSuperclasssValSplitWithSpurriousFeature(ImageNetSuperClass):
         return ds
 
 
+class TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures(tvd.ImageNet):
+    arr_data_spurious: typing.List[int]  # if 0 then not spurious
+    slug = "spurious-watermarkjpeg"
+
+    def __getitem__(self, index: int):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (sample, target) where target is class_index of the target class.
+        """
+
+        path, target = self.samples[index]
+
+        sample = self.loader(path)
+
+        assert self.transform is not None
+
+        spurious_type = self.arr_data_spurious[index]
+        assert spurious_type in [0, 1, 2]
+
+        if spurious_type == 1:
+            sample = spurious_feature_generator.imagenet_watermark(sample)
+        elif spurious_type == 2:
+            sample = spurious_feature_generator.jpeg_artifact(sample)
+        else:
+            pass
+
+        sample = self.transform(sample)
+
+        if self.target_transform is not None:
+            target = self.target_transform(target)
+
+        return sample, target
+
+
+class ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures(ImageNetSuperClass):
+
+    def __init__(
+        self,
+        selected_classes: typing.List[int],
+        contamination_level: float,
+    ):
+        super().__init__(selected_classes=selected_classes)
+
+        self.contamination_level = contamination_level
+
+        self.dataclass = TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = super().create_subset(train_split)
+
+        ds: TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures
+
+        rng = np.random.default_rng(seed=1)
+
+        n = len(ds.targets)
+
+        arr_data_spurious = np.zeros(n)
+
+        sorted_classes = list(sorted(self.selected_classes))
+
+        if train_split:
+            victim_watermark_class = sorted_classes[0]
+            victim_jpeg_class = sorted_classes[1]
+
+            # for `training` set,  samples from the first two classes have spurious features:
+            # - class 0: watermark
+            # - class 1: jpeg
+            for spurious_type_ix, cls_ix in [
+                (1, victim_watermark_class),
+                (2, victim_jpeg_class),
+            ]:
+                indices = (
+                    np.argwhere(np.array(ds.targets) == cls_ix).reshape(-1).tolist()
+                )
+
+                total = int(np.floor(len(indices) * self.contamination_level))
+
+                selected_indices = rng.permutation(indices)[:total]
+
+                arr_data_spurious[selected_indices] = spurious_type_ix
+
+        else:
+            # for `validation` set,  samples from all classes have the same
+            # likelihood to be either in these three groups
+            # - clean (always 33%)
+            # - spurious-watermark (contamination level * 33%)
+            # - spurious-jpeg (contamintaion level * 33%)
+
+            indices = list(range(n))
+
+            total_per_type = int(
+                np.floor(len(indices) * 0.33 * self.contamination_level)
+            )
+
+            permuted_indices = rng.permutation(indices)
+
+            selected_indices_type_watermark = permuted_indices[:total_per_type]
+
+            selected_indices_type_jpeg = permuted_indices[total_per_type:]
+
+            assert (
+                len(selected_indices_type_jpeg) - 1
+                <= len(selected_indices_type_jpeg)
+                <= len(selected_indices_type_jpeg) + 1
+            )
+
+            for spurious_type_ix, selected_indices in [
+                (1, selected_indices_type_watermark),
+                (2, selected_indices_type_jpeg),
+            ]:
+                arr_data_spurious[selected_indices] = spurious_type_ix
+
+        ds.arr_data_spurious = arr_data_spurious.tolist()
+
+        return ds
+
+
 def ano():
 
     for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
@@ -391,6 +511,19 @@ def ano():
                 contamination_level=contamination_level,
                 selected_classes=IMAGENET_SUPERCLASS_MAPPING["butterfly"],
                 dataclass=dataclass,
+            )
+
+        for contamination_level in [0.5, 1.0]:
+            superclass = "butterfly"
+            name = f"imagenet-{superclass}"
+            spuroius_slug = (
+                TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures.slug
+            )
+            sslug = "--".join([name, spuroius_slug, str(contamination_level)])
+            DATASETS[sslug] = partial(
+                ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures,
+                selected_classes=IMAGENET_SUPERCLASS_MAPPING[superclass],
+                contamination_level=contamination_level,
             )
 
 

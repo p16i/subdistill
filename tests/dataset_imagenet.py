@@ -162,3 +162,22 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
             assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
         else:
             assert len(arr_victim_indices) == 0
+
+
+@pytest.mark.parametrize("lvl", [0.0, 0.5, 1.0])
+@pytest.mark.parametrize("train_split", [True, False])
+@pytest.mark.parametrize(
+    "variant",
+    [
+        "spurious-watermarkjpeg",
+    ],
+)
+@pytest.mark.slow
+def test_dataset_with_watermark_jpeg_spurious_correlation(lvl, train_split, variant):
+    # total_train_samples = len(
+    #     datasets.construct("imagenet-butterfly").create_subset(train_split=True).targets
+    # )
+
+    dataset = datasets.construct(f"imagenet-butterfly--{variant}--{lvl}")
+
+    assert False

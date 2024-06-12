@@ -128,7 +128,7 @@ def imagenet_watermark(img: TypeImage) -> TypeImage:
     return img
 
 
-def apply_jpeg_artifacts(img: TypeImage) -> TypeImage:
+def jpeg_artifact(img: TypeImage) -> TypeImage:
 
     # this makes sure that we do NOT override the input images
     img = img.copy()
