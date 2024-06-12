@@ -178,13 +178,19 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
         "spurious-watermarkjpeg",
     ],
 )
+@pytest.mark.parametrize(
+    "dataset_name",
+    [
+        "butterfly",
+        "valsplit-butterfly",
+    ],
+)
 @pytest.mark.slow
-def test_dataset_with_watermark_jpeg_spurious_correlation(lvl, train_split, variant):
-    # total_train_samples = len(
-    #     datasets.construct("imagenet-butterfly").create_subset(train_split=True).targets
-    # )
+def test_dataset_with_watermark_jpeg_spurious_correlation(
+    lvl, train_split, dataset_name, variant
+):
 
-    dataset = datasets.construct(f"imagenet-butterfly--{variant}--{lvl}")
+    dataset = datasets.construct(f"imagenet-{dataset_name}--{variant}--{lvl}")
     num_classes = len(dataset.selected_classes)
     ds: (
         datasets.imagenet.TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures
@@ -192,7 +198,11 @@ def test_dataset_with_watermark_jpeg_spurious_correlation(lvl, train_split, vari
 
     counts = np.bincount(ds.arr_data_spurious)
     if train_split:
-        n_per_class = 1300
+        if dataset_name == "butterfly":
+            n_per_class = 1300
+        else:
+            n_per_class = int(1300 * 0.8)
+
         n_spurious_samples_per_class = np.floor(n_per_class * lvl)
         np.testing.assert_allclose(np.sum(counts), n_per_class * num_classes)
         np.testing.assert_allclose(
@@ -204,7 +214,11 @@ def test_dataset_with_watermark_jpeg_spurious_correlation(lvl, train_split, vari
             ],
         )
     else:
-        n_per_class = 50
+        if dataset_name == "butterfly":
+            n_per_class = 50
+        else:
+            n_per_class = 1300 * 0.2
+
         total = len(ds)
 
         counts = np.bincount(ds.arr_data_spurious)

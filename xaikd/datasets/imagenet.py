@@ -402,10 +402,13 @@ class ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures(ImageNetSuperClass):
 
         self.dataclass = TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures
 
-    def create_subset(self, train_split=False) -> Dataset:
-        ds = super().create_subset(train_split)
+    def _construct_dataset(
+        self, train_split: bool
+    ) -> TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures:
+        return super().create_subset(train_split)
 
-        ds: TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = self._construct_dataset(train_split=train_split)
 
         rng = np.random.default_rng(seed=1)
 
@@ -474,6 +477,50 @@ class ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures(ImageNetSuperClass):
         return ds
 
 
+class ImageNetSuperclasssValSplitWithWatermarkJPEGSpuriousFeatures(
+    ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures
+):
+    seed = 1
+
+    def _construct_dataset(
+        self, train_split: bool
+    ) -> TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures:
+        trng = torch.Generator()
+        trng.manual_seed(self.seed)
+
+        # always use training set
+        ds = super()._construct_dataset(train_split=True)
+
+        subsets = random_split(
+            # if `use-val-split=True, both training and testing sets
+            # come from the training set.
+            ds,
+            [0.8, 0.2],
+            generator=trng,
+        )
+
+        selected_subset = subsets[0] if train_split else subsets[1]
+
+        subset_data_indices = selected_subset.indices
+
+        arr_samples = []
+        arr_targets = []
+
+        for ix in tqdm(
+            subset_data_indices,
+            desc=f"Subseting train data (train_split={train_split}) or `{self.__class__.__name__}[{self.selected_classes}]` samples",
+        ):
+            arr_samples.append(ds.samples[ix])
+            arr_targets.append(ds.targets[ix])
+
+        # here, we override the original data
+        ds.samples = arr_samples
+        ds.imgs = arr_samples
+        ds.targets = arr_targets
+
+        return ds
+
+
 def ano():
 
     for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
@@ -515,18 +562,29 @@ def ano():
                 dataclass=dataclass,
             )
 
-        for contamination_level in [0.5, 1.0]:
-            superclass = "butterfly"
-            name = f"imagenet-{superclass}"
-            spuroius_slug = (
-                TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures.slug
-            )
-            sslug = "--".join([name, spuroius_slug, str(contamination_level)])
-            DATASETS[sslug] = partial(
+        for superclass, slug, dataset_class in [
+            (
+                "butterfly",
+                "butterfly",
                 ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures,
-                selected_classes=IMAGENET_SUPERCLASS_MAPPING[superclass],
-                contamination_level=contamination_level,
-            )
+            ),
+            (
+                "butterfly",
+                "valsplit-butterfly",
+                ImageNetSuperclasssValSplitWithWatermarkJPEGSpuriousFeatures,
+            ),
+        ]:
+            for contamination_level in [0.5, 1.0]:
+                name = f"imagenet-{slug}"
+                spuroius_slug = (
+                    TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures.slug
+                )
+                sslug = "--".join([name, spuroius_slug, str(contamination_level)])
+                DATASETS[sslug] = partial(
+                    dataset_class,
+                    selected_classes=IMAGENET_SUPERCLASS_MAPPING[superclass],
+                    contamination_level=contamination_level,
+                )
 
 
 ano()
