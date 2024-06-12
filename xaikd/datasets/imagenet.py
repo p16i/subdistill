@@ -453,7 +453,9 @@ class ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures(ImageNetSuperClass):
 
             selected_indices_type_watermark = permuted_indices[:total_per_type]
 
-            selected_indices_type_jpeg = permuted_indices[total_per_type:]
+            selected_indices_type_jpeg = permuted_indices[
+                total_per_type : 2 * total_per_type
+            ]
 
             assert (
                 len(selected_indices_type_jpeg) - 1

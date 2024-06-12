@@ -183,7 +183,6 @@ def test_dataset_with_watermark_jpeg_spurious_correlation(lvl, train_split, vari
     # total_train_samples = len(
     #     datasets.construct("imagenet-butterfly").create_subset(train_split=True).targets
     # )
-    n_per_class = 1300
 
     dataset = datasets.construct(f"imagenet-butterfly--{variant}--{lvl}")
     num_classes = len(dataset.selected_classes)
@@ -193,6 +192,7 @@ def test_dataset_with_watermark_jpeg_spurious_correlation(lvl, train_split, vari
 
     counts = np.bincount(ds.arr_data_spurious)
     if train_split:
+        n_per_class = 1300
         n_spurious_samples_per_class = np.floor(n_per_class * lvl)
         np.testing.assert_allclose(np.sum(counts), n_per_class * num_classes)
         np.testing.assert_allclose(
@@ -204,14 +204,16 @@ def test_dataset_with_watermark_jpeg_spurious_correlation(lvl, train_split, vari
             ],
         )
     else:
+        n_per_class = 50
         total = len(ds)
 
         counts = np.bincount(ds.arr_data_spurious)
+        n_spurious_samples = np.floor(total * lvl * 0.33)
         np.testing.assert_allclose(
             counts,
             [
-                total * 0.33,
-                total * lvl * 0.33,
-                total * lvl * 0.33,
+                total - 2 * n_spurious_samples,
+                n_spurious_samples,
+                n_spurious_samples,
             ],
         )
