@@ -562,7 +562,7 @@ def ano():
                 dataclass=dataclass,
             )
 
-        for superclass, slug, dataset_class, arr_contamination_levels in [
+        for superclass, slug, arr_contamination_levels, dataset_class in [
             (
                 "butterfly",
                 "butterfly",
