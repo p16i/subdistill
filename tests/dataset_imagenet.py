@@ -180,8 +180,11 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
 @pytest.mark.parametrize(
     "dataset_name,lvl,atol",
     [
-        ("butterfly", (0.5, 1.0), 0),
-        ("valsplit-butterfly", (0.0, 0.5, 1.0), 21),
+        ("butterfly", 0.5, 0.0),
+        ("butterfly", 1.0, 0.0),
+        ("valsplit-butterfly", 0.0, 21),
+        ("valsplit-butterfly", 0.5, 21),
+        ("valsplit-butterfly", 1.0, 21),
     ],
 )
 @pytest.mark.slow
