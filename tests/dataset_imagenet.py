@@ -199,7 +199,7 @@ def test_dataset_with_watermark_jpeg_spurious_correlation(
     ) = dataset.create_subset(train_split=train_split)
 
     counts = np.zeros(3)
-    for l in ds.arr_data_spurious:
+    for l in np.array(ds.arr_data_spurious).astype(int):
         counts[l] = counts[l] + 1
 
     if train_split:
