@@ -198,7 +198,10 @@ def test_dataset_with_watermark_jpeg_spurious_correlation(
         datasets.imagenet.TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures
     ) = dataset.create_subset(train_split=train_split)
 
-    counts = np.bincount(ds.arr_data_spurious)
+    counts = np.zeros(3)
+    for l in ds.arr_data_spurious:
+        counts[l] = counts[l] + 1
+
     if train_split:
         if dataset_name == "butterfly":
             n_per_class = 1300
