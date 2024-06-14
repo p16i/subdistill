@@ -562,19 +562,21 @@ def ano():
                 dataclass=dataclass,
             )
 
-        for superclass, slug, dataset_class in [
+        for superclass, slug, dataset_class, arr_contamination_levels in [
             (
                 "butterfly",
                 "butterfly",
+                (0.5, 1.0),
                 ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures,
             ),
             (
                 "butterfly",
                 "valsplit-butterfly",
+                (0.0, 0.5, 1.0),
                 ImageNetSuperclasssValSplitWithWatermarkJPEGSpuriousFeatures,
             ),
         ]:
-            for contamination_level in [0.5, 1.0]:
+            for contamination_level in arr_contamination_levels:
                 name = f"imagenet-{slug}"
                 spuroius_slug = (
                     TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures.slug
