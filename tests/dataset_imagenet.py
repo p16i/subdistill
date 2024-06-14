@@ -164,7 +164,6 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
             assert len(arr_victim_indices) == 0
 
 
-@pytest.mark.parametrize("lvl", [0.5, 1.0])
 @pytest.mark.parametrize(
     "train_split",
     [
@@ -179,10 +178,10 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
     ],
 )
 @pytest.mark.parametrize(
-    "dataset_name, atol",
+    "dataset_name,lvl,atol",
     [
-        ("butterfly", 0),
-        ("valsplit-butterfly", 21),
+        ("butterfly", (0.5, 1.0), 0),
+        ("valsplit-butterfly", (0.0, 0.5, 1.0), 21),
     ],
 )
 @pytest.mark.slow
