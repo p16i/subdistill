@@ -168,11 +168,11 @@ DEFAULT_LAMBDA_LAYER = {
     },
     "imagenet-spurious": {
         "nothing": 0,
-        "fitnet": 1e3,
-        "attention-transfer": 1e1,
-        "vid": 1e0,
+        "fitnet": 1e0,
+        "attention-transfer": 1e2,
+        "vid": 1e2,
         "basis-identity:pca--uncentered": 1e1,
-        "basis-identity:prca-sortabs--uncentered": 1e0,
-        "basis-identity:pcalookahead--uncentered": 1e4,
+        "basis-identity:prca-sortabs--uncentered": 1e1,
+        "basis-identity:pcalookahead--uncentered": 1e1,
     },
 }
