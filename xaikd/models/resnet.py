@@ -6,7 +6,6 @@ import types
 
 from collections import OrderedDict
 
-# from torchvision.models.resnet import ResNet18_Weights, ResNet50_Weights
 import torch
 
 from torch import nn
