@@ -9,6 +9,22 @@ import numpy as np
 import models as test_models
 
 
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "imagenet-vgg11-tv",
+        "imagenet-vgg11bn-tv",
+        "imagenet-vgg13-tv",
+        "imagenet-vgg13bn-tv",
+        "imagenet-vgg16-tv",
+        "imagenet-vgg16bn-tv",
+    ],
+)
+@pytest.mark.slow
+def test_get_model(slug):
+    test_models._test_get_model(slug)
+
+
 @torch.no_grad()
 @pytest.mark.parametrize(
     "arch_cls,num_classes,input_size",
@@ -75,7 +91,7 @@ def test_split_vgg16_model(layer_ix):
 
 @pytest.mark.parametrize("layer_ix", [13, 23, 33, 43])
 @pytest.mark.slow
-def test_split_vgg16_model(layer_ix):
+def test_split_vgg16bn_model(layer_ix):
     test_models._test_split_model(
         "imagenet-vgg16bn-tv", f"features.{layer_ix}", models.vgg.split_model_at
     )
@@ -91,7 +107,7 @@ def test_split_vgg19_model(layer_ix):
 
 @pytest.mark.parametrize("layer_ix", [13, 26, 39, 54])
 @pytest.mark.slow
-def test_split_vgg19_model(layer_ix):
+def test_split_vgg19bn_model(layer_ix):
     test_models._test_split_model(
         "imagenet-vgg19bn-tv", f"features.{layer_ix}", models.vgg.split_model_at
     )

@@ -19,6 +19,22 @@ import models as test_models
         "imagenet-resnet152-tv",
     ],
 )
+@pytest.mark.slow
+def test_get_model(slug):
+    test_models._test_get_model(slug)
+
+
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "cifar100-resnet18-v1",
+        "imagenet-resnet18-tv",
+        "imagenet-resnet34-tv",
+        "imagenet-resnet50-tv",
+        "imagenet-resnet101-tv",
+        "imagenet-resnet152-tv",
+    ],
+)
 @pytest.mark.parametrize("layer", ["layer1", "layer2", "layer3", "layer4"])
 @pytest.mark.slow
 def test_split_resnet_model(slug, layer):

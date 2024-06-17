@@ -15,8 +15,7 @@ from xaikd import models, utils
 )
 @pytest.mark.slow
 def test_get_model(slug):
-    print(list(models.MODEL_GENERATORS.keys()))
-    models.get_trained_model(slug)
+    test_models._test_get_model(slug)
 
 
 @pytest.mark.parametrize(
