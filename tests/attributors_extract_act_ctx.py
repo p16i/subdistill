@@ -30,7 +30,7 @@ class CIFAR100VerySmall(datasets.cifar100.CIFAR100):
 class ImageNetVerySmall(datasets.imagenet.ImageNet):
     def loader(self, batch_size=64, num_workers=2, train_split=False):
 
-        trng = torch.Generator(device=DEVICE)
+        trng = torch.Generator()
         trng.manual_seed(1)
         x = torch.randn((NUMBER_OF_SMALL_DATASET, 3, 224, 224), generator=trng)
         y = torch.randint(
