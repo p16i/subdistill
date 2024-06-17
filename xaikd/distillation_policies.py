@@ -160,15 +160,14 @@ class KLPolicy(Policy):
 class LayerPolicy(Policy):
     def align_spatial_dimensions(self, teacher_feats, student_feats):
 
-        _, _, teacher_height, _ = teacher_feats.shape
-        _, _, student_height, _ = student_feats.shape
+        _, _, teacher_height, teacher_width = teacher_feats.shape
+        _, _, student_height, student_width = student_feats.shape
 
         # cf. https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/distiller_zoo/FT.py#L18C7-L24C17
         if student_height != teacher_height:
             # we assume that the feture maps are square.
-            assert (np.array(teacher_feats.shape[2:]) == teacher_feats.shape[2]).all() and (
-                np.array(student_feats.shape[2:]) == student_feats.shape[2]
-            ).all()
+            assert teacher_height == teacher_width
+            assert student_height == student_width
 
             if student_height > teacher_height:
                 student_feats = F.adaptive_avg_pool2d(
@@ -179,7 +178,8 @@ class LayerPolicy(Policy):
                     teacher_feats, (student_height, student_height)
                 )
         else:
-            pass
+            # this is for ViT
+            assert teacher_width == student_width == 1
 
         return teacher_feats, student_feats
 
