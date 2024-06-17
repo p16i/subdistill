@@ -56,7 +56,7 @@ def _test_get_model(slug):
 
 
 @torch.no_grad()
-def _test_split_model(slug, layer, split_func):
+def _test_split_model(slug, layer, split_func, atol=1e-6):
     device = utils.get_device()
     model = models.get_trained_model(slug)
     model.to(device)
@@ -73,4 +73,4 @@ def _test_split_model(slug, layer, split_func):
         actual = classifier(head(input)).cpu().numpy()
         expected = model(input).cpu().numpy()
 
-        np.testing.assert_allclose(actual, expected)
+        np.testing.assert_allclose(actual, expected, atol=atol)

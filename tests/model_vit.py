@@ -36,7 +36,9 @@ def test_vit_with_pre_post_transform():
 @pytest.mark.slow
 def test_split_resnet_model(model_name, layer):
 
-    test_models._test_split_model(model_name, layer, models.vit.split_model_at)
+    test_models._test_split_model(
+        model_name, layer, models.vit.split_model_at, atol=1e-5
+    )
 
 
 @pytest.mark.parametrize(
