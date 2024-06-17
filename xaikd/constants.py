@@ -37,7 +37,7 @@ DEFAULT_TEACHER_STUDENT_LAYER_MAPPING = {
     "imagenet-resnet50-tv": "layer3:layer3,layer4:layer4",
     "imagenet-vgg16-tv": "features.23:layer3,features.30:layer4",
     "imagenet-nfnetf0-dm": "stages.2:layer3,stages.3:layer4",
-    "imagenet-vitb-tv": "encoders.layers.8:encoders.layers.2,encoders.layers.11:encoders.layers.3",
+    "imagenet-vitb-tv": "encoder.layers.8:encoder.layers.2,encoder.layers.11:encoder.layers.3",
 }
 
 ARR_IMAGENET_COPYRIGHT2_CORNER_LOCATIONs = list(
