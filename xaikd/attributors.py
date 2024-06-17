@@ -274,10 +274,13 @@ def extract_activation_context(
 
                 output_dimensions = act.shape[1:]
 
-                # todo: check this with Gregoire again!
                 ctx = torch.where(act.abs() > 0, rel / act, 0)
 
-                assert torch.allclose(act * ctx, rel)
+                np.testing.assert_allclose(
+                    (act * ctx).detach().cpu().numpy(),
+                    rel.detach().cpu().numpy(),
+                    atol=1e-6,
+                )
 
                 assert ctx.shape == act.shape
 

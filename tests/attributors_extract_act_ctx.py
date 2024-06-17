@@ -83,28 +83,18 @@ def test_extract_activation_context_cifar100(layer):
 
 @pytest.mark.gpu()
 @pytest.mark.parametrize(
-    "model_name,layer",
+    "model_name,arr_layers",
     [
-        (
-            "imagenet-resnet18-tv",
-            "layer1",
-        ),
-        (
-            "imagenet-resnet18-tv",
-            "layer2",
-        ),
-        (
-            "imagenet-vgg16-tv",
-            "features.23",
-        ),
-        (
-            "imagenet-vitb-tv",
-            "encoder.layers.8",
-        ),
+        ("imagenet-resnet18-tv", "layer3,layer4"),
+        ("imagenet-resnet50-tv", "layer3,layer4"),
+        ("imagenet-vgg16-tv", "features.23,features.30"),
+        ("imagenet-nfnetf0-dm", "stages.2,stages.3"),
+        ("imagenet-vitb-tv", "encoder.layers.8,encoder.layers.11"),
     ],
 )
-def test_extract_activation_context_imagenet(model_name, layer):
-    _test_extract_activation_context(model_name, ImageNetVerySmall, layer)
+def test_extract_activation_context_imagenet(model_name, arr_layers):
+    for layer in arr_layers.split(","):
+        _test_extract_activation_context(model_name, ImageNetVerySmall, layer)
 
 
 @pytest.mark.parametrize("seed", [1, 2])
