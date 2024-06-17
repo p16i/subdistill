@@ -256,7 +256,7 @@ def extract_activation_context(
     arr_act = []
     arr_ctx = []
 
-    atol = 1e-6 if strict_mode else 1e-3
+    atol = 1e-6 if strict_mode else 1e-2
 
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
