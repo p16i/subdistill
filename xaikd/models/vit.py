@@ -81,14 +81,8 @@ def split_model_at(
     return first_part, second_part
 
 
-@register_model("imagenet-vitb-tv")
-def _imagenet_vitb() -> nn.Module:
-    model = vit_b_16(weights=ViT_B_16_Weights.IMAGENET1K_V1)
-
-    setattr(model, "__last_layer", model.heads.head)
-    model.num_classes = 1000
-
-    num_layers = len(model.encoder.layers)
+def make_encoder_intermediate_output_have_cnn_like_shape_(model: VisionTransformer):
+    assert isinstance(model, VisionTransformer)
 
     # native shape:   [bs, #tokens, d]
     # cnn-like shape:  [bs, d, #tokens, 1]
@@ -98,6 +92,8 @@ def _imagenet_vitb() -> nn.Module:
 
     # convert from native to cnn-like shape
     transform_to_cnnlike_shape = Lambda(lambda x: x.permute(0, 2, 1).unsqueeze(3))
+
+    num_layers = len(model.encoder.layers)
 
     for lix in range(num_layers):
 
@@ -118,5 +114,17 @@ def _imagenet_vitb() -> nn.Module:
             ]
         )
     )
+
+    return model
+
+
+@register_model("imagenet-vitb-tv")
+def _imagenet_vitb() -> nn.Module:
+    model = vit_b_16(weights=ViT_B_16_Weights.IMAGENET1K_V1)
+
+    setattr(model, "__last_layer", model.heads.head)
+    model.num_classes = 1000
+
+    make_encoder_intermediate_output_have_cnn_like_shape_(model)
 
     return model
