@@ -9,13 +9,12 @@ from collections import OrderedDict
 from . import register_model
 
 
-class Lambda(nn.Module):
-    def __init__(self, func: typing.Callable) -> None:
-        super().__init__()
-        self.func = func
-
+class ConvertTensorfromViTToCNNLikeShape(nn.Module):
     def forward(self, x: torch.Tensor):
-        return self.func(x)
+        return x.permute(0, 2, 1).unsqueeze(3)
+class ConvertTensorfromCNNLikeToViTShape(nn.Module):
+    def forward(self, x: torch.Tensor):
+        return x.squeeze(3).permute(0, 2, 1)
 
 
 class ViTFirstPart(nn.Module):
@@ -87,15 +86,16 @@ def make_encoder_intermediate_output_have_cnn_like_shape_(model: VisionTransform
     # native shape:   [bs, #tokens, d]
     # cnn-like shape:  [bs, d, #tokens, 1]
 
-    # convert from cnn-like to native shapes
-    transform_to_native_shape = Lambda(lambda x: x.squeeze(3).permute(0, 2, 1))
-
-    # convert from native to cnn-like shape
-    transform_to_cnnlike_shape = Lambda(lambda x: x.permute(0, 2, 1).unsqueeze(3))
-
     num_layers = len(model.encoder.layers)
 
     for lix in range(num_layers):
+
+        # Remark: we have to recreate this everytime because output hooks are get attached
+        # convert from cnn-like to native shapes
+        transform_to_native_shape = ConvertTensorfromCNNLikeToViTShape()
+
+        # convert from native to cnn-like shape
+        transform_to_cnnlike_shape = ConvertTensorfromViTToCNNLikeShape()
 
         layer = model.encoder.layers[lix]
 

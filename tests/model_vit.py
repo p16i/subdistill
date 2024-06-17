@@ -6,7 +6,9 @@ import numpy as np
 import models as test_models
 import torchvision
 
-from xaikd import models
+from xaikd import models, utils
+
+from torch.utils.data import TensorDataset, DataLoader
 
 
 @torch.no_grad()
@@ -44,3 +46,30 @@ def test_split_resnet_model(model_name, layer):
 @pytest.mark.slow
 def test_get_model(slug):
     test_models._test_get_model(slug)
+
+
+def test_get_layer_dimensions():
+    arr_layers = [f"encoder.layers.{i}" for i in [8, 11]]
+    model = models.get_trained_model("imagenet-vitb-tv")
+    x = torch.randn((7, 3, 224, 224))
+    y = torch.randint(low=0, high=20, size=(7,))
+
+    ds = TensorDataset(x, y)
+    dl = DataLoader(ds, batch_size=32)
+
+    utils.get_dimensions_at_layers(model, dl, arr_layers)
+
+
+@pytest.mark.parametrize("lix", np.arange(12))
+def test_intercept_module(lix):
+    layer = f"encoder.layers.{lix}"
+    model = models.get_trained_model("imagenet-vitb-tv")
+
+    try:
+        module, hook = utils.interceptor.attach_hook_intercept_layer_output(
+            model, layer, should_retain_grad=False, detach_output=False
+        )
+    finally:
+        hook.remove()
+
+    assert isinstance(module, models.vit.ConvertTensorfromViTToCNNLikeShape)
