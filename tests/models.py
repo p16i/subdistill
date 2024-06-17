@@ -41,8 +41,6 @@ def _test_get_model(slug):
 
             act = utils.interceptor.get_output(module)
 
-            act = utils.reshape_to_4d_tensor_if_vit(act, model)
-
             _, actual_dims, _, _ = act.shape
 
             assert actual_dims == expected_dims, f"arch={arch}; layer={layer}"

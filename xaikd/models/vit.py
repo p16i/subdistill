@@ -4,7 +4,18 @@ import torch
 from torch import nn
 from torchvision.models import VisionTransformer, vit_b_16, ViT_B_16_Weights
 
+from collections import OrderedDict
+
 from . import register_model
+
+
+class Lambda(nn.Module):
+    def __init__(self, func: typing.Callable) -> None:
+        super().__init__()
+        self.func = func
+
+    def forward(self, x: torch.Tensor):
+        return self.func(x)
 
 
 class ViTFirstPart(nn.Module):
@@ -73,7 +84,39 @@ def split_model_at(
 @register_model("imagenet-vitb-tv")
 def _imagenet_vitb() -> nn.Module:
     model = vit_b_16(weights=ViT_B_16_Weights.IMAGENET1K_V1)
+
     setattr(model, "__last_layer", model.heads.head)
     model.num_classes = 1000
+
+    num_layers = len(model.encoder.layers)
+
+    # native shape:   [bs, #tokens, d]
+    # cnn-like shape:  [bs, d, #tokens, 1]
+
+    # convert from cnn-like to native shapes
+    transform_to_native_shape = Lambda(lambda x: x.squeeze(3).permute(0, 2, 1))
+
+    # convert from native to cnn-like shape
+    transform_to_cnnlike_shape = Lambda(lambda x: x.permute(0, 2, 1).unsqueeze(3))
+
+    for lix in range(num_layers):
+
+        layer = model.encoder.layers[lix]
+
+        if lix == 0:
+            steps = [layer, transform_to_cnnlike_shape]
+        else:
+            steps = [transform_to_native_shape, layer, transform_to_cnnlike_shape]
+
+        model.encoder.layers[lix] = nn.Sequential(*steps)
+
+    model.encoder.ln = nn.Sequential(
+        OrderedDict(
+            [
+                ("_transform_to_native", transform_to_native_shape),
+                ("ln", model.encoder.ln),
+            ]
+        )
+    )
 
     return model

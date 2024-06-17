@@ -225,14 +225,3 @@ def resolve_lambda_layer(
         print(f"Resolve `lambda_layer` from config:{default_config_key}[{policy_name}]")
 
         return lambda_layer
-
-
-def reshape_3d_to_4d_tensor_if_vit(x: torch.Tensor, model: nn.Module) -> torch.Tensor:
-    # todo: add test
-    if isinstance(model, torchvision.models.VisionTransformer):
-        assert len(x.shape) == 3
-        # x.shape: (batch, token,  d)
-        # we reshape to x.shape = (batch, d, token, 1)
-        return x.permute(0, 2, 1).unsqueeze(3)
-    else:
-        return x

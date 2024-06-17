@@ -272,9 +272,6 @@ def extract_activation_context(
                 assert act.grad is not None
                 rel = act.grad
 
-                act = utils.reshape_3d_to_4d_tensor_if_vit(act, model=model)
-                rel = utils.reshape_3d_to_4d_tensor_if_vit(rel, model=model)
-
                 output_dimensions = act.shape[1:]
 
                 # todo: check this with Gregoire again!
