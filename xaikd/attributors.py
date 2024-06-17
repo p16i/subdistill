@@ -37,7 +37,7 @@ from functools import partial
 
 def get_arch_specific_composite(
     model: nn.Module, lb: torch.Tensor, hb: torch.Tensor
-) -> Composite:
+) -> Composite | None:
     if isinstance(model, models.resnet.ResNet):
         return EpsilonGammaBox(low=lb, high=hb, canonizers=[ResNetCanonizer()])
     elif isinstance(model, torchvision.models.vgg.VGG):
@@ -47,6 +47,11 @@ def get_arch_specific_composite(
             return EpsilonGammaBox(low=lb, high=hb, canonizers=[])
     elif isinstance(model, timm.models.nfnet.NormFreeNet):
         return nfnetlrp.EpsilonGammaBox(lb=lb, hb=hb)
+    elif isinstance(model, torchvision.models.VisionTransformer):
+        print(
+            "Warning: We use no composite for ViT. The results (context vectors) might therefore not be useful!"
+        )
+        return None
     else:
         raise NotImplementedError("")
 
@@ -263,7 +268,12 @@ def extract_activation_context(
                 _ = attributor.forward(x, lambda logits: logit_modifier(logits, y))
 
                 act = utils.interceptor.get_output(module)
+
+                assert act.grad is not None
                 rel = act.grad
+
+                act = utils.reshape_3d_to_4d_tensor_if_vit(act, model=model)
+                rel = utils.reshape_3d_to_4d_tensor_if_vit(rel, model=model)
 
                 output_dimensions = act.shape[1:]
 
