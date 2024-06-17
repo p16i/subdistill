@@ -251,9 +251,12 @@ def extract_activation_context(
     rng: np.random.Generator,
     device="cpu",
     number_of_selected_spatial_locations=20,
+    strict_mode=False,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
     arr_act = []
     arr_ctx = []
+
+    atol = 1e-6 if strict_mode else 1e-3
 
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
@@ -279,7 +282,7 @@ def extract_activation_context(
                 np.testing.assert_allclose(
                     (act * ctx).detach().cpu().numpy(),
                     rel.detach().cpu().numpy(),
-                    atol=1e-6,
+                    atol=atol,
                 )
 
                 assert ctx.shape == act.shape

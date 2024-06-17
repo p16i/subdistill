@@ -64,6 +64,7 @@ def _test_extract_activation_context(model_name, dataset_class, layer):
         logit_modifier=attributors.WinningClassEvidence(
             num_classes=dataset.num_classes
         ),
+        strict_mode=True,
         rng=np.random.default_rng(seed=1),
     )
 
