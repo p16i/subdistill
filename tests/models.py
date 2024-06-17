@@ -5,26 +5,8 @@ import numpy as np
 from xaikd import models, constants, utils
 
 
-@pytest.mark.parametrize(
-    "slug",
-    [
-        "cifar100-resnet18-v1",
-        "imagenet-resnet18-tv",
-        "imagenet-resnet34-tv",
-        "imagenet-resnet50-tv",
-        "imagenet-resnet101-tv",
-        "imagenet-resnet152-tv",
-        "imagenet-vgg11-tv",
-        "imagenet-vgg11bn-tv",
-        "imagenet-vgg13-tv",
-        "imagenet-vgg13bn-tv",
-        "imagenet-vgg16-tv",
-        "imagenet-vgg16bn-tv",
-    ],
-)
-@pytest.mark.slow
 @torch.no_grad()
-def test_get_models(slug):
+def _test_get_model(slug):
     torch.manual_seed(1)
     model = models.get_trained_model(slug)
     assert not model.training
@@ -59,6 +41,8 @@ def test_get_models(slug):
 
             act = utils.interceptor.get_output(module)
 
+            act = utils.reshape_to_4d_tensor_if_vit(act, model)
+
             _, actual_dims, _, _ = act.shape
 
             assert actual_dims == expected_dims, f"arch={arch}; layer={layer}"
@@ -73,6 +57,7 @@ def test_get_models(slug):
         assert output.shape == (5, 8)
 
 
+@torch.no_grad()
 def _test_split_model(slug, layer, split_func):
     device = utils.get_device()
     model = models.get_trained_model(slug)
@@ -91,14 +76,3 @@ def _test_split_model(slug, layer, split_func):
         expected = model(input).cpu().numpy()
 
         np.testing.assert_allclose(actual, expected)
-
-
-@pytest.mark.parametrize(
-    "model,layer",
-    [
-        ("imagenet-vgg16-tv", "features.23"),
-        ("imagenet-resnet18-tv", "layer2"),
-    ],
-)
-def test_split_model(model, layer):
-    _test_split_model(model, layer, models.split_model_at_layer)

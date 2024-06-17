@@ -112,6 +112,7 @@ ARCH_LAYER_DIMENSIONS = dict(
         "stages.2": 1536,
         "stages.3": 1536,
     },
+    vitb=dict([(f"encoder.layers.{i}", 768) for i in range(12)]),
 )
 
 

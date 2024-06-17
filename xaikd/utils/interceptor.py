@@ -16,6 +16,10 @@ def get_module(model: nn.Module, layer_str: str) -> nn.Module:
     elif len(slugs) == 2:
         layer, index = slugs
         module = getattr(model, layer)[int(index)]
+    elif len(slugs) == 3:
+        # for vit (e.g., encoders.layers.0)
+        layer1, layer2, index = slugs
+        module = getattr(getattr(model, layer1), layer2)[int(index)]
     else:
         raise ValueError(f"layer={layer_str}; not exists")
 
@@ -28,9 +32,6 @@ def get_module(model: nn.Module, layer_str: str) -> nn.Module:
 def attach_hook_intercept_layer_output(
     model: nn.Module, layer: str, should_retain_grad: bool, detach_output: bool
 ) -> typing.Tuple[nn.Module, hooks.RemovableHandle]:
-    # remark: this has to be done per architecture
-    # Warning: this is only for for ResNet18
-    # todo: add `hook`'s returned type
     module = get_module(model, layer)
 
     return attach_hook_intercept_module(
