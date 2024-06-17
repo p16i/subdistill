@@ -12,6 +12,8 @@ from . import register_model
 class ConvertTensorfromViTToCNNLikeShape(nn.Module):
     def forward(self, x: torch.Tensor):
         return x.permute(0, 2, 1).unsqueeze(3)
+
+
 class ConvertTensorfromCNNLikeToViTShape(nn.Module):
     def forward(self, x: torch.Tensor):
         return x.squeeze(3).permute(0, 2, 1)
@@ -90,7 +92,9 @@ def make_encoder_intermediate_output_have_cnn_like_shape_(model: VisionTransform
 
     for lix in range(num_layers):
 
-        # Remark: we have to recreate this everytime because output hooks are get attached
+        # remark: we have to recreate these convertors for each layer
+        # because output hooks are attached.
+
         # convert from cnn-like to native shapes
         transform_to_native_shape = ConvertTensorfromCNNLikeToViTShape()
 
