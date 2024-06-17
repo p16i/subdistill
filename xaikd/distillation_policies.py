@@ -159,23 +159,25 @@ class KLPolicy(Policy):
 
 class LayerPolicy(Policy):
     def align_spatial_dimensions(self, teacher_feats, student_feats):
-        # we assume that the feture maps are square.
-        assert (np.array(teacher_feats.shape[2:]) == teacher_feats.shape[2]).all() and (
-            np.array(student_feats.shape[2:]) == student_feats.shape[2]
-        ).all()
 
         _, _, teacher_height, _ = teacher_feats.shape
         _, _, student_height, _ = student_feats.shape
 
         # cf. https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/distiller_zoo/FT.py#L18C7-L24C17
-        if student_height > teacher_height:
-            student_feats = F.adaptive_avg_pool2d(
-                student_feats, (teacher_height, teacher_height)
-            )
-        elif student_height < teacher_height:
-            teacher_feats = F.adaptive_avg_pool2d(
-                teacher_feats, (student_height, student_height)
-            )
+        if student_height != teacher_height:
+            # we assume that the feture maps are square.
+            assert (np.array(teacher_feats.shape[2:]) == teacher_feats.shape[2]).all() and (
+                np.array(student_feats.shape[2:]) == student_feats.shape[2]
+            ).all()
+
+            if student_height > teacher_height:
+                student_feats = F.adaptive_avg_pool2d(
+                    student_feats, (teacher_height, teacher_height)
+                )
+            elif student_height < teacher_height:
+                teacher_feats = F.adaptive_avg_pool2d(
+                    teacher_feats, (student_height, student_height)
+                )
         else:
             pass
 
