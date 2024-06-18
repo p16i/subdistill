@@ -34,7 +34,7 @@ def main(wandb_project, dry_run, config_files):
 
         with open(config_file, "r") as fh:
             sweep_config = yaml.safe_load(fh)
-            sweep_config["name"] = filename
+            sweep_config["name"] = f"{folder_name}/{filename}"
 
             sweep_group = f"{folder_name}"
 
