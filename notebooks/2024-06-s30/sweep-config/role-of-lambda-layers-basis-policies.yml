@@ -1,0 +1,47 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --enable-checkpointing
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+parameters:
+  output-dir:
+    value: /tmp
+  teacher:
+    value: imagenet-resnet18-tv
+  student:
+    values:
+      - student-32-24-16-8
+  dataset:
+    value: imagenet-butterfly
+  dataset-variant:
+    value: spurious-watermarkjpeg--1.0
+  training-size:
+    value: 1.0
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  layer-policy:
+    values: 
+      - basis-identity:pca--uncentered
+      - basis-identity:prca-sortabs--uncentered
+      - basis-identity:pcalookahead--uncentered
+  lambda-task:
+    value: 0.0
+  lambda-kd:
+    value: 1.0
+  lambda-layer:
+    values:
+      - 1
+      - 10
+      - 100
+      - 1000
+      - 10000
+      - 100000

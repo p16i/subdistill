@@ -1,0 +1,42 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --enable-checkpointing
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+parameters:
+  output-dir:
+    value: /tmp
+  teacher:
+    value: imagenet-vitb-tv
+  student:
+    values:
+      - vitstudent-48
+      - vitstudent-60
+  dataset:
+    value: imagenet-butterfly
+  training-size:
+    value: 0.1
+  seed:
+    values:
+     - 1
+     - 2
+     - 3
+  layer-policy:
+    values: 
+      # - basis-identity:pca--uncentered
+      - basis-identity:pcalookahead--uncentered
+      - vid
+      - attention-transfer
+      - fitnet
+  lambda-task:
+    value: 0.0
+  lambda-kd:
+    value: 1.0
+  lambda-layer:
+    value: 10.0
