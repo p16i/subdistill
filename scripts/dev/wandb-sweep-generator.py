@@ -28,21 +28,40 @@ def main(wandb_project, dry_run, config_files):
     click.echo("------")
 
     for config_file in arr_config_files:
-        filename = Path(config_file).stem
+        path = Path(config_file)
+        filename = path.stem
+        folder_name = Path(os.path.split(path)[-2]).stem
 
-        click.echo(f"- Sweep from `{filename}`")
-        if not dry_run:
-            with open(config_file, "r") as fh:
-                sweep_config = yaml.safe_load(fh)
-                sweep_config["name"] = filename
+        with open(config_file, "r") as fh:
+            sweep_config = yaml.safe_load(fh)
+            sweep_config["name"] = filename
+
+            sweep_group = f"{folder_name}"
+
+            sweep_config["parameters"]["wandb-experiment-group"] = dict(
+                value=sweep_group
+            )
+            click.echo(f"- Sweep from `{filename}`")
+            for k, v in sweep_config["parameters"].items():
+                assert isinstance(v, dict)
+
+                if "value" in v:
+                    assert not isinstance(v["value"], list), f"key={k} is failed!"
+                elif "values" in v:
+                    assert isinstance(v["values"], list), f"key={k} is failed!"
+
+                if dry_run:
+                    print(f"\t>  parameter:key=`{k}` looked good! (values={v})")
+
+            if not dry_run:
 
                 sweep_id = wandb.sweep(
                     project=wandb_project,
                     sweep=sweep_config,
                 )
 
-        else:
-            sweep_id = "dry-run-dummy-id"
+            else:
+                sweep_id = "dry-run-dummy-id"
 
         url = WANDB_SWEEP_URL.replace("<PROJECT>", wandb_project).replace(
             "<SWEEP_ID>", sweep_id
