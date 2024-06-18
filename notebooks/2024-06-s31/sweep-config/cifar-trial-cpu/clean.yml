@@ -1,0 +1,40 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+name: &group_name sweep-output/1-hyperopt-lambda-layer
+parameters:
+  dataset:
+    value: cifar100-valsplit-people
+  dataset-variant:
+    value: spurious-plussign--0.0
+  training-size:
+    values:
+      - 1.0
+      - 0.1
+  lambda-layer:
+    values:
+      - 1
+  seed:
+    values:
+      - 1
+  layer-policy:
+    values:
+      - basis-identity:pca--uncentered
+      - basis-identity:prca-sortabs--uncentered
+      - basis-identity:pcalookahead--uncentered
+      - vid
+      - fitnet-relu
+      - attention-transfer
+  output-dir:
+    value: *group_name
+  student:
+    value: student-32-24-16-8
+  teacher:
+    value: cifar100-resnet18-v1
