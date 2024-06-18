@@ -1,0 +1,54 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --enable-checkpointing
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+name: &group_name ./artifacts/2024-05-s27/experiments/2-effect-of-layerwise-losses
+parameters:
+  contamination-level:
+    value: 0.0
+  dataset:
+    values:
+      - imagenet-butterfly-spurious0.5
+  lambda-task:
+    value: 0
+  lambda-kd:
+    value: 1
+  lambda-layer:
+    values:
+      - 10
+      - 100
+  training-size:
+    value: 0.125
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  layers:
+    values:
+      - features.9:layer1,features.16:layer2,features.23:layer3,features.30:layer4
+      - features.16:layer2,features.23:layer3,features.30:layer4
+      - features.23:layer3,features.30:layer4
+      - features.30:layer4
+  layer-policies:
+    values:
+      - basis-identity:pcalookahead--uncentered
+      - basis-identity:pca--uncentered
+      - basis-identity:prca-sortabs--uncentered
+      - vid
+  output-dir:
+    value: *group_name
+  student:
+    value: vggcustomimagenetdims-32-24-24-10
+  teacher:
+    value: imagenet-vgg16-tv
+  detach-layer-output:
+    value: 0
+
+program: scripts/distill-layerwise.py

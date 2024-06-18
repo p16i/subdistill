@@ -37,7 +37,7 @@ from functools import partial
 
 def get_arch_specific_composite(
     model: nn.Module, lb: torch.Tensor, hb: torch.Tensor
-) -> Composite:
+) -> Composite | None:
     if isinstance(model, models.resnet.ResNet):
         return EpsilonGammaBox(low=lb, high=hb, canonizers=[ResNetCanonizer()])
     elif isinstance(model, torchvision.models.vgg.VGG):
@@ -47,6 +47,11 @@ def get_arch_specific_composite(
             return EpsilonGammaBox(low=lb, high=hb, canonizers=[])
     elif isinstance(model, timm.models.nfnet.NormFreeNet):
         return nfnetlrp.EpsilonGammaBox(lb=lb, hb=hb)
+    elif isinstance(model, torchvision.models.VisionTransformer):
+        print(
+            "Warning: We use no composite for ViT. The results (context vectors) might therefore not be useful!"
+        )
+        return None
     else:
         raise NotImplementedError("")
 
@@ -246,9 +251,12 @@ def extract_activation_context(
     rng: np.random.Generator,
     device="cpu",
     number_of_selected_spatial_locations=20,
+    strict_mode=False,
 ) -> typing.Tuple[npt.NDArray, npt.NDArray]:
     arr_act = []
     arr_ctx = []
+
+    atol = 1e-6 if strict_mode else 1e-2
 
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
@@ -263,14 +271,19 @@ def extract_activation_context(
                 _ = attributor.forward(x, lambda logits: logit_modifier(logits, y))
 
                 act = utils.interceptor.get_output(module)
+
+                assert act.grad is not None
                 rel = act.grad
 
                 output_dimensions = act.shape[1:]
 
-                # todo: check this with Gregoire again!
                 ctx = torch.where(act.abs() > 0, rel / act, 0)
 
-                assert torch.allclose(act * ctx, rel)
+                np.testing.assert_allclose(
+                    (act * ctx).detach().cpu().numpy(),
+                    rel.detach().cpu().numpy(),
+                    atol=atol,
+                )
 
                 assert ctx.shape == act.shape
 

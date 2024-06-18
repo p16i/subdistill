@@ -1,0 +1,57 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --enable-checkpointing
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+name: &group_name ./artifacts/2024-05-s27/experiments/6-ignore-layer-loss-fullupdate
+parameters:
+  contamination-level:
+    value: 0.0
+  dataset:
+    values:
+       - imagenet-butterfly
+       - imagenet-butterfly-spurious0.5
+  lambda-task:
+    value: 0
+  lambda-kd:
+    value: 1
+  lambda-layer:
+    value: 1
+  training-size:
+    value: 0.125
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  layers:
+    value: features.23:layer3,features.30:layer4
+  layer-policy:
+    values:
+      - basis-identity:pca--uncentered
+      - vid
+      # - basis-identity:pcalookahead--uncentered
+      # - basis-identity:prca-sortabs--uncentered
+      # - fitnet
+      # - attention-transfer
+  output-dir:
+    value: *group_name
+  student:
+    value: student-32-24-16-8
+  teacher:
+    value: imagenet-vgg16-tv
+  parameter-partition-mode:
+    values:
+      - "@90"
+      - "@50"
+      - "@10"
+  ignore-layer-loss-fullupdate:
+    values:
+      - 0
+      - 1

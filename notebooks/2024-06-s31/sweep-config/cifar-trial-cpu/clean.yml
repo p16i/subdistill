@@ -21,23 +21,16 @@ parameters:
   lambda-layer:
     values:
       - 1
-      - 10
-      - 100
-      - 1000
-      - 10000
-      - 100000
   seed:
     values:
       - 1
-      - 2
-      - 3
   layer-policy:
     values:
       - basis-identity:pca--uncentered
       - basis-identity:prca-sortabs--uncentered
       - basis-identity:pcalookahead--uncentered
       - vid
-      - fitnet
+      - fitnet-relu
       - attention-transfer
   output-dir:
     value: *group_name

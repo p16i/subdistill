@@ -73,6 +73,6 @@ def fit(
 
             loss = loss.detach().cpu().numpy()
 
-            pgb.set_description(f"PRCAOpt: k={k}; loss={loss:.4f} ")
+            pgb.set_description(f"PCA-LH Optimization: k={k}; loss={loss:.4f} ")
 
     return ortho_layer.weight.T.detach().cpu().numpy()

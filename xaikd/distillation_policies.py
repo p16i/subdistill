@@ -159,25 +159,32 @@ class KLPolicy(Policy):
 
 class LayerPolicy(Policy):
     def align_spatial_dimensions(self, teacher_feats, student_feats):
-        # we assume that the feture maps are square.
-        assert (np.array(teacher_feats.shape[2:]) == teacher_feats.shape[2]).all() and (
-            np.array(student_feats.shape[2:]) == student_feats.shape[2]
-        ).all()
 
-        _, _, teacher_height, _ = teacher_feats.shape
-        _, _, student_height, _ = student_feats.shape
+        _, _, teacher_height, teacher_width = teacher_feats.shape
+        _, _, student_height, student_width = student_feats.shape
 
-        # cf. https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/distiller_zoo/FT.py#L18C7-L24C17
-        if student_height > teacher_height:
-            student_feats = F.adaptive_avg_pool2d(
-                student_feats, (teacher_height, teacher_height)
-            )
-        elif student_height < teacher_height:
-            teacher_feats = F.adaptive_avg_pool2d(
-                teacher_feats, (student_height, student_height)
-            )
-        else:
+        if (student_height == teacher_height) and (student_width == teacher_width == 1):
+            # for ViT
             pass
+        else:
+            # for CNN
+            assert teacher_height == teacher_width
+            assert student_height == student_width
+
+            if student_height != teacher_height:
+                # cf. https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/distiller_zoo/FT.py#L18C7-L24C17
+                # we assume that the feture maps are square.
+                assert teacher_height == teacher_width
+                assert student_height == student_width
+
+                if student_height > teacher_height:
+                    student_feats = F.adaptive_avg_pool2d(
+                        student_feats, (teacher_height, teacher_height)
+                    )
+                elif student_height < teacher_height:
+                    teacher_feats = F.adaptive_avg_pool2d(
+                        teacher_feats, (student_height, student_height)
+                    )
 
         return teacher_feats, student_feats
 
@@ -194,7 +201,7 @@ class NothingPolicy(LayerPolicy):
         return 0
 
 
-@register_layer_policy("fitnet")
+@register_layer_policy("fitnet-relu")
 class FitNet(LayerPolicy):
     """
     @inproceedings{DBLP:journals/corr/RomeroBKCGB14,
@@ -255,14 +262,11 @@ class FitNet(LayerPolicy):
                 # cf. https://github.com/yoshitomo-matsubara/torchdistill/blob/ba62248b48cefeea24f1ef774a870f338711a9d9/configs/sample/ilsvrc2012/fitnet/resnet18_from_resnet152.yaml#L119
                 kernel_size=1,
             ),
-            # cf: https://github.com/yoshitomo-matsubara/torchdistill/blob/main/torchdistill/models/adaptation.py#L34
-            nn.BatchNorm2d(num_features=teacher_dims),
-            # cf. https://github.com/yoshitomo-matsubara/torchdistill/blob/ba62248b48cefeea24f1ef774a870f338711a9d9/configs/sample/ilsvrc2012/fitnet/resnet18_from_resnet152.yaml#L122
             nn.ReLU(),
         )
 
 
-@register_layer_policy("fitnet-1l")
+@register_layer_policy("fitnet-noact")
 class FitNetTwoLayers(FitNet):
     def _build_student_feats_transfomer(
         self, teacher_dims: int, student_dims: int
@@ -272,87 +276,6 @@ class FitNetTwoLayers(FitNet):
             in_channels=student_dims,
             kernel_size=1,
         )
-
-
-@register_layer_policy("fitnet-2l")
-class FitNetTwoLayers(FitNet):
-    def _build_student_feats_transfomer(
-        self, teacher_dims: int, student_dims: int
-    ) -> nn.Module:
-        return nn.Sequential(
-            nn.Conv2d(
-                out_channels=teacher_dims,
-                in_channels=student_dims,
-                kernel_size=1,
-            ),
-            nn.BatchNorm2d(num_features=teacher_dims),
-            nn.ReLU(),
-            nn.Conv2d(
-                out_channels=teacher_dims,
-                in_channels=teacher_dims,
-                kernel_size=1,
-            ),
-            nn.BatchNorm2d(num_features=teacher_dims),
-            nn.ReLU(),
-        )
-
-
-@register_layer_policy("fitnet-3l")
-class FitNetThreeLayers(FitNet):
-    def _build_student_feats_transfomer(
-        self, teacher_dims: int, student_dims: int
-    ) -> nn.Module:
-        return nn.Sequential(
-            nn.Conv2d(
-                out_channels=teacher_dims,
-                in_channels=student_dims,
-                kernel_size=1,
-            ),
-            nn.BatchNorm2d(num_features=teacher_dims),
-            nn.ReLU(),
-            nn.Conv2d(
-                out_channels=teacher_dims,
-                in_channels=teacher_dims,
-                kernel_size=1,
-            ),
-            nn.BatchNorm2d(num_features=teacher_dims),
-            nn.ReLU(),
-            nn.Conv2d(
-                out_channels=teacher_dims,
-                in_channels=teacher_dims,
-                kernel_size=1,
-            ),
-            nn.BatchNorm2d(num_features=teacher_dims),
-            nn.ReLU(),
-        )
-
-
-@register_layer_policy("fitnet-cosine")
-class FitNetCosineSetup(FitNet):
-    def criterion(self, transformed_teacher_feats, transformed_student_feats):
-        b, _, w, h = transformed_teacher_feats.shape
-
-        assert transformed_teacher_feats.shape == transformed_student_feats.shape
-
-        transformed_teacher_feats = F.normalize(transformed_teacher_feats, dim=1)
-        transformed_student_feats = F.normalize(transformed_student_feats, dim=1)
-
-        inner_prod = (transformed_teacher_feats * transformed_student_feats).sum(
-            dim=1
-        ) / (w * h)
-
-        inner_prod = inner_prod.flatten(start_dim=1)
-
-        # sum over all spatial dimensions
-        inner_prod = inner_prod.sum(dim=1)
-
-        assert inner_prod.shape == (b,)
-
-        # average over all samples
-        inner_prod = inner_prod.mean()
-
-        # converting minimization problem.
-        return -inner_prod
 
 
 @register_layer_policy("vid")

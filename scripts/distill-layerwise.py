@@ -163,6 +163,7 @@ def build_dataloaders(
 @click.option("--default-lambda-layer-config", default=None, type=str)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--parameter-partition-mode", type=str, default="@0")
+@click.option("--wandb-experiment-group", type=str, default=None)
 @click.option("--finetuning-with-layer-loss", type=bool, default=True)
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
@@ -187,12 +188,14 @@ def main(
     enable_checkpointing,
     seed,
     output_dir,
+    wandb_experiment_group,
 ):
 
     dataset = "--".join([dataset, dataset_variant]) if dataset_variant else dataset
     del dataset_variant
 
     lambda_layer = utils.resolve_lambda_layer(
+        teacher_model_name=teacher,
         policy_name=layer_policy,
         lambda_layer=lambda_layer,
         default_config_key=default_lambda_layer_config,
@@ -323,7 +326,11 @@ def main(
     logger = WandbLogger(
         save_dir=WANDB_DIR,
         project=WANDB_PROJECT,
-        group=arguments["output_dir"],
+        group=(
+            wandb_experiment_group
+            if wandb_experiment_group is not None
+            else arguments["output_dir"]
+        ),
         job_type="distillation",
         name=f"{student}-{layer_policy}-seed{seed}",
         notes=f"commit:{utils.get_git_hash()}",

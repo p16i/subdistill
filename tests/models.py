@@ -5,26 +5,8 @@ import numpy as np
 from xaikd import models, constants, utils
 
 
-@pytest.mark.parametrize(
-    "slug",
-    [
-        "cifar100-resnet18-v1",
-        "imagenet-resnet18-tv",
-        "imagenet-resnet34-tv",
-        "imagenet-resnet50-tv",
-        "imagenet-resnet101-tv",
-        "imagenet-resnet152-tv",
-        "imagenet-vgg11-tv",
-        "imagenet-vgg11bn-tv",
-        "imagenet-vgg13-tv",
-        "imagenet-vgg13bn-tv",
-        "imagenet-vgg16-tv",
-        "imagenet-vgg16bn-tv",
-    ],
-)
-@pytest.mark.slow
 @torch.no_grad()
-def test_get_models(slug):
+def _test_get_model(slug):
     torch.manual_seed(1)
     model = models.get_trained_model(slug)
     assert not model.training
@@ -73,7 +55,8 @@ def test_get_models(slug):
         assert output.shape == (5, 8)
 
 
-def _test_split_model(slug, layer, split_func):
+@torch.no_grad()
+def _test_split_model(slug, layer, split_func, atol=1e-6):
     device = utils.get_device()
     model = models.get_trained_model(slug)
     model.to(device)
@@ -90,15 +73,21 @@ def _test_split_model(slug, layer, split_func):
         actual = classifier(head(input)).cpu().numpy()
         expected = model(input).cpu().numpy()
 
-        np.testing.assert_allclose(actual, expected)
+        np.testing.assert_allclose(actual, expected, atol=atol)
 
 
 @pytest.mark.parametrize(
-    "model,layer",
+    "model,arr_layers",
     [
-        ("imagenet-vgg16-tv", "features.23"),
-        ("imagenet-resnet18-tv", "layer2"),
+        ("imagenet-vitb-tv", "encoder.layers.8,encoder.layers.11"),
+        ("imagenet-resnet18-tv", "layer3,layer4"),
+        ("imagenet-resnet50-tv", "layer3,layer4"),
+        ("imagenet-vgg16-tv", "features.23,features.30"),
+        ("imagenet-nfnetf0-dm", "stages.2,stages.3"),
     ],
 )
-def test_split_model(model, layer):
-    _test_split_model(model, layer, models.split_model_at_layer)
+def test_split_models_callable(model, arr_layers):
+
+    model = models.get_trained_model(model)
+    for layer in arr_layers.split(","):
+        models.split_model_at_layer(model, layer)

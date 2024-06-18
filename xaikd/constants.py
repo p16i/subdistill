@@ -13,6 +13,12 @@ ARR_STUDENT_DIMENSIONS = [
     (56, 48, 40, 32),
 ]
 
+ARR_VIT_STUDENT_HIDDEN_DIMENSIONS = [
+    48,
+    60,
+]
+
+
 STUDENT_MODEL_FOR_TESTING = "student-32-24-16-8"
 
 TRAINING_VAL_SPLIT_RATIO = 0.8
@@ -31,6 +37,7 @@ DEFAULT_TEACHER_STUDENT_LAYER_MAPPING = {
     "imagenet-resnet50-tv": "layer3:layer3,layer4:layer4",
     "imagenet-vgg16-tv": "features.23:layer3,features.30:layer4",
     "imagenet-nfnetf0-dm": "stages.2:layer3,stages.3:layer4",
+    "imagenet-vitb-tv": "encoder.layers.8:encoder.layers.2,encoder.layers.11:encoder.layers.3",
 }
 
 ARR_IMAGENET_COPYRIGHT2_CORNER_LOCATIONs = list(
@@ -112,67 +119,61 @@ ARCH_LAYER_DIMENSIONS = dict(
         "stages.2": 1536,
         "stages.3": 1536,
     },
+    vitb=dict([(f"encoder.layers.{i}", 768) for i in range(12)]),
 )
 
 
 DEFAULT_LAMBDA_LAYER = {
     "dummy": {
-        "policy-1": 0.1,
-        "policy-2": 0.7,
-        "vid": 0.8,
+        "imagenet-resnet18-tv": {
+            "policy-1": 0.1,
+            "policy-2": 0.7,
+            "vid": 0.8,
+        }
     },
-    "cifar100-clean": {
-        "nothing": 0,
-        "fitnet": 1e5,
-        "attention-transfer": 1e2,
-        "vid": 1e2,
-        "basis-identity:pca--uncentered": 1e2,
-        "basis-identity:prca-sortabs--uncentered": 1e1,
-        "basis-identity:pcalookahead--uncentered": 1e1,
-    },
-    "cifar100-small": {
-        "nothing": 0,
-        "fitnet": 1e1,
-        "attention-transfer": 1e2,
-        "vid": 1e3,
-        "basis-identity:pca--uncentered": 1e1,
-        "basis-identity:prca-sortabs--uncentered": 1e1,
-        "basis-identity:pcalookahead--uncentered": 1e2,
-    },
-    "cifar100-spurious": {
-        "nothing": 0,
-        "fitnet": 1e5,
-        "attention-transfer": 1e4,
-        "vid": 1e5,
-        "basis-identity:pca--uncentered": 1e4,
-        "basis-identity:prca-sortabs--uncentered": 1e4,
-        "basis-identity:pcalookahead--uncentered": 1e4,
-    },
-    "imagenet-clean": {
-        "nothing": 0,
-        "fitnet": 1e2,
-        "attention-transfer": 1e1,
-        "vid": 1e1,
-        "basis-identity:pca--uncentered": 1e1,
-        "basis-identity:prca-sortabs--uncentered": 1e1,
-        "basis-identity:pcalookahead--uncentered": 1e2,
-    },
-    "imagenet-small": {
-        "nothing": 0,
-        "fitnet": 1e0,
-        "attention-transfer": 1e2,
-        "vid": 1e2,
-        "basis-identity:pca--uncentered": 1e1,
-        "basis-identity:prca-sortabs--uncentered": 1e1,
-        "basis-identity:pcalookahead--uncentered": 1e2,
-    },
-    "imagenet-spurious": {
-        "nothing": 0,
-        "fitnet": 1e3,
-        "attention-transfer": 1e1,
-        "vid": 1e0,
-        "basis-identity:pca--uncentered": 1e1,
-        "basis-identity:prca-sortabs--uncentered": 1e0,
-        "basis-identity:pcalookahead--uncentered": 1e4,
-    },
+    ### below to be updated!
+    # "cifar100-clean": {
+    #     "cifar100-resnet18-v1": {
+    #         "nothing": 0,
+    #         # "fitnet": 1e5,
+    #         "attention-transfer": 1e2,
+    #         "vid": 1e2,
+    #         "basis-identity:pca--uncentered": 1e2,
+    #         "basis-identity:prca-sortabs--uncentered": 1e1,
+    #         "basis-identity:pcalookahead--uncentered": 1e1,
+    #     }
+    # },
+    # "cifar100-small": {
+    #     "cifar100-resnet18-v1": {
+    #         "nothing": 0,
+    #         # "fitnet": 1e1,
+    #         "attention-transfer": 1e2,
+    #         "vid": 1e3,
+    #         "basis-identity:pca--uncentered": 1e1,
+    #         "basis-identity:prca-sortabs--uncentered": 1e1,
+    #         "basis-identity:pcalookahead--uncentered": 1e2,
+    #     }
+    # },
+    # "imagenet-clean": {
+    #     "imagenet-resnet18-tv": {
+    #         "nothing": 0,
+    #         "fitnet": 1e2,
+    #         "attention-transfer": 1e1,
+    #         "vid": 1e1,
+    #         "basis-identity:pca--uncentered": 1e1,
+    #         "basis-identity:prca-sortabs--uncentered": 1e1,
+    #         "basis-identity:pcalookahead--uncentered": 1e2,
+    #     }
+    # },
+    # "imagenet-small": {
+    #     "imagenet-resnet18-tv": {
+    #         "nothing": 0,
+    #         "fitnet": 1e0,
+    #         "attention-transfer": 1e2,
+    #         "vid": 1e2,
+    #         "basis-identity:pca--uncentered": 1e1,
+    #         "basis-identity:prca-sortabs--uncentered": 1e1,
+    #         "basis-identity:pcalookahead--uncentered": 1e2,
+    #     }
+    # },
 }

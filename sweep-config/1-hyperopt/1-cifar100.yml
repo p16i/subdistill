@@ -8,12 +8,15 @@ method: grid
 metric:
   goal: minimize
   name: val_acc
-name: &group_name sweep-output/1-hyperopt-lambda-layer
 parameters:
   dataset:
     value: cifar100-valsplit-people
   dataset-variant:
-    value: spurious-plussign--1.0
+    value: spurious-plussign--0.0
+  training-size:
+    values:
+      - 1.0
+      - 0.1
   lambda-layer:
     values:
       - 1
@@ -33,11 +36,13 @@ parameters:
       - basis-identity:prca-sortabs--uncentered
       - basis-identity:pcalookahead--uncentered
       - vid
-      - fitnet
+      - fitnet-relu
       - attention-transfer
   output-dir:
-    value: *group_name
+    value: sweep-output/1-hyper-opt
   student:
     value: student-32-24-16-8
   teacher:
     value: cifar100-resnet18-v1
+  epochs:
+    value: 100
