@@ -125,62 +125,54 @@ ARCH_LAYER_DIMENSIONS = dict(
 
 DEFAULT_LAMBDA_LAYER = {
     "dummy": {
-        "policy-1": 0.1,
-        "policy-2": 0.7,
-        "vid": 0.8,
+        "imagenet-resnet18-tv": {
+            "policy-1": 0.1,
+            "policy-2": 0.7,
+            "vid": 0.8,
+        }
     },
     "cifar100-clean": {
-        "nothing": 0,
-        "fitnet": 1e5,
-        "attention-transfer": 1e2,
-        "vid": 1e2,
-        "basis-identity:pca--uncentered": 1e2,
-        "basis-identity:prca-sortabs--uncentered": 1e1,
-        "basis-identity:pcalookahead--uncentered": 1e1,
+        "cifar100-resnet18-v1": {
+            "nothing": 0,
+            "fitnet": 1e5,
+            "attention-transfer": 1e2,
+            "vid": 1e2,
+            "basis-identity:pca--uncentered": 1e2,
+            "basis-identity:prca-sortabs--uncentered": 1e1,
+            "basis-identity:pcalookahead--uncentered": 1e1,
+        }
     },
     "cifar100-small": {
-        "nothing": 0,
-        "fitnet": 1e1,
-        "attention-transfer": 1e2,
-        "vid": 1e3,
-        "basis-identity:pca--uncentered": 1e1,
-        "basis-identity:prca-sortabs--uncentered": 1e1,
-        "basis-identity:pcalookahead--uncentered": 1e2,
-    },
-    "cifar100-spurious": {
-        "nothing": 0,
-        "fitnet": 1e5,
-        "attention-transfer": 1e4,
-        "vid": 1e5,
-        "basis-identity:pca--uncentered": 1e4,
-        "basis-identity:prca-sortabs--uncentered": 1e4,
-        "basis-identity:pcalookahead--uncentered": 1e4,
+        "cifar100-resnet18-v1": {
+            "nothing": 0,
+            "fitnet": 1e1,
+            "attention-transfer": 1e2,
+            "vid": 1e3,
+            "basis-identity:pca--uncentered": 1e1,
+            "basis-identity:prca-sortabs--uncentered": 1e1,
+            "basis-identity:pcalookahead--uncentered": 1e2,
+        }
     },
     "imagenet-clean": {
-        "nothing": 0,
-        "fitnet": 1e2,
-        "attention-transfer": 1e1,
-        "vid": 1e1,
-        "basis-identity:pca--uncentered": 1e1,
-        "basis-identity:prca-sortabs--uncentered": 1e1,
-        "basis-identity:pcalookahead--uncentered": 1e2,
+        "imagenet-resnet18-tv": {
+            "nothing": 0,
+            "fitnet": 1e2,
+            "attention-transfer": 1e1,
+            "vid": 1e1,
+            "basis-identity:pca--uncentered": 1e1,
+            "basis-identity:prca-sortabs--uncentered": 1e1,
+            "basis-identity:pcalookahead--uncentered": 1e2,
+        }
     },
     "imagenet-small": {
-        "nothing": 0,
-        "fitnet": 1e0,
-        "attention-transfer": 1e2,
-        "vid": 1e2,
-        "basis-identity:pca--uncentered": 1e1,
-        "basis-identity:prca-sortabs--uncentered": 1e1,
-        "basis-identity:pcalookahead--uncentered": 1e2,
-    },
-    "imagenet-spurious": {
-        "nothing": 0,
-        "fitnet": 1e0,
-        "attention-transfer": 1e2,
-        "vid": 1e2,
-        "basis-identity:pca--uncentered": 1e1,
-        "basis-identity:prca-sortabs--uncentered": 1e1,
-        "basis-identity:pcalookahead--uncentered": 1e1,
+        "imagenet-resnet18-tv": {
+            "nothing": 0,
+            "fitnet": 1e0,
+            "attention-transfer": 1e2,
+            "vid": 1e2,
+            "basis-identity:pca--uncentered": 1e1,
+            "basis-identity:prca-sortabs--uncentered": 1e1,
+            "basis-identity:pcalookahead--uncentered": 1e2,
+        }
     },
 }

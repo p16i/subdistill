@@ -195,6 +195,7 @@ def main(
     del dataset_variant
 
     lambda_layer = utils.resolve_lambda_layer(
+        teacher_model_name=teacher,
         policy_name=layer_policy,
         lambda_layer=lambda_layer,
         default_config_key=default_lambda_layer_config,
