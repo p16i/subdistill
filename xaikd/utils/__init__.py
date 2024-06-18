@@ -221,7 +221,11 @@ def resolve_lambda_layer(
             default_config_key is not None
         ), "default_config should be specified when lambda_layer is none."
 
-        lambda_layer = constants.DEFAULT_LAMBDA_LAYER[default_config_key][teacher_model_name][policy_name]
-        print(f"Resolve `lambda_layer` from config:{default_config_key}[teacher_model][{policy_name}]")
+        lambda_layer = constants.DEFAULT_LAMBDA_LAYER[default_config_key][
+            teacher_model_name
+        ][policy_name]
+        print(
+            f"Resolve `lambda_layer` from config:{default_config_key}[{teacher_model_name}][{policy_name}]"
+        )
 
         return lambda_layer
