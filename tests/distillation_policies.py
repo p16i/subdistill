@@ -56,7 +56,8 @@ def test_policy_when_spatial_dimensions_different(
     student_feats = torch.randn(batch_size, student_dims, *student_hw)
 
     try:
-        policy(teacher_feats, student_feats)
+        output = policy(teacher_feats, student_feats)
+        assert output is not None
         assert True
     except:
         raise

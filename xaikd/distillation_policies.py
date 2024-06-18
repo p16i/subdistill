@@ -163,23 +163,28 @@ class LayerPolicy(Policy):
         _, _, teacher_height, teacher_width = teacher_feats.shape
         _, _, student_height, student_width = student_feats.shape
 
-        # cf. https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/distiller_zoo/FT.py#L18C7-L24C17
-        if student_height != teacher_height:
-            # we assume that the feture maps are square.
+        if (student_height == teacher_height) and (student_width == teacher_width == 1):
+            # for ViT
+            pass
+        else:
+            # for CNN
             assert teacher_height == teacher_width
             assert student_height == student_width
 
-            if student_height > teacher_height:
-                student_feats = F.adaptive_avg_pool2d(
-                    student_feats, (teacher_height, teacher_height)
-                )
-            elif student_height < teacher_height:
-                teacher_feats = F.adaptive_avg_pool2d(
-                    teacher_feats, (student_height, student_height)
-                )
-        else:
-            # this is for ViT
-            assert teacher_width == student_width == 1
+            if student_height != teacher_height:
+                # cf. https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/distiller_zoo/FT.py#L18C7-L24C17
+                # we assume that the feture maps are square.
+                assert teacher_height == teacher_width
+                assert student_height == student_width
+
+                if student_height > teacher_height:
+                    student_feats = F.adaptive_avg_pool2d(
+                        student_feats, (teacher_height, teacher_height)
+                    )
+                elif student_height < teacher_height:
+                    teacher_feats = F.adaptive_avg_pool2d(
+                        teacher_feats, (student_height, student_height)
+                    )
 
         return teacher_feats, student_feats
 
