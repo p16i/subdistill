@@ -66,7 +66,9 @@ def test_policy_when_spatial_dimensions_different(
 
 @pytest.mark.parametrize("teacher_dims", [10])
 @pytest.mark.parametrize("student_dims", [6])
-@pytest.mark.parametrize("policy", ["fitnet", "fitnet-1l", "vid", "attention-transfer"])
+@pytest.mark.parametrize(
+    "policy", ["fitnet-relu", "fitnet-noact", "vid", "attention-transfer"]
+)
 def test_baseline_policy_callable(teacher_dims, student_dims, policy):
     batch_size = 10
     device = "cpu"
