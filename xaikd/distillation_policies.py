@@ -201,7 +201,7 @@ class NothingPolicy(LayerPolicy):
         return 0
 
 
-@register_layer_policy("fitnet")
+@register_layer_policy("fitnet-relu")
 class FitNet(LayerPolicy):
     """
     @inproceedings{DBLP:journals/corr/RomeroBKCGB14,
@@ -262,14 +262,11 @@ class FitNet(LayerPolicy):
                 # cf. https://github.com/yoshitomo-matsubara/torchdistill/blob/ba62248b48cefeea24f1ef774a870f338711a9d9/configs/sample/ilsvrc2012/fitnet/resnet18_from_resnet152.yaml#L119
                 kernel_size=1,
             ),
-            # cf: https://github.com/yoshitomo-matsubara/torchdistill/blob/main/torchdistill/models/adaptation.py#L34
-            nn.BatchNorm2d(num_features=teacher_dims),
-            # cf. https://github.com/yoshitomo-matsubara/torchdistill/blob/ba62248b48cefeea24f1ef774a870f338711a9d9/configs/sample/ilsvrc2012/fitnet/resnet18_from_resnet152.yaml#L122
             nn.ReLU(),
         )
 
 
-@register_layer_policy("fitnet-1l")
+@register_layer_policy("fitnet-noact")
 class FitNetTwoLayers(FitNet):
     def _build_student_feats_transfomer(
         self, teacher_dims: int, student_dims: int

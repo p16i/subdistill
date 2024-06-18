@@ -50,7 +50,7 @@ def test_policy_when_spatial_dimensions_different(
         device=device,
     )
 
-    policy = distillation_policies.get_layer_policy("fitnet", **kwargs)
+    policy = distillation_policies.get_layer_policy("fitnet-noact", **kwargs)
 
     teacher_feats = torch.randn(batch_size, teacher_dims, *teacher_hw)
     student_feats = torch.randn(batch_size, student_dims, *student_hw)
