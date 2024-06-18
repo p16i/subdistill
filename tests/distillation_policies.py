@@ -30,7 +30,18 @@ def test_parsing_layer_string(string, expected_teacher_layers, expected_student_
 
 @pytest.mark.parametrize("teacher_dims", [5, 10])
 @pytest.mark.parametrize("student_dims", [5, 10])
-def test_policy_when_spatial_dimensions_different(teacher_dims, student_dims):
+@pytest.mark.parametrize(
+    "teacher_hw,student_hw",
+    [
+        ((10, 10), (5, 5)),
+        ((5, 5), (10, 10)),
+        ((7, 7), (7, 7)),
+        ((10, 1), (10, 1)),  # ViT
+    ],
+)
+def test_policy_when_spatial_dimensions_different(
+    teacher_dims, student_dims, teacher_hw, student_hw
+):
     batch_size = 10
     device = "cpu"
     kwargs = dict(
@@ -41,8 +52,8 @@ def test_policy_when_spatial_dimensions_different(teacher_dims, student_dims):
 
     policy = distillation_policies.get_layer_policy("fitnet", **kwargs)
 
-    teacher_feats = torch.randn(batch_size, teacher_dims, 10, 10)
-    student_feats = torch.randn(batch_size, student_dims, 5, 5)
+    teacher_feats = torch.randn(batch_size, teacher_dims, *teacher_hw)
+    student_feats = torch.randn(batch_size, student_dims, *student_hw)
 
     try:
         policy(teacher_feats, student_feats)
