@@ -67,7 +67,7 @@ class ViTSecondPart(nn.Module):
 
 
 def split_model_at(
-    model: VisionTransformer,
+    model: nn.Module,
     layer: str,
 ) -> typing.Tuple[nn.Module, nn.Module]:
 

@@ -74,3 +74,20 @@ def _test_split_model(slug, layer, split_func, atol=1e-6):
         expected = model(input).cpu().numpy()
 
         np.testing.assert_allclose(actual, expected, atol=atol)
+
+
+@pytest.mark.parametrize(
+    "model,arr_layers",
+    [
+        ("imagenet-vitb-tv", "encoder.layers.8,encoder.layers.11"),
+        ("imagenet-resnet18-tv", "layer3,layer4"),
+        ("imagenet-resnet50-tv", "layer3,layer4"),
+        ("imagenet-vgg16-tv", "features.23,features.30"),
+        ("imagenet-nfnetf0-dm", "stages.2,stages.3"),
+    ],
+)
+def test_split_models_callable(model, arr_layers):
+
+    model = models.get_trained_model(model)
+    for layer in arr_layers.split(","):
+        models.split_model_at_layer(model, layer)
