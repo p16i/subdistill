@@ -1,0 +1,55 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --enable-checkpointing
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+name: &group_name ./artifacts/2024-05-s27/experiments/3-parameter-partition-modes
+parameters:
+  contamination-level:
+    value: 0.0
+  dataset:
+    values:
+      - imagenet-butterfly
+      - imagenet-butterfly-spurious0.5
+  lambda-task:
+    value: 0
+  lambda-kd:
+    value: 1
+  lambda-layer:
+    value: 1
+  training-size:
+    value: 0.125
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  layers:
+    value: features.9:layer1,features.16:layer2,features.23:layer3,features.30:layer4
+  layer-policies:
+    values:
+      # - basis-identity:pca--uncentered
+      # - basis-identity:pcalookahead--uncentered
+      # - basis-identity:prca-sortabs--uncentered
+      - vid
+  output-dir:
+    value: *group_name
+  student:
+    value: vggcustomimagenetdims-32-24-24-10
+  teacher:
+    value: imagenet-vgg16-tv
+  parameter-partition-mode:
+    values:
+      - "@100"
+      - "@90"
+      - "@50"
+      - "@10"
+      - "@0"
+
+
+program: scripts/distill-layerwise.py
