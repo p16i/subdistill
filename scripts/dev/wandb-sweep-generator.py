@@ -67,7 +67,7 @@ def main(wandb_project, dry_run, config_files):
         )
 
         click.echo(
-            f"\t- {WANDB_USERNAME}/{wandb_project}/{sweep_id} [total {total_runs} runs] ({url})"
+            f"\t- {WANDB_USERNAME}/{wandb_project}/{sweep_id} (total {total_runs} runs) ({url})"
         )
 
 
