@@ -42,6 +42,7 @@ def main(wandb_project, dry_run, config_files):
                 value=sweep_group
             )
             click.echo(f"- Sweep from `{filename}`")
+            total_runs = 1
             for k, v in sweep_config["parameters"].items():
                 assert isinstance(v, dict)
 
@@ -49,9 +50,7 @@ def main(wandb_project, dry_run, config_files):
                     assert not isinstance(v["value"], list), f"key={k} is failed!"
                 elif "values" in v:
                     assert isinstance(v["values"], list), f"key={k} is failed!"
-
-                if dry_run:
-                    print(f"\t>  parameter:key=`{k}` looked good! (values={v})")
+                    total_runs = total_runs * len(v["values"])
 
             if not dry_run:
 
@@ -67,7 +66,9 @@ def main(wandb_project, dry_run, config_files):
             "<SWEEP_ID>", sweep_id
         )
 
-        click.echo(f"\t- {WANDB_USERNAME}/{wandb_project}/{sweep_id} ({url})")
+        click.echo(
+            f"\t- {WANDB_USERNAME}/{wandb_project}/{sweep_id} [total {total_runs} runs] ({url})"
+        )
 
 
 if __name__ == "__main__":
