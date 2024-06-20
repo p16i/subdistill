@@ -41,7 +41,7 @@ def main(wandb_project, dry_run, config_files):
             sweep_config["parameters"]["wandb-experiment-group"] = dict(
                 value=sweep_group
             )
-            click.echo(f"- Sweep from `{filename}`")
+            click.echo(f"- Sweep from `{folder_name}/{filename}`")
             total_runs = 1
             for k, v in sweep_config["parameters"].items():
                 assert isinstance(v, dict)
