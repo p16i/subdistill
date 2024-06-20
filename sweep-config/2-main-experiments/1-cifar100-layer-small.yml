@@ -50,7 +50,7 @@ parameters:
       - basis-identity:prca-sortabs--uncentered
       - basis-identity:pcalookahead--uncentered
       - vid
-      - fitnet
+      - fitnet-relu
       - attention-transfer
   lambda-task:
       value: 0.0
