@@ -33,7 +33,6 @@ parameters:
   layer-policy:
     values:
       - basis-identity:pca--uncentered
-      - basis-identity:prca-sortabs--uncentered
       - basis-identity:pcalookahead--uncentered
       - vid
       - fitnet-noact
