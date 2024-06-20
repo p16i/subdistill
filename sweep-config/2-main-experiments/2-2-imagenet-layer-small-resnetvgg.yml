@@ -17,7 +17,6 @@ parameters:
       - imagenet-resnet18-tv
       - imagenet-resnet50-tv
       - imagenet-vgg16-tv
-      - imagenet-nfnetf0-dm
   student:
     values:
       - student-32-24-16-8
@@ -40,7 +39,7 @@ parameters:
       - basis-identity:prca-sortabs--uncentered
       - basis-identity:pcalookahead--uncentered
       - vid
-      - fitnet
+      - fitnet-relu
       - attention-transfer
   lambda-task:
       value: 0.0
