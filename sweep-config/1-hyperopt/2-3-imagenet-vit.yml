@@ -42,6 +42,6 @@ parameters:
   student:
     value: vitstudent-48
   teacher:
-    value: imagenet-vitb-dm
+    value: imagenet-vitb-tv
   epochs:
     value: 50
