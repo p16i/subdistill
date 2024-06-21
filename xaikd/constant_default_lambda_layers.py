@@ -1,0 +1,89 @@
+DEFAULT_LAMBDA_LAYER = {
+    "dummy": {
+        "imagenet-resnet18-tv": {
+            "policy-1": 0.1,
+            "policy-2": 0.7,
+            "vid": 0.8,
+        }
+    },
+    "cifar100-clean": {
+        "cifar100-resnet18-v1": {
+            "nothing": 0,
+            "fitnet-relu": 1000.0,
+            "attention-transfer": 1.0,
+            "vid": 1000.0,
+            "basis-identity:pca--uncentered": 10.0,
+            "basis-identity:prca-sortabs--uncentered": 10.0,
+            "basis-identity:pcalookahead--uncentered": 10.0,
+        }
+    },
+    "cifar100-small": {
+        "cifar100-resnet18-v1": {
+            "nothing": 0,
+            "fitnet-relu": 100.0,
+            "attention-transfer": 1.0,
+            "vid": 1.0,
+            "basis-identity:pca--uncentered": 1.0,
+            "basis-identity:prca-sortabs--uncentered": 100.0,
+            "basis-identity:pcalookahead--uncentered": 100000.0,
+        }
+    },
+    "imagenet-clean": {
+        "imagenet-resnet18-tv": {
+            "nothing": 0,
+            "fitnet-relu": 10000.0,
+            "attention-transfer": 1.0,
+            "vid": 10.0,
+            "basis-identity:pca--uncentered": 10.0,
+            "basis-identity:prca-sortabs--uncentered": 10.0,
+            "basis-identity:pcalookahead--uncentered": 100.0,
+        },
+        "imagenet-resnet50-tv": {
+            "nothing": 0,
+            "fitnet-relu": 1000.0,
+            "attention-transfer": 10.0,
+            "vid": 1.0,
+            "basis-identity:pca--uncentered": 10.0,
+            "basis-identity:prca-sortabs--uncentered": 100.0,
+            "basis-identity:pcalookahead--uncentered": 10.0,
+        },
+        "imagenet-vgg16-tv": {
+            "nothing": 0,
+            "fitnet-relu": 1.0,
+            "attention-transfer": 10.0,
+            "vid": 10.0,
+            "basis-identity:pca--uncentered": 1.0,
+            "basis-identity:prca-sortabs--uncentered": 10.0,
+            "basis-identity:pcalookahead--uncentered": 10.0,
+        },
+    },
+    "imagenet-small": {
+        "imagenet-resnet18-tv": {
+            "nothing": 0,
+            "fitnet-relu": 1.0,
+            "attention-transfer": 100.0,
+            "vid": 100.0,
+            "basis-identity:pca--uncentered": 10.0,
+            "basis-identity:prca-sortabs--uncentered": 100.0,
+            "basis-identity:pcalookahead--uncentered": 100.0,
+        },
+        "imagenet-resnet50-tv": {
+            "nothing": 0,
+            "fitnet-relu": 10.0,
+            "attention-transfer": 10.0,
+            "vid": 1000.0,
+            "basis-identity:pca--uncentered": 100.0,
+            "basis-identity:prca-sortabs--uncentered": 10.0,
+            "basis-identity:pcalookahead--uncentered": 1000.0,
+        },
+        "imagenet-vgg16-tv": {
+            "nothing": 0,
+            "fitnet-relu": 100000.0,
+            "attention-transfer": 100.0,
+            "vid": 100.0,
+            "basis-identity:pca--uncentered": 100000.0,
+            "basis-identity:prca-sortabs--uncentered": 10.0,
+            "basis-identity:pcalookahead--uncentered": 100.0,
+        },
+    },
+}

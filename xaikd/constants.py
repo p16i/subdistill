@@ -4,6 +4,8 @@ import pandas as pd
 
 import itertools
 
+from xaikd import constant_default_lambda_layers
+
 PACKAGE_DIR = Path(os.path.dirname(__file__))
 
 ARR_STUDENT_DIMENSIONS = [
@@ -123,57 +125,4 @@ ARCH_LAYER_DIMENSIONS = dict(
 )
 
 
-DEFAULT_LAMBDA_LAYER = {
-    "dummy": {
-        "imagenet-resnet18-tv": {
-            "policy-1": 0.1,
-            "policy-2": 0.7,
-            "vid": 0.8,
-        }
-    },
-    "cifar100-clean": {
-        "cifar100-resnet18-v1": {
-            "nothing": 0,
-            "fitnet-relu": 1e3,
-            "attention-transfer": 1e0,
-            "vid": 1e3,
-            "basis-identity:pca--uncentered": 1e1,
-            "basis-identity:prca-sortabs--uncentered": 1e1,
-            "basis-identity:pcalookahead--uncentered": 1e1,
-        }
-    },
-    "cifar100-small": {
-        "cifar100-resnet18-v1": {
-            "nothing": 0,
-            "fitnet-relu": 1e2,
-            "attention-transfer": 1e0,
-            "vid": 1e0,
-            "basis-identity:pca--uncentered": 1e0,
-            "basis-identity:prca-sortabs--uncentered": 1e2,
-            "basis-identity:pcalookahead--uncentered": 1e5,
-        }
-    },
-    ### below to be updated!
-    # "imagenet-clean": {
-    #     "imagenet-resnet18-tv": {
-    #         "nothing": 0,
-    #         "fitnet": 1e2,
-    #         "attention-transfer": 1e1,
-    #         "vid": 1e1,
-    #         "basis-identity:pca--uncentered": 1e1,
-    #         "basis-identity:prca-sortabs--uncentered": 1e1,
-    #         "basis-identity:pcalookahead--uncentered": 1e2,
-    #     }
-    # },
-    # "imagenet-small": {
-    #     "imagenet-resnet18-tv": {
-    #         "nothing": 0,
-    #         "fitnet": 1e0,
-    #         "attention-transfer": 1e2,
-    #         "vid": 1e2,
-    #         "basis-identity:pca--uncentered": 1e1,
-    #         "basis-identity:prca-sortabs--uncentered": 1e1,
-    #         "basis-identity:pcalookahead--uncentered": 1e2,
-    #     }
-    # },
-}
+DEFAULT_LAMBDA_LAYER = constant_default_lambda_layers.DEFAULT_LAMBDA_LAYER
