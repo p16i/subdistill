@@ -21,6 +21,7 @@ from . import pcalookahead
 from enum import Enum
 
 from xaikd.bases import pcalookahead
+from xaikd import models
 
 EPS = 1e-6
 BASES = dict()
@@ -250,11 +251,9 @@ class PRCA(Orthogonal):
 
 
 @register_basis("pcalookahead")
-class PCALookAhead(PRCASortAbs):
+class PCALookAhead(Orthogonal):
     def fit(self, arr_act, arr_ctx, **kwargs):
         assert self.centering == False, "we only support `uncentered` version` for now"
-
-        super().fit(arr_act=arr_act, arr_ctx=arr_ctx)
 
         self.model = kwargs["model"]
         self.layer = kwargs["layer"]
@@ -262,13 +261,26 @@ class PCALookAhead(PRCASortAbs):
         self.arr_act = arr_act
 
         self._cache = dict()
+        self.U = self._get_initialization(
+            model=self.model, arr_act=arr_act, arr_ctx=arr_ctx
+        )
+
+    def _get_initialization(
+        self, model: nn.Module, arr_act: npt.NDArray, arr_ctx: npt.NDArray
+    ) -> npt.NDArray:
+        if isinstance(model, models.vit.VisionTransformer):
+            ref_basis = PCA()
+        else:
+            ref_basis = PRCASortAbs()
+        ref_basis.fit(arr_act=arr_act, arr_ctx=arr_ctx)
+
+        return ref_basis.U
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         assert self.centering == False, "we only support `uncetered` version"
 
         if not k in self._cache:
 
-            # this is the U from PCA
             Uinit = self.U[:, :k].copy()
 
             U = pcalookahead.fit(
