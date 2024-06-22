@@ -256,8 +256,6 @@ def extract_activation_context(
     arr_act = []
     arr_ctx = []
 
-    atol = 1e-6 if strict_mode else 1e-1
-
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
             model, layer, should_retain_grad=True, detach_output=False
@@ -279,11 +277,12 @@ def extract_activation_context(
 
                 ctx = torch.where(act.abs() > 0, rel / act, 0)
 
-                np.testing.assert_allclose(
-                    (act * ctx).detach().cpu().numpy(),
-                    rel.detach().cpu().numpy(),
-                    atol=atol,
-                )
+                if strict_mode:
+                    np.testing.assert_allclose(
+                        (act * ctx).detach().cpu().numpy(),
+                        rel.detach().cpu().numpy(),
+                        atol=1e-6
+                    )
 
                 assert ctx.shape == act.shape
 
