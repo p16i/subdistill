@@ -61,6 +61,8 @@ def test_pcalookahead_trainable():
     assert True
 
 
+@pytest.mark.slow
+@pytest.mark.gpu
 @pytest.mark.parametrize(
     "teacher,layer,ref_basis_name",
     [
