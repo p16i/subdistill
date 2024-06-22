@@ -281,7 +281,6 @@ class PCALookAhead(Orthogonal):
 
         if not k in self._cache:
 
-            # this is the U from PCA
             Uinit = self.U[:, :k].copy()
 
             U = pcalookahead.fit(
