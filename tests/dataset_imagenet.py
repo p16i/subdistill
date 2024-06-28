@@ -85,7 +85,10 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 @pytest.mark.gpu
 def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
     dataset_cifar100.test_dataset_with_spurious_correlation(
-        dataset_slug=f"{dataset_slug}C{cix}", lvl=lvl, train_split=train_split
+        dataset_slug=f"{dataset_slug}C{cix}",
+        lvl=lvl,
+        train_split=train_split,
+        victim_class=victim_class,
     )
     dataset = datasets.construct("--".join([dataset_slug, str(lvl)]))
 
