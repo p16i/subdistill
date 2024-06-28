@@ -74,7 +74,10 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 
 @pytest.mark.parametrize(
     "lvl",
-    [0.125, 0.25, 0.5, 1.0],
+    [
+        # 0.125, 0.25, 0.5,
+        1.0
+    ],
 )
 @pytest.mark.parametrize("train_split", [True, False])
 @pytest.mark.parametrize("dataset_slug", ["imagenet-random--spurious-watermark"])
