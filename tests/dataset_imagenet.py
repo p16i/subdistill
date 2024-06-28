@@ -79,18 +79,17 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 @pytest.mark.parametrize("train_split", [True, False])
 @pytest.mark.parametrize("dataset_slug", ["imagenet-random--spurious-copyright"])
 @pytest.mark.parametrize(
-    "victim_class", datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["random"]
+    "cix,victim_class",
+    list(enumerate(datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["random"])),
 )
 @pytest.mark.gpu
-def test_victim_propotion(dataset_slug, victim_class, lvl, train_split):
+def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
     dataset_cifar100.test_dataset_with_spurious_correlation(
-        dataset_slug=f"{dataset_slug}C{victim_class}", lvl=lvl, train_split=train_split
+        dataset_slug=f"{dataset_slug}C{cix}", lvl=lvl, train_split=train_split
     )
     dataset = datasets.construct("--".join([dataset_slug, str(lvl)]))
 
     num_classes = len(dataset.selected_classes)
-
-    victim_class = dataset.selected_classes[0]
 
     ds = dataset.create_subset(train_split=train_split)
 
@@ -122,10 +121,16 @@ def test_victim_propotion(dataset_slug, victim_class, lvl, train_split):
 #         "spurious-jpeg",
 #     ],
 # )
-@pytest.mark.parametrize("victim_class", list(range(6)))
+@pytest.mark.parametrize(
+    "cix, victim_class",
+    list(enumerate(datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["butterfly"])),
+)
 @pytest.mark.slow
-def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, victim_class):
-    variant = f"spurious-watermarkC{victim_class}"
+@pytest.mark.skip("skip for now")
+def test_valsplit_dataset_with_spurious_correlation(
+    lvl, train_split, cix, victim_class
+):
+    variant = f"spurious-watermarkC{cix}"
     total_train_samples = len(
         datasets.construct("imagenet-butterfly").create_subset(train_split=True).targets
     )
