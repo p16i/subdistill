@@ -77,7 +77,7 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
     [0.125, 0.25, 0.5, 1.0],
 )
 @pytest.mark.parametrize("train_split", [True, False])
-@pytest.mark.parametrize("dataset_slug", ["imagenet-random--spurious-copyright"])
+@pytest.mark.parametrize("dataset_slug", ["imagenet-random--spurious-watermark"])
 @pytest.mark.parametrize(
     "cix,victim_class",
     list(enumerate(datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["random"])),
@@ -126,7 +126,7 @@ def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
     list(enumerate(datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["butterfly"])),
 )
 @pytest.mark.slow
-@pytest.mark.skip("skip for now")
+@pytest.mark.skip("skip for nowt c")
 def test_valsplit_dataset_with_spurious_correlation(
     lvl, train_split, cix, victim_class
 ):
