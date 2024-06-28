@@ -83,7 +83,8 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 @pytest.mark.parametrize("dataset_slug", ["imagenet-random--spurious-watermark"])
 @pytest.mark.parametrize(
     "cix,victim_class",
-    list(enumerate(datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["random"]))[0],
+    [(0, 100)],
+    # list(enumerate(datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["random"])),
 )
 @pytest.mark.gpu
 def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
