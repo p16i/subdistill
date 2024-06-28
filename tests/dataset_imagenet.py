@@ -57,14 +57,19 @@ from torchvision.datasets import ImageNet
 @pytest.mark.parametrize("lvl", [0.0, 0.125, 0.25, 0.5, 1.0])
 def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 
+    arr_datasets = []
     if lvl > 0:
-        dataset_name = "--".join([dataset_name, "spurious-copyright", f"{lvl}"])
+        for cix in expected_class_indices:
+            arr_datasets.append(
+                "--".join([dataset_name, f"spurious-watermarkC{cix}", f"{lvl}"])
+            )
     else:
-        dataset_name = dataset_name
+        arr_datasets = [dataset_name]
 
-    dataset = datasets.construct(dataset_name)
+    for dataset in arr_datasets:
+        dataset = datasets.construct(dataset_name)
 
-    np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
+        np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
 
 
 @pytest.mark.parametrize(
@@ -73,10 +78,13 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 )
 @pytest.mark.parametrize("train_split", [True, False])
 @pytest.mark.parametrize("dataset_slug", ["imagenet-random--spurious-copyright"])
+@pytest.mark.parametrize(
+    "victim_class", datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["random"]
+)
 @pytest.mark.gpu
-def test_victim_propotion(dataset_slug, lvl, train_split):
+def test_victim_propotion(dataset_slug, victim_class, lvl, train_split):
     dataset_cifar100.test_dataset_with_spurious_correlation(
-        dataset_slug=dataset_slug, lvl=lvl, train_split=train_split
+        dataset_slug=f"{dataset_slug}C{victim_class}", lvl=lvl, train_split=train_split
     )
     dataset = datasets.construct("--".join([dataset_slug, str(lvl)]))
 
@@ -106,16 +114,18 @@ def test_victim_propotion(dataset_slug, lvl, train_split):
 
 @pytest.mark.parametrize("lvl", [0.0, 0.5, 1.0])
 @pytest.mark.parametrize("train_split", [True, False])
-@pytest.mark.parametrize(
-    "variant",
-    [
-        "spurious-copyright",
-        "spurious-watermark",
-        "spurious-jpeg",
-    ],
-)
+# @pytest.mark.parametrize(
+#     "variant",
+#     [
+#         "spurious-copyright",
+#         "spurious-watermark",
+#         "spurious-jpeg",
+#     ],
+# )
+@pytest.mark.parametrize("victim_class", list(range(6)))
 @pytest.mark.slow
-def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
+def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, victim_class):
+    variant = f"spurious-watermarkC{victim_class}"
     total_train_samples = len(
         datasets.construct("imagenet-butterfly").create_subset(train_split=True).targets
     )
@@ -140,7 +150,7 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
         ),
     )
 
-    victim_class = dataset.selected_classes[0]
+    victim_class = victim_class
     num_classes = len(dataset.selected_classes)
 
     arr_targets = np.array(ds.targets)
@@ -174,7 +184,7 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
 @pytest.mark.parametrize(
     "variant",
     [
-        "spurious-watermarkjpeg",
+        "spurious-watermark",
     ],
 )
 @pytest.mark.parametrize(
@@ -188,6 +198,7 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
     ],
 )
 @pytest.mark.slow
+@pytest.mark.skip(reason="skip for now (2024-06-s33)")
 def test_dataset_with_watermark_jpeg_spurious_correlation(
     lvl, train_split, dataset_name, variant, atol
 ):

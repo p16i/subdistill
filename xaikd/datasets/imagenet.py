@@ -246,6 +246,7 @@ class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
         self,
         selected_classes: typing.List[int],
         contamination_level: float,
+        victim_class: int,
         dataclass: typing.Type[tvd.ImageNet],
     ):
         super().__init__(selected_classes=selected_classes)
@@ -253,6 +254,7 @@ class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
         self.contamination_level = contamination_level
 
         self.dataclass = dataclass
+        self.victim_class = victim_class
 
     def create_subset(self, train_split=False) -> Dataset:
         ds = super().create_subset(train_split)
@@ -264,7 +266,7 @@ class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
         n = len(ds.targets)
 
         if train_split:
-            victim_class = np.min(self.selected_classes)
+            victim_class = self.victim_class
             # for `training` set,  we are only interested in only a class
             indices = (
                 np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
@@ -528,65 +530,71 @@ def ano():
         selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
         DATASETS[slug] = partial(ImageNetSuperClass, selected_classes=selected_classes)
 
-        for dataclass in [
-            TorchVisionDatasetImageNetWithCopyrightTag,
-            TorchVisionDatasetImageNetWithWatermark,
-            TorchVisionDatasetImageNetWithJPEGArtifact,
-        ]:
+        dataclass = TorchVisionDatasetImageNetWithWatermark
+
+        for ix, victim_class in enumerate(np.arange(len(selected_classes))):
             for contamination_level in [0.125, 0.25, 0.5, 1.0]:
-                sslug = "--".join([slug, dataclass.slug, f"{contamination_level}"])
+                sslug = "--".join(
+                    [slug, f"{dataclass.slug}C{ix}", f"{contamination_level}"]
+                )
                 DATASETS[sslug] = partial(
                     ImageNetSuperclasssWithSpurriousFeature,
                     contamination_level=contamination_level,
                     selected_classes=selected_classes,
                     dataclass=dataclass,
+                    victim_class=victim_class,
                 )
 
+    # construct valsplit
     for dataclass in [
-        TorchVisionDatasetImageNetWithCopyrightTag,
+        # TorchVisionDatasetImageNetWithCopyrightTag,
         TorchVisionDatasetImageNetWithWatermark,
-        TorchVisionDatasetImageNetWithJPEGArtifact,
+        # TorchVisionDatasetImageNetWithJPEGArtifact,
     ]:
-        for contamination_level in [0.0, 0.5, 1.0]:
-            sslug = "--".join(
-                [
-                    "imagenet-valsplit-butterfly",
-                    dataclass.slug,
-                    f"{contamination_level}",
-                ]
-            )
-            DATASETS[sslug] = partial(
-                ImageNetSuperclasssValSplitWithSpurriousFeature,
-                contamination_level=contamination_level,
-                selected_classes=IMAGENET_SUPERCLASS_MAPPING["butterfly"],
-                dataclass=dataclass,
-            )
 
-        for superclass, slug, arr_contamination_levels, dataset_class in [
-            (
-                "butterfly",
-                "butterfly",
-                (0.5, 1.0),
-                ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures,
-            ),
-            (
-                "butterfly",
-                "valsplit-butterfly",
-                (0.0, 0.5, 1.0),
-                ImageNetSuperclasssValSplitWithWatermarkJPEGSpuriousFeatures,
-            ),
-        ]:
-            for contamination_level in arr_contamination_levels:
-                name = f"imagenet-{slug}"
-                spuroius_slug = (
-                    TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures.slug
+        selected_classes = IMAGENET_SUPERCLASS_MAPPING["butterfly"]
+        for ix, victim_class in enumerate(selected_classes):
+            for contamination_level in [0.0, 0.5, 1.0]:
+                sslug = "--".join(
+                    [
+                        "imagenet-valsplit-butterfly",
+                        dataclass.slug,
+                        f"{contamination_level}",
+                    ]
                 )
-                sslug = "--".join([name, spuroius_slug, str(contamination_level)])
                 DATASETS[sslug] = partial(
-                    dataset_class,
-                    selected_classes=IMAGENET_SUPERCLASS_MAPPING[superclass],
+                    ImageNetSuperclasssValSplitWithSpurriousFeature,
                     contamination_level=contamination_level,
+                    selected_classes=selected_classes,
+                    dataclass=dataclass,
+                    victim_class=victim_class,
                 )
+
+    # for superclass, slug, arr_contamination_levels, dataset_class in [
+    #     (
+    #         "butterfly",
+    #         "butterfly",
+    #         (0.5, 1.0),
+    #         ImageNetSuperclasssWithWatermarkJPEGSpuriousFeatures,
+    #     ),
+    #     (
+    #         "butterfly",
+    #         "valsplit-butterfly",
+    #         (0.0, 0.5, 1.0),
+    #         ImageNetSuperclasssValSplitWithWatermarkJPEGSpuriousFeatures,
+    #     ),
+    # ]:
+    #     for contamination_level in arr_contamination_levels:
+    #         name = f"imagenet-{slug}"
+    #         spuroius_slug = (
+    #             TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures.slug
+    #         )
+    #         sslug = "--".join([name, spuroius_slug, str(contamination_level)])
+    #         DATASETS[sslug] = partial(
+    #             dataset_class,
+    #             selected_classes=IMAGENET_SUPERCLASS_MAPPING[superclass],
+    #             contamination_level=contamination_level,
+    #         )
 
 
 ano()
