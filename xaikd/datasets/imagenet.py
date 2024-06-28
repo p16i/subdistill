@@ -532,7 +532,7 @@ def ano():
 
         dataclass = TorchVisionDatasetImageNetWithWatermark
 
-        for ix, victim_class in enumerate(np.arange(len(selected_classes))):
+        for ix, victim_class in enumerate(selected_classes):
             for contamination_level in [0.125, 0.25, 0.5, 1.0]:
                 sslug = "--".join(
                     [slug, f"{dataclass.slug}C{ix}", f"{contamination_level}"]
