@@ -9,6 +9,8 @@ from PIL import Image
 
 from PIL.Image import Image as TypeImage
 
+from torchvision.transforms import functional as F
+
 from xaikd import constants
 
 
@@ -137,3 +139,14 @@ def jpeg_artifact(img: TypeImage) -> TypeImage:
     img.save(buffered, format="jpeg", optimize=True, quality=5)
 
     return Image.open(buffered)
+
+
+def scaling_artifact(img: TypeImage, scaling_factor=4) -> TypeImage:
+    h, w = img.size
+
+    nh = h // scaling_factor
+    nw = w // scaling_factor
+
+    recon_img = F.resize(F.resize(img, size=[nh, nw]), size=[h, w])
+
+    return recon_img

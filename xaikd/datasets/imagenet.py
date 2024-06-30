@@ -181,7 +181,7 @@ class TorchVisionDatasetImageNetWithSpuriousFeature(tvd.ImageNet):
 
         assert self.transform is not None
 
-        sample = spurious_feature_generator.jpeg_artifact(sample)
+        sample = spurious_feature_generator.scaling_artifact(sample)
 
         if index in self.victim_indices:
             sample = self.modify_sample(sample)
