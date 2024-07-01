@@ -35,3 +35,10 @@ tensorboard = "^2.13.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pyright]
+include = ["src"]
+exclude = [
+    "**/venv",
+    "**/datasets",
+]
