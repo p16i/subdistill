@@ -201,18 +201,24 @@ def test_valsplit_dataset_with_spurious_correlation(
     ],
 )
 @pytest.mark.parametrize(
-    "dataset_name,lvl,atol",
+    "dataset_name,lvl",
     [
-        ("cat", 1.0, 30.0),
-        ("cat", 0.5, 30.0),
-        ("valsplit-cat", 0.0, 30.0),
-        ("valsplit-cat", 1.0, 30.0),
+        ("cat", 1.0),
+        ("cat", 0.5),
+        ("valsplit-cat", 0.0),
+        ("valsplit-cat", 1.0),
     ],
 )
 @pytest.mark.slow
 def test_dataset_with_three_spurious_correlations(
-    lvl, train_split, dataset_name, variant, atol
+    lvl, train_split, dataset_name, variant
 ):
+
+    if "valsplit" in dataset_name:
+        atol = 60 if train_split else 30
+    else:
+        atol = 50 if train_split else 15
+
 
     dataset = datasets.construct(f"imagenet-{dataset_name}--{variant}--{lvl}")
     num_classes = len(dataset.selected_classes)

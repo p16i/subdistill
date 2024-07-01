@@ -437,10 +437,10 @@ class ImageNetSuperclassWithThreeSpuriousFeatures(ImageNetSuperClass):
 
         if train_split:
             # for `training` set,  samples from the first two classes have spurious features:
-            # - spurious-copyright (type=0): class 0,1
-            # - spurious-watermark (type=1): class 2,3
-            # - spurious-jpeg      (type=2): class 4,5
-            for ix, spurious_type_ix in enumerate([1, 1, 2, 2, 3, 3]):
+            # - spurious-copyright (type=0): class 0,3
+            # - spurious-watermark (type=1): class 1,4
+            # - spurious-jpeg      (type=2): class 2,5
+            for ix, spurious_type_ix in enumerate([1, 2, 3, 1, 2, 3]):
                 cls_ix = sorted_classes[ix]
 
                 indices = (
