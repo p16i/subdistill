@@ -147,7 +147,9 @@ def test_target_transform():
 @pytest.mark.parametrize("lvl", [0.125, 0.25, 0.5, 1.0])
 @pytest.mark.parametrize("train_split", [True, False])
 @pytest.mark.parametrize("dataset_slug", ["cifar100-people--spurious-plussign"])
-def test_dataset_with_spurious_correlation(dataset_slug, lvl, train_split, victim_class=None):
+def test_dataset_with_spurious_correlation(
+    dataset_slug, lvl, train_split, victim_class=None
+):
 
     dataset = datasets.construct("--".join([dataset_slug, str(lvl)]))
 
