@@ -415,8 +415,6 @@ class ImageNetSuperclassWithThreeSpuriousFeatures(ImageNetSuperClass):
     ):
         super().__init__(selected_classes=selected_classes)
 
-        assert contamination_level == 1.0
-
         self.contamination_level = contamination_level
 
         self.dataclass = TorchVisionDatasetImageNetWithThreeSpuriousFeatures
@@ -458,7 +456,6 @@ class ImageNetSuperclassWithThreeSpuriousFeatures(ImageNetSuperClass):
         else:
             # for `validation` set,  samples from all classes have the same
             # likelihood to be either in these three groups
-            # - clean (always 33%)
             # - type 1: spurious-copyright (contamination level * 100%)
             # - type 2: spurious-watermark (contamination level * 100%)
             # - type 3: spurious-jpeg (contamintaion level * 100 %)
@@ -482,7 +479,7 @@ class ImageNetSuperclassWithThreeSpuriousFeatures(ImageNetSuperClass):
         return ds
 
 
-class ImageNetSuperclasssValSplitWithWatermarkJPEGSpuriousFeatures(
+class ImageNetSuperclassValSplitWithThreeSpuriousFeatures(
     ImageNetSuperclassWithThreeSpuriousFeatures
 ):
     seed = 1
@@ -548,35 +545,30 @@ def ano():
                     victim_class=victim_class,
                 )
 
-    # construct valsplit
-    for dataclass in [
-        # TorchVisionDatasetImageNetWithCopyrightTag,
-        TorchVisionDatasetImageNetWithWatermark,
-        # TorchVisionDatasetImageNetWithJPEGArtifact,
-    ]:
+    for superclass in ["cat", "butterfly"]:
+        # construct valsplit
 
-        selected_classes = IMAGENET_SUPERCLASS_MAPPING["butterfly"]
+        selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
+
         for ix, victim_class in enumerate(selected_classes):
             for contamination_level in [0.0, 0.5, 1.0]:
                 sslug = "--".join(
                     [
-                        "imagenet-valsplit-butterfly",
-                        dataclass.slug,
+                        f"imagenet-valsplit-{superclass}",
+                        TorchVisionDatasetImageNetWithThreeSpuriousFeatures.slug,
                         f"{contamination_level}",
                     ]
                 )
                 DATASETS[sslug] = partial(
-                    ImageNetSuperclasssValSplitWithSpurriousFeature,
+                    ImageNetSuperclassValSplitWithThreeSpuriousFeatures,
                     contamination_level=contamination_level,
                     selected_classes=selected_classes,
-                    dataclass=dataclass,
-                    victim_class=victim_class,
                 )
 
     for superclass, slug, arr_contamination_levels, dataset_class in [
         (
-            "butterfly",
-            "butterfly",
+            "cat",
+            "cat",
             (
                 0.5,
                 1.0,

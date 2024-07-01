@@ -14,6 +14,10 @@ from torchvision.datasets import ImageNet
         ("imagenet-car", [407, 436, 468, 511, 609, 627, 656, 661, 751, 817]),
         ("imagenet-cat", [281, 282, 283, 284, 285, 286, 287]),
         (
+            "imagenet-valsplit-cat--spurious-copyrightwatermarkjpeg--0.0",
+            [281, 282, 283, 284, 285, 286, 287],
+        ),
+        (
             "imagenet-edible_fruit",
             [
                 948,
@@ -74,17 +78,13 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 
 @pytest.mark.parametrize(
     "lvl",
-    [
-        # 0.125, 0.25, 0.5,
-        1.0
-    ],
+    [1.0],
 )
 @pytest.mark.parametrize("train_split", [True, False])
 @pytest.mark.parametrize("dataset_slug", ["imagenet-random--spurious-watermark"])
 @pytest.mark.parametrize(
     "cix,victim_class",
     [(0, 100)],
-    # list(enumerate(datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["random"])),
 )
 @pytest.mark.gpu
 def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
@@ -138,7 +138,7 @@ def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
 def test_valsplit_dataset_with_spurious_correlation(
     lvl, train_split, cix, victim_class
 ):
-    variant = f"spurious-watermarkC{cix}"
+    variant = f"spurious-copyrightwatermarkjpeg"
     total_train_samples = len(
         datasets.construct("imagenet-butterfly").create_subset(train_split=True).targets
     )
@@ -203,15 +203,13 @@ def test_valsplit_dataset_with_spurious_correlation(
 @pytest.mark.parametrize(
     "dataset_name,lvl,atol",
     [
-        # ("butterfly", 0.5, 0.0),
-        ("butterfly", 1.0, 13.0),
-        # ("valsplit-butterfly", 0.0, 21),
-        # ("valsplit-butterfly", 0.5, 21),
-        # ("valsplit-butterfly", 1.0, 21),
+        ("cat", 1.0, 30.0),
+        ("cat", 0.5, 30.0),
+        ("valsplit-cat", 0.0, 30.0),
+        ("valsplit-cat", 1.0, 30.0),
     ],
 )
 @pytest.mark.slow
-# @pytest.mark.skip(reason="skip for now (2024-06-s33)")
 def test_dataset_with_three_spurious_correlations(
     lvl, train_split, dataset_name, variant, atol
 ):
@@ -222,22 +220,26 @@ def test_dataset_with_three_spurious_correlations(
         dataset.create_subset(train_split=train_split)
     )
 
+    num_victim_classes = num_classes - 1
+
     counts = np.zeros(4)
     for l in np.array(ds.arr_data_spurious).astype(int):
         counts[l] = counts[l] + 1
 
     if train_split:
-        if dataset_name == "butterfly":
-            n_per_class = 1300
-        else:
+        if "valsplit" in dataset_name:
             n_per_class = int(1300 * 0.8)
+        else:
+            n_per_class = 1300
 
         n_spurious_samples_per_class = np.floor(n_per_class * lvl)
         np.testing.assert_allclose(np.sum(counts), n_per_class * num_classes)
+
         np.testing.assert_allclose(
             counts,
             [
-                (n_per_class - n_spurious_samples_per_class) * 6,
+                (n_per_class - n_spurious_samples_per_class) * num_victim_classes
+                + n_per_class,
                 n_spurious_samples_per_class * 2,
                 n_spurious_samples_per_class * 2,
                 n_spurious_samples_per_class * 2,
@@ -245,23 +247,23 @@ def test_dataset_with_three_spurious_correlations(
             atol=atol,
         )
     else:
-        if dataset_name == "butterfly":
-            n_per_class = 50
-        else:
+        if "valsplit" in dataset_name:
             # this is val set of valsplit
-            n_per_class = 1300 * 0.2
+            n_per_class = int(1300 * 0.2)
+        else:
+            n_per_class = 50
 
         total = len(ds)
-        print(total)
 
-        n_spurious_samples_per_class = np.floor(total * lvl * (1 / 6))
+        n_spurious_samples_per_type = int(total * lvl) / 3
+
         np.testing.assert_allclose(
             counts,
             [
-                total - 6 * n_spurious_samples_per_class,
-                n_spurious_samples_per_class * 2,
-                n_spurious_samples_per_class * 2,
-                n_spurious_samples_per_class * 2,
+                total - 3 * n_spurious_samples_per_type,
+                n_spurious_samples_per_type,
+                n_spurious_samples_per_type,
+                n_spurious_samples_per_type,
             ],
             atol=atol,
         )
