@@ -90,7 +90,7 @@ class DatasetConfiguration(ABC):
         pass
 
     @property
-    def input_statsstics(self) -> typing.Tuple[typing.List[float], typing.List[float]]:
+    def input_statistics(self) -> typing.Tuple[typing.List[float], typing.List[float]]:
         return [
             self._normalizer.mean,
             self._normalizer.std,
