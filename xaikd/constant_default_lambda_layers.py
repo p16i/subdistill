@@ -120,4 +120,15 @@ DEFAULT_LAMBDA_LAYER = {
             "basis-identity:pcalookahead--uncentered": 100.0,
         },
     },
+    "imagenet-cat-small": {
+        "imagenet-resnet18-tv": {
+            "nothing": 0,
+            "fitnet-relu": 10000.0,
+            "attention-transfer": 10.0,
+            "vid": 1.0,
+            "basis-identity:pca--uncentered": 10.0,
+            "basis-identity:prca-sortabs--uncentered": 1000.0,
+            "basis-identity:pcalookahead--uncentered": 100.0,
+        }
+    },
 }
