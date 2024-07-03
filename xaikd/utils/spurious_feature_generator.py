@@ -124,7 +124,7 @@ def imagenet_watermark(img: TypeImage) -> TypeImage:
             cw - nmw // 2,
             ch - nmh // 2,
         ),
-        mask=watermark.point(lambda i: 0.5 * i),
+        mask=watermark.point(lambda i: 0.8 * i),
     )
 
     return img
