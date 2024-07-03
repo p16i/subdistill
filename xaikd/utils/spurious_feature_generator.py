@@ -78,7 +78,7 @@ def imagenet_copyright(img: TypeImage, seed: int) -> TypeImage:
 
     scale_size = 256
 
-    marksize = 75
+    marksize = 80
 
     minsize = np.min([img_w, img_h])
     ratio2 = minsize / scale_size
@@ -100,13 +100,13 @@ def imagenet_copyright(img: TypeImage, seed: int) -> TypeImage:
             cw - nmw // 2 + delta_x,
             ch - nmh // 2 + delta_y,
         ),
-        mask=watermark.point(lambda i: 0.8 * i),
+        mask=watermark.point(lambda i: 0.9 * i),
     )
 
     return img
 
 
-def imagenet_center_watermark(img: TypeImage) -> TypeImage:
+def imagenet_watermark(img: TypeImage) -> TypeImage:
     watermark = Image.open(
         str(
             Path(os.path.dirname(constants.PACKAGE_DIR))
