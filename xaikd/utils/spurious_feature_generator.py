@@ -106,7 +106,7 @@ def imagenet_copyright(img: TypeImage, seed: int) -> TypeImage:
     return img
 
 
-def imagenet_watermark(img: TypeImage) -> TypeImage:
+def imagenet_center_watermark(img: TypeImage) -> TypeImage:
     watermark = Image.open(
         str(
             Path(os.path.dirname(constants.PACKAGE_DIR))
