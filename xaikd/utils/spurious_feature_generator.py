@@ -77,6 +77,7 @@ def imagenet_copyright(img: TypeImage, seed: int) -> TypeImage:
     cw, ch = img_w // 2, img_h // 2
 
     scale_size = 256
+    crop_size = 224
 
     marksize = 80
 
@@ -92,13 +93,12 @@ def imagenet_copyright(img: TypeImage, seed: int) -> TypeImage:
     # delta_x, delta_y = location
 
     delta_x = rng.choice([50, -50])
-    delta_y = rng.choice([80, -80])
 
     img.paste(
         watermark,
         (
             cw - nmw // 2 + delta_x,
-            ch - nmh // 2 + delta_y,
+            ch + int(ratio2 * crop_size // 2) - nmh - 5,
         ),
         mask=watermark.point(lambda i: 0.9 * i),
     )
