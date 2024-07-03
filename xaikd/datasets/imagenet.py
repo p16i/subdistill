@@ -361,15 +361,6 @@ class TorchVisionDatasetImageNetWithThreeSpuriousFeatures(tvd.ImageNet):
     arr_data_spurious: typing.List[int]  # if 0 then not spurious
     slug = "spurious-copyrightwatermarkjpeg"
 
-    copyright = default_loader(
-        str(
-            Path(os.path.dirname(constants.PACKAGE_DIR))
-            / "resources"
-            / "copyright"
-            / "1.png"
-        )
-    )
-
     def __getitem__(self, index: int):
         """
         Args:
@@ -391,11 +382,9 @@ class TorchVisionDatasetImageNetWithThreeSpuriousFeatures(tvd.ImageNet):
         ), f"type={spurious_type}"
 
         if spurious_type == 1:
-            sample = spurious_feature_generator.imagenet_copyright(
-                sample, self.copyright
-            )
-        if spurious_type == 2:
             sample = spurious_feature_generator.imagenet_watermark(sample)
+        if spurious_type == 2:
+            sample = spurious_feature_generator.imagenet_copyright(sample, seed=index)
         elif spurious_type == 3:
             sample = spurious_feature_generator.jpeg_artifact(sample)
         else:

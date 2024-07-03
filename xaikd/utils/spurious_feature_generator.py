@@ -14,47 +14,59 @@ from torchvision.transforms import functional as F
 from xaikd import constants
 
 
-def imagenet_copyright(img: TypeImage, watermark: TypeImage) -> TypeImage:
-    # this makes sure that we do NOT override the input image.
-    img = img.copy()
+# def imagenet_copyright(img: TypeImage, seed: int) -> TypeImage:
+#     watermark = Image.open(
+#         str(
+#             Path(os.path.dirname(constants.PACKAGE_DIR))
+#             / "resources"
+#             / "copyright"
+#             / "4.png"
+#         )
+#     )
 
-    img_w, img_h = img.size
-    cw, ch = img_w // 2, img_h // 2
-    scale_size = 256
-    crop_size = 224
+#     rng = np.random.default_rng(seed=seed)
 
-    mw, mh = watermark.size
+#     # this makes sure that we do NOT override the input image.
+#     img = img.copy()
 
-    ratio = scale_size / mw
+#     img_w, img_h = img.size
+#     cw, ch = img_w // 2, img_h // 2
+#     scale_size = 256
+#     crop_size = 224
 
-    minsize = np.min([img_w, img_h])
-    ratio2 = minsize / scale_size
+#     mw, mh = watermark.size
 
-    nmw = int(mw * ratio * ratio2)
-    nmh = int(mh * ratio * ratio2)
-    watermark = watermark.convert("L")
-    watermark = watermark.resize((nmw, nmh))
+#     ratio = scale_size / mw
 
-    img.paste(
-        watermark,
-        (
-            cw - nmw // 2,
-            ch + int(ratio2 * crop_size // 2) - nmh,
-        ),
-    )
+#     minsize = np.min([img_w, img_h])
+#     ratio2 = minsize / scale_size
 
-    return img
+#     nmw = int(mw * ratio * ratio2)
+#     nmh = int(mh * ratio * ratio2)
+#     watermark = watermark.convert("L")
+#     watermark = watermark.resize((nmw, nmh))
+
+#     img.paste(
+#         watermark,
+#         (
+#             cw + ax,
+#             ch + ay,
+#         ),
+#     )
+
+#     return img
 
 
-def apply_copyright2_to_image(img: TypeImage, rng: np.random.Generator) -> TypeImage:
-    location = tuple(rng.choice(constants.ARR_IMAGENET_COPYRIGHT2_CORNER_LOCATIONs))
+def imagenet_copyright(img: TypeImage, seed: int) -> TypeImage:
+    rng = np.random.default_rng(seed=seed)
+    # location = tuple(rng.choice(constants.ARR_IMAGENET_COPYRIGHT2_CORNER_LOCATIONs))
 
     watermark = Image.open(
         str(
             Path(os.path.dirname(constants.PACKAGE_DIR))
             / "resources"
             / "copyright"
-            / "2.png"
+            / "4.png"
         )
     )
 
@@ -66,7 +78,7 @@ def apply_copyright2_to_image(img: TypeImage, rng: np.random.Generator) -> TypeI
 
     scale_size = 256
 
-    marksize = 150
+    marksize = 75
 
     minsize = np.min([img_w, img_h])
     ratio2 = minsize / scale_size
@@ -77,20 +89,24 @@ def apply_copyright2_to_image(img: TypeImage, rng: np.random.Generator) -> TypeI
     nmh = int((marksize / mw) * mh * ratio2)
     watermark = watermark.resize((nmw, nmh))
 
-    delta_x, delta_y = location
+    # delta_x, delta_y = location
+
+    delta_x = rng.choice([50, -50])
+    delta_y = rng.choice([80, -80])
+
     img.paste(
         watermark,
         (
             cw - nmw // 2 + delta_x,
             ch - nmh // 2 + delta_y,
         ),
-        mask=watermark,
+        mask=watermark.point(lambda i: 0.8 * i),
     )
 
     return img
 
 
-def imagenet_watermark(img: TypeImage) -> TypeImage:
+def imagenet_center_watermark(img: TypeImage) -> TypeImage:
     watermark = Image.open(
         str(
             Path(os.path.dirname(constants.PACKAGE_DIR))
