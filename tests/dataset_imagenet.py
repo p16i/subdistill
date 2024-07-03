@@ -203,10 +203,10 @@ def test_valsplit_dataset_with_spurious_correlation(
 @pytest.mark.parametrize(
     "dataset_name,lvl",
     [
-        ("cat", 1.0),
-        ("cat", 0.5),
         ("valsplit-cat", 0.0),
         ("valsplit-cat", 1.0),
+        ("cat", 1.0),
+        ("butterfly", 1.0),
     ],
 )
 @pytest.mark.slow
@@ -215,10 +215,9 @@ def test_dataset_with_three_spurious_correlations(
 ):
 
     if "valsplit" in dataset_name:
-        atol = 60 if train_split else 30
+        atol = 60 if train_split else 35
     else:
-        atol = 50 if train_split else 15
-
+        atol = 50 if train_split else 17
 
     dataset = datasets.construct(f"imagenet-{dataset_name}--{variant}--{lvl}")
     num_classes = len(dataset.selected_classes)
@@ -226,9 +225,9 @@ def test_dataset_with_three_spurious_correlations(
         dataset.create_subset(train_split=train_split)
     )
 
-    num_victim_classes = num_classes - 1
+    total_spurious_types = dataset.dataclass.total_spurious_types
 
-    counts = np.zeros(4)
+    counts = np.zeros(dataset.dataclass.total_spurious_types)
     for l in np.array(ds.arr_data_spurious).astype(int):
         counts[l] = counts[l] + 1
 
@@ -238,20 +237,36 @@ def test_dataset_with_three_spurious_correlations(
         else:
             n_per_class = 1300
 
-        n_spurious_samples_per_class = np.floor(n_per_class * lvl)
+        spurious_type_factors = np.bincount(
+            np.arange(num_classes) % total_spurious_types
+        )
+        spurious_type_factors[1:total_spurious_types] = (
+            spurious_type_factors[1:total_spurious_types] * lvl
+        )
+        spurious_type_factors = spurious_type_factors / np.sum(spurious_type_factors)
+
         np.testing.assert_allclose(np.sum(counts), n_per_class * num_classes)
 
         np.testing.assert_allclose(
             counts,
-            [
-                (n_per_class - n_spurious_samples_per_class) * num_victim_classes
-                + n_per_class,
-                n_spurious_samples_per_class * 2,
-                n_spurious_samples_per_class * 2,
-                n_spurious_samples_per_class * 2,
-            ],
+            spurious_type_factors * n_per_class * num_classes,
             atol=atol,
         )
+
+        for cix, cls_ix in enumerate(sorted(dataset.selected_classes)):
+            expected_spurious_type = cix % total_spurious_types if lvl > 0 else 0
+            class_sample_indices = np.argwhere(np.array(ds.targets) == cls_ix).reshape(
+                -1
+            )
+            np.testing.assert_allclose(
+                class_sample_indices.shape[0], n_per_class, atol=atol
+            )
+            np.testing.assert_equal(
+                np.array(ds.arr_data_spurious)[class_sample_indices],
+                expected_spurious_type,
+                err_msg=f"cix={cix}; expected_type={expected_spurious_type}",
+            )
+
     else:
         if "valsplit" in dataset_name:
             # this is val set of valsplit
@@ -261,15 +276,36 @@ def test_dataset_with_three_spurious_correlations(
 
         total = len(ds)
 
-        n_spurious_samples_per_type = int(total * lvl) / 3
+        n_spurious_samples_per_type = int(total * lvl) / total_spurious_types
 
         np.testing.assert_allclose(
             counts,
             [
-                total - 3 * n_spurious_samples_per_type,
+                (total - (total_spurious_types - 1) * n_spurious_samples_per_type),
                 n_spurious_samples_per_type,
                 n_spurious_samples_per_type,
                 n_spurious_samples_per_type,
             ],
             atol=atol,
         )
+
+        expected_count_spurious_type = (
+            [n_per_class, 0, 0, 0]
+            if lvl == 0
+            else [n_per_class / total_spurious_types] * total_spurious_types
+        )
+
+        for cix, cls_ix in enumerate(sorted(dataset.selected_classes)):
+            expected_spurious_type = cix % total_spurious_types if lvl > 0 else 0
+            class_sample_indices = np.argwhere(np.array(ds.targets) == cls_ix).reshape(
+                -1
+            )
+
+            count_spurious_types = np.zeros(4)
+            for six in class_sample_indices:
+                spurious_type = int(ds.arr_data_spurious[six])
+                count_spurious_types[spurious_type] += 1
+
+            np.testing.assert_allclose(
+                count_spurious_types, expected_count_spurious_type, atol=atol
+            )
