@@ -12,8 +12,8 @@ sync-artifact:
 	rsync --update -rv --max-size=2m hydra:~/projects/xai-kd/artifacts/$(name) ./artifacts
 
 
-jupyter:
-	DATASET_ROOT=$(shell pwd)/datasets PYTHONPATH=. poetry run jupyter notebook --ip=0.0.0.0 ./notebooks
+jupyter-local:
+	DATASET_ROOT=$(shell pwd)/datasets PYTHONPATH=$(shell pwd) jupyter notebook --ip=0.0.0.0 ./notebooks
 
 jupyter-app:
 	WITH_DATA=1 APPTAINERENV_PYTHONPATH=$(shell pwd) DATASET_ROOT=$(shell pwd)/datasets  ./runpy  jupyter notebook --ip 0.0.0.0   ./notebooks
