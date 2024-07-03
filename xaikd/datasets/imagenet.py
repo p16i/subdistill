@@ -226,7 +226,7 @@ class TorchVisionDatasetImageNetWithWatermark(
     def modify_sample(
         self, sample: spurious_feature_generator.TypeImage
     ) -> spurious_feature_generator.TypeImage:
-        return spurious_feature_generator.imagenet_watermark(sample)
+        return spurious_feature_generator.imagenet_center_watermark(sample)
 
 
 class TorchVisionDatasetImageNetWithJPEGArtifact(
