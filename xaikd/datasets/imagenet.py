@@ -382,7 +382,7 @@ class TorchVisionDatasetImageNetWithThreeSpuriousFeatures(tvd.ImageNet):
         ), f"type={spurious_type}"
 
         if spurious_type == 1:
-            sample = spurious_feature_generator.imagenet_watermark(sample)
+            sample = spurious_feature_generator.imagenet_center_watermark(sample)
         if spurious_type == 2:
             sample = spurious_feature_generator.imagenet_copyright(sample, seed=index)
         elif spurious_type == 3:
