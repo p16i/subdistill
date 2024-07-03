@@ -418,7 +418,7 @@ class ImageNetSuperclassWithThreeSpuriousFeatures(ImageNetSuperClass):
     ):
         super().__init__(selected_classes=selected_classes)
 
-        assert contamination_level in [0.0, 1.0]
+        assert 0 <= contamination_level <= 1.0
 
         self.contamination_level = contamination_level
 
@@ -436,7 +436,7 @@ class ImageNetSuperclassWithThreeSpuriousFeatures(ImageNetSuperClass):
 
         n = len(ds.targets)
 
-        arr_data_spurious = np.zeros(n)
+        arr_data_spurious = np.zeros(n, dtype=int)
 
         sorted_classes = list(sorted(self.selected_classes))
 
@@ -447,7 +447,7 @@ class ImageNetSuperclassWithThreeSpuriousFeatures(ImageNetSuperClass):
             # - spurious-jpeg      (type=2): class 2,5
             # for ix, spurious_type_ix in enumerate([1, 2, 3, 1, 2, 3]):
             for ix, cls_ix in enumerate(sorted_classes):
-                spurious_type_ix = ix % self.dataclass.total_spurious_types
+                spurious_type_ix = int(ix % self.dataclass.total_spurious_types)
 
                 indices = (
                     np.argwhere(np.array(ds.targets) == cls_ix).reshape(-1).tolist()
@@ -531,7 +531,7 @@ class ImageNetSuperclassValSplitWithThreeSpuriousFeatures(
 
 
 def ano():
-
+    # construct watermark only
     for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
         slug = f"imagenet-{superclass}"
         selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
@@ -552,53 +552,36 @@ def ano():
                     victim_class=victim_class,
                 )
 
-    for superclass in ["cat", "butterfly"]:
-        # construct valsplit
-
+    # construct threespurious
+    for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
         selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
 
-        for ix, victim_class in enumerate(selected_classes):
-            for contamination_level in [0.0, 0.5, 1.0]:
+        for slug, arr_contamination_levels, dataset_class in [
+            (
+                superclass,
+                [0.1, 0.25, 0.5, 0.75, 1.0],
+                ImageNetSuperclassWithThreeSpuriousFeatures,
+            ),
+            (
+                f"valsplit-{superclass}",
+                [0.0, 1.0],
+                ImageNetSuperclassValSplitWithThreeSpuriousFeatures,
+            ),
+        ]:
+
+            for contamination_level in arr_contamination_levels:
                 sslug = "--".join(
                     [
-                        f"imagenet-valsplit-{superclass}",
+                        f"imagenet-{slug}",
                         TorchVisionDatasetImageNetWithThreeSpuriousFeatures.slug,
                         f"{contamination_level}",
                     ]
                 )
                 DATASETS[sslug] = partial(
-                    ImageNetSuperclassValSplitWithThreeSpuriousFeatures,
+                    dataset_class,
                     contamination_level=contamination_level,
                     selected_classes=selected_classes,
                 )
-
-    for superclass, arr_contamination_levels, dataset_class in [
-        (
-            "cat",
-            (
-                # 0.5,
-                1.0,
-            ),
-            ImageNetSuperclassWithThreeSpuriousFeatures,
-        ),
-        (
-            "butterfly",
-            (
-                0.5,
-                1.0,
-            ),
-            ImageNetSuperclassWithThreeSpuriousFeatures,
-        ),
-    ]:
-        for contamination_level in arr_contamination_levels:
-            name = f"imagenet-{superclass}"
-            spuroius_slug = TorchVisionDatasetImageNetWithThreeSpuriousFeatures.slug
-            sslug = "--".join([name, spuroius_slug, str(contamination_level)])
-            DATASETS[sslug] = partial(
-                dataset_class,
-                selected_classes=IMAGENET_SUPERCLASS_MAPPING[superclass],
-                contamination_level=contamination_level,
-            )
 
 
 ano()

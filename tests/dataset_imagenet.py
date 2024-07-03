@@ -206,7 +206,12 @@ def test_valsplit_dataset_with_spurious_correlation(
         ("valsplit-cat", 0.0),
         ("valsplit-cat", 1.0),
         ("cat", 1.0),
+        ("cat", 0.75),
+        ("cat", 0.5),
+        ("cat", 0.25),
+        ("cat", 0.1),
         ("butterfly", 1.0),
+        ("butterfly", 0.5),
     ],
 )
 @pytest.mark.slow
@@ -239,17 +244,20 @@ def test_dataset_with_three_spurious_correlations(
 
         spurious_type_factors = np.bincount(
             np.arange(num_classes) % total_spurious_types
-        )
-        spurious_type_factors[1:total_spurious_types] = (
-            spurious_type_factors[1:total_spurious_types] * lvl
-        )
-        spurious_type_factors = spurious_type_factors / np.sum(spurious_type_factors)
+        ).astype(float)
 
         np.testing.assert_allclose(np.sum(counts), n_per_class * num_classes)
 
+        expected_counts = n_per_class * ((spurious_type_factors * lvl))
+
+        # remark:  we take into account "samples" that are not contaminated.
+        expected_counts += n_per_class * np.array(
+            [(1 - lvl) * np.sum(spurious_type_factors), 0, 0, 0]
+        )
+
         np.testing.assert_allclose(
             counts,
-            spurious_type_factors * n_per_class * num_classes,
+            expected_counts,
             atol=atol,
         )
 
@@ -261,10 +269,16 @@ def test_dataset_with_three_spurious_correlations(
             np.testing.assert_allclose(
                 class_sample_indices.shape[0], n_per_class, atol=atol
             )
-            np.testing.assert_equal(
-                np.array(ds.arr_data_spurious)[class_sample_indices],
-                expected_spurious_type,
-                err_msg=f"cix={cix}; expected_type={expected_spurious_type}",
+
+            expected_lvl = lvl if expected_spurious_type != 0 else 1.0
+            np.testing.assert_allclose(
+                (
+                    np.array(ds.arr_data_spurious)[class_sample_indices]
+                    == expected_spurious_type
+                ).mean(),
+                expected_lvl,
+                atol=1e-2,
+                err_msg=f"cix={cix}; expected_type={expected_spurious_type} (shape: {class_sample_indices.shape})",
             )
 
     else:
@@ -278,22 +292,25 @@ def test_dataset_with_three_spurious_correlations(
 
         n_spurious_samples_per_type = int(total * lvl) / total_spurious_types
 
+        expected_counts = [
+            (total - (total_spurious_types - 1) * n_spurious_samples_per_type),
+            n_spurious_samples_per_type,
+            n_spurious_samples_per_type,
+            n_spurious_samples_per_type,
+        ]
+
         np.testing.assert_allclose(
             counts,
-            [
-                (total - (total_spurious_types - 1) * n_spurious_samples_per_type),
-                n_spurious_samples_per_type,
-                n_spurious_samples_per_type,
-                n_spurious_samples_per_type,
-            ],
+            expected_counts,
             atol=atol,
         )
 
-        expected_count_spurious_type = (
-            [n_per_class, 0, 0, 0]
-            if lvl == 0
-            else [n_per_class / total_spurious_types] * total_spurious_types
+        expected_count_spurious_type = n_per_class * (
+            (lvl * np.ones(total_spurious_types) / total_spurious_types)
         )
+
+        # remark:  we take into account "samples" that are not contaminated.
+        expected_count_spurious_type += n_per_class * np.array([(1 - lvl), 0, 0, 0])
 
         for cix, cls_ix in enumerate(sorted(dataset.selected_classes)):
             expected_spurious_type = cix % total_spurious_types if lvl > 0 else 0
