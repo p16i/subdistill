@@ -359,7 +359,7 @@ class ImageNetSuperclasssValSplitWithSpurriousFeature(ImageNetSuperClass):
 class TorchVisionDatasetImageNetWithThreeSpuriousFeatures(tvd.ImageNet):
     total_spurious_types = 4
     arr_data_spurious: typing.List[int]  # if 0 then not spurious
-    slug = "spurious-copyrightwatermarkjpeg"
+    slug = "spurious-threespurious"
 
     def __getitem__(self, index: int):
         """

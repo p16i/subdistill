@@ -14,7 +14,7 @@ from torchvision.datasets import ImageNet
         ("imagenet-car", [407, 436, 468, 511, 609, 627, 656, 661, 751, 817]),
         ("imagenet-cat", [281, 282, 283, 284, 285, 286, 287]),
         (
-            "imagenet-valsplit-cat--spurious-copyrightwatermarkjpeg--0.0",
+            "imagenet-valsplit-cat--spurious-threespurious--0.0",
             [281, 282, 283, 284, 285, 286, 287],
         ),
         (
@@ -197,7 +197,7 @@ def test_valsplit_dataset_with_spurious_correlation(
 @pytest.mark.parametrize(
     "variant",
     [
-        "spurious-copyrightwatermarkjpeg",
+        "spurious-threespurious",
     ],
 )
 @pytest.mark.parametrize(
