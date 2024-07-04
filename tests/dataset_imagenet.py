@@ -14,10 +14,6 @@ from torchvision.datasets import ImageNet
         ("imagenet-car", [407, 436, 468, 511, 609, 627, 656, 661, 751, 817]),
         ("imagenet-cat", [281, 282, 283, 284, 285, 286, 287]),
         (
-            "imagenet-valsplit-cat--spurious-threespurious--0.0",
-            [281, 282, 283, 284, 285, 286, 287],
-        ),
-        (
             "imagenet-edible_fruit",
             [
                 948,
@@ -58,20 +54,32 @@ from torchvision.datasets import ImageNet
         ),
     ],
 )
-@pytest.mark.parametrize("lvl", [0.0, 0.125, 0.25, 0.5, 1.0])
+@pytest.mark.parametrize(
+    "lvl",
+    [
+        0.0,
+        0.25,
+        0.5,
+        1.0,
+    ],
+)
 def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 
     arr_datasets = []
     if lvl > 0:
-        for cix in expected_class_indices:
+        for cix, _ in enumerate(expected_class_indices):
             arr_datasets.append(
                 "--".join([dataset_name, f"spurious-watermarkC{cix}", f"{lvl}"])
             )
+            arr_datasets.append(
+                "--".join([dataset_name, f"spurious-threespurious", f"{lvl}"])
+            )
+
     else:
         arr_datasets = [dataset_name]
 
     for dataset in arr_datasets:
-        dataset = datasets.construct(dataset_name)
+        dataset = datasets.construct(dataset)
 
         np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
 
