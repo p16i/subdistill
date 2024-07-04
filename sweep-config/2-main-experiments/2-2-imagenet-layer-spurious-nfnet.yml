@@ -21,7 +21,7 @@ parameters:
   dataset:
     value: imagenet-butterfly
   dataset-variant:
-    value: spurious-watermarkjpeg--1.0
+    value: spurious-threespurious--1.0
   training-size:
     value: 1.0
   seed:

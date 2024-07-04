@@ -54,35 +54,58 @@ from torchvision.datasets import ImageNet
         ),
     ],
 )
-@pytest.mark.parametrize("lvl", [0.0, 0.125, 0.25, 0.5, 1.0])
+@pytest.mark.parametrize(
+    "lvl",
+    [
+        0.0,
+        0.25,
+        0.5,
+        1.0,
+    ],
+)
 def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
 
+    arr_datasets = []
     if lvl > 0:
-        dataset_name = "--".join([dataset_name, "spurious-copyright", f"{lvl}"])
+        for cix, _ in enumerate(expected_class_indices):
+            arr_datasets.append(
+                "--".join([dataset_name, f"spurious-watermarkC{cix}", f"{lvl}"])
+            )
+            arr_datasets.append(
+                "--".join([dataset_name, f"spurious-threespurious", f"{lvl}"])
+            )
+
     else:
-        dataset_name = dataset_name
+        arr_datasets = [dataset_name]
 
-    dataset = datasets.construct(dataset_name)
+    for dataset in arr_datasets:
+        dataset = datasets.construct(dataset)
 
-    np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
+        np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
 
 
 @pytest.mark.parametrize(
     "lvl",
-    [0.125, 0.25, 0.5, 1.0],
+    [1.0],
 )
 @pytest.mark.parametrize("train_split", [True, False])
-@pytest.mark.parametrize("dataset_slug", ["imagenet-random--spurious-copyright"])
+@pytest.mark.parametrize("dataset_slug", ["imagenet-random--spurious-watermark"])
+@pytest.mark.parametrize(
+    "cix,victim_class",
+    [(0, 100)],
+)
 @pytest.mark.gpu
-def test_victim_propotion(dataset_slug, lvl, train_split):
+def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
+    dataset_name = f"{dataset_slug}C{cix}"
     dataset_cifar100.test_dataset_with_spurious_correlation(
-        dataset_slug=dataset_slug, lvl=lvl, train_split=train_split
+        dataset_slug=dataset_name,
+        lvl=lvl,
+        train_split=train_split,
+        victim_class=victim_class,
     )
-    dataset = datasets.construct("--".join([dataset_slug, str(lvl)]))
+    dataset = datasets.construct("--".join([dataset_name, str(lvl)]))
 
     num_classes = len(dataset.selected_classes)
-
-    victim_class = dataset.selected_classes[0]
 
     ds = dataset.create_subset(train_split=train_split)
 
@@ -104,66 +127,6 @@ def test_victim_propotion(dataset_slug, lvl, train_split):
         assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
 
 
-@pytest.mark.parametrize("lvl", [0.0, 0.5, 1.0])
-@pytest.mark.parametrize("train_split", [True, False])
-@pytest.mark.parametrize(
-    "variant",
-    [
-        "spurious-copyright",
-        "spurious-watermark",
-        "spurious-jpeg",
-    ],
-)
-@pytest.mark.slow
-def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
-    total_train_samples = len(
-        datasets.construct("imagenet-butterfly").create_subset(train_split=True).targets
-    )
-    # testing the size of the split
-    dataset = datasets.construct(f"imagenet-valsplit-butterfly--{variant}--{lvl}")
-    # remark: here, we get subset of the official training set
-    ds = dataset.create_subset(train_split=train_split)
-
-    assert ds.split == "train"
-
-    assert isinstance(ds, ImageNet)
-
-    num_samples = len(ds.targets)
-
-    np.testing.assert_allclose(
-        num_samples,
-        total_train_samples
-        * (
-            constants.TRAINING_VAL_SPLIT_RATIO
-            if train_split
-            else 1 - constants.TRAINING_VAL_SPLIT_RATIO
-        ),
-    )
-
-    victim_class = dataset.selected_classes[0]
-    num_classes = len(dataset.selected_classes)
-
-    arr_targets = np.array(ds.targets)
-
-    arr_victim_indices = ds.victim_indices
-
-    if train_split:
-        np.testing.assert_allclose(
-            len(arr_victim_indices),
-            np.floor(lvl * (arr_targets == victim_class).sum()),
-        )
-        # for training set, we have victim for only for first class
-        np.testing.assert_equal(arr_targets[arr_victim_indices], victim_class)
-    else:
-        np.testing.assert_allclose(len(arr_victim_indices), np.floor(num_samples * lvl))
-
-        # for testing set, we have victim for all classe
-        if lvl > 0.0:
-            assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
-        else:
-            assert len(arr_victim_indices) == 0
-
-
 @pytest.mark.parametrize(
     "train_split",
     [
@@ -174,66 +137,132 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split, variant):
 @pytest.mark.parametrize(
     "variant",
     [
-        "spurious-watermarkjpeg",
+        "spurious-threespurious",
     ],
 )
 @pytest.mark.parametrize(
-    "dataset_name,lvl,atol",
+    "dataset_name,lvl",
     [
-        ("butterfly", 0.5, 0.0),
-        ("butterfly", 1.0, 0.0),
-        ("valsplit-butterfly", 0.0, 21),
-        ("valsplit-butterfly", 0.5, 21),
-        ("valsplit-butterfly", 1.0, 21),
+        ("valsplit-cat", 0.0),
+        ("valsplit-cat", 1.0),
+        ("cat", 1.0),
+        ("cat", 0.75),
+        ("cat", 0.5),
+        ("cat", 0.25),
+        ("cat", 0.1),
+        ("butterfly", 1.0),
+        ("butterfly", 0.5),
     ],
 )
 @pytest.mark.slow
-def test_dataset_with_watermark_jpeg_spurious_correlation(
-    lvl, train_split, dataset_name, variant, atol
+def test_dataset_with_three_spurious_correlations(
+    lvl, train_split, dataset_name, variant
 ):
+
+    if "valsplit" in dataset_name:
+        atol = 60 if train_split else 35
+    else:
+        atol = 50 if train_split else 17
 
     dataset = datasets.construct(f"imagenet-{dataset_name}--{variant}--{lvl}")
     num_classes = len(dataset.selected_classes)
-    ds: (
-        datasets.imagenet.TorchVisionDatasetImageNetWithWatermarkJPEGTwoSpuriousFeatures
-    ) = dataset.create_subset(train_split=train_split)
+    ds: datasets.imagenet.TorchVisionDatasetImageNetWithThreeSpuriousFeatures = (
+        dataset.create_subset(train_split=train_split)
+    )
 
-    counts = np.zeros(3)
+    total_spurious_types = dataset.dataclass.total_spurious_types
+
+    counts = np.zeros(dataset.dataclass.total_spurious_types)
     for l in np.array(ds.arr_data_spurious).astype(int):
         counts[l] = counts[l] + 1
 
     if train_split:
-        if dataset_name == "butterfly":
-            n_per_class = 1300
-        else:
+        if "valsplit" in dataset_name:
             n_per_class = int(1300 * 0.8)
+        else:
+            n_per_class = 1300
 
-        n_spurious_samples_per_class = np.floor(n_per_class * lvl)
+        spurious_type_factors = np.bincount(
+            np.arange(num_classes) % total_spurious_types
+        ).astype(float)
+
         np.testing.assert_allclose(np.sum(counts), n_per_class * num_classes)
+
+        expected_counts = n_per_class * ((spurious_type_factors * lvl))
+
+        # remark:  we take into account "samples" that are not contaminated.
+        expected_counts += n_per_class * np.array(
+            [(1 - lvl) * np.sum(spurious_type_factors), 0, 0, 0]
+        )
+
         np.testing.assert_allclose(
             counts,
-            [
-                n_per_class * 4 + (n_per_class - n_spurious_samples_per_class) * 2,
-                n_spurious_samples_per_class,
-                n_spurious_samples_per_class,
-            ],
+            expected_counts,
             atol=atol,
         )
+
+        for cix, cls_ix in enumerate(sorted(dataset.selected_classes)):
+            expected_spurious_type = cix % total_spurious_types if lvl > 0 else 0
+            class_sample_indices = np.argwhere(np.array(ds.targets) == cls_ix).reshape(
+                -1
+            )
+            np.testing.assert_allclose(
+                class_sample_indices.shape[0], n_per_class, atol=atol
+            )
+
+            expected_lvl = lvl if expected_spurious_type != 0 else 1.0
+            np.testing.assert_allclose(
+                (
+                    np.array(ds.arr_data_spurious)[class_sample_indices]
+                    == expected_spurious_type
+                ).mean(),
+                expected_lvl,
+                atol=1e-2,
+                err_msg=f"cix={cix}; expected_type={expected_spurious_type} (shape: {class_sample_indices.shape})",
+            )
+
     else:
-        if dataset_name == "butterfly":
-            n_per_class = 50
+        if "valsplit" in dataset_name:
+            # this is val set of valsplit
+            n_per_class = int(1300 * 0.2)
         else:
-            n_per_class = 1300 * 0.2
+            n_per_class = 50
 
         total = len(ds)
 
-        n_spurious_samples = np.floor(total * lvl * (1 / 3))
+        n_spurious_samples_per_type = int(total * lvl) / total_spurious_types
+
+        expected_counts = [
+            (total - (total_spurious_types - 1) * n_spurious_samples_per_type),
+            n_spurious_samples_per_type,
+            n_spurious_samples_per_type,
+            n_spurious_samples_per_type,
+        ]
+
         np.testing.assert_allclose(
             counts,
-            [
-                total - 2 * n_spurious_samples,
-                n_spurious_samples,
-                n_spurious_samples,
-            ],
+            expected_counts,
             atol=atol,
         )
+
+        expected_count_spurious_type = n_per_class * (
+            (lvl * np.ones(total_spurious_types) / total_spurious_types)
+        )
+
+        # remark:  we take into account "samples" that are not contaminated.
+        expected_count_spurious_type += n_per_class * np.array([(1 - lvl), 0, 0, 0])
+
+        for cix, cls_ix in enumerate(sorted(dataset.selected_classes)):
+            expected_spurious_type = cix % total_spurious_types if lvl > 0 else 0
+            class_sample_indices = np.argwhere(np.array(ds.targets) == cls_ix).reshape(
+                -1
+            )
+
+            count_spurious_types = np.zeros(4)
+            for six in class_sample_indices:
+                spurious_type = int(ds.arr_data_spurious[six])
+                count_spurious_types[spurious_type] += 1
+
+            np.testing.assert_allclose(
+                count_spurious_types, expected_count_spurious_type, atol=atol
+            )

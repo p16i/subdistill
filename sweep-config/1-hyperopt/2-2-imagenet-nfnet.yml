@@ -12,7 +12,7 @@ parameters:
   dataset:
     value: imagenet-valsplit-butterfly
   dataset-variant:
-    value: spurious-copyright--0.0
+    value: spurious-threespurious--0.0
   training-size:
     values:
       - 1.0
