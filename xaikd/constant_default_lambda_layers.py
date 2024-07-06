@@ -83,6 +83,9 @@ DEFAULT_LAMBDA_LAYER = {
             "basis-identity:pca--uncentered": 10.0,
             "basis-identity:prca-sortabs--uncentered": 100.0,
             "basis-identity:pcalookahead--uncentered": 100.0,
+            "basis-identity-learnable:pca--uncentered": 10.0,
+            "basis-identity-learnable:prca-sortabs--uncentered": 100.0,
+            "basis-identity-learnable:pcalookahead--uncentered": 100.0,
         },
         "imagenet-resnet50-tv": {
             "nothing": 0,
