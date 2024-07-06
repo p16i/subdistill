@@ -30,7 +30,10 @@ parameters:
       - 2
       - 3
   layer-policy:
-    value: basis-identity-learnable:pcalookahead--uncentered
+    values: 
+      - basis-identity-learnable:pca--uncentered
+      - basis-identity-learnable:prca-sortabs--uncentered
+      - basis-identity-learnable:pcalookahead--uncentered
   lambda-task:
       value: 0.0
   lambda-kd:
