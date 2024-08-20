@@ -150,6 +150,7 @@ def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
         ("cat", 0.5),
         ("cat", 0.25),
         ("cat", 0.1),
+        ("valsplit-butterfly", 1.0),
         ("butterfly", 1.0),
         ("butterfly", 0.5),
     ],
