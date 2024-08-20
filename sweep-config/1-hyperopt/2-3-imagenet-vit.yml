@@ -33,10 +33,10 @@ parameters:
   layer-policy:
     values:
       - basis-identity:pca--uncentered
-      - basis-identity:pcalookahead--uncentered
       - vid
       - fitnet-noact
       - attention-transfer
+      # - basis-identity:pcalookahead--uncentered
   output-dir:
     value: sweep-output/1-hyper-opt
   student:
