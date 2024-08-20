@@ -48,10 +48,10 @@ parameters:
       - nothing
       - basis-identity:pca--uncentered
       - basis-identity:prca-sortabs--uncentered
-      - basis-identity:pcalookahead--uncentered
       - vid
       - fitnet-relu
       - attention-transfer
+      # - basis-identity:pcalookahead--uncentered
   lambda-task:
       value: 0.0
   lambda-kd:
