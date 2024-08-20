@@ -431,10 +431,9 @@ class ImageNetSuperclassWithThreeSpuriousFeatures(ImageNetSuperClass):
 
         if train_split:
             # for `training` set,  samples from the first two classes have spurious features:
-            # - spurious-copyright (type=0): class 0,3
-            # - spurious-watermark (type=1): class 1,4
-            # - spurious-jpeg      (type=2): class 2,5
-            # for ix, spurious_type_ix in enumerate([1, 2, 3, 1, 2, 3]):
+            # - spurious-watermark (type=1): class 1,5, ...
+            # - spurious-copyright (type=2): class 2,6, ...
+            # - spurious-jpeg      (type=3): class 3,7, ...
             for ix, cls_ix in enumerate(sorted_classes):
                 spurious_type_ix = int(ix % self.dataclass.total_spurious_types)
 
@@ -451,8 +450,8 @@ class ImageNetSuperclassWithThreeSpuriousFeatures(ImageNetSuperClass):
         else:
             # for `validation` set,  samples from all classes have the same
             # likelihood to be either in these three groups
-            # - type 1: spurious-copyright (contamination level * 100%)
-            # - type 2: spurious-watermark (contamination level * 100%)
+            # - type 1: spurious-watermark (contamination level * 100%)
+            # - type 2: spurious-copyright (contamination level * 100%)
             # - type 3: spurious-jpeg (contamintaion level * 100 %)
             # - type 0: clean (the rest)
 
