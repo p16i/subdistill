@@ -23,7 +23,9 @@ parameters:
   dataset-variant:
     value: ""
   training-size:
-    value: 0.1
+    values:
+      - 0.25
+      - 0.1
   seed:
     values:
       - 1
