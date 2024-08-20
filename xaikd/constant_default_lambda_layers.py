@@ -28,6 +28,16 @@ DEFAULT_LAMBDA_LAYER = {
             "basis-identity:pcalookahead--uncentered": 100000.0,
         }
     },
+    "cifar100-spurious": {
+        "cifar100-resnet18-v1": {
+            "nothing": 0,
+            "fitnet-relu": 10.0,
+            "attention-transfer": 10000.0,
+            "vid": 100000.0,
+            "basis-identity:pca--uncentered": 1000.0,
+            "basis-identity:prca-sortabs--uncentered": 100000.0,
+        }
+    },
     "imagenet-clean": {
         "imagenet-resnet18-tv": {
             "nothing": 0,
