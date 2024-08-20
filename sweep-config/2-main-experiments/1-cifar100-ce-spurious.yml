@@ -40,7 +40,10 @@ parameters:
       - cifar100-vehicles_1
       - cifar100-vehicles_2
   dataset-variant:
-    value: "spurious-plussign--1.0"
+    values: 
+      - spurious-plussign--1.0
+      - spurious-plussign--0.75
+      - spurious-plussign--0.5
   training-size:
     value: 1.0
   lambda-task:
