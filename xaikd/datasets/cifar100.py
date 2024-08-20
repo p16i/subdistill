@@ -315,7 +315,7 @@ def ano():
         slug = f"cifar100-{super_class}"
         DATASETS[slug] = partial(Cifar100SuperClassesDataset, super_class=super_class)
 
-        for lvl in [0.125, 0.25, 0.5, 1.0]:
+        for lvl in [0.125, 0.25, 0.5, 0.75, 1.0]:
             sslug = "--".join([slug, "spurious-plussign", str(lvl)])
 
             DATASETS[sslug] = partial(

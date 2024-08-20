@@ -144,7 +144,7 @@ def test_target_transform():
     )
 
 
-@pytest.mark.parametrize("lvl", [0.125, 0.25, 0.5, 1.0])
+@pytest.mark.parametrize("lvl", [0.125, 0.25, 0.5, 0.75, 1.0])
 @pytest.mark.parametrize("train_split", [True, False])
 @pytest.mark.parametrize("dataset_slug", ["cifar100-people--spurious-plussign"])
 def test_dataset_with_spurious_correlation(
