@@ -133,6 +133,32 @@ DEFAULT_LAMBDA_LAYER = {
             "basis-identity:pcalookahead--uncentered": 100.0,
         },
     },
+    "imagenet-spurious": {
+        "imagenet-resnet18-tv": {
+            "nothing": 0,
+            "fitnet-relu": 100000.0,
+            "attention-transfer": 10.0,
+            "vid": 10.0,
+            "basis-identity:pca--uncentered": 1.0,
+            "basis-identity:prca-sortabs--uncentered": 100.0,
+        },
+        "imagenet-resnet50-tv": {
+            "nothing": 0,
+            "fitnet-relu": 1.0,
+            "attention-transfer": 100.0,
+            "vid": 100.0,
+            "basis-identity:pca--uncentered": 100.0,
+            "basis-identity:prca-sortabs--uncentered": 100.0,
+        },
+        "imagenet-vgg16-tv": {
+            "nothing": 0,
+            "fitnet-relu": 1000.0,
+            "attention-transfer": 100.0,
+            "vid": 10.0,
+            "basis-identity:pca--uncentered": 10.0,
+            "basis-identity:prca-sortabs--uncentered": 10.0,
+        },
+    },
     "imagenet-cat-small": {
         "imagenet-resnet18-tv": {
             "nothing": 0,

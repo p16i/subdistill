@@ -43,4 +43,4 @@ parameters:
   lambda-kd:
       value: 1.0
   default-lambda-layer-config:
-    value: imagenet-small
+    value: imagenet-spurious
