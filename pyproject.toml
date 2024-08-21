@@ -27,6 +27,7 @@ pytest = "^7.3.1"
 black = "^23.3.0"
 wandb = "^0.15.8"
 notebook = "6.5.5"
+fvcore = "^0.1.5.post20221221"
 
 
 [tool.poetry.group.addon.dependencies]
