@@ -36,6 +36,8 @@ DEFAULT_LAMBDA_LAYER = {
             "vid": 100000.0,
             "basis-identity:pca--uncentered": 1000.0,
             "basis-identity:prca-sortabs--uncentered": 100000.0,
+            "basis-identity-learnable:pca--uncentered": 1000,
+            "basis-identity-learnable:prca-sortabs--uncentered": 100000.0,
         }
     },
     "imagenet-clean": {
@@ -141,6 +143,8 @@ DEFAULT_LAMBDA_LAYER = {
             "vid": 10.0,
             "basis-identity:pca--uncentered": 1.0,
             "basis-identity:prca-sortabs--uncentered": 100.0,
+            "basis-identity-learnable:pca--uncentered": 1,
+            "basis-identity-learnable:prca-sortabs--uncentered": 100.0,
         },
         "imagenet-resnet50-tv": {
             "nothing": 0,

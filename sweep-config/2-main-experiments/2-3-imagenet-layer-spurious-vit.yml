@@ -33,10 +33,10 @@ parameters:
     values:
       - nothing
       - basis-identity:pca--uncentered
-      - basis-identity:pcalookahead--uncentered
       - vid
       - fitnet-noact
       - attention-transfer
+      # - basis-identity:pcalookahead--uncentered
   lambda-task:
       value: 0.0
   lambda-kd:
