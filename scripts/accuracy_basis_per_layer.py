@@ -50,7 +50,7 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
     utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
     model.to(device)
 
-    artifact_dir = Path(artifact_dir) / model_name / layer
+    artifact_dir = Path(artifact_dir) / dataset_name / model_name / layer
 
     dims = constants.ARCH_LAYER_DIMENSIONS[arch][layer]
 
