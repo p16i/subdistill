@@ -26,12 +26,12 @@ import numpy as np
 @click.command()
 @click.option("--model-name", type=str)
 @click.option("--layer", type=str)
-@click.option("--artifact-dir", type=str)
-@click.option("--dataset-name", type=str, default="imagenet-cat")
+@click.option("--dataset-name", type=str, default="imagenet-butterfly")
 @click.option(
     "--basis-names",
-    default="pca--uncentered,prca-sortabs--uncentered,pcalookahead--uncentered",
+    default="pca--uncentered,prca-sortabs--uncentered",
 )
+@click.option("--artifact-dir", type=str, default="/tmp")
 def main(model_name, layer, dataset_name, basis_names, artifact_dir):
     arguments = locals()
 
