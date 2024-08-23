@@ -95,9 +95,6 @@ DEFAULT_LAMBDA_LAYER = {
             "basis-identity:pca--uncentered": 10.0,
             "basis-identity:prca-sortabs--uncentered": 100.0,
             "basis-identity:pcalookahead--uncentered": 100.0,
-            "basis-identity-learnable:pca--uncentered": 10.0,
-            "basis-identity-learnable:prca-sortabs--uncentered": 100.0,
-            "basis-identity-learnable:pcalookahead--uncentered": 100.0,
         },
         "imagenet-resnet50-tv": {
             "nothing": 0,
@@ -162,16 +159,20 @@ DEFAULT_LAMBDA_LAYER = {
             "basis-identity:pca--uncentered": 10.0,
             "basis-identity:prca-sortabs--uncentered": 10.0,
         },
-    },
-    "imagenet-cat-small": {
-        "imagenet-resnet18-tv": {
+        "imagenet-nfnetf0-dm": {
             "nothing": 0,
-            "fitnet-relu": 10000.0,
-            "attention-transfer": 10.0,
-            "vid": 1.0,
+            "fitnet-noact": 1.0,
+            "attention-transfer": 1000.0,
+            "vid": 10000.0,
+            "basis-identity:pca--uncentered": 10000.0,
+            "basis-identity:prca-sortabs--uncentered": 100000.0,
+        },
+        "imagenet-vitb-tv": {
+            "nothing": 0,
+            "fitnet-noact": 1.0,
+            "attention-transfer": 100.0,
+            "vid": 1000.0,
             "basis-identity:pca--uncentered": 10.0,
-            "basis-identity:prca-sortabs--uncentered": 1000.0,
-            "basis-identity:pcalookahead--uncentered": 100.0,
-        }
+        },
     },
 }
