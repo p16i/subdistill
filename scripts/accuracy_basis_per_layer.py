@@ -22,8 +22,6 @@ from xaikd import datasets
 from xaikd.utils import metrics
 import numpy as np
 
-ARR_DIMS = [1, 2, 4, 8, 16, 32, 40, 48, 56]
-
 
 @click.command()
 @click.option("--model-name", type=str)
@@ -85,8 +83,6 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
         verbose=True,
     )
 
-    arr_ks = ARR_DIMS
-
     logit_modifier = attributors.WinningClassEvidence(
         num_classes=len(dataset.selected_classes)
     )
@@ -101,6 +97,12 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
         logit_modifier=logit_modifier,
     )
 
+    _, d = arr_act.shape
+
+    arr_ks = (
+        [1] + list(filter(lambda k: k % 2 == 0, np.arange(2, d // 2))) + [d // 2, d]
+    )
+
     for basis_name in tqdm(
         basis_names.split(","),
         desc=f"[model={model_name},device={device}]",
@@ -113,9 +115,8 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
             # this is mainly for pcalookahead
             model=model,
             layer=layer,
-            # todo: use shuffle=True
             dataloader=datasets.build_dataloader(
-                dataset.create_subset(train_split=True), shuffle=True
+                dataset.create_subset(train_split=True), shuffle=False
             ),
         )
 
@@ -151,6 +152,7 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
         )
 
     time_took = datetime.now() - start_time
+    click.echo(f"Results saved to: {artifact_dir}")
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
 
 
