@@ -100,9 +100,7 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
     _, d = arr_act.shape
 
     arr_ks = (
-        [1]
-        + list(filter(lambda k: k % 2 == 0, np.arange(2, d // 2).astype(int)))
-        + [d // 2, d]
+        [1] + list(filter(lambda k: k % 2 == 0, np.arange(2, d // 2))) + [d // 2, d]
     )
 
     for basis_name in tqdm(
@@ -150,7 +148,7 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
             dict(
                 accuracies=arr_accuracies,
                 losses=arr_losses,
-                arr_ks=np.array(arr_ks).astype(int).tolist(),
+                arr_ks=list(map(int, arr_ks)),
                 dims=dims,
                 original_accuracy=original_accuracy,
             ),
