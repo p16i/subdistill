@@ -122,22 +122,24 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
             ),
         )
 
-        accuracies = []
+        arr_accuracies = []
+        arr_losses = []
         for k in tqdm(arr_ks, desc=f"[dataset={dataset_name}; basis={basis_name}]"):
             try:
 
                 hook = module.register_forward_hook(
                     basis.construct_fh_rank_k_projection(k, device=device)
                 )
-                acc, _ = metrics.accuracy(
+                acc, loss = metrics.accuracy(
                     model,
                     dl_val,
                     num_classes=dataset.num_classes,
                     device=device,
-                    verbose=True,
+                    verbose=False,
                 )
                 print(f"basis_name={basis_name}; k={k}: acc={acc}")
-                accuracies.append(acc)
+                arr_losses.append(loss)
+                arr_accuracies.append(acc)
             finally:
                 hook.remove()
 
@@ -146,8 +148,9 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
         utils.dump_json(
             Path(f"{artifact_dir}/{basis_name}/accuracy.json"),
             dict(
-                accuracies=accuracies,
-                arr_ks=arr_ks,
+                accuracies=arr_accuracies,
+                losses=arr_losses,
+                arr_ks=np.array(arr_ks).astype(int).tolist(),
                 dims=dims,
                 original_accuracy=original_accuracy,
             ),
