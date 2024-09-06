@@ -150,6 +150,8 @@ DEFAULT_LAMBDA_LAYER = {
             "vid": 100.0,
             "basis-identity:pca--uncentered": 100.0,
             "basis-identity:prca-sortabs--uncentered": 100.0,
+            "basis-identity-learnable:pca--uncentered": 100.0,
+            "basis-identity-learnable:prca-sortabs--uncentered": 100.0,
         },
         "imagenet-vgg16-tv": {
             "nothing": 0,
@@ -158,6 +160,8 @@ DEFAULT_LAMBDA_LAYER = {
             "vid": 10.0,
             "basis-identity:pca--uncentered": 10.0,
             "basis-identity:prca-sortabs--uncentered": 10.0,
+            "basis-identity-learnable:pca--uncentered": 10.0,
+            "basis-identity-learnable:prca-sortabs--uncentered": 10.0,
         },
         "imagenet-nfnetf0-dm": {
             "nothing": 0,
@@ -166,6 +170,8 @@ DEFAULT_LAMBDA_LAYER = {
             "vid": 10000.0,
             "basis-identity:pca--uncentered": 10000.0,
             "basis-identity:prca-sortabs--uncentered": 100000.0,
+            "basis-identity-learnable:pca--uncentered": 10000.0,
+            "basis-identity-learnable:prca-sortabs--uncentered": 100000.0,
         },
         "imagenet-vitb-tv": {
             "nothing": 0,
