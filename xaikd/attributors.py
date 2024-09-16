@@ -281,7 +281,7 @@ def extract_activation_context(
                     np.testing.assert_allclose(
                         (act * ctx).detach().cpu().numpy(),
                         rel.detach().cpu().numpy(),
-                        atol=1e-6
+                        atol=1e-6,
                     )
 
                 assert ctx.shape == act.shape
