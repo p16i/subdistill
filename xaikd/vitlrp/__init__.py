@@ -304,7 +304,7 @@ def _build_composite(
     lb: torch.Tensor,
     hb: torch.Tensor,
     gamma=0.1,
-    eps=1e-1,
+    eps=0.1,
     first_layer_rule="box",
 ):
     pass
