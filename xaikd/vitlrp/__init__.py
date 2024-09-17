@@ -251,7 +251,7 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
         module, (AttentionInputProjection, NonDynamicallyQuantizableLinear)
     ):
         # return nfnetlrp.SafeGamma(gamma=gamma, stabilizer=eps)
-        return Gamma(gamma=gamma, eps=eps)
+        return Gamma(gamma=gamma, stabilizer=eps)
     elif isinstance(
         module, (LayerNormStandardizeStep, LayerNormAffineTransformationStep)
     ):
