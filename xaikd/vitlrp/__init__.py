@@ -269,7 +269,7 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
     elif isinstance(
         module, (LayerNormStandardizeStep, LayerNormAffineTransformationStep)
     ):
-        return SafeEpsilon(epsilon=0)
+        return SafeEpsilon(epsilon=eps)
     else:
         return None
 
