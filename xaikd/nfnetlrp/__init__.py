@@ -277,13 +277,6 @@ class ScaledStdConv2dSameCanonizer(AttributeCanonizer):
     def remove(self):
         original_weight = getattr(self.module, "___original_weight")
 
-        super().remove()
-
-        setattr(self.module, "weight", original_weight)
-
-    def remove(self):
-        original_weight = getattr(self.module, "___original_weight")
-
         # remove all the keys
         for key in self.attribute_keys:
             delattr(self.module, key)
