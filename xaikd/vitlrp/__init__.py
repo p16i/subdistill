@@ -33,10 +33,10 @@ class EncoderCanonizer(AttributeCanonizer):
         if isinstance(module, vision_transformer.Encoder):
             attributes = {
                 "forward": cls.forward.__get__(module),
-                "ln": module.ln,
-                "layers": module.layers,
+                "_ln": module.ln,
+                "_layers": module.layers,
                 "sum_pos_embedding": SummationPositionEmbed(module.pos_embedding),
-                "dropout": module.dropout,
+                "_dropout": module.dropout,
             }
             return attributes
 
@@ -48,7 +48,7 @@ class EncoderCanonizer(AttributeCanonizer):
         )
         input = self.sum_pos_embedding(input)
 
-        return self.ln(self.layers(self.dropout(input)))
+        return self._ln(self._layers(self._dropout(input)))
 
 
 class LayerNormStandardizeStep(nn.Module):
@@ -89,8 +89,10 @@ class LayerNormCanonizer(AttributeCanonizer):
         if isinstance(module, nn.LayerNorm):
             attributes = {
                 "forward": cls.forward.__get__(module),
-                "adjust": LayerNormAffineTransformationStep(module.weight, module.bias),
-                "standardize": LayerNormStandardizeStep(module.eps),
+                "_adjust": LayerNormAffineTransformationStep(
+                    module.weight, module.bias
+                ),
+                "_standardize": LayerNormStandardizeStep(module.eps),
             }
             return attributes
 
@@ -98,9 +100,9 @@ class LayerNormCanonizer(AttributeCanonizer):
 
     @staticmethod
     def forward(self, x):
-        x = self.standardize(x)
+        x = self._standardize(x)
 
-        x = self.adjust(x)
+        x = self._adjust(x)
 
         return x
 
@@ -170,14 +172,13 @@ class EncodingLayerCanonizer(AttributeCanonizer):
 
             attributes = {
                 "forward": cls.forward.__get__(module),
-                "shortcut_summation_1": Summation(),
-                "shortcut_summation_2": Summation(),
-                "attnwrapper": MultiHeadAttentionWithoutTransformation(
+                "_shortcut_summation_1": Summation(),
+                "_shortcut_summation_2": Summation(),
+                "_attnwrapper": MultiHeadAttentionWithoutTransformation(
                     module.self_attention
                 ),
-                "attn_in_proj": in_proj,
-                "attn_out_proj": module.self_attention.out_proj,
-                "embed_dim": embed_dim,
+                "_attn_in_proj": in_proj,
+                "_attn_out_proj": module.self_attention.out_proj,
             }
             return attributes
 
@@ -192,20 +193,20 @@ class EncodingLayerCanonizer(AttributeCanonizer):
 
         x = self.ln_1(input)
 
-        transformed_x = self.attn_in_proj(x)
+        transformed_x = self._attn_in_proj(x)
 
-        out_raw = self.attnwrapper(transformed_x)
+        out_raw = self._attnwrapper(transformed_x)
 
-        out = self.attn_out_proj(out_raw)
+        out = self._attn_out_proj(out_raw)
 
         x = self.dropout(out)
 
-        x = self.shortcut_summation_1(torch.stack([x, input], dim=-1))
+        x = self._shortcut_summation_1(torch.stack([x, input], dim=-1))
 
         y = self.ln_2(x)
         y = self.mlp(y)
 
-        out = self.shortcut_summation_2(torch.stack([x, y], dim=-1))
+        out = self._shortcut_summation_2(torch.stack([x, y], dim=-1))
 
         return out
 

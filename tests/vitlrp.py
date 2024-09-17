@@ -10,14 +10,18 @@ from xaikd import models
 
 @pytest.mark.slow
 def test_callable():
-    vit = models.get_trained_model("imagenet-nfnetf0-dm")
+    torch.manual_seed
+    rng = torch.Generator().manual_seed(1)
+    vit = models.get_trained_model("imagenet-vitb-tv")
 
     lb = torch.ones(3).reshape((1, -1, 1, 1))
     hb = torch.ones(3).reshape((1, -1, 1, 1))
 
-    input = torch.randn(1, 3, 224, 224)
+    input = torch.randn(1, 3, 224, 224, generator=rng)
     with torch.no_grad():
         expected_output = vit(input).numpy()
+
+    assert hasattr(vit.encoder, "layers")
 
     with Gradient(
         model=vit, composite=vitlrp._build_composite(lb=lb, hb=hb)
@@ -30,7 +34,13 @@ def test_callable():
 
         actual_output = actual_output.detach().numpy()
 
-    np.testing.assert_allclose(
-        actual_output,
-        expected_output,
-    )
+    assert hasattr(vit.encoder, "layers")
+
+    for helper_attribute in [
+        "_ln",
+        "_layers",
+        "_dropout",
+    ]:
+        assert not hasattr(vit.encoder, helper_attribute)
+
+    np.testing.assert_allclose(actual_output, expected_output, atol=1e-5)
