@@ -29,7 +29,7 @@ from xaikd import datasets
 from xaikd.models.interfaces import DistillableModel
 
 import zennit
-from xaikd import nfnetlrp
+from xaikd import nfnetlrp, vitlrp
 
 
 from functools import partial
@@ -51,7 +51,7 @@ def get_arch_specific_composite(
         print(
             "Warning: We use no composite for ViT. The results (context vectors) might therefore not be useful!"
         )
-        return None
+        return vitlrp._build_composite(lb=lb, hb=hb)
     else:
         raise NotImplementedError("")
 
