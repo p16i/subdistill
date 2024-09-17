@@ -5,7 +5,7 @@ from torchvision.models import vision_transformer
 
 from functools import partial
 
-from zennit.rules import Pass, Epsilon
+from zennit.rules import Pass, Epsilon, Gamma
 from zennit.canonizers import AttributeCanonizer
 from zennit.composites import Composite
 from xaikd import nfnetlrp
@@ -250,7 +250,8 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
     elif isinstance(
         module, (AttentionInputProjection, NonDynamicallyQuantizableLinear)
     ):
-        return nfnetlrp.SafeGamma(gamma=gamma, stabilizer=eps)
+        # return nfnetlrp.SafeGamma(gamma=gamma, stabilizer=eps)
+        return Gamma(gamma=gamma, eps=eps)
     elif isinstance(
         module, (LayerNormStandardizeStep, LayerNormAffineTransformationStep)
     ):
