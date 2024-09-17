@@ -48,9 +48,6 @@ def get_arch_specific_composite(
     elif isinstance(model, timm.models.nfnet.NormFreeNet):
         return nfnetlrp.EpsilonGammaBox(lb=lb, hb=hb)
     elif isinstance(model, torchvision.models.VisionTransformer):
-        print(
-            "Warning: We use no composite for ViT. The results (context vectors) might therefore not be useful!"
-        )
         return vitlrp._build_composite(lb=lb, hb=hb)
     else:
         raise NotImplementedError("")
