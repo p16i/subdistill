@@ -119,11 +119,14 @@ class MultiHeadAttentionWithoutTransformation(torch.nn.Module):
 
         self.embed_dim = embed_dim
 
+        device = attn.in_proj_weight.device
+
         attn_copied.in_proj_weight = nn.Parameter(torch.cat([torch.eye(embed_dim)] * 3))
         attn_copied.in_proj_bias = nn.Parameter(torch.zeros_like(attn.in_proj_bias))
 
         attn_copied.out_proj.weight = nn.Parameter(torch.eye(embed_dim))
         attn_copied.out_proj.bias = nn.Parameter(torch.zeros_like(attn.out_proj.bias))
+        attn_copied.to(device)
 
         self.attn = attn_copied
 
