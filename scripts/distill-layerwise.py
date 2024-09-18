@@ -156,6 +156,9 @@ def build_dataloaders(
 @click.option("--dataset-variant", default="", type=str, required=False)
 @click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--layer-policy", type=str, required=True)
+@click.option(
+    "--last-layer-policy", default="kd", type=click.Choice(["kd", "dkd"]), required=True
+)
 @click.option("--layers", default=None, type=str)
 @click.option("--lambda-task", default=0.0, type=float)
 @click.option("--lambda-kd", default=1.0, type=float)
@@ -175,6 +178,7 @@ def main(
     dataset,
     dataset_variant,
     training_size,
+    last_layer_policy,
     layer_policy,
     layers,
     lambda_task,
@@ -332,7 +336,7 @@ def main(
             else arguments["output_dir"]
         ),
         job_type="distillation",
-        name=f"{student}-{layer_policy}-seed{seed}",
+        name=f"{student}-{last_layer_policy}-{layer_policy}-seed{seed}",
         notes=f"commit:{utils.get_git_hash()}",
         log_model="all" if enable_checkpointing else False,
         config={
@@ -345,6 +349,7 @@ def main(
 
     trained_student, results = distillator.distill(
         student=student_model,
+        last_layer_policy=last_layer_policy,
         layer_policies=distillation_policies.LayerPolicyCollection(
             teacher_layers=teacher_layers,
             student_layers=student_layers,

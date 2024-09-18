@@ -125,3 +125,30 @@ def test_basis_identity_learnable(teacher_dims, student_dims):
         np.testing.assert_allclose(
             actual_num_learnable_params, expected_num_learnable_params
         )
+
+
+@pytest.mark.parametrize(
+    "last_layer_policy,expected",
+    [
+        ("kd", distillation_policies.KLPolicy),
+        ("dkd", distillation_policies.DKDPolicy),
+    ],
+)
+def test_last_layer_policy(last_layer_policy, expected):
+    last_layer_policy = distillation_policies.get_last_layer_policy(last_layer_policy)
+    assert isinstance(last_layer_policy, expected)
+
+    rng = torch.Generator()
+    rng.manual_seed(1)
+
+    teacher_logits = torch.rand(size=(2, 10), generator=rng)
+    student_logits = torch.rand(size=(2, 10), generator=rng)
+    targets = torch.randint(size=(2,), low=0, high=9, generator=rng)
+
+    val = last_layer_policy(
+        teacher_logits=teacher_logits,
+        student_logits=student_logits,
+        target=targets,
+    )
+
+    assert not torch.isnan(val)

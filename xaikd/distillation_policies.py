@@ -10,6 +10,7 @@ from torch.nn import functional as F
 
 from xaikd.utils.modules import Centering2D
 from xaikd.bases import Basis, AdapterMode
+from xaikd.utils.dkd import dkd_loss
 
 
 from scipy.stats import ortho_group
@@ -96,8 +97,46 @@ def register_layer_policy(name):
     return wrapped
 
 
+class LastLayerPolicy(Policy):
+
+    def forward(
+        self,
+        teacher_logits: torch.Tensor,
+        student_logits: torch.Tensor,
+        target: torch.Tensor,
+    ) -> torch.Tensor:
+        return self.criterion(
+            teacher_logits=teacher_logits, student_logits=student_logits, target=target
+        )
+
+    def criterion(
+        self,
+        teacher_logits: torch.Tensor,
+        student_logits: torch.Tensor,
+        target: torch.Tensor,
+    ) -> torch.Tensor:
+        raise NotImplementedError()
+
+
 def get_layer_policy(name: str, **kwargs) -> Policy:
     return LAYER_POLICY[name](**kwargs)
+
+
+def get_last_layer_policy(name: str) -> LastLayerPolicy:
+    if name == "kd":
+        # ref: temperature value from
+        # https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L78
+        return KLPolicy(temperature=4.0)
+    elif name == "dkd":
+        return DKDPolicy(
+            # cf. https://github.com/megvii-research/mdistiller/blob/master/configs/imagenet/r34_r18/dkd.yaml#L29
+            temperature=1.0,
+            # cf. Section 4.1
+            alpha=1.0,
+            beta=8.0,
+        )
+    else:
+        raise ValueError(f"Last Layer Policy `{name}` doesn't exist!")
 
 
 class LayerPolicyCollection(nn.ModuleList):
@@ -119,7 +158,7 @@ class LayerPolicyCollection(nn.ModuleList):
         pass
 
 
-class KLPolicy(Policy):
+class KLPolicy(LastLayerPolicy):
     """
     @article{DBLP:journals/corr/HintonVD15,
         author       = {Geoffrey E. Hinton and
@@ -144,7 +183,10 @@ class KLPolicy(Policy):
         self.transformer_student_feats = nn.Identity()
 
     def criterion(
-        self, teacher_logits: torch.Tensor, student_logits: torch.Tensor
+        self,
+        teacher_logits: torch.Tensor,
+        student_logits: torch.Tensor,
+        target: torch.Tensor,
     ) -> torch.Tensor:
         kl = F.kl_div(
             torch.log_softmax(student_logits / self.T, dim=1),
@@ -155,6 +197,54 @@ class KLPolicy(Policy):
         # We muliply with scaling factor as mentioned in Hinton et al. (2015)
         # (cf. the paragraph before Section 2.1).
         return (self.T**2) * kl
+
+
+class DKDPolicy(LastLayerPolicy):
+    """
+    @inproceedings{DBLP:conf/cvpr/ZhaoCSQL22,
+        author       = {Borui Zhao and
+                        Quan Cui and
+                        Renjie Song and
+                        Yiyu Qiu and
+                        Jiajun Liang},
+        title        = {Decoupled Knowledge Distillation},
+        booktitle    = {{CVPR}},
+        pages        = {11943--11952},
+        publisher    = {{IEEE}},
+        year         = {2022}
+    }
+    """
+
+    def __init__(
+        self,
+        temperature: float,
+        alpha: float,
+        beta: float,
+    ):
+        super().__init__()
+
+        self.alpha = alpha
+        self.beta = beta
+        self.temperature = temperature
+
+        self.transformer_teacher_feats = nn.Identity()
+        self.transformer_student_feats = nn.Identity()
+
+    def criterion(
+        self,
+        teacher_logits: torch.Tensor,
+        student_logits: torch.Tensor,
+        target: torch.Tensor,
+    ) -> torch.Tensor:
+
+        return dkd_loss(
+            logits_student=student_logits,
+            logits_teacher=teacher_logits,
+            target=target,
+            alpha=self.alpha,
+            beta=self.beta,
+            temperature=self.temperature,
+        )
 
 
 class LayerPolicy(Policy):
