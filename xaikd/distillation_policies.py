@@ -358,6 +358,51 @@ class VIDPolicy(LayerPolicy):
         return loss
 
 
+@register_layer_policy("spkd")
+class SimilarityPreserveKnowledgeDistillation(LayerPolicy):
+    # Tung & Mori 2019, Similarity-Preserving Knowledge Distillation
+
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, ord=2
+    ) -> None:
+        super().__init__()
+
+        self.ord = ord
+
+        class SimilarityMatrix(nn.Module):
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                b, c, w, h = x.shape
+
+                # eq 2
+                x = x.reshape((b, c * w * h))
+                x = F.normalize(x, dim=-1)
+
+                return x @ x.T
+
+        self.transformer_student_feats = SimilarityMatrix()
+        self.transformer_teacher_feats = SimilarityMatrix()
+
+    def criterion(
+        self,
+        transformed_teacher_feats: torch.Tensor,
+        transformed_student_feats: torch.Tensor,
+    ) -> torch.Tensor:
+
+        b, _ = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        # eq 4
+        score = torch.norm(
+            transformed_teacher_feats - transformed_student_feats, p="fro"
+        ) / (b**2)
+        return score
+
+    def align_spatial_dimensions(self, teacher_feats, student_feats):
+        # remark: we don't do any transformation here.
+        return teacher_feats, student_feats
+
+
 @register_layer_policy("attention-transfer")
 class AttentionTransferPolicy(LayerPolicy):
     """
