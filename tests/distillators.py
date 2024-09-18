@@ -255,6 +255,7 @@ def test_get_parameters(layers, parameter_partition_mode):
     model_training_wrapper = distillators.LayerwiseKDModelWrapper(
         teacher=teacher_model,
         student=student,
+        last_layer_policy="kd",
         layerwise_policies=layer_policy_colleciton,
         lambda_kd=1,
         lambda_layer=1,
