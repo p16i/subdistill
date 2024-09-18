@@ -169,6 +169,10 @@ class AttentionInputProjection(nn.Module):
         return x @ self.weight + self.bias
 
 
+class SafeGammaProject(nfnetlrp.SafeGamma):
+    pass
+
+
 class EncodingLayerCanonizer(AttributeCanonizer):
     def __init__(self):
         super().__init__(self._attribute_map)
@@ -234,7 +238,7 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
         pass
     else:
         if isinstance(module, MultiHeadAttentionWithoutTransformation):
-            return Epsilon(epsilon=0)
+            return SafeEpsilon(epsilon=0)
         return None
 
     # count the number of the leaves processed yet in 'leafnum'
@@ -265,11 +269,12 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
     elif isinstance(
         module, (AttentionInputProjection, NonDynamicallyQuantizableLinear)
     ):
-        return nfnetlrp.SafeGamma(gamma=gamma, stabilizer=eps)
+        # for debug purpose; change back to SafeGamma
+        return SafeGammaProject(gamma=gamma, stabilizer=eps)
     elif isinstance(
         module, (LayerNormStandardizeStep, LayerNormAffineTransformationStep)
     ):
-        return SafeEpsilon(epsilon=eps)
+        return SafeEpsilon(epsilon=0)
     else:
         return None
 
