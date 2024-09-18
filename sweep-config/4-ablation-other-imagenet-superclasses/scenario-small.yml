@@ -29,7 +29,7 @@ parameters:
   dataset-variant:
     value: ""
   training-size:
-    value: 0.1
+    value: 0.25
   seed:
     values:
       - 1
@@ -40,7 +40,6 @@ parameters:
       - nothing
       - basis-identity:pca--uncentered
       - basis-identity:prca-sortabs--uncentered
-      - basis-identity:pcalookahead--uncentered
       - vid
       - fitnet-relu
       - attention-transfer

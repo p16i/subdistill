@@ -27,7 +27,7 @@ parameters:
       - imagenet-fungus
       - imagenet-truck
   dataset-variant:
-    value: spurious-threespurious--1.0
+    value: spurious-threespurious--0.75
   training-size:
     value: 1.0
   seed:
@@ -43,7 +43,6 @@ parameters:
       - vid
       - fitnet-relu
       - attention-transfer
-      # - basis-identity:pcalookahead--uncentered
   lambda-task:
       value: 0.0
   lambda-kd:
