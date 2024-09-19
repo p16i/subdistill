@@ -59,6 +59,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         teacher: nn.Module,
         student: nn.Module,
         layerwise_policies: distillation_policies.LayerPolicyCollection,
+        last_layer_policy: str,
         lr: float,
         lambda_layer: float,
         lambda_task: float,
@@ -76,9 +77,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.student = student
         self.layer_policy_collection = layerwise_policies
 
-        # ref: temperature value from
-        # https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L78
-        self.last_layer_policy = distillation_policies.KLPolicy(temperature=4.0)
+        self.last_layer_policy: distillation_policies.LastLayerPolicy = (
+            distillation_policies.get_last_layer_policy(last_layer_policy)
+        )
         self.lr = lr
 
         self.arr_metrics = []
@@ -160,7 +161,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         )
 
         loss_task = F.cross_entropy(student_logits, y)
-        loss_kd = self.last_layer_policy(teacher_logits, student_logits)
+        loss_kd = self.last_layer_policy(teacher_logits, student_logits, y)
 
         loss_layer = 0
 
@@ -320,6 +321,7 @@ class Layerwise:
     def distill(
         self,
         student: nn.Module,
+        last_layer_policy: str,
         layer_policies: distillation_policies.LayerPolicyCollection,
         epochs: int,
         device: str,
@@ -360,6 +362,7 @@ class Layerwise:
         training_wrapper = LayerwiseKDModelWrapper(
             teacher=self.teacher,
             student=student,
+            last_layer_policy=last_layer_policy,
             layerwise_policies=layer_policies,
             lr=lr,
             lambda_task=lambda_task,

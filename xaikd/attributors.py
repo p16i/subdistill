@@ -29,7 +29,7 @@ from xaikd import datasets
 from xaikd.models.interfaces import DistillableModel
 
 import zennit
-from xaikd import nfnetlrp
+from xaikd import nfnetlrp, vitlrp
 
 
 from functools import partial
@@ -48,10 +48,7 @@ def get_arch_specific_composite(
     elif isinstance(model, timm.models.nfnet.NormFreeNet):
         return nfnetlrp.EpsilonGammaBox(lb=lb, hb=hb)
     elif isinstance(model, torchvision.models.VisionTransformer):
-        print(
-            "Warning: We use no composite for ViT. The results (context vectors) might therefore not be useful!"
-        )
-        return None
+        return vitlrp._build_composite(lb=lb, hb=hb)
     else:
         raise NotImplementedError("")
 
@@ -281,7 +278,7 @@ def extract_activation_context(
                     np.testing.assert_allclose(
                         (act * ctx).detach().cpu().numpy(),
                         rel.detach().cpu().numpy(),
-                        atol=1e-6
+                        atol=1e-6,
                     )
 
                 assert ctx.shape == act.shape

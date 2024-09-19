@@ -228,6 +228,7 @@ class PRCASortAbs(Orthogonal):
         sorted_ix = np.argsort(-np.abs(eigvals))
 
         U = eigvecs[:, sorted_ix].copy()
+        assert not np.isnan(U).any()
 
         return U
 

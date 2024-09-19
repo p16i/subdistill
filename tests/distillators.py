@@ -55,8 +55,9 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
     ],
 )
 @pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
+@pytest.mark.parametrize("last_layer_policy", ["kd"])
 def test_distillation_runnable_and_correct(
-    teacher_model_name, layers, parameter_partition_mode
+    teacher_model_name, layers, parameter_partition_mode, last_layer_policy
 ):
     ignore_layer_loss_fullupdate = False
     epochs = 1
@@ -131,6 +132,7 @@ def test_distillation_runnable_and_correct(
             student=models.get_untrained_model(
                 constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
             ),
+            last_layer_policy=last_layer_policy,
             layer_policies=layer_policies,
             epochs=epochs,
             lambda_task=1.0,
@@ -253,6 +255,7 @@ def test_get_parameters(layers, parameter_partition_mode):
     model_training_wrapper = distillators.LayerwiseKDModelWrapper(
         teacher=teacher_model,
         student=student,
+        last_layer_policy="kd",
         layerwise_policies=layer_policy_colleciton,
         lambda_kd=1,
         lambda_layer=1,

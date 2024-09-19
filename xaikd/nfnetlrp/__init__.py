@@ -50,6 +50,10 @@ def lrp_rule_ratio(nom, denom, eps) -> torch.Tensor:
 
     new_output[nonzero_ix] = nom[nonzero_ix] / denom[nonzero_ix]
 
+    err_msg = f"min(abs(denom))={torch.abs(denom[nonzero_ix]).min().detach().cpu().numpy():.4f}"
+
+    assert not torch.isnan(new_output).any(), err_msg
+
     return new_output
 
 
@@ -273,13 +277,6 @@ class ScaledStdConv2dSameCanonizer(AttributeCanonizer):
             self.dilation,
             self.groups,
         )
-
-    def remove(self):
-        original_weight = getattr(self.module, "___original_weight")
-
-        super().remove()
-
-        setattr(self.module, "weight", original_weight)
 
     def remove(self):
         original_weight = getattr(self.module, "___original_weight")
