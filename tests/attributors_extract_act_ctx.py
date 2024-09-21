@@ -49,10 +49,8 @@ def _test_extract_activation_context(model_name, dataset_class, layer):
     model = models.get_trained_model(model_name).to(DEVICE)
 
     dataset = dataset_class()
-
-    output_dims = models.get_layer_output_dimensions(model, layer)
-
     train_dl = dataset.loader(train_split=True)
+    output_dims = utils.get_dimensions_at_layers(model, train_dl, [layer])[layer]
 
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=model,
