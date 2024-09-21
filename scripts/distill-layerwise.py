@@ -255,7 +255,11 @@ def main(
     teacher_model.to(device)
 
     student_layer_dims_mapping = utils.get_dimensions_at_layers(
-        models.get_untrained_model(student, num_classes=dataset.num_classes).eval(),
+        models.get_untrained_model(
+            student,
+            num_classes=dataset.num_classes,
+            class_indices=dataset.selected_classes,
+        ).eval(),
         train_loader,
         layers=student_layers,
     )
@@ -284,7 +288,9 @@ def main(
 
     print(f"[policy={layer_policy}] with lambda-layer={lambda_layer}")
 
-    student_model = models.get_untrained_model(student, num_classes=dataset.num_classes)
+    student_model = models.get_untrained_model(
+        student, num_classes=dataset.num_classes, class_indices=dataset.selected_classes
+    )
 
     arr_layer_policies = []
     for teacher_layer, student_layer in zip(teacher_layers, student_layers):

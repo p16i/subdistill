@@ -16,7 +16,7 @@ from . import MODEL_GENERATORS
 from . import vit
 
 
-def _generate_vit_student(num_classes: int, hidden_dim: int):
+def _generate_vit_student(num_classes: int, hidden_dim: int, **kwargs):
     # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/vision_transformer.py#L621
     model = _vision_transformer(
         patch_size=16,
