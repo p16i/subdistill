@@ -46,6 +46,7 @@ ARR_IMAGENET_COPYRIGHT2_CORNER_LOCATIONs = list(
     itertools.product([-40, 40], [-100, 100])
 )
 
+# todo: remove this
 ARCH_LAYER_DIMENSIONS = dict(
     resnet18={
         "layer1": 64,
@@ -122,6 +123,12 @@ ARCH_LAYER_DIMENSIONS = dict(
         "stages.3": 1536,
     },
     vitb=dict([(f"encoder.layers.{i}", 768) for i in range(12)]),
+    mobilenetl={
+        "features.0": 16,
+    },
+    mobilenets={
+        "features.0": 16,
+    },
 )
 
 
