@@ -49,6 +49,9 @@ def get_arch_specific_composite(
         return nfnetlrp.EpsilonGammaBox(lb=lb, hb=hb)
     elif isinstance(model, torchvision.models.VisionTransformer):
         return vitlrp._build_composite(lb=lb, hb=hb)
+    elif isinstance(model, torchvision.models.MobileNetV3):
+        print("Warning: Graident is bad here!")
+        return EpsilonGammaBox(low=lb, high=hb)
     else:
         raise NotImplementedError("")
 
