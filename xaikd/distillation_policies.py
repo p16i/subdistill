@@ -563,6 +563,73 @@ class VkD(LayerPolicy):
         return loss_mse
 
 
+@register_layer_policy("vkd-modified")
+class VkDModified(LayerPolicy):
+    # cite...
+
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        # todo use this device
+        device: str,
+    ) -> None:
+        super().__init__()
+
+        self._transform_student = nn.utils.parametrizations.orthogonal(
+            nn.Linear(in_features=student_dims, out_features=teacher_dims, bias=False)
+        )
+
+        def transform_student_fn(feat: torch.Tensor):
+            b, d, h, w = feat.shape
+
+            return utils.convolve_feature_map_with_linear(feat, self._transform_student)
+
+        def transform_teacher_fn(feat: torch.Tensor):
+            b, d, h, w = feat.shape
+
+            # cf. https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L96
+            feat = feat.reshape((b, d, h * w))
+            # shape (b, h*w, d)
+            feat = feat.permute((0, 2, 1))
+
+            feat = F.layer_norm(feat, normalized_shape=(d,))
+
+            # shape (b, d, h*w)
+            feat = feat.permute((0, 2, 1))
+            feat = feat.reshape((b, d, h, w))
+
+            return feat
+
+        self.transformer_student_feats = transform_student_fn
+        self.transformer_teacher_feats = transform_teacher_fn
+
+    def criterion(
+        self,
+        transformed_teacher_feats: torch.Tensor,
+        transformed_student_feats: torch.Tensor,
+    ) -> torch.Tensor:
+
+        (b, d, w, h) = transformed_student_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        # remark: they use smooth_l1_loss(...) but why?
+        # cf. https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L100
+        loss_mse = (transformed_student_feats - transformed_teacher_feats) ** 2
+        loss_mse = loss_mse.flatten(start_dim=1) / (w * h)
+
+        assert loss_mse.shape == (
+            b,
+            d * w * h,
+        ), f"shape: {loss_mse.shape}, student: {transformed_student_feats.shape}; teacher: {transformed_teacher_feats.shape}"
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_layer_policy("attention-transfer")
 class AttentionTransferPolicy(LayerPolicy):
     """

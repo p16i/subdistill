@@ -167,3 +167,16 @@ def test_vkd():
     output = vkd(feat_teacher, feat_student)
 
     assert not torch.isnan(output)
+
+
+def test_vkd_extended():
+    feat_teacher = torch.randn(20, 30, 7, 7)
+    feat_student = torch.randn(20, 10, 7, 7)
+
+    vkd = distillation_policies.VkDModified(
+        teacher_dims=30, student_dims=10, device="cpu"
+    )
+
+    output = vkd(feat_teacher, feat_student)
+
+    assert not torch.isnan(output)
