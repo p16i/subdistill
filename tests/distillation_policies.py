@@ -8,6 +8,10 @@ from pathlib import Path
 from xaikd import distillation_policies, bases
 from xaikd import utils as putils
 
+from torch import nn
+
+from torch.nn import functional as F
+
 
 @pytest.mark.parametrize(
     "string,expected_teacher_layers,expected_student_layers",
@@ -152,3 +156,14 @@ def test_last_layer_policy(last_layer_policy, expected):
     )
 
     assert not torch.isnan(val)
+
+
+def test_vkd():
+    feat_teacher = torch.randn(20, 30, 7, 7)
+    feat_student = torch.randn(20, 10, 7, 7)
+
+    vkd = distillation_policies.VkD(teacher_dims=30, student_dims=10, device="cpu")
+
+    output = vkd(feat_teacher, feat_student)
+
+    assert not torch.isnan(output)

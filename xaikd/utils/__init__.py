@@ -94,6 +94,26 @@ def count_params_in_model(model: torch.nn.Module) -> typing.Tuple[int, int]:
     return count_params_in_list_params(model.parameters())
 
 
+def convolve_feature_map_with_linear(
+    feature_map: torch.Tensor, linear_layer: nn.Linear
+):
+    b, d, h, w = feature_map.shape
+
+    out_dims, in_dims = linear_layer.weight.shape
+
+    assert linear_layer.bias is None and in_dims == d
+
+    feature_map = feature_map.flatten(start_dim=2)
+    feature_map = feature_map.permute(0, 2, 1)
+    feature_map = feature_map.reshape((b * h * w, in_dims))
+    feature_map = linear_layer(feature_map)
+    feature_map = feature_map.reshape(b, h * w, out_dims)
+    feature_map = feature_map.permute(0, 2, 1)
+    feature_map = feature_map.reshape(b, out_dims, h, w)
+
+    return feature_map
+
+
 def count_params_in_list_params(
     params: typing.Iterable[torch.nn.Parameter],
 ) -> typing.Tuple[int, int]:
@@ -204,6 +224,7 @@ def get_dimensions_at_layers(
 
 
 def get_git_hash() -> str:
+    return "xxxxx"
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
 
 

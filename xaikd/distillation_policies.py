@@ -9,6 +9,7 @@ from torch import nn
 from torch.nn import functional as F
 
 from xaikd.utils.modules import Centering2D
+from xaikd import utils
 from xaikd.bases import Basis, AdapterMode
 from xaikd.utils.dkd import dkd_loss
 
@@ -491,6 +492,75 @@ class SimilarityPreserveKnowledgeDistillation(LayerPolicy):
     def align_spatial_dimensions(self, teacher_feats, student_feats):
         # remark: we don't do any transformation here.
         return teacher_feats, student_feats
+
+
+@register_layer_policy("vkd")
+class VkD(LayerPolicy):
+    # cite...
+
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        # todo use this device
+        device: str,
+    ) -> None:
+        super().__init__()
+
+        self._transform_student = nn.utils.parametrizations.orthogonal(
+            nn.Linear(in_features=student_dims, out_features=teacher_dims, bias=False)
+        )
+
+        def transform_student_fn(feat: torch.Tensor):
+            b, d, h, w = feat.shape
+
+            feat = feat.reshape((b, d, h * w))
+
+            # cf. https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L94
+            # remark: there, the mean is over sequence of tokens which is last dimensions in our case
+            # and it is similar to https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L96
+            feat = feat.mean(-1)
+
+            return self._transform_student(feat)
+
+        def transform_teacher_fn(feat: torch.Tensor):
+            b, d, h, w = feat.shape
+
+            # cf. https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L96
+            feat = feat.reshape((b, d, h * w))
+            feat = feat.mean(-1)
+
+            return F.layer_norm(feat, normalized_shape=(d,))
+
+        self.transformer_student_feats = transform_student_fn
+        self.transformer_teacher_feats = transform_teacher_fn
+
+    def criterion(
+        self,
+        transformed_teacher_feats: torch.Tensor,
+        transformed_student_feats: torch.Tensor,
+    ) -> torch.Tensor:
+
+        (
+            b,
+            _,
+        ) = transformed_student_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        # remark: they use smooth_l1_loss(...) but why?
+        # cf. https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L100
+        loss_mse = (transformed_student_feats - transformed_teacher_feats) ** 2
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (
+            b,
+        ), f"shape: {loss_mse.shape}, student: {transformed_student_feats.shape}; teacher: {transformed_teacher_feats.shape}"
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
 
 
 @register_layer_policy("attention-transfer")

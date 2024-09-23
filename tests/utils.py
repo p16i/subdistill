@@ -3,6 +3,8 @@ import pytest
 import torch
 from torch import nn
 
+from torch.nn import functional as F
+
 import numpy as np
 import torchvision
 
@@ -135,3 +137,16 @@ def test_resolve_lambda_layer_failed():
             policy_name=policy_name,
             default_config_key=config_key,
         )
+
+
+@torch.no_grad()
+def test_transformation_with_linear():
+    feat = torch.randn(20, 30, 7, 7)
+
+    linear = nn.Linear(in_features=30, out_features=10, bias=False)
+
+    expected = F.conv2d(feat, linear.weight.unsqueeze(2).unsqueeze(3)).numpy()
+
+    actual = utils.convolve_feature_map_with_linear(feat, linear).numpy()
+
+    np.testing.assert_allclose(actual, expected)
