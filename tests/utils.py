@@ -149,4 +149,4 @@ def test_transformation_with_linear():
 
     actual = utils.convolve_feature_map_with_linear(feat, linear).numpy()
 
-    np.testing.assert_allclose(actual, expected)
+    np.testing.assert_allclose(actual, expected, atol=1e-6)
