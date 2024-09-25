@@ -7,6 +7,8 @@ from pathlib import Path
 
 from xaikd import distillation_policies, bases
 from xaikd import utils as putils
+from xaikd import bases
+
 
 from torch import nn
 
@@ -180,3 +182,54 @@ def test_vkd_extended():
     output = vkd(feat_teacher, feat_student)
 
     assert not torch.isnan(output)
+
+
+def test_basis_rotation():
+    basis = bases.get_basis("random--uncentered")
+
+    rng = torch.Generator()
+    rng.manual_seed(1)
+
+    dims_teacher = 20
+    dims_student = 10
+
+    feat_teacher = torch.rand((10, dims_teacher, 4, 4), generator=rng)
+    feat_student = torch.rand((10, dims_student, 4, 4), generator=rng)
+
+    basis.fit(
+        torch.rand((40, dims_teacher), generator=rng).detach().cpu().numpy(),
+        None,
+        seed=1,
+    )
+
+    policy = distillation_policies.OrthogonalBasisRotationPolicy(
+        teacher_dims=dims_teacher, student_dims=dims_student, device="cpu", basis=basis
+    )
+
+    num_params, num_trainable_params = putils.count_params_in_model(policy)
+
+    assert num_params == num_trainable_params == (dims_student**2) + 1
+
+    # simulate update
+
+    w_before = policy.transformer_student_feats.rotation.weight.detach().numpy()
+    scaling_before = policy.transformer_student_feats.scaling.detach().numpy()
+    np.testing.assert_allclose(scaling_before, 1)
+
+    np.testing.assert_allclose(w_before @ w_before.T, np.eye(dims_student), atol=1e-6)
+    np.testing.assert_allclose(w_before.T @ w_before, np.eye(dims_student), atol=1e-6)
+
+    optim = torch.optim.SGD(policy.parameters(), lr=1e-3)
+
+    loss = policy(feat_teacher, feat_student)
+
+    loss.backward()
+
+    optim.step()
+
+    w_after = policy.transformer_student_feats.rotation.weight.detach().numpy()
+    np.testing.assert_allclose(w_after @ w_after.T, np.eye(dims_student), atol=1e-6)
+    np.testing.assert_allclose(w_after.T @ w_after, np.eye(dims_student), atol=1e-6)
+    scaling_after = policy.transformer_student_feats.scaling.detach().numpy()
+
+    assert scaling_after != 1

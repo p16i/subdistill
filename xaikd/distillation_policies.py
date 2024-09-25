@@ -718,6 +718,46 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         return loss_mse
 
 
+@register_layer_policy("basis-rotation")
+class OrthogonalBasisRotationPolicy(OrthogonalBasisIdentityPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+
+        super().__init__(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+
+        k = student_dims
+
+        class StudenTransform(nn.Module):
+            def __init__(self):
+                super().__init__()
+
+                self.rotation = nn.utils.parametrizations.orthogonal(
+                    nn.Linear(
+                        in_features=student_dims, out_features=student_dims, bias=False
+                    )
+                )
+                self.scaling = nn.Parameter(torch.tensor(1.0))
+
+            def forward(self, x):
+                x = utils.convolve_feature_map_with_linear(x, self.rotation)
+                x = x * self.scaling
+
+                return x
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = StudenTransform()
+
+
 @register_layer_policy("basis-identity-learnable")
 class OrthogonalBasisIdentityLearnablePolicy(OrthogonalBasisIdentityPolicy):
     def __init__(
