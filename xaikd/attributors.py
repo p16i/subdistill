@@ -30,6 +30,7 @@ from xaikd.models.interfaces import DistillableModel
 
 import zennit
 from xaikd import nfnetlrp, vitlrp
+from xaikd.lrp import mobilenets
 
 
 from functools import partial
@@ -51,7 +52,7 @@ def get_arch_specific_composite(
         return vitlrp._build_composite(lb=lb, hb=hb)
     elif isinstance(model, torchvision.models.MobileNetV3):
         print("Warning: Graident is bad here!")
-        return EpsilonGammaBox(low=lb, high=hb)
+        return mobilenets._build_composite(lb=lb, hb=hb)
     else:
         raise NotImplementedError("")
 
