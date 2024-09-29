@@ -52,7 +52,19 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
 
     artifact_dir = Path(artifact_dir) / dataset_name / model_name / layer
 
-    dims = constants.ARCH_LAYER_DIMENSIONS[arch][layer]
+    dl_train = datasets.build_dataloader(
+        dataset.create_subset(train_split=True), shuffle=False
+    )
+
+    dl_val = datasets.build_dataloader(
+        dataset.create_subset(train_split=False), shuffle=False
+    )
+
+    dims = utils.get_dimensions_at_layers(
+        model=model,
+        dataloader=dl_train,
+        layers=[layer],
+    )[layer]
 
     click.echo(f"Loading artifacts from `{artifact_dir}`")
     click.echo(f"Device: {device}")
@@ -66,14 +78,6 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
     )
 
     module: nn.Module = utils.interceptor.get_module(model, layer)
-
-    dl_train = datasets.build_dataloader(
-        dataset.create_subset(train_split=True), shuffle=False
-    )
-
-    dl_val = datasets.build_dataloader(
-        dataset.create_subset(train_split=False), shuffle=False
-    )
 
     original_accuracy, _ = metrics.accuracy(
         model,
