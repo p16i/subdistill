@@ -51,7 +51,6 @@ def get_arch_specific_composite(
     elif isinstance(model, torchvision.models.VisionTransformer):
         return vitlrp._build_composite(lb=lb, hb=hb)
     elif isinstance(model, torchvision.models.MobileNetV3):
-        print("Warning: Graident is bad here!")
         return mobilenets._build_composite(lb=lb, hb=hb)
     else:
         raise NotImplementedError("")
