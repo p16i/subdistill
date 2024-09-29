@@ -61,9 +61,7 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
     )
 
     dims = utils.get_dimensions_at_layers(
-        model=model,
-        dataloader=dl_train,
-        layers=[layer],
+        model=model, dataloader=dl_train, layers=[layer], device=device
     )[layer]
 
     click.echo(f"Loading artifacts from `{artifact_dir}`")

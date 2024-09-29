@@ -192,7 +192,7 @@ def modify_last_layer_for_subclasses(
 
 @torch.no_grad()
 def get_dimensions_at_layers(
-    model: nn.Module, dataloader: DataLoader, layers: typing.List[str]
+    model: nn.Module, dataloader: DataLoader, layers: typing.List[str], device="cpu"
 ) -> typing.Dict[str, int]:
     assert not model.training
 
@@ -207,6 +207,7 @@ def get_dimensions_at_layers(
             modules.append(module)
 
         x, _ = next(iter(dataloader))
+        x = x.to(device)
 
         _ = model(x)
 
