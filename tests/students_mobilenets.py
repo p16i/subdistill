@@ -8,7 +8,8 @@ from xaikd import constants, models, utils
 @pytest.mark.parametrize(
     "student_name,class_indices",
     [
-        # ("student-mobilenets", np.arange(1)),
+        ("student-mobilenets", np.arange(10)),
+        ("student-mobilenetxs", np.arange(10)),
         ("student-mobilenets-trained", np.arange(10)),
     ],
 )
@@ -68,4 +69,3 @@ def test_get_trained_student_has_correct_layer_layer():
     expected_bias = original.classifier[-1].bias[class_indices].numpy()
     actual_bias = student.classifier[-1].bias.numpy()
     np.testing.assert_allclose(actual_bias, expected_bias)
-
