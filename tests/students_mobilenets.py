@@ -10,6 +10,7 @@ from xaikd import constants, models, utils
     [
         ("student-mobilenets", np.arange(10)),
         ("student-mobilenetxs", np.arange(10)),
+        ("student-mobilenetxxs", np.arange(10)),
         ("student-mobilenets-trained", np.arange(10)),
     ],
 )
