@@ -17,7 +17,8 @@ from xaikd import constants, models, utils
 @pytest.mark.parametrize(
     "layer",
     [
-        "features.10",
+        "features.8",
+        "features.12",
     ],
 )
 def test_student_callable(student_name, class_indices, layer):
