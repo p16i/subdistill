@@ -18,6 +18,8 @@ ARR_STUDENT_DIMENSIONS = [
 ARR_VIT_STUDENT_HIDDEN_DIMENSIONS = [
     48,
     60,
+    72,
+    132,
 ]
 
 
@@ -34,11 +36,11 @@ CIFAR100_SUPER_CLASSES = (
 
 
 DEFAULT_TEACHER_STUDENT_LAYER_MAPPING = {
-    "cifar100-resnet18-v1": "layer3:layer3,layer4:layer4",
-    "imagenet-resnet18-tv": "layer3:layer3,layer4:layer4",
-    "imagenet-resnet50-tv": "layer3:layer3,layer4:layer4",
-    "imagenet-vgg16-tv": "features.23:layer3,features.30:layer4",
-    "imagenet-nfnetf0-dm": "stages.2:layer3,stages.3:layer4",
+    "cifar100-resnet18-v1": "layer3:features.8,layer4:features.12",
+    "imagenet-resnet18-tv": "layer3:features.8,layer4:features.12",
+    "imagenet-resnet50-tv": "layer3:features.8,layer4:features.12",
+    "imagenet-vgg16-tv": "features.23:features.8,features.30:features.12",
+    "imagenet-nfnetf0-dm": "stages.2:features.8,stages.3:features.12",
     "imagenet-vitb-tv": "encoder.layers.8:encoder.layers.2,encoder.layers.11:encoder.layers.3",
 }
 
