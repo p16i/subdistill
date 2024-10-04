@@ -37,6 +37,7 @@ CIFAR100_SUPER_CLASSES = (
 
 DEFAULT_TEACHER_STUDENT_LAYER_MAPPING = {
     "cifar100-resnet18-v1": "layer3:features.8,layer4:features.12",
+    "imagenet-mobilenetl-tv": "features.12:features.8,features.16:features.12",
     "imagenet-resnet18-tv": "layer3:features.8,layer4:features.12",
     "imagenet-resnet50-tv": "layer3:features.8,layer4:features.12",
     "imagenet-vgg16-tv": "features.23:features.8,features.30:features.12",
