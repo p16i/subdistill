@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 import torch
 
-from xaikd import constants, models, utils
+from xaikd import models, utils
 
 
 @pytest.mark.parametrize(
@@ -71,3 +71,19 @@ def test_get_trained_student_has_correct_layer_layer():
     expected_bias = original.classifier[-1].bias[class_indices].numpy()
     actual_bias = student.classifier[-1].bias.numpy()
     np.testing.assert_allclose(actual_bias, expected_bias)
+
+
+@pytest.mark.parametrize(
+    "arch",
+    [
+        "student-mobilenets",
+        "student-mobilenetxs",
+        "student-mobilenetxxs",
+    ],
+)
+def test_student_callable_cifar(arch):
+    x = torch.randn(2, 3, 32, 32)
+
+    student = models.get_untrained_model(arch, num_classes=10)
+
+    assert np.isfinite(student(x).detach().cpu().numpy()).all()
