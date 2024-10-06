@@ -30,9 +30,9 @@ DEFAULT_LAMBDA_LAYER = {
     # },
     "cifar100-spurious": {
         "cifar100-resnet18-v1": {
-            "vid": 1000,
+            "vid": 100,
             "basis-rotation:pca--uncentered": 10000,
-            "basis-rotation:prca-sortabs--uncentered": 10,
+            "basis-rotation:prca-sortabs--uncentered": 100,
         }
     },
     # "imagenet-clean": {
