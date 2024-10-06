@@ -76,9 +76,8 @@ def test_get_trained_student_has_correct_layer_layer():
 @pytest.mark.parametrize(
     "arch",
     [
-        "student-mobilenets",
-        "student-mobilenetxs",
-        "student-mobilenetxxs",
+        "student-mobilenetxs-cifar",
+        "student-mobilenetxxs-cifar",
     ],
 )
 def test_student_callable_cifar(arch):

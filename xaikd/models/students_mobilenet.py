@@ -82,6 +82,60 @@ def _student_very_small(num_classes, dim1, dim2, dim3, **kwargs) -> nn.Module:
     )
 
 
+def _student_very_small_cifar(num_classes, dim1, dim2, dim3, **kwargs) -> nn.Module:
+    dilation = 1
+
+    width_mult = 1
+    bneck_conf = partial(mobilenetv3.InvertedResidualConfig, width_mult=width_mult)
+    adjust_channels = partial(
+        mobilenetv3.InvertedResidualConfig.adjust_channels, width_mult=width_mult
+    )
+
+    inverted_residual_setting = [
+        # same conf as mobiletnet-s
+        bneck_conf(16, 3, 16, 16, True, "RE", 2, 1),  # C1
+        bneck_conf(16, 3, 72, 24, False, "RE", 1, 1),  # C2
+        bneck_conf(24, 3, 88, 24, False, "RE", 1, 1),
+        bneck_conf(24, 5, 96, 40, True, "HS", 2, 1),  # C3
+        bneck_conf(40, 5, 240, 40, True, "HS", 1, 1),
+        bneck_conf(40, 5, 240, 40, True, "HS", 1, 1),
+        # modified conf
+        bneck_conf(40, 5, 120, dim1, True, "HS", 1, 1),
+        bneck_conf(dim1, 5, dim2, dim1, True, "HS", 1, 1),
+        bneck_conf(dim1, 5, dim2 * 2, dim1 * 2, True, "HS", 2, dilation),  # C4
+        bneck_conf(
+            dim1 * 2,
+            5,
+            dim3,
+            dim1 * 2,
+            True,
+            "HS",
+            1,
+            dilation,
+        ),
+        bneck_conf(
+            dim1 * 2,
+            5,
+            dim3,
+            dim1 * 2,
+            True,
+            "HS",
+            1,
+            dilation,
+        ),
+    ]
+    last_channel = adjust_channels(dim3 * 2)  # C5
+
+    return mobilenetv3._mobilenet_v3(
+        inverted_residual_setting,
+        last_channel,
+        num_classes=num_classes,
+        weights=None,
+        progress=False,
+        **kwargs,
+    )
+
+
 def _generate_model_function():
 
     MODEL_GENERATORS[f"student-mobilenets"] = _student_s
@@ -92,6 +146,14 @@ def _generate_model_function():
 
     MODEL_GENERATORS[f"student-mobilenetxxs"] = partial(
         _student_very_small, dim1=12, dim2=72, dim3=64
+    )
+
+    MODEL_GENERATORS[f"student-mobilenetxs-cifar"] = partial(
+        _student_very_small_cifar, dim1=24, dim2=144, dim3=128
+    )
+
+    MODEL_GENERATORS[f"student-mobilenetxxs-cifar"] = partial(
+        _student_very_small_cifar, dim1=12, dim2=72, dim3=64
     )
 
     MODEL_GENERATORS[f"student-mobilenets-trained"] = _student_s_trained
