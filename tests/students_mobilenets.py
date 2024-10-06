@@ -77,7 +77,9 @@ def test_get_trained_student_has_correct_layer_layer():
     "arch",
     [
         "student-mobilenetxs-cifar",
+        "student-mobilenetxs-cifarv2",
         "student-mobilenetxxs-cifar",
+        "student-mobilenetxxs-cifarv2",
     ],
 )
 def test_student_callable_cifar(arch):
