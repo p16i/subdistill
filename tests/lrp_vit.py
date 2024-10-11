@@ -5,7 +5,7 @@ import torch
 from torchvision import transforms as T
 
 from zennit.attribution import Gradient
-from xaikd import vitlrp, models, attributors
+from xaikd import models, attributors, lrp
 
 
 from PIL import Image
@@ -27,10 +27,10 @@ def test_callable():
     assert hasattr(vit.encoder, "layers")
 
     with Gradient(
-        model=vit, composite=vitlrp._build_composite(lb=lb, hb=hb)
+        model=vit, composite=lrp.vit._build_composite(lb=lb, hb=hb)
     ) as attributor:
         pass
-        actual_output, hm = attributor(input)
+        actual_output, hm = attributor.forward(input, lambda l: l)
 
         assert np.isfinite(actual_output.detach().numpy()).any()
         assert np.isfinite(hm.detach().numpy()).any()
