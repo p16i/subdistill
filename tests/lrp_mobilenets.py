@@ -5,12 +5,7 @@ import torch
 from torchvision import transforms as T
 
 from zennit.attribution import Gradient
-from xaikd import vitlrp, models, attributors
-
-from xaikd.lrp import mobilenets
-
-
-from PIL import Image
+from xaikd import models, lrp
 
 
 @pytest.mark.slow
@@ -32,10 +27,10 @@ def test_callable(model_name):
     assert hasattr(model, "features")
 
     with Gradient(
-        model=model, composite=mobilenets._build_composite(lb=lb, hb=hb)
+        model=model, composite=lrp.mobilenets._build_composite(lb=lb, hb=hb)
     ) as attributor:
         pass
-        actual_output, hm = attributor(input)
+        actual_output, hm = attributor.forward(input, lambda logits: logits)
 
         assert np.isfinite(actual_output.detach().numpy()).any()
         assert np.isfinite(hm.detach().numpy()).any()

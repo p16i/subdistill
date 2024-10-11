@@ -25,7 +25,7 @@ def test_callable():
         model=nfnet, composite=lrp.nfnets._build_composite(lb=lb, hb=hb)
     ) as attributor:
         pass
-        actual_output, hm = attributor(input)
+        actual_output, hm = attributor.forward(input, lambda logits: logits)
         actual_output = actual_output.detach().numpy()
 
         assert np.isfinite(actual_output).any()

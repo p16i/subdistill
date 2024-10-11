@@ -5,28 +5,14 @@ from torchvision.models import vision_transformer
 
 from functools import partial
 
-from zennit.rules import Pass, Epsilon, BasicHook, NoMod
+from zennit.rules import Pass
 from zennit.canonizers import AttributeCanonizer
 from zennit.composites import Composite
-from xaikd import lrp
+
+from xaikd.lrp import rules
 from copy import deepcopy
 
 from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
-
-
-class SafeEpsilon(BasicHook):
-    def __init__(self, epsilon=1e-6, zero_params=None):
-        super().__init__(
-            input_modifiers=[lambda input: input],
-            param_modifiers=[NoMod(zero_params=zero_params)],
-            output_modifiers=[lambda output: output],
-            gradient_mapper=(
-                lambda out_grad, outputs: lrp.nfnets.lrp_rule_ratio(
-                    nom=out_grad, denom=outputs[0], eps=epsilon
-                )
-            ),
-            reducer=(lambda inputs, gradients: inputs[0] * gradients[0]),
-        )
 
 
 class SummationPositionEmbed(torch.nn.Module):
@@ -234,7 +220,7 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
         pass
     else:
         if isinstance(module, MultiHeadAttentionWithoutTransformation):
-            return SafeEpsilon(epsilon=0)
+            return rules.SafeEpsilon(epsilon=0)
         return None
 
     # count the number of the leaves processed yet in 'leafnum'
@@ -247,11 +233,11 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
 
     if leafnum == 0:
         if first_layer_rule == "box":
-            return lrp.nfnets.SafeZBox(
+            return rules.SafeZBox(
                 low=lb.reshape(1, -1, 1, 1), high=hb.reshape(1, -1, 1, 1)
             )
         elif first_layer_rule == "gamma":
-            return lrp.nfnets.SafeGamma(gamma=gamma, stabilizer=eps)
+            return rules.SafeGamma(gamma=gamma, stabilizer=eps)
         else:
             raise
     elif isinstance(module, nn.GELU):
@@ -259,17 +245,17 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
     elif isinstance(module, SummationPositionEmbed):
         return Pass()
     elif isinstance(module, nn.Linear):
-        return lrp.nfnets.SafeGamma(gamma=gamma, stabilizer=eps)
+        return rules.SafeGamma(gamma=gamma, stabilizer=eps)
     elif isinstance(module, Summation):
-        return lrp.nfnets.SafeGammaForPooling(gamma=gamma, stabilizer=eps)
+        return rules.SafeGammaForPooling(gamma=gamma, stabilizer=eps)
     elif isinstance(
         module, (AttentionInputProjection, NonDynamicallyQuantizableLinear)
     ):
-        return lrp.nfnets.SafeGamma(gamma=gamma, stabilizer=eps)
+        return rules.SafeGamma(gamma=gamma, stabilizer=eps)
     elif isinstance(
         module, (LayerNormStandardizeStep, LayerNormAffineTransformationStep)
     ):
-        return SafeEpsilon(epsilon=0)
+        return rules.SafeEpsilon(epsilon=0)
     else:
         return None
 
