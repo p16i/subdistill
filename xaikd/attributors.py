@@ -29,7 +29,7 @@ from xaikd import datasets
 from xaikd.models.interfaces import DistillableModel
 
 import zennit
-from xaikd import nfnetlrp, lrp
+from xaikd import lrp
 
 
 from functools import partial
@@ -46,7 +46,7 @@ def get_arch_specific_composite(
         else:
             return EpsilonGammaBox(low=lb, high=hb, canonizers=[])
     elif isinstance(model, timm.models.nfnet.NormFreeNet):
-        return nfnetlrp.EpsilonGammaBox(lb=lb, hb=hb)
+        return lrp.nfnets._build_composite(lb=lb, hb=hb)
     elif isinstance(model, torchvision.models.VisionTransformer):
         return lrp.vit._build_composite(lb=lb, hb=hb)
     elif isinstance(model, torchvision.models.MobileNetV3):

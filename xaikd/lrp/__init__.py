@@ -1,1 +1,1 @@
-from . import mobilenets, vit
+from . import mobilenets, vit, nfnets

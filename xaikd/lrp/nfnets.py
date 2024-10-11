@@ -420,7 +420,7 @@ def module_map(ctx, name, module, gamma, eps, lb, hb):
         return None
 
 
-class EpsilonGammaBox(Composite):
+class NFNetComposite(Composite):
     def __init__(
         self,
         lb: torch.Tensor,
@@ -436,3 +436,17 @@ class EpsilonGammaBox(Composite):
                 ScaledStdConv2dSameCanonizer(),
             ],
         )
+
+
+def _build_composite(
+    lb: torch.Tensor,
+    hb: torch.Tensor,
+    gamma=0.1,
+    eps=1e-2,
+) -> Composite:
+    return NFNetComposite(
+        lb=lb,
+        hb=hb,
+        gamma=gamma,
+        eps=eps,
+    )

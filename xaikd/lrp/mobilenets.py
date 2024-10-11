@@ -10,7 +10,7 @@ from torchvision.models.mobilenetv3 import InvertedResidual
 from zennit.rules import Pass, Epsilon, BasicHook, NoMod
 from zennit.canonizers import AttributeCanonizer, SequentialMergeBatchNorm
 from zennit.composites import Composite
-from xaikd.nfnetlrp import SafeZBox, SafeGamma, SafeGammaForPooling, Summation
+from xaikd.lrp.nfnets import SafeZBox, SafeGamma, SafeGammaForPooling, Summation
 
 
 def module_map(ctx, name, module, gamma, eps, lb, hb):

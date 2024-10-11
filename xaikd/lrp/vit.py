@@ -8,7 +8,7 @@ from functools import partial
 from zennit.rules import Pass, Epsilon, BasicHook, NoMod
 from zennit.canonizers import AttributeCanonizer
 from zennit.composites import Composite
-from xaikd import nfnetlrp
+from xaikd import lrp
 from copy import deepcopy
 
 from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
@@ -21,7 +21,7 @@ class SafeEpsilon(BasicHook):
             param_modifiers=[NoMod(zero_params=zero_params)],
             output_modifiers=[lambda output: output],
             gradient_mapper=(
-                lambda out_grad, outputs: nfnetlrp.lrp_rule_ratio(
+                lambda out_grad, outputs: lrp.nfnets.lrp_rule_ratio(
                     nom=out_grad, denom=outputs[0], eps=epsilon
                 )
             ),
@@ -247,11 +247,11 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
 
     if leafnum == 0:
         if first_layer_rule == "box":
-            return nfnetlrp.SafeZBox(
+            return lrp.nfnets.SafeZBox(
                 low=lb.reshape(1, -1, 1, 1), high=hb.reshape(1, -1, 1, 1)
             )
         elif first_layer_rule == "gamma":
-            return nfnetlrp.SafeGamma(gamma=gamma, stabilizer=eps)
+            return lrp.nfnets.SafeGamma(gamma=gamma, stabilizer=eps)
         else:
             raise
     elif isinstance(module, nn.GELU):
@@ -259,13 +259,13 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
     elif isinstance(module, SummationPositionEmbed):
         return Pass()
     elif isinstance(module, nn.Linear):
-        return nfnetlrp.SafeGamma(gamma=gamma, stabilizer=eps)
+        return lrp.nfnets.SafeGamma(gamma=gamma, stabilizer=eps)
     elif isinstance(module, Summation):
-        return nfnetlrp.SafeGammaForPooling(gamma=gamma, stabilizer=eps)
+        return lrp.nfnets.SafeGammaForPooling(gamma=gamma, stabilizer=eps)
     elif isinstance(
         module, (AttentionInputProjection, NonDynamicallyQuantizableLinear)
     ):
-        return nfnetlrp.SafeGamma(gamma=gamma, stabilizer=eps)
+        return lrp.nfnets.SafeGamma(gamma=gamma, stabilizer=eps)
     elif isinstance(
         module, (LayerNormStandardizeStep, LayerNormAffineTransformationStep)
     ):
@@ -274,7 +274,7 @@ def module_map(ctx, name, module, gamma, eps, lb, hb, first_layer_rule):
         return None
 
 
-class EpsilonGammaBox(Composite):
+class ViTComposite(Composite):
     def __init__(
         self,
         lb: torch.Tensor,
@@ -306,8 +306,7 @@ def _build_composite(
     gamma=0.1,
     eps=1e-6,
     first_layer_rule="box",
-):
-    pass
-    return EpsilonGammaBox(
+) -> Composite:
+    return ViTComposite(
         lb=lb, hb=hb, gamma=gamma, eps=eps, first_layer_rule=first_layer_rule
     )

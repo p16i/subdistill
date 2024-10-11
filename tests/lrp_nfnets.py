@@ -4,7 +4,7 @@ import numpy as np
 
 import torch
 
-from xaikd import models, nfnetlrp
+from xaikd import models, lrp
 from zennit.attribution import Gradient
 
 
@@ -17,14 +17,16 @@ def test_callable():
 
     input = torch.randn(1, 3, 224, 224)
 
+    expected_output = nfnet(input).detach().numpy()
+
     with Gradient(
-        model=nfnet, composite=nfnetlrp.EpsilonGammaBox(lb=lb, hb=hb)
+        model=nfnet, composite=lrp.nfnets._build_composite(lb=lb, hb=hb)
     ) as attributor:
         pass
-        output, hm = attributor(input)
+        actual_output, hm = attributor(input)
+        actual_output = actual_output.detach().numpy()
 
-        assert np.isfinite(output.detach().numpy()).any()
+        assert np.isfinite(actual_output).any()
         assert np.isfinite(hm.detach().numpy()).any()
 
-
-# @todo: model w/o attribution  and attribution share the same output
+    # np.testing.assert_allclose(actual_output, expected_output, atol=1e-6)
