@@ -245,13 +245,18 @@ class ScaledStdConv2dSameCanonizer(AttributeCanonizer):
         super().__init__(self._attribute_map)
 
     @classmethod
-    def _attribute_map(cls, name, module):
+    def _attribute_map(cls, name, module: ScaledStdConv2dSame):
         if isinstance(module, ScaledStdConv2dSame):
 
-            std, mean = torch.std_mean(
-                module.weight, dim=[1, 2, 3], keepdim=True, unbiased=False
-            )
-            weight = module.scale * (module.weight - mean) / (std + module.eps)
+            weight = F.batch_norm(
+                module.weight.reshape(1, module.out_channels, -1),
+                None,
+                None,
+                weight=(module.gain * module.scale).view(-1),
+                training=True,
+                momentum=0.0,
+                eps=module.eps,
+            ).reshape_as(module.weight)
 
             attributes = {
                 "forward": cls.forward.__get__(module),
@@ -270,7 +275,7 @@ class ScaledStdConv2dSameCanonizer(AttributeCanonizer):
         weight = self.weight
         return F.conv2d(
             x,
-            self.gain * weight,
+            weight,
             self.bias,
             self.stride,
             self.padding,
