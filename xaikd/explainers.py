@@ -34,9 +34,9 @@ def register_explainer(name):
 
 @register_explainer("lrp")
 class Explainer:
-    def __init__(self, model: nn.Module, input_transform: T.Normalize, **kwargs):
+    def __init__(self, model: nn.Module, normalizer: T.Normalize, **kwargs):
 
-        low, high = input_transform(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
+        low, high = normalizer(torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]]))
 
         self.model = model
         self.composite = attributors.get_arch_specific_composite(
@@ -77,11 +77,9 @@ class Explainer:
 
 @register_explainer("random1")
 class RandomExplainer(Explainer):
-    def __init__(
-        self, model: nn.Module, input_transform: T.Normalize, seed=1, **kwargs
-    ):
+    def __init__(self, model: nn.Module, normalizer: T.Normalize, seed=1, **kwargs):
 
-        super().__init__(model, input_transform, **kwargs)
+        super().__init__(model, normalizer, **kwargs)
         self.seed = seed
 
     def explain(
@@ -116,11 +114,11 @@ class RandomExplainer(Explainer):
 
 @register_explainer("mobilenetlrp")
 class MobileNetExplainer(Explainer):
-    def __init__(self, model: nn.Module, input_transform: T.Normalize, **kwargs):
+    def __init__(self, model: nn.Module, normalizer: T.Normalize, **kwargs):
 
         assert isinstance(model, MobileNetV3)
 
-        super().__init__(model, input_transform, **kwargs)
+        super().__init__(model, normalizer, **kwargs)
 
     def explain(
         self,
@@ -171,9 +169,11 @@ class MobileNetExplainer(Explainer):
 
 
 def get_explainer(
-    name: str, model: nn.Module, input_transform: T.Normalize, **kwargs
+    name: str,
+    model: nn.Module,
+    normalizer: T.Normalize,
 ) -> Explainer:
-    return EXPLAINERS[name](model=model, input_transform=input_transform, **kwargs)
+    return EXPLAINERS[name](model=model, normalizer=normalizer)
 
 
 def ano():
