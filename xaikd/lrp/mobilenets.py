@@ -135,7 +135,6 @@ def _build_composite(lb, hb, gamma=0.1, eps=1e-12):
 def explain(
     attributor: attributors.Gradient,
     model: nn.Module,
-    dataset: datasets.DatasetConfiguration,
     dataloader: DataLoader,
     logit_modifier: attributors.LogitModifier,
     device="cpu",
