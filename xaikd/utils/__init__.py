@@ -15,7 +15,7 @@ from pathlib import Path
 from PIL import Image
 
 
-from . import interceptor, spurious_feature_generator
+from . import interceptor, spurious_feature_generator, pixelflipping
 
 import yaml
 
