@@ -18,6 +18,7 @@ def _check_heatmap_finite(explainer_name: str, model_name: str):
     input_transform = transforms.Normalize(*dataset.input_statistics)
 
     model = models.get_trained_model(model_name)
+    model.to(device)
 
     explainer = explainers.get_explainer(explainer_name, model, input_transform)
 
