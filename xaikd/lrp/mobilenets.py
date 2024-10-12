@@ -1,19 +1,26 @@
 import torch
 
+import numpy as np
+from numpy import typing as npt
+
 from torch import nn
 
 from functools import partial
+from tqdm import tqdm
 
 from torchvision.ops import SqueezeExcitation
-
-from torchvision.models.mobilenetv3 import InvertedResidual
+from torch.nn import functional as F
+from torchvision.models.mobilenetv3 import InvertedResidual, MobileNetV3
 
 from zennit.canonizers import AttributeCanonizer, SequentialMergeBatchNorm
 from zennit.composites import Composite
 
 from zennit.rules import Pass
+
+from xaikd import attributors, datasets, utils
 from xaikd.lrp import rules
 from xaikd.lrp.nfnets import Summation
+from torch.utils.data import DataLoader
 
 
 def module_map(ctx, name, module, gamma, eps, lb, hb):
@@ -123,3 +130,45 @@ class EpsilonGammaBox(Composite):
 
 def _build_composite(lb, hb, gamma=0.1, eps=1e-12):
     return EpsilonGammaBox(lb=lb, hb=hb, gamma=gamma, eps=eps)
+
+
+def explain(
+    attributor: attributors.Gradient,
+    model: nn.Module,
+    dataset: datasets.DatasetConfiguration,
+    dataloader: DataLoader,
+    logit_modifier: attributors.LogitModifier,
+    device="cpu",
+) -> npt.NDArray[np.float32]:
+
+    arr_heatmaps = []
+
+    assert isinstance(model, MobileNetV3)
+
+    with attributor:
+
+        for x, y in tqdm(dataloader):
+            hook = None
+            try:
+                x = x.to(device)
+                y = y.to(device)
+                module, hook = utils.interceptor.attach_hook_intercept_layer_output(
+                    model, "features.1", should_retain_grad=True, detach_output=False
+                )
+                attributor.forward(x, lambda logits: logit_modifier(logits, y))
+
+                heatmap = (
+                    utils.interceptor.get_output(module).grad.detach().cpu().numpy()
+                )
+
+                heatmap = heatmap.sum(axis=1)
+
+                arr_heatmaps.append(heatmap)
+
+            finally:
+                if hook is not None:
+                    hook.remove()
+
+    arr_heatmaps = np.vstack(arr_heatmaps)
+
+    return arr_heatmaps
