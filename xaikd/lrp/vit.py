@@ -1,18 +1,17 @@
-import torch
+from copy import deepcopy
+from functools import partial
 
+import torch
 from torch import nn
 from torchvision.models import vision_transformer
+from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
 
-from functools import partial
 
 from zennit.rules import Pass
 from zennit.canonizers import AttributeCanonizer
 from zennit.composites import Composite
 
 from xaikd.lrp import rules
-from copy import deepcopy
-
-from torch.nn.modules.linear import NonDynamicallyQuantizableLinear
 
 
 class SummationPositionEmbed(torch.nn.Module):
