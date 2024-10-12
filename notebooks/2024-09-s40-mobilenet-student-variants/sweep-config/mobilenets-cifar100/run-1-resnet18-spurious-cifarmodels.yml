@@ -1,0 +1,42 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+parameters:
+  dataset:
+    value: cifar100-people
+  dataset-variant:
+    value: spurious-plussign--1.0
+  training-size:
+    value: 1.0
+  seed:
+    values:
+      - 1
+  layer-policy:
+    values: 
+      - vid
+      - basis-rotation:pca--uncentered
+      - basis-rotation:prca-sortabs--uncentered
+  layers: 
+    value: layer3:features.3,layer4:features.8
+  last-layer-policy:
+    value: kd
+  output-dir:
+    value: /tmp/mobilenets
+  student:
+    values: 
+      - student-mobilenetxs-cifar
+      - student-mobilenetxxs-cifar
+  teacher:
+    values: 
+      - cifar100-resnet18-v1
+  epochs:
+    value: 100
+  default-lambda-layer-config:
+    value: cifar100-spurious
