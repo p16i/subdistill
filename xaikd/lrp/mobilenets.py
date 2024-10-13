@@ -122,5 +122,5 @@ class MobileNetEpsilonGammaBox(Composite):
         )
 
 
-def _build_composite(lb, hb, gamma=0.1, eps=1e-12):
+def _build_composite(lb, hb, gamma=1.0, eps=1e-12):
     return MobileNetEpsilonGammaBox(lb=lb, hb=hb, gamma=gamma, eps=eps)
