@@ -28,7 +28,7 @@ From: python:3.10.6
 	timm==1.0.3 \
  	tensorboard==2.13.0 \
 	zennit==0.5.1  \
-	opencv-python==4.10.0.84
+	opencv-python==4.4.0.44
 
 
 %test
