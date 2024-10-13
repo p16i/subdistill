@@ -41,24 +41,24 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     device = utils.get_device()
 
+    model = models.get_trained_model(model_name)
+
+    dataset = datasets.construct(dataset_name)
+
+    utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+    model.to(device)
+
+    dl_train = datasets.build_dataloader(
+        dataset.create_subset(train_split=True), shuffle=False
+    )
+
+    dl_val = datasets.build_dataloader(
+        dataset.create_subset(train_split=False), shuffle=False
+    )
+
     for layer in layers.split(","):
 
-        model = models.get_trained_model(model_name)
-
-        dataset = datasets.construct(dataset_name)
-
-        utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
-        model.to(device)
-
         output_dir = Path(artifact_dir) / dataset_name / model_name / layer
-
-        dl_train = datasets.build_dataloader(
-            dataset.create_subset(train_split=True), shuffle=False
-        )
-
-        dl_val = datasets.build_dataloader(
-            dataset.create_subset(train_split=False), shuffle=False
-        )
 
         dims = utils.get_dimensions_at_layers(
             model=model, dataloader=dl_train, layers=[layer], device=device
