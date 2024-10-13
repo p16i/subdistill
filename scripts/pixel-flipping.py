@@ -24,7 +24,7 @@ SEED = 1
 @click.option("--model-name", type=str)
 @click.option("--explainer-name", type=str)
 @click.option("--dataset-name", default="imagenet-butterfly")
-@click.option("--data-percentage", default=0.1)
+@click.option("--data-percentage", default=0.05)
 @click.option("--artifact-dir", default="/tmp")
 def main(model_name, explainer_name, dataset_name, data_percentage, artifact_dir):
     arguments = locals()
