@@ -17,5 +17,5 @@ if [[ $WITH_DATA -eq 1 ]]; then
 fi
 
 apptainer run \
-    --nv ./containers/py310v0.0.4.sif \
+    --nv ./containers/py311v0.0.1.sif \
     "$@"
