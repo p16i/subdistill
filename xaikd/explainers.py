@@ -75,9 +75,8 @@ class Explainer:
         return arr_logits, arr_heatmaps
 
 
-@register_explainer("random1")
 class RandomExplainer(Explainer):
-    def __init__(self, model: nn.Module, normalizer: T.Normalize, seed=1, **kwargs):
+    def __init__(self, model: nn.Module, normalizer: T.Normalize, seed, **kwargs):
 
         super().__init__(model, normalizer, **kwargs)
         self.seed = seed
@@ -181,6 +180,10 @@ def ano():
         EXPLAINERS[f"lrp{gamma}"] = partial(Explainer, gamma=gamma)
 
         EXPLAINERS[f"mobilenetlrp{gamma}"] = partial(MobileNetExplainer, gamma=gamma)
+
+    for seed in [1, 2, 3]:
+
+        EXPLAINERS[f"random{seed}"] = partial(RandomExplainer, seed=seed)
 
 
 ano()

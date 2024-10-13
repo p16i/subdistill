@@ -57,7 +57,15 @@ def test_get_default_explainer(explainer_name, model_name):
 @pytest.mark.slow
 @pytest.mark.parametrize(
     "explainer_name",
-    ["lrp0.0", "lrp0.1", "mobilenetlrp0.0", "mobilenetlrp0.1"],
+    [
+        "lrp0.0",
+        "lrp0.1",
+        "mobilenetlrp0.0",
+        "mobilenetlrp0.1",
+        "random1",
+        "random2",
+        "random3",
+    ],
 )
 @pytest.mark.parametrize("model_name", ["imagenet-mobilenetl-tv"])
 def test_get_explainer_with_gamma(explainer_name, model_name):
