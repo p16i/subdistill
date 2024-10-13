@@ -25,14 +25,14 @@ import numpy as np
 
 @click.command()
 @click.option("--model-name", type=str)
-@click.option("--layer", type=str)
+@click.option("--layers", type=str)
 @click.option("--dataset-name", type=str, default="imagenet-butterfly")
 @click.option(
     "--basis-names",
     default="pca--uncentered,prca-sortabs--uncentered",
 )
 @click.option("--artifact-dir", type=str, default="/tmp")
-def main(model_name, layer, dataset_name, basis_names, artifact_dir):
+def main(model_name, layers, dataset_name, basis_names, artifact_dir):
     arguments = locals()
 
     rng = np.random.default_rng(seed=1)
@@ -41,120 +41,120 @@ def main(model_name, layer, dataset_name, basis_names, artifact_dir):
 
     device = utils.get_device()
 
-    model = models.get_trained_model(model_name)
+    for layer in layers.split(","):
 
-    _, arch, variant = model_name.split("-")
+        model = models.get_trained_model(model_name)
 
-    dataset = datasets.construct(dataset_name)
+        dataset = datasets.construct(dataset_name)
 
-    utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
-    model.to(device)
+        utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+        model.to(device)
 
-    artifact_dir = Path(artifact_dir) / dataset_name / model_name / layer
+        output_dir = Path(artifact_dir) / dataset_name / model_name / layer
 
-    dl_train = datasets.build_dataloader(
-        dataset.create_subset(train_split=True), shuffle=False
-    )
-
-    dl_val = datasets.build_dataloader(
-        dataset.create_subset(train_split=False), shuffle=False
-    )
-
-    dims = utils.get_dimensions_at_layers(
-        model=model, dataloader=dl_train, layers=[layer], device=device
-    )[layer]
-
-    click.echo(f"Loading artifacts from `{artifact_dir}`")
-    click.echo(f"Device: {device}")
-    click.echo(
-        " | ".join(
-            [
-                f"Model: {model_name}",
-                f"Layer: {layer} (dims={dims})",
-            ]
+        dl_train = datasets.build_dataloader(
+            dataset.create_subset(train_split=True), shuffle=False
         )
-    )
 
-    module: nn.Module = utils.interceptor.get_module(model, layer)
+        dl_val = datasets.build_dataloader(
+            dataset.create_subset(train_split=False), shuffle=False
+        )
 
-    original_accuracy, _ = metrics.accuracy(
-        model,
-        dataloader=dl_val,
-        num_classes=len(dataset.selected_classes),
-        device=device,
-        verbose=True,
-    )
+        dims = utils.get_dimensions_at_layers(
+            model=model, dataloader=dl_train, layers=[layer], device=device
+        )[layer]
 
-    logit_modifier = attributors.WinningClassEvidence(
-        num_classes=len(dataset.selected_classes)
-    )
+        click.echo(f"Loading artifacts from `{artifact_dir}`")
+        click.echo(f"Device: {device}")
+        click.echo(
+            " | ".join(
+                [
+                    f"Model: {model_name}",
+                    f"Layer: {layer} (dims={dims})",
+                ]
+            )
+        )
 
-    arr_act, arr_ctx = attributors.extract_activation_context(
-        model=model,
-        layer=layer,
-        dataset=dataset,
-        rng=rng,
-        data_loader=dl_train,
-        device=device,
-        logit_modifier=logit_modifier,
-    )
+        module: nn.Module = utils.interceptor.get_module(model, layer)
 
-    _, d = arr_act.shape
+        original_accuracy, _ = metrics.accuracy(
+            model,
+            dataloader=dl_val,
+            num_classes=len(dataset.selected_classes),
+            device=device,
+            verbose=True,
+        )
 
-    arr_ks = (
-        [1] + list(filter(lambda k: k % 2 == 0, np.arange(2, d // 2))) + [d // 2, d]
-    )
+        logit_modifier = attributors.WinningClassEvidence(
+            num_classes=len(dataset.selected_classes)
+        )
 
-    for basis_name in tqdm(
-        basis_names.split(","),
-        desc=f"[model={model_name},device={device}]",
-    ):
-        basis = bases.get_basis(basis_name)
-
-        basis.fit(
-            arr_act=arr_act,
-            arr_ctx=arr_ctx,
-            # this is mainly for pcalookahead
+        arr_act, arr_ctx = attributors.extract_activation_context(
             model=model,
             layer=layer,
-            dataloader=datasets.build_dataloader(
-                dataset.create_subset(train_split=True), shuffle=False
-            ),
+            dataset=dataset,
+            rng=rng,
+            data_loader=dl_train,
+            device=device,
+            logit_modifier=logit_modifier,
         )
 
-        arr_accuracies = []
-        arr_losses = []
-        for k in tqdm(arr_ks, desc=f"[dataset={dataset_name}; basis={basis_name}]"):
-            try:
+        _, d = arr_act.shape
 
-                hook = module.register_forward_hook(
-                    basis.construct_fh_rank_k_projection(k, device=device)
-                )
-                acc, loss = metrics.accuracy(
-                    model,
-                    dl_val,
-                    num_classes=dataset.num_classes,
-                    device=device,
-                    verbose=False,
-                )
-                print(f"basis_name={basis_name}; k={k}: acc={acc}")
-                arr_losses.append(loss)
-                arr_accuracies.append(acc)
-            finally:
-                hook.remove()
-
-        os.makedirs(f"{artifact_dir}/{basis_name}", exist_ok=True)
-
-        utils.dump_json(
-            Path(f"{artifact_dir}/{basis_name}/accuracy.json"),
-            dict(
-                accuracies=arr_accuracies,
-                losses=arr_losses,
-                arr_ks=list(map(int, arr_ks)),
-                dims=dims,
-                original_accuracy=original_accuracy,
-            ),
+        arr_ks = (
+            [1] + list(filter(lambda k: k % 2 == 0, np.arange(2, d // 2))) + [d // 2, d]
         )
+
+        for basis_name in tqdm(
+            basis_names.split(","),
+            desc=f"[model={model_name},device={device}]",
+        ):
+            basis = bases.get_basis(basis_name)
+
+            basis.fit(
+                arr_act=arr_act,
+                arr_ctx=arr_ctx,
+                # this is mainly for pcalookahead
+                model=model,
+                layer=layer,
+                dataloader=datasets.build_dataloader(
+                    dataset.create_subset(train_split=True), shuffle=False
+                ),
+            )
+
+            arr_accuracies = []
+            arr_losses = []
+            for k in tqdm(arr_ks, desc=f"[dataset={dataset_name}; basis={basis_name}]"):
+                try:
+
+                    hook = module.register_forward_hook(
+                        basis.construct_fh_rank_k_projection(k, device=device)
+                    )
+                    acc, loss = metrics.accuracy(
+                        model,
+                        dl_val,
+                        num_classes=dataset.num_classes,
+                        device=device,
+                        verbose=False,
+                    )
+                    print(f"basis_name={basis_name}; k={k}: acc={acc}")
+                    arr_losses.append(loss)
+                    arr_accuracies.append(acc)
+                finally:
+                    hook.remove()
+
+            os.makedirs(f"{output_dir}/{basis_name}", exist_ok=True)
+
+            utils.dump_json(
+                Path(f"{output_dir}/{basis_name}/accuracy.json"),
+                dict(
+                    accuracies=arr_accuracies,
+                    losses=arr_losses,
+                    arr_ks=list(map(int, arr_ks)),
+                    dims=dims,
+                    original_accuracy=original_accuracy,
+                ),
+            )
 
     time_took = datetime.now() - start_time
     click.echo(f"Results saved to: {artifact_dir}")
