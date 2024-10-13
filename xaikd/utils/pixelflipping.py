@@ -8,6 +8,7 @@ from torchvision import transforms
 import numpy as np
 from numpy import typing as npt
 
+from tqdm import tqdm
 from PIL import Image
 import cv2
 
@@ -104,16 +105,17 @@ def perform_pixel_flipping(
     assert arr_num_flipped_pixels[0] == 0
     assert arr_num_flipped_pixels[-1] == np.prod(img.size)
 
-    arr_img_tensors = []
-    for step_ix in range(n_steps):
+    arr_logits = []
+    for step_ix in tqdm(range(n_steps)):
         mask = arr_masks[step_ix]
 
         pertubed_img = perturb_and_inpaint(img, mask, baseline=baseline)
-        arr_img_tensors.append(transform(pertubed_img))
+        x: torch.Tensor = transform(pertubed_img)
+        x = x.unsqueeze(0).to(device)
+        logit = model(x).detach().cpu().numpy()[0, target]
+        arr_logits.append(logit)
 
-    x = torch.stack(arr_img_tensors).to(device)
-
-    arr_logits = model(x).cpu().numpy()[:, target]
+    arr_logits = np.array(arr_logits)
 
     return arr_num_flipped_pixels, arr_logits
 
