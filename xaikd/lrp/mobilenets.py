@@ -1,16 +1,20 @@
 import torch
 
+
 from torch import nn
 
 from functools import partial
 
 from torchvision.ops import SqueezeExcitation
-
 from torchvision.models.mobilenetv3 import InvertedResidual
-from zennit.rules import Pass, Epsilon, BasicHook, NoMod
+
 from zennit.canonizers import AttributeCanonizer, SequentialMergeBatchNorm
 from zennit.composites import Composite
-from xaikd.nfnetlrp import SafeZBox, SafeGamma, SafeGammaForPooling, Summation
+
+from zennit.rules import Pass
+
+from xaikd.lrp import rules
+from xaikd.lrp.nfnets import Summation
 
 
 def module_map(ctx, name, module, gamma, eps, lb, hb):
@@ -33,17 +37,17 @@ def module_map(ctx, name, module, gamma, eps, lb, hb):
     leafnum = ctx["leafnum"]
 
     if leafnum == 0:
-        return SafeZBox(low=lb.reshape(1, -1, 1, 1), high=hb.reshape(1, -1, 1, 1))
+        return rules.SafeZBox(low=lb.reshape(1, -1, 1, 1), high=hb.reshape(1, -1, 1, 1))
     elif isinstance(module, nn.Hardswish):
         return Pass()
     elif isinstance(module, nn.Linear):
-        return SafeGamma(gamma=0.0, stabilizer=eps)
+        return rules.SafeGamma(gamma=0.0, stabilizer=eps)
     elif isinstance(module, nn.Conv2d):
-        return SafeGamma(gamma=gamma, stabilizer=eps)
+        return rules.SafeGamma(gamma=gamma, stabilizer=eps)
     elif isinstance(module, Summation):
-        return SafeGammaForPooling(gamma=gamma, stabilizer=eps)
+        return rules.SafeGammaForPooling(gamma=gamma, stabilizer=eps)
     elif isinstance(module, nn.AdaptiveAvgPool2d):
-        return SafeGammaForPooling(gamma=gamma, stabilizer=eps)
+        return rules.SafeGammaForPooling(gamma=gamma, stabilizer=eps)
     else:
         return None
 
@@ -94,7 +98,7 @@ class SqueezeExcitationCanonizer(AttributeCanonizer):
         return self._scale(input.detach()) * input
 
 
-class EpsilonGammaBox(Composite):
+class MobileNetEpsilonGammaBox(Composite):
     def __init__(
         self,
         lb: torch.Tensor,
@@ -118,5 +122,5 @@ class EpsilonGammaBox(Composite):
         )
 
 
-def _build_composite(lb, hb, gamma=0.1, eps=1e-12):
-    return EpsilonGammaBox(lb=lb, hb=hb, gamma=gamma, eps=eps)
+def _build_composite(lb, hb, gamma=1.0, eps=1e-12):
+    return MobileNetEpsilonGammaBox(lb=lb, hb=hb, gamma=gamma, eps=eps)

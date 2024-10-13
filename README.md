@@ -1,5 +1,10 @@
 # XAI $\times$ Knowledge Distillation
 
+
+```
+nix-shell -p poetry python311
+```
+
 We use `peotry` for deps management.
 
 Installing all deps `peotry install`.
