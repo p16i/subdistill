@@ -15,7 +15,7 @@ from pathlib import Path
 from PIL import Image
 
 
-from . import interceptor, spurious_feature_generator
+from . import interceptor, spurious_feature_generator, pixelflipping
 
 import yaml
 
@@ -92,6 +92,26 @@ def subsample_tensors(
 
 def count_params_in_model(model: torch.nn.Module) -> typing.Tuple[int, int]:
     return count_params_in_list_params(model.parameters())
+
+
+def convolve_feature_map_with_linear(
+    feature_map: torch.Tensor, linear_layer: nn.Linear
+):
+    b, d, h, w = feature_map.shape
+
+    out_dims, in_dims = linear_layer.weight.shape
+
+    assert linear_layer.bias is None and in_dims == d
+
+    feature_map = feature_map.flatten(start_dim=2)
+    feature_map = feature_map.permute(0, 2, 1)
+    feature_map = feature_map.reshape((b * h * w, in_dims))
+    feature_map = linear_layer(feature_map)
+    feature_map = feature_map.reshape(b, h * w, out_dims)
+    feature_map = feature_map.permute(0, 2, 1)
+    feature_map = feature_map.reshape(b, out_dims, h, w)
+
+    return feature_map
 
 
 def count_params_in_list_params(
@@ -172,7 +192,7 @@ def modify_last_layer_for_subclasses(
 
 @torch.no_grad()
 def get_dimensions_at_layers(
-    model: nn.Module, dataloader: DataLoader, layers: typing.List[str]
+    model: nn.Module, dataloader: DataLoader, layers: typing.List[str], device="cpu"
 ) -> typing.Dict[str, int]:
     assert not model.training
 
@@ -187,6 +207,7 @@ def get_dimensions_at_layers(
             modules.append(module)
 
         x, _ = next(iter(dataloader))
+        x = x.to(device)
 
         _ = model(x)
 
@@ -204,6 +225,7 @@ def get_dimensions_at_layers(
 
 
 def get_git_hash() -> str:
+    return "xxxxx"
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
 
 

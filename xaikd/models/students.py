@@ -16,7 +16,7 @@ from xaikd.utils.modules import (
 )
 
 
-from . import register_model, MODEL_GENERATORS, vit_students
+from . import register_model, MODEL_GENERATORS, vit_students, students_mobilenet
 
 
 class ConvBN(nn.Module):
@@ -44,7 +44,7 @@ class ConvBN(nn.Module):
 
 
 class StudentModel(nn.Module):
-    def __init__(self, arr_dims: typing.List[int], num_classes: int):
+    def __init__(self, arr_dims: typing.List[int], num_classes: int, **kwargs):
         super().__init__()
 
         assert len(arr_dims) == 4

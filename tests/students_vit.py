@@ -5,6 +5,7 @@ import torch
 from xaikd import constants, models, utils
 
 
+@pytest.mark.parametrize("prefix,num_layers", [("vitstudent", 4), ("vitstudent6l", 6)])
 @pytest.mark.parametrize("hidden_dim", constants.ARR_VIT_STUDENT_HIDDEN_DIMENSIONS)
 @pytest.mark.parametrize(
     "layer",
@@ -12,13 +13,13 @@ from xaikd import constants, models, utils
         "encoder.layers.0",
     ],
 )
-def test_student_callable(hidden_dim, layer):
+def test_student_callable(prefix, num_layers, hidden_dim, layer):
     trng = torch.Generator()
     trng.manual_seed(1)
     bs = 7
     nc = 10
     inp = torch.rand((bs, 3, 224, 224), generator=trng)
-    model = models.get_untrained_model(f"vitstudent-{hidden_dim}", num_classes=nc)
+    model = models.get_untrained_model(f"{prefix}-{hidden_dim}", num_classes=nc)
 
     assert model.training
 
@@ -27,7 +28,7 @@ def test_student_callable(hidden_dim, layer):
 
     assert output.shape == (bs, nc)
 
-    assert len(model.encoder.layers) == 4
+    assert len(model.encoder.layers) == num_layers
 
     total, trainable = utils.count_params_in_model(model)
 

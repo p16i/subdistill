@@ -29,26 +29,32 @@ from xaikd import datasets
 from xaikd.models.interfaces import DistillableModel
 
 import zennit
-from xaikd import nfnetlrp, vitlrp
+from xaikd import lrp
 
 
 from functools import partial
 
 
 def get_arch_specific_composite(
-    model: nn.Module, lb: torch.Tensor, hb: torch.Tensor
+    model: nn.Module, lb: torch.Tensor, hb: torch.Tensor, **kwargs
 ) -> Composite | None:
     if isinstance(model, models.resnet.ResNet):
-        return EpsilonGammaBox(low=lb, high=hb, canonizers=[ResNetCanonizer()])
+        return EpsilonGammaBox(
+            low=lb, high=hb, canonizers=[ResNetCanonizer()], **kwargs
+        )
     elif isinstance(model, torchvision.models.vgg.VGG):
         if utils.modules.has_batchnorm(model):
-            return EpsilonGammaBox(low=lb, high=hb, canonizers=[VGGCanonizer()])
+            return EpsilonGammaBox(
+                low=lb, high=hb, canonizers=[VGGCanonizer()], **kwargs
+            )
         else:
-            return EpsilonGammaBox(low=lb, high=hb, canonizers=[])
+            return EpsilonGammaBox(low=lb, high=hb, canonizers=[], **kwargs)
     elif isinstance(model, timm.models.nfnet.NormFreeNet):
-        return nfnetlrp.EpsilonGammaBox(lb=lb, hb=hb)
+        return lrp.nfnets._build_composite(lb=lb, hb=hb, **kwargs)
     elif isinstance(model, torchvision.models.VisionTransformer):
-        return vitlrp._build_composite(lb=lb, hb=hb)
+        return lrp.vit._build_composite(lb=lb, hb=hb, **kwargs)
+    elif isinstance(model, torchvision.models.MobileNetV3):
+        return lrp.mobilenets._build_composite(lb=lb, hb=hb, **kwargs)
     else:
         raise NotImplementedError("")
 
