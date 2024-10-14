@@ -37,6 +37,7 @@ DEFAULT_LAMBDA_LAYER = {
     },
     "imagenet-spurious": {
         "imagenet-mobilenetl-tv": {
+            "nothing": 0,
             "vid": 1000,
             "basis-rotation:pca--uncentered": 10,
             "basis-rotation:prca-sortabs--uncentered": 1000,
