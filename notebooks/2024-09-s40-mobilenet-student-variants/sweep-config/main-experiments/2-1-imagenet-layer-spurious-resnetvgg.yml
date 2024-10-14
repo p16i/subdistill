@@ -11,10 +11,9 @@ metric:
   name: val_acc
 parameters:
   output-dir:
-    value: sweep-output/2-main-experiment
+    value: /tmp
   teacher:
-    value: 
-      - imagenet-mobilenetl-tv
+    value: imagenet-mobilenetl-tv
   student:
     values:
       - student-mobilenets
