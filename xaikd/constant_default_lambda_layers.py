@@ -35,6 +35,13 @@ DEFAULT_LAMBDA_LAYER = {
             "basis-rotation:prca-sortabs--uncentered": 100,
         }
     },
+    "imagenet-spurious": {
+        "imagenet-mobilenetl-tv": {
+            "vid": 1000,
+            "basis-rotation:pca--uncentered": 10,
+            "basis-rotation:prca-sortabs--uncentered": 1000,
+        }
+    },
     # "imagenet-clean": {
     #     "imagenet-resnet18-tv": {
     #         "nothing": 0,
