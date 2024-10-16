@@ -9,7 +9,7 @@ from xaikd import models, utils
     "student_name,class_indices",
     [
         ("student-mobilenets", np.arange(10)),
-        ("student-bmobilenets", np.arange(10)),
+        ("student-mobilenets-lastd25", np.arange(10)),
         ("student-mobilenetxs", np.arange(10)),
         ("student-mobilenetxxs", np.arange(10)),
         ("student-mobilenets-trained", np.arange(10)),
