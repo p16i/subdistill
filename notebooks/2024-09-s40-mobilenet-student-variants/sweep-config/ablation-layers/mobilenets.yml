@@ -13,24 +13,13 @@ parameters:
   output-dir:
     value: /tmp
   teacher:
-    values: 
-      -  imagenet-resnet18-tv
-      # -  imagenet-resnet50-tv
+    value: imagenet-mobilenetl-tv
   student:
-    values:
-      # - student-mobilenets
-      # - student-mobilenets-lastd25
-      - student-mobilenets-lastd25v2
-      # - student-mobilenetxs
-      # - student-mobilenetxxs
-        # - student-bmobilenets
+    value: student-mobilenets
   dataset:
     value: imagenet-butterfly
   dataset-variant:
-    values:
-      - spurious-threespurious--1.0
-      # - spurious-threespurious--0.75
-      # - spurious-threespurious--0.5
+    value: spurious-threespurious--1.0
   training-size:
     value: 1.0
   seed:
@@ -38,12 +27,16 @@ parameters:
       - 1
       - 2
       - 3
+  layers:
+    values:
+      - features.12:features.8,features.16:features.12
+      # - features.6:features.3,features.12:features.8,features.16:features.12
+      # - features.3:features.1,features.6:features.3,features.12:features.8,features.16:features.12
   layer-policy:
     values:
-      # - nothing
-      - basis-rotation:pca--uncentered
-      - basis-identity:pca--uncentered
       # - basis-rotation:prca-sortabs--uncentered
+      - basis-identity:prca-sortabs--uncentered
+      # - basis-rotation:pca--uncentered
       # - vid
   lambda-task:
       value: 0.0

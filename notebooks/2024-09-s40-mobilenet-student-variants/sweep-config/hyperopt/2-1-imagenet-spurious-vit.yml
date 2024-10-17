@@ -36,11 +36,9 @@ parameters:
   output-dir:
     value: /tmp
   student:
-    value: student-mobilenets
+    value: vitstudent-132
   teacher:
     values: 
-      # - imagenet-mobilenetl-tv
-      - imagenet-resnet50-tv
-      # - imagenet-nfnetf0-dm
+      - imagenet-vitb-tv
   epochs:
     value: 50

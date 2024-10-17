@@ -13,17 +13,13 @@ parameters:
   output-dir:
     value: /tmp
   teacher:
-    values: 
-      -  imagenet-resnet18-tv
-      # -  imagenet-resnet50-tv
+    value: imagenet-vitb-tv
   student:
     values:
-      # - student-mobilenets
-      # - student-mobilenets-lastd25
-      - student-mobilenets-lastd25v2
-      # - student-mobilenetxs
-      # - student-mobilenetxxs
-        # - student-bmobilenets
+      - vitstudent-48
+      - vitstudent-60
+      - vitstudent-72
+      - vitstudent-132
   dataset:
     value: imagenet-butterfly
   dataset-variant:
@@ -40,11 +36,10 @@ parameters:
       - 3
   layer-policy:
     values:
-      # - nothing
+      - nothing
       - basis-rotation:pca--uncentered
-      - basis-identity:pca--uncentered
-      # - basis-rotation:prca-sortabs--uncentered
-      # - vid
+      - basis-rotation:prca-sortabs--uncentered
+      - vid
   lambda-task:
       value: 0.0
   lambda-kd:
