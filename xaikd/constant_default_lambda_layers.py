@@ -47,6 +47,7 @@ DEFAULT_LAMBDA_LAYER = {
             "nothing": 0,
             "vid": 1000,
             "basis-rotation:pca--uncentered": 10,
+            "basis-identity:pca--uncentered": 10,
             "basis-rotation:prca-sortabs--uncentered": 1000,
             "basis-identity:prca-sortabs--uncentered": 1000,
         },
