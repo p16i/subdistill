@@ -153,6 +153,7 @@ class PatMobileNetV3(nn.Module):
         block=None,
         norm_layer=None,
         dropout=0.2,
+        use_last_act=True,
         **kwargs,
     ) -> None:
 
@@ -207,7 +208,7 @@ class PatMobileNetV3(nn.Module):
                 lastconv_output_channels,
                 kernel_size=1,
                 norm_layer=norm_layer,
-                activation_layer=nn.Hardswish,
+                activation_layer=nn.Hardswish if use_last_act else None,
             )
         )
 
@@ -364,6 +365,15 @@ def _generate_model_function():
         dim3=40,
         last_output_channels=25,
         dim4=16,
+    )
+    MODEL_GENERATORS[f"student-mobilenets-lastd25v2"] = partial(
+        _student_very_small_bottleneck,
+        dim1=48,
+        dim2=30,
+        dim3=40,
+        last_output_channels=25,
+        dim4=16,
+        use_last_act=False,
     )
 
     MODEL_GENERATORS[f"student-mobilenetxs"] = partial(
