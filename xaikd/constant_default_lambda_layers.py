@@ -50,6 +50,7 @@ DEFAULT_LAMBDA_LAYER = {
             "vid": 10.0,
             "basis-identity:pca--uncentered": 10.0,
             "basis-identity:prca-sortabs--uncentered": 10.0,
+            "basis-rotation:prca-sortabs--uncentered": 10.0,
             "basis-identity:pcalookahead--uncentered": 100.0,
         },
         "imagenet-resnet50-tv": {
