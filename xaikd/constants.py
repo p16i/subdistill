@@ -13,6 +13,7 @@ ARR_STUDENT_DIMENSIONS = [
     (40, 32, 24, 16),
     (48, 40, 32, 24),
     (56, 48, 40, 32),
+    (112, 96, 80,  64),
 ]
 
 ARR_VIT_STUDENT_HIDDEN_DIMENSIONS = [
