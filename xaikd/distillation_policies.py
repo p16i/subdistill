@@ -718,6 +718,49 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         return loss_mse
 
 
+class Attn(nn.Module):
+    def __init__(self, transform: nn.Module):
+        super().__init__()
+
+        self.transform = transform
+
+    def forward(self, x):
+        # projection (B, K, h, w)
+        x = self.transform(x)
+
+        B, K, h, w = x.shape
+
+        # projection (B, h, w)
+        norm = torch.linalg.norm(x, dim=1)
+        alpha = torch.exp(norm)
+
+        alpha = alpha / torch.flatten(alpha, start_dim=1).sum(dim=1).unsqueeze(
+            1
+        ).unsqueeze(2)
+
+        # shape (B, 1, h, w)
+        alpha = alpha.unsqueeze(1)
+        assert alpha.shape == (B, 1, h, w)
+
+        scaled_x = alpha * x
+        return scaled_x
+
+
+@register_layer_policy("basis-identity-attn")
+class OrthogonalBasisIdentityAttnPolicy(OrthogonalBasisIdentityPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+        super().__init__(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+
+        self.transformer_teacher_feats = Attn(self.transformer_teacher_feats)
+
+
 @register_layer_policy("basis-rotation")
 class OrthogonalBasisRotationPolicy(OrthogonalBasisIdentityPolicy):
     def __init__(
