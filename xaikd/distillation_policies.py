@@ -732,11 +732,8 @@ class Attn(nn.Module):
 
         # projection (B, h, w)
         norm = torch.linalg.norm(x, dim=1)
-        alpha = torch.exp(norm)
 
-        alpha = alpha / torch.flatten(alpha, start_dim=1).sum(dim=1).unsqueeze(
-            1
-        ).unsqueeze(2)
+        alpha = F.softmax(norm, dim=1)
 
         # shape (B, 1, h, w)
         alpha = alpha.unsqueeze(1)
