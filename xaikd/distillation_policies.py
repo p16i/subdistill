@@ -733,11 +733,8 @@ class Attn(nn.Module):
         # projection (B, h, w)
         norm = torch.linalg.norm(x, dim=1)
 
-        alpha = F.softmax(norm, dim=1)
-
-        # shape (B, 1, h, w)
-        alpha = alpha.unsqueeze(1)
-        assert alpha.shape == (B, 1, h, w)
+        alpha = F.softmax(torch.flatten(norm, start_dim=1), dim=1)
+        alpha = torch.reshape(alpha, (B, 1, h, w))
 
         np.testing.assert_allclose(
             torch.flatten(alpha, start_dim=1).sum(dim=1).detach().cpu().numpy(), 1.0
