@@ -807,6 +807,21 @@ class OrthogonalBasisRotationPolicy(OrthogonalBasisIdentityPolicy):
         self.transformer_student_feats = StudenTransform()
 
 
+@register_layer_policy("basis-rotation-attn")
+class OrthogonalBasisRotationPolicy(OrthogonalBasisRotationPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+
+        super().__init__(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+        self.transformer_teacher_feats = Attn(self.transformer_teacher_feats)
+
+
 @register_layer_policy("basis-identity-learnable")
 class OrthogonalBasisIdentityLearnablePolicy(OrthogonalBasisIdentityPolicy):
     def __init__(
