@@ -739,7 +739,9 @@ class Attn(nn.Module):
         alpha = alpha.unsqueeze(1)
         assert alpha.shape == (B, 1, h, w)
 
-        np.testing.assert_allclose(torch.flatten(alpha, start_dim=1).sum(dim=1), 1.0)
+        np.testing.assert_allclose(
+            torch.flatten(alpha, start_dim=1).sum(dim=1).detach().cpu().numpy(), 1.0
+        )
 
         scaled_x = alpha * x
         return scaled_x
