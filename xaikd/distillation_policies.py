@@ -733,7 +733,13 @@ class Attn(nn.Module):
         # projection (B, h, w)
         norm = torch.linalg.norm(x, dim=1)
 
-        alpha = F.softmax(torch.flatten(norm, start_dim=1), dim=1)
+        norm = torch.flatten(norm, start_dim=1)
+
+        temperature = torch.mean(norm, dim=1, keepdim=True)
+
+        norm = norm / temperature
+
+        alpha = F.softmax(norm, dim=1)
         alpha = torch.reshape(alpha, (B, 1, h, w))
 
         np.testing.assert_allclose(
