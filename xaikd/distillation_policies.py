@@ -735,15 +735,14 @@ class Attn(nn.Module):
 
         norm = torch.flatten(norm, start_dim=1)
 
-        temperature = torch.mean(norm, dim=1, keepdim=True)
+        max_retured = torch.max(norm, dim=1, keepdim=True)
+        max_values = max_retured.values
 
-        norm = norm / temperature
-
-        alpha = F.softmax(norm, dim=1)
+        alpha = norm / max_values
         alpha = torch.reshape(alpha, (B, 1, h, w))
 
         np.testing.assert_allclose(
-            torch.flatten(alpha, start_dim=1).sum(dim=1).detach().cpu().numpy(),
+            torch.flatten(alpha, start_dim=1).max(dim=1).values.detach().cpu().numpy(),
             1.0,
             atol=1e-6,
         )
