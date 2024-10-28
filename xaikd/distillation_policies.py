@@ -738,7 +738,7 @@ class Attn(nn.Module):
         max_retured = torch.max(norm, dim=1, keepdim=True)
         max_values = max_retured.values
 
-        alpha = norm / max_values
+        alpha = (norm / max_values) ** 2
         alpha = torch.reshape(alpha, (B, 1, h, w))
 
         np.testing.assert_allclose(
