@@ -21,7 +21,7 @@ from . import pcalookahead
 from enum import Enum
 
 from xaikd.bases import pcalookahead
-from xaikd import models
+from xaikd import models, utils
 
 EPS = 1e-6
 BASES = dict()
@@ -229,6 +229,28 @@ class PRCASortAbs(Orthogonal):
 
         U = eigvecs[:, sorted_ix].copy()
         assert not np.isnan(U).any()
+
+        return U
+
+
+@register_basis("prca-sortabs-corrected-sign")
+class PRCASortAbsCorrectedSign(Orthogonal):
+    def _solve(
+        self,
+        arr_act,
+        arr_ctx,
+    ):
+        cov = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+
+        eigvals, eigvecs = np.linalg.eigh(cov)
+
+        sorted_ix = np.argsort(-np.abs(eigvals))
+
+        U = eigvecs[:, sorted_ix].copy()
+
+        assert not np.isnan(U).any()
+
+        U = utils.correct_direction(arr_act, U)
 
         return U
 

@@ -150,3 +150,18 @@ def test_transformation_with_linear():
     actual = utils.convolve_feature_map_with_linear(feat, linear).numpy()
 
     np.testing.assert_allclose(actual, expected, atol=1e-6)
+
+
+def test_correction_direction():
+    U = -np.eye(2)
+    X = np.random.rand(10, 2)
+
+    prop_negative_before = (X @ U < 0).mean(axis=0)
+    np.testing.assert_equal(prop_negative_before, 1.0)
+
+    corrected_U = utils.correct_direction(X, U)
+
+    projected = X @ corrected_U
+    prop_negative_after = (projected < 0).mean(axis=0)
+    np.testing.assert_equal(prop_negative_after, 0.0)
+    np.testing.assert_equal(corrected_U, np.eye(2))

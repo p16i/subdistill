@@ -251,3 +251,20 @@ def resolve_lambda_layer(
         )
 
         return lambda_layer
+
+
+def correct_direction(X: npt.NDArray, U: npt.NDArray) -> npt.NDArray:
+    d, _ = U.shape
+    projection = X @ U
+
+    prop_positive = (projection > 0).mean(axis=0)
+    assert prop_positive.shape == (d,)
+
+    has_more_negative = prop_positive < 0.5
+    correction_factor = np.ones(d)
+    correction_factor[has_more_negative] = -1
+    np.testing.assert_equal(np.sum(correction_factor == -1), np.sum(has_more_negative))
+
+    corrected_U = U * correction_factor.reshape((1, d))
+
+    return corrected_U
