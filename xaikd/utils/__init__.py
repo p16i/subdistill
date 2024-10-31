@@ -225,7 +225,6 @@ def get_dimensions_at_layers(
 
 
 def get_git_hash() -> str:
-    return "xxxxx"
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
 
 
