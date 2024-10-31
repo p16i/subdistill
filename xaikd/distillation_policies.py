@@ -719,10 +719,11 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
 
 
 class Attn(nn.Module):
-    def __init__(self, transform: nn.Module):
+    def __init__(self, transform: nn.Module, power=2):
         super().__init__()
 
         self.transform = transform
+        self.power = power
 
     def forward(self, x):
         # projection (B, K, h, w)
@@ -738,7 +739,7 @@ class Attn(nn.Module):
         max_retured = torch.max(norm, dim=1, keepdim=True)
         max_values = max_retured.values
 
-        alpha = (norm / max_values) ** 2
+        alpha = (norm / max_values) ** self.power
         alpha = torch.reshape(alpha, (B, 1, h, w))
 
         np.testing.assert_allclose(
@@ -751,7 +752,7 @@ class Attn(nn.Module):
         return scaled_x
 
 
-@register_layer_policy("basis-identity-attn")
+@register_layer_policy("basis-identity-attnp1")
 class OrthogonalBasisIdentityAttnPolicy(OrthogonalBasisIdentityPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: Basis
@@ -763,7 +764,36 @@ class OrthogonalBasisIdentityAttnPolicy(OrthogonalBasisIdentityPolicy):
             basis=basis,
         )
 
-        self.transformer_teacher_feats = Attn(self.transformer_teacher_feats)
+        self.transformer_teacher_feats = Attn(self.transformer_teacher_feats, power=1)
+
+@register_layer_policy("basis-identity-attnp2")
+class OrthogonalBasisIdentityAttnPolicy(OrthogonalBasisIdentityPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+        super().__init__(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+
+        self.transformer_teacher_feats = Attn(self.transformer_teacher_feats, power=2)
+
+
+@register_layer_policy("basis-identity-attnp4")
+class OrthogonalBasisIdentityAttnP4Policy(OrthogonalBasisIdentityPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+        super().__init__(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+
+        self.transformer_teacher_feats = Attn(self.transformer_teacher_feats, power=4)
 
 
 @register_layer_policy("basis-rotation")
