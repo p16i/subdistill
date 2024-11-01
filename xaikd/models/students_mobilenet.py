@@ -355,6 +355,21 @@ def _student_very_small_cifarv2(num_classes, dim1, dim2, dim3, **kwargs) -> nn.M
     )
 
 
+def get_model_wo_last_act(student_name: str, num_classes: int, **kwargs) -> nn.Module:
+    model = MODEL_GENERATORS[student_name](num_classes=num_classes, **kwargs)
+
+    assert isinstance(model, mobilenetv3.MobileNetV3)
+
+    assert len(model.features) == 13, len(model.features)
+    last_feature_block = model.features[-1]
+    assert len(last_feature_block) == 3
+    assert isinstance(last_feature_block[-1], nn.Hardswish)
+
+    last_feature_block[-1] = nn.Identity()
+
+    return model
+
+
 def _generate_model_function():
 
     MODEL_GENERATORS[f"student-mobilenets"] = _student_s
@@ -400,6 +415,15 @@ def _generate_model_function():
     )
 
     MODEL_GENERATORS[f"student-mobilenets-trained"] = _student_s_trained
+
+    for student_name in [
+        "student-mobilenets",
+        "student-mobilenetxs",
+        "student-mobilenetxxs",
+    ]:
+        MODEL_GENERATORS[f"{student_name}-wo-last-act"] = partial(
+            get_model_wo_last_act, student_name=student_name
+        )
 
 
 _generate_model_function()
