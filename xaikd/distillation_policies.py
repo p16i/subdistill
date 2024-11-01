@@ -766,6 +766,7 @@ class OrthogonalBasisIdentityAttnPolicy(OrthogonalBasisIdentityPolicy):
 
         self.transformer_teacher_feats = Attn(self.transformer_teacher_feats, power=1)
 
+
 @register_layer_policy("basis-identity-attnp2")
 class OrthogonalBasisIdentityAttnPolicy(OrthogonalBasisIdentityPolicy):
     def __init__(
@@ -824,6 +825,40 @@ class OrthogonalBasisRotationPolicy(OrthogonalBasisIdentityPolicy):
 
             def forward(self, x):
                 x = utils.convolve_feature_map_with_linear(x, self.rotation)
+                x = x * self.scaling
+
+                return x
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = StudenTransform()
+
+
+@register_layer_policy("basis-scale")
+class OrthogonalBasisScalePolicy(OrthogonalBasisIdentityPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+    ) -> None:
+
+        super().__init__(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+
+        k = student_dims
+
+        class StudenTransform(nn.Module):
+            def __init__(self):
+                super().__init__()
+
+                self.scaling = nn.Parameter(torch.tensor(1.0))
+
+            def forward(self, x):
                 x = x * self.scaling
 
                 return x
