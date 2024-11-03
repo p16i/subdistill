@@ -12,7 +12,7 @@ from torchvision.models.mobilenetv3 import MobileNetV3
 
 from zennit.attribution import Gradient
 
-from xaikd import attributors, utils
+from xaikd import attributors, utils, models
 
 from functools import partial
 
@@ -115,7 +115,10 @@ class RandomExplainer(Explainer):
 class MobileNetExplainer(Explainer):
     def __init__(self, model: nn.Module, normalizer: T.Normalize, **kwargs):
 
-        assert isinstance(model, MobileNetV3)
+        assert isinstance(
+            model,
+            (MobileNetV3, models.students.students_mobilenet.PatMobileNetV3),
+        )
 
         super().__init__(model, normalizer, **kwargs)
 

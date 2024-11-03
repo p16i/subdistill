@@ -25,8 +25,8 @@ from tqdm import tqdm
 from xaikd import utils
 from xaikd import datasets
 
-
 from xaikd.models.interfaces import DistillableModel
+from xaikd.models.students_mobilenet import PatMobileNetV3
 
 import zennit
 from xaikd import lrp
@@ -53,7 +53,8 @@ def get_arch_specific_composite(
         return lrp.nfnets._build_composite(lb=lb, hb=hb, **kwargs)
     elif isinstance(model, torchvision.models.VisionTransformer):
         return lrp.vit._build_composite(lb=lb, hb=hb, **kwargs)
-    elif isinstance(model, torchvision.models.MobileNetV3):
+    # elif isinstance(model, torchvision.models.MobileNetV3):
+    elif isinstance(model, (torchvision.models.MobileNetV3, PatMobileNetV3)):
         return lrp.mobilenets._build_composite(lb=lb, hb=hb, **kwargs)
     else:
         raise NotImplementedError("")
