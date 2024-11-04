@@ -10,6 +10,7 @@ from xaikd.utils.modules import (
     convert_bn_to_conv,
     merge_conv_and_bn,
     merge_convKxK_and_conv1x1,
+    SelectingLogitsOfSelectedClassesAndOthers,
 )
 
 
@@ -142,3 +143,33 @@ def test_has_batchnorm(arch, expected):
     actual = has_batchnorm(models.get_trained_model(arch))
 
     assert actual == expected
+
+
+@torch.no_grad()
+def test_get_logits_of_selected_classes_and_others():
+    selected_classes = [0, 1, 2]
+    logits = torch.tensor(
+        [
+            [5, 3, 2, 1, 10],
+            [5, 3, 7, 21, 8.0],
+        ]
+    )
+
+    total_orig_num_classes = logits.shape[1]
+
+    wrapper = SelectingLogitsOfSelectedClassesAndOthers(
+        torch.nn.Identity(),
+        selected_classes=selected_classes,
+        total_original_num_of_classes=total_orig_num_classes,
+    )
+
+    actual = wrapper(logits)
+
+    expected = torch.tensor(
+        [
+            [5, 3, 2, 10],
+            [5, 3, 7, 21],
+        ]
+    )
+
+    np.testing.assert_allclose(actual, expected)

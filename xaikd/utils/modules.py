@@ -1,4 +1,7 @@
 import torch
+
+import typing
+
 from torch import nn
 from torch.nn import functional as F
 from torch.nn.modules import batchnorm
@@ -60,9 +63,11 @@ class Centering2D(batchnorm._BatchNorm):
         return F.batch_norm(
             input,
             # If buffers are not to be tracked, ensure that they won't be updated
-            self.running_mean
-            if not self.training or self.track_running_stats
-            else None,
+            (
+                self.running_mean
+                if not self.training or self.track_running_stats
+                else None
+            ),
             # Pat's change: we do NOT use self.running_var here.
             torch.ones(d).to(input.device),
             None,
@@ -156,3 +161,43 @@ def merge_convKxK_and_conv1x1(convK: nn.Conv2d, conv1: nn.Conv2d) -> nn.Conv2d:
     merged_conv.bias = nn.Parameter(bh)
 
     return merged_conv
+
+
+class SelectingLogitsOfSelectedClassesAndOthers:
+    def __init__(
+        self,
+        model: torch.nn.Module,
+        selected_classes: typing.List[int],
+        total_original_num_of_classes: int,
+    ):
+        self.model = model
+
+        self.selected_classes = selected_classes
+        self.other_classes = list(
+            set(np.arange(total_original_num_of_classes)).difference(
+                self.selected_classes
+            )
+        )
+
+    def __call__(self, x: torch.Tensor) -> torch.Tensor:
+
+        logits = self.model(x)
+
+        logits_selected_classes = logits[:, self.selected_classes]
+
+        logits_other_classes = logits[:, self.other_classes]
+
+        best_logit_other_class = torch.max(
+            logits_other_classes, dim=1, keepdim=True
+        ).values
+
+        logits_selected_and_other_classes = torch.concat(
+            (logits_selected_classes, best_logit_other_class), dim=1
+        )
+
+        np.testing.assert_equal(
+            logits_selected_and_other_classes.shape,
+            (logits.shape[0], len(self.selected_classes) + 1),
+        )
+
+        return logits_selected_and_other_classes
