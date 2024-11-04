@@ -98,7 +98,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         module: nn.Module = utils.interceptor.get_module(model, layer)
 
-        original_accuracy, _ = metrics.accuracy(
+        original_accuracy, _, _ = metrics.accuracy(
             model_with_selected_logits,
             dataloader=dl_val,
             num_classes=dataset.num_classes,
@@ -145,6 +145,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
             arr_accuracies = []
             arr_losses = []
+            arr_aurocs = []
             for k in tqdm(arr_ks, desc=f"[dataset={dataset_name}; basis={basis_name}]"):
                 try:
 
@@ -152,7 +153,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                         basis.construct_fh_rank_k_projection(k, device=device)
                     )
 
-                    acc, loss = metrics.accuracy(
+                    acc, loss, aurocs = metrics.accuracy(
                         model_with_selected_logits,
                         dl_val,
                         num_classes=dataset.num_classes,
@@ -162,6 +163,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                     print(f"basis_name={basis_name}; k={k}: acc={acc}")
                     arr_losses.append(loss)
                     arr_accuracies.append(acc)
+                    arr_aurocs.append(aurocs)
                 finally:
                     hook.remove()
 
@@ -172,6 +174,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                 dict(
                     accuracies=arr_accuracies,
                     losses=arr_losses,
+                    aurocs=arr_aurocs,
                     arr_ks=list(map(int, arr_ks)),
                     dims=dims,
                     original_accuracy=original_accuracy,
