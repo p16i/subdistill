@@ -168,13 +168,13 @@ class SelectingLogitsOfSelectedClassesAndOthers:
         self,
         model: torch.nn.Module,
         selected_classes: typing.List[int],
-        total_original_num_of_classes: int,
+        total_orig_num_classes: int,
     ):
         self.model = model
 
         self.selected_classes = selected_classes
         self.other_classes = list(
-            set(np.arange(total_original_num_of_classes)).difference(
+            set(np.arange(total_orig_num_classes)).difference(
                 self.selected_classes
             )
         )

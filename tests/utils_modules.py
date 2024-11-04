@@ -160,7 +160,7 @@ def test_get_logits_of_selected_classes_and_others():
     wrapper = SelectingLogitsOfSelectedClassesAndOthers(
         torch.nn.Identity(),
         selected_classes=selected_classes,
-        total_original_num_of_classes=total_orig_num_classes,
+        total_orig_num_classes=total_orig_num_classes,
     )
 
     actual = wrapper(logits)
