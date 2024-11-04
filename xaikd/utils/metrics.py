@@ -85,9 +85,11 @@ def accuracy(
         metric_xent.update(xent)
         metric_auroc.update(logits, y)
 
-    arr_aurocs = metric_auroc.compute().numpy().astype(float).tolist()
+    arr_aurocs = metric_auroc.compute().numpy()
 
     np.testing.assert_array_equal(arr_aurocs.shape, (num_classes,))
+
+    arr_aurocs = arr_aurocs.astype(float).tolist()
 
     return float(metric_acc.compute()), float(metric_xent.compute()), arr_aurocs
 
