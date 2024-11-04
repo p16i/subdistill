@@ -76,6 +76,8 @@ def accuracy(
     metric_xent = MeanMetric()
     metric_auroc = MulticlassAUROC(num_classes=num_classes, average=None)
 
+    torch.multiprocessing.set_sharing_strategy("file_system")
+
     for x, y in tqdm(
         dataloader, desc="computing accuracy for selected claseses", disable=not verbose
     ):
