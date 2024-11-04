@@ -99,15 +99,15 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
         module: nn.Module = utils.interceptor.get_module(model, layer)
 
         original_accuracy, _ = metrics.accuracy(
-            model,
+            model_with_selected_logits,
             dataloader=dl_val,
-            num_classes=len(dataset.selected_classes),
+            num_classes=dataset.num_classes,
             device=device,
             verbose=True,
         )
 
         logit_modifier = attributors.WinningClassEvidence(
-            num_classes=len(dataset.selected_classes)
+            num_classes=total_orig_num_classes
         )
 
         arr_act, arr_ctx = attributors.extract_activation_context(
