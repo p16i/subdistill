@@ -518,12 +518,95 @@ class ImageNetSuperclassValSplitWithThreeSpuriousFeatures(
         return ds
 
 
+class ImageNetSuperClassesAndOthers(ImageNet):
+    def __init__(self, selected_classes: typing.List[int]):
+        super().__init__()
+
+        # remark: the targets are defined in the ImageNet dataset.
+        self.selected_classes = selected_classes
+        self.num_classes = len(self.selected_classes) + 1
+
+        # for the selected classes, we reassign their targets to be {0, 1, self.num_classes -2}
+        target_mapping = dict()
+        for ix, class_ix in enumerate(self.selected_classes):
+            target_mapping[class_ix] = ix
+
+        # for the other classes, we set their targets to be self.num_classes - 1
+        for ix, class_ix in enumerate(
+            set(range(1000)).difference(self.selected_classes)
+        ):
+            target_mapping[class_ix] = self.num_classes - 1
+
+        self._target_mapping = target_mapping
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = super().create_subset(
+            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
+        )
+        labels = np.array(ds.targets)
+
+        isin_selected_classes = np.isin(ds.targets, self.selected_classes)
+        selected_indices_for_selected_classes = (
+            np.argwhere(isin_selected_classes).reshape(-1).tolist()
+        )
+
+        selected_indices_for_others = (
+            np.argwhere(1 - isin_selected_classes).reshape(-1).tolist()
+        )
+
+        avg_num_samples_per_class = int(
+            np.ceil(
+                np.bincount(labels[selected_indices_for_selected_classes]).sum()
+                / len(self.selected_classes)
+            )
+        )
+
+        selected_indices_for_others = np.random.permutation(
+            selected_indices_for_others
+        )[:avg_num_samples_per_class].tolist()
+
+        selected_indices = (
+            selected_indices_for_selected_classes + selected_indices_for_others
+        )
+
+        np.testing.assert_allclose(
+            len(selected_indices),
+            len(selected_indices_for_selected_classes)
+            + len(selected_indices_for_others),
+        )
+
+        print(
+            f"We have {len(selected_indices)} images in classes {self.selected_classes} and others"
+        )
+
+        selected_samples = []
+        selected_targets = []
+
+        for six in tqdm(
+            selected_indices,
+            desc=f"Preparing `{self.__class__.__name__}[{self.selected_classes}]` samples",
+        ):
+            selected_samples.append(ds.samples[six])
+            selected_targets.append(ds.targets[six])
+
+        ds.imgs = selected_samples
+        ds.samples = selected_samples
+
+        ds.targets = selected_targets
+
+        return ds
+
+
 def ano():
     # construct watermark only
     for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
         slug = f"imagenet-{superclass}"
         selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
         DATASETS[slug] = partial(ImageNetSuperClass, selected_classes=selected_classes)
+
+        DATASETS[f"{slug}-and-others"] = partial(
+            ImageNetSuperClassesAndOthers, selected_classes=selected_classes
+        )
 
         dataclass = TorchVisionDatasetImageNetWithWatermark
 
