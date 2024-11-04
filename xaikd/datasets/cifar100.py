@@ -311,7 +311,7 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
 
 
 @dataclass
-class Cifar100SuperClassesPlusOtherDataset(CIFAR100):
+class Cifar100SuperClassesAndOthersDataset(CIFAR100):
     def __init__(
         self,
         super_class: str,
@@ -411,8 +411,8 @@ def ano():
         slug = f"cifar100-{super_class}"
         DATASETS[slug] = partial(Cifar100SuperClassesDataset, super_class=super_class)
 
-        DATASETS[f"{slug}-vs-others"] = partial(
-            Cifar100SuperClassesPlusOtherDataset, super_class=super_class
+        DATASETS[f"{slug}-and-others"] = partial(
+            Cifar100SuperClassesAndOthersDataset, super_class=super_class
         )
 
         for lvl in [0.125, 0.25, 0.5, 0.75, 1.0]:

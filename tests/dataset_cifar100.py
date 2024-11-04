@@ -238,9 +238,9 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
 
 @pytest.mark.slow
 @pytest.mark.parametrize("train_split", [True, False])
-def test_construct_dataset_subclass_vs_other(train_split):
+def test_construct_dataset_subclass_and_others(train_split):
     total_classes_per_superclass = 5
-    dataset_name = "cifar100-people-vs-others"
+    dataset_name = "cifar100-people-and-others"
     dataset = datasets.construct(dataset_name)
 
     ds = dataset.create_subset(train_split=train_split)
