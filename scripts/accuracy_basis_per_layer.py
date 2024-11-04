@@ -4,6 +4,7 @@ import os
 
 from tqdm import tqdm
 import torchmetrics
+import typing
 
 from datetime import datetime
 
@@ -20,7 +21,18 @@ from xaikd import attributors
 
 from xaikd import datasets
 from xaikd.utils import metrics
+from xaikd.utils.modules import construct_select_logits_of_selected_classes_and_others
 import numpy as np
+
+
+class DummyModule(nn.Module):
+    def __init__(self, model: nn.Module, logit_filter: typing.Callable):
+        super().__init__()
+        self.model = model
+        self.logit_filter = logit_filter
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.logit_filter(self.model(x))
 
 
 @click.command()
@@ -45,7 +57,8 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     dataset = datasets.construct(dataset_name)
 
-    utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+    total_orig_num_classes: int = model.__last_layer.weight.shape[0]
+
     model.to(device)
 
     dl_train = datasets.build_dataloader(
@@ -54,6 +67,14 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     dl_val = datasets.build_dataloader(
         dataset.create_subset(train_split=False), shuffle=False
+    )
+
+    model_with_selected_logits = DummyModule(
+        model=model,
+        logit_filter=construct_select_logits_of_selected_classes_and_others(
+            selected_classes=dataset.selected_classes,
+            total_orig_num_classes=total_orig_num_classes,
+        ),
     )
 
     for layer in layers.split(","):
@@ -130,8 +151,9 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                     hook = module.register_forward_hook(
                         basis.construct_fh_rank_k_projection(k, device=device)
                     )
+
                     acc, loss = metrics.accuracy(
-                        model,
+                        model_with_selected_logits,
                         dl_val,
                         num_classes=dataset.num_classes,
                         device=device,
