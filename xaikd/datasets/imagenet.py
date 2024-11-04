@@ -540,6 +540,9 @@ class ImageNetSuperClassesAndOthers(ImageNet):
         self._target_mapping = target_mapping
 
     def create_subset(self, train_split=False) -> Dataset:
+        # todo: set seed
+        rng = np.random.default_rng(seed=1)
+
         ds = super().create_subset(
             train_split=train_split, target_transform=lambda t: self._target_mapping[t]
         )
@@ -561,9 +564,9 @@ class ImageNetSuperClassesAndOthers(ImageNet):
             )
         )
 
-        selected_indices_for_others = np.random.permutation(
-            selected_indices_for_others
-        )[:avg_num_samples_per_class].tolist()
+        selected_indices_for_others = rng.permutation(selected_indices_for_others)[
+            :avg_num_samples_per_class
+        ].tolist()
 
         selected_indices = (
             selected_indices_for_selected_classes + selected_indices_for_others

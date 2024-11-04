@@ -349,6 +349,9 @@ class Cifar100SuperClassesAndOthersDataset(CIFAR100):
         self._target_mapping = target_mapping
 
     def create_subset(self, train_split=False) -> Dataset:
+        # todo: set seed
+        rng = np.random.default_rng(seed=1)
+
         ds = super().create_subset(
             train_split=train_split, target_transform=lambda t: self._target_mapping[t]
         )
@@ -370,7 +373,7 @@ class Cifar100SuperClassesAndOthersDataset(CIFAR100):
         ).reshape(-1)
 
         # todo: set seed here
-        selected_data_indices_for_others = np.random.permutation(
+        selected_data_indices_for_others = rng.permutation(
             selected_data_indices_for_others
         )[:avg_num_samples_per_class].tolist()
 
