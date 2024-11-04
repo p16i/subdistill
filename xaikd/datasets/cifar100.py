@@ -375,7 +375,7 @@ class Cifar100SuperClassesAndOthersDataset(CIFAR100):
         # todo: set seed here
         selected_data_indices_for_others = rng.permutation(
             selected_data_indices_for_others
-        )[:avg_num_samples_per_class].tolist()
+        ).tolist()
 
         selected_data_indices = (
             selected_data_indices_for_selected_classes
