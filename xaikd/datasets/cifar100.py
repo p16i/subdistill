@@ -365,8 +365,6 @@ class Cifar100SuperClassesAndOthersDataset(CIFAR100):
             )
         )
 
-        print("avg-num", avg_num_samples_per_class)
-
         selected_data_indices_for_others = np.argwhere(
             1 - np.isin(labels, self.selected_classes)
         ).reshape(-1)
