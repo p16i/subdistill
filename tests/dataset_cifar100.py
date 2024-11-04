@@ -243,6 +243,8 @@ def test_construct_dataset_subclass_and_others(train_split):
     dataset_name = "cifar100-people-and-others"
     dataset = datasets.construct(dataset_name)
 
+    assert dataset.num_classes == total_classes_per_superclass + 1
+
     ds = dataset.create_subset(train_split=train_split)
 
     total_samples_per_class = 500 if train_split else 100
