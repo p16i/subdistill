@@ -310,10 +310,110 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
         return ds
 
 
+@dataclass
+class Cifar100SuperClassesPlusOtherDataset(CIFAR100):
+    def __init__(
+        self,
+        super_class: str,
+        verbose=False,
+    ):
+        super().__init__()
+
+        df_meta = pd.read_csv(constants.CIFAR100_SUPER_CLASS_MAPPING)
+
+        df_selected = df_meta[df_meta.coarse_label_name == super_class]
+        df_selected = df_selected.sort_values(by="fine_label")
+        if verbose:
+            print(
+                f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
+            )
+            for row in df_selected.to_dict("records"):
+                print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
+
+        # remark: the targets are defined in the CIFAR100 dataset.
+        self.selected_classes = df_selected.fine_label.values.tolist()
+
+        self.num_classes = len(self.selected_classes) + 1
+
+        # for the selected classes, we reassign their targets to be {0, 1, self.num_classes -2}
+        target_mapping = dict()
+        for ix, class_ix in enumerate(self.selected_classes):
+            target_mapping[class_ix] = ix
+
+        # for the other classes, we set their targets to be self.num_classes - 1
+        for ix, class_ix in enumerate(
+            set(range(100)).difference(self.selected_classes)
+        ):
+            target_mapping[class_ix] = self.num_classes - 1
+
+        self._target_mapping = target_mapping
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = super().create_subset(
+            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
+        )
+        labels = np.array(ds.targets)
+
+        selected_data_indices_for_selected_classes = (
+            np.argwhere(np.isin(labels, self.selected_classes)).reshape(-1).tolist()
+        )
+
+        avg_num_samples_per_class = int(
+            np.ceil(
+                np.bincount(labels[selected_data_indices_for_selected_classes]).sum()
+                / len(self.selected_classes)
+            )
+        )
+
+        print("avg-num", avg_num_samples_per_class)
+
+        selected_data_indices_for_others = np.argwhere(
+            1 - np.isin(labels, self.selected_classes)
+        ).reshape(-1)
+
+        # todo: set seed here
+        selected_data_indices_for_others = np.random.permutation(
+            selected_data_indices_for_others
+        )[:avg_num_samples_per_class].tolist()
+
+        selected_data_indices = (
+            selected_data_indices_for_selected_classes
+            + selected_data_indices_for_others
+        )
+
+        # here, we select samples belong to those targets.
+        ds.data = ds.data[selected_data_indices, :]
+
+        targets = np.array(ds.targets)[selected_data_indices].tolist()
+        np.testing.assert_allclose(
+            len(targets), avg_num_samples_per_class * (len(self.selected_classes) + 1)
+        )
+
+        np.testing.assert_equal(
+            np.sum(np.isin(targets, self.selected_classes)),
+            avg_num_samples_per_class * len(self.selected_classes),
+        )
+
+        np.testing.assert_equal(
+            np.sum(~np.isin(targets, self.selected_classes)),
+            avg_num_samples_per_class,
+        )
+
+        # remark: the targets here are still in the old system.
+        # They will be converted to the new zero-indexing with target_transforms.
+        ds.targets = targets
+
+        return ds
+
+
 def ano():
     for super_class in constants.CIFAR100_SUPER_CLASSES:
         slug = f"cifar100-{super_class}"
         DATASETS[slug] = partial(Cifar100SuperClassesDataset, super_class=super_class)
+
+        DATASETS[f"{slug}-vs-others"] = partial(
+            Cifar100SuperClassesPlusOtherDataset, super_class=super_class
+        )
 
         for lvl in [0.125, 0.25, 0.5, 0.75, 1.0]:
             sslug = "--".join([slug, "spurious-plussign", str(lvl)])
