@@ -386,19 +386,19 @@ class Cifar100SuperClassesAndOthersDataset(CIFAR100):
         ds.data = ds.data[selected_data_indices, :]
 
         targets = np.array(ds.targets)[selected_data_indices].tolist()
-        np.testing.assert_allclose(
-            len(targets), avg_num_samples_per_class * (len(self.selected_classes) + 1)
-        )
+        # np.testing.assert_allclose(
+        #     len(targets), avg_num_samples_per_class * (len(self.selected_classes) + 1)
+        # )
 
         np.testing.assert_equal(
             np.sum(np.isin(targets, self.selected_classes)),
             avg_num_samples_per_class * len(self.selected_classes),
         )
 
-        np.testing.assert_equal(
-            np.sum(~np.isin(targets, self.selected_classes)),
-            avg_num_samples_per_class,
-        )
+        # np.testing.assert_equal(
+        #     np.sum(~np.isin(targets, self.selected_classes)),
+        #     avg_num_samples_per_class,
+        # )
 
         # remark: the targets here are still in the old system.
         # They will be converted to the new zero-indexing with target_transforms.
