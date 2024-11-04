@@ -10,7 +10,7 @@ from xaikd.utils.modules import (
     convert_bn_to_conv,
     merge_conv_and_bn,
     merge_convKxK_and_conv1x1,
-    SelectingLogitsOfSelectedClassesAndOthers,
+    construct_select_logits_of_selected_classes_and_others,
 )
 
 
@@ -157,13 +157,11 @@ def test_get_logits_of_selected_classes_and_others():
 
     total_orig_num_classes = logits.shape[1]
 
-    wrapper = SelectingLogitsOfSelectedClassesAndOthers(
-        torch.nn.Identity(),
-        selected_classes=selected_classes,
-        total_orig_num_classes=total_orig_num_classes,
+    logit_filter = construct_select_logits_of_selected_classes_and_others(
+        selected_classes=selected_classes, total_orig_num_classes=total_orig_num_classes
     )
 
-    actual = wrapper(logits)
+    actual = logit_filter(logits)
 
     expected = torch.tensor(
         [

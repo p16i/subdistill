@@ -163,29 +163,20 @@ def merge_convKxK_and_conv1x1(convK: nn.Conv2d, conv1: nn.Conv2d) -> nn.Conv2d:
     return merged_conv
 
 
-class SelectingLogitsOfSelectedClassesAndOthers:
-    def __init__(
-        self,
-        model: torch.nn.Module,
-        selected_classes: typing.List[int],
-        total_orig_num_classes: int,
-    ):
-        self.model = model
+def construct_select_logits_of_selected_classes_and_others(
+    selected_classes: typing.List[int],
+    total_orig_num_classes: int,
+) -> typing.Callable[[torch.Tensor], torch.Tensor]:
 
-        self.selected_classes = selected_classes
-        self.other_classes = list(
-            set(np.arange(total_orig_num_classes)).difference(
-                self.selected_classes
-            )
-        )
+    selected_classes = selected_classes
+    other_classes = list(
+        set(np.arange(total_orig_num_classes)).difference(selected_classes)
+    )
 
-    def __call__(self, x: torch.Tensor) -> torch.Tensor:
+    def func(logits: torch.Tensor) -> torch.Tensor:
+        logits_selected_classes = logits[:, selected_classes]
 
-        logits = self.model(x)
-
-        logits_selected_classes = logits[:, self.selected_classes]
-
-        logits_other_classes = logits[:, self.other_classes]
+        logits_other_classes = logits[:, other_classes]
 
         best_logit_other_class = torch.max(
             logits_other_classes, dim=1, keepdim=True
@@ -197,7 +188,9 @@ class SelectingLogitsOfSelectedClassesAndOthers:
 
         np.testing.assert_equal(
             logits_selected_and_other_classes.shape,
-            (logits.shape[0], len(self.selected_classes) + 1),
+            (logits.shape[0], len(selected_classes) + 1),
         )
 
         return logits_selected_and_other_classes
+
+    return func
