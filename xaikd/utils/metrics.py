@@ -56,7 +56,7 @@ def accuracy(
     num_classes: int,
     device: str,
     verbose=False,
-) -> typing.Tuple[float, float, npt.NDArray]:
+) -> typing.Tuple[float, float, typing.List[float]]:
     """_summary_
 
     Args:
@@ -74,9 +74,8 @@ def accuracy(
 
     metric_acc = Accuracy(task="multiclass", num_classes=num_classes)
     metric_xent = MeanMetric()
-    metric_auroc = MulticlassAUROC(num_classes=num_classes, average=None)
-
-    torch.multiprocessing.set_sharing_strategy("file_system")
+    # metric_auroc = MulticlassAUROC(num_classes=num_classes, average=None)
+    # torch.multiprocessing.set_sharing_strategy("file_system")
 
     for x, y in tqdm(
         dataloader, desc="computing accuracy for selected claseses", disable=not verbose
@@ -85,18 +84,19 @@ def accuracy(
         metric_acc.update(logits, y)
         xent = F.cross_entropy(logits, y, reduction="none")
         metric_xent.update(xent)
-        metric_auroc.update(logits, y)
+        # metric_auroc.update(logits, y)
 
-    arr_aurocs = metric_auroc.compute().numpy()
+    arr_aurocs = []
+    # arr_aurocs = metric_auroc.compute().numpy()
 
-    is_below_half = arr_aurocs < 0.5
+    # is_below_half = arr_aurocs < 0.5
 
-    arr_aurocs = (1 - is_below_half) * arr_aurocs + is_below_half * (1 - arr_aurocs)
+    # arr_aurocs = (1 - is_below_half) * arr_aurocs + is_below_half * (1 - arr_aurocs)
 
-    np.testing.assert_array_equal(arr_aurocs.shape, (num_classes,))
-    assert (arr_aurocs >= 0.5).all()
+    # np.testing.assert_array_equal(arr_aurocs.shape, (num_classes,))
+    # assert (arr_aurocs >= 0.5).all()
 
-    arr_aurocs = arr_aurocs.astype(float).tolist()
+    # arr_aurocs = arr_aurocs.astype(float).tolist()
 
     return float(metric_acc.compute()), float(metric_xent.compute()), arr_aurocs
 

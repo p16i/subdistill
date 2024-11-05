@@ -12,6 +12,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
+from torch.utils.data import random_split
 from torch.utils.data import DataLoader
 
 from xaikd import utils, bases, models
@@ -48,6 +49,8 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
     arguments = locals()
 
     rng = np.random.default_rng(seed=1)
+    trng = torch.Generator()
+    trng.manual_seed(1)
 
     start_time = datetime.now()
 
@@ -61,20 +64,20 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     model.to(device)
 
-    dl_train = datasets.build_dataloader(
-        dataset.create_subset(train_split=True), shuffle=False
-    )
+    ds_train = dataset.create_subset(train_split=True)
+    ds_train, _ = random_split(ds_train, [0.1, 1 - 0.1], generator=trng)
+    dl_train = datasets.build_dataloader(ds_train, shuffle=False)
 
     dl_val = datasets.build_dataloader(
         dataset.create_subset(train_split=False), shuffle=False
     )
 
-    model_with_selected_logits = DummyModule(
-        model=model,
-        logit_filter=construct_select_logits_of_selected_classes_and_others(
-            selected_classes=dataset.selected_classes,
-            total_orig_num_classes=total_orig_num_classes,
-        ),
+    original_accuracy, _, _ = metrics.accuracy(
+        model,
+        dataloader=dl_val,
+        num_classes=dataset.num_classes,
+        device=device,
+        verbose=True,
     )
 
     for layer in layers.split(","):
@@ -98,14 +101,6 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         module: nn.Module = utils.interceptor.get_module(model, layer)
 
-        original_accuracy, _, _ = metrics.accuracy(
-            model_with_selected_logits,
-            dataloader=dl_val,
-            num_classes=dataset.num_classes,
-            device=device,
-            verbose=True,
-        )
-
         logit_modifier = attributors.WinningClassEvidence(
             num_classes=total_orig_num_classes
         )
@@ -123,7 +118,9 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
         _, d = arr_act.shape
 
         arr_ks = (
-            [1] + list(filter(lambda k: k % 2 == 0, np.arange(2, d // 2))) + [d // 2, d]
+            [1]
+            + list(filter(lambda k: (k % 2 == 0) and k < 256, np.arange(2, d // 2)))
+            + [d // 2, d]
         )
 
         for basis_name in tqdm(
@@ -135,12 +132,6 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
             basis.fit(
                 arr_act=arr_act,
                 arr_ctx=arr_ctx,
-                # this is mainly for pcalookahead
-                model=model,
-                layer=layer,
-                dataloader=datasets.build_dataloader(
-                    dataset.create_subset(train_split=True), shuffle=False
-                ),
             )
 
             arr_accuracies = []
@@ -154,7 +145,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                     )
 
                     acc, loss, aurocs = metrics.accuracy(
-                        model_with_selected_logits,
+                        model,
                         dl_val,
                         num_classes=dataset.num_classes,
                         device=device,
