@@ -531,8 +531,12 @@ class ImageNetSuperClassesAndOthers(ImageNet):
         for ix, class_ix in enumerate(self.selected_classes):
             target_mapping[class_ix] = ix
 
+        self.other_classes = list(range(10))
+
         # for the other classes, we set their targets to be self.num_classes - 1
-        for ix, class_ix in enumerate(set(range(10)).difference(self.selected_classes)):
+        for ix, class_ix in enumerate(
+            set(self.other_classes).difference(self.selected_classes)
+        ):
             if class_ix in self.selected_classes:
                 continue
 
@@ -555,7 +559,7 @@ class ImageNetSuperClassesAndOthers(ImageNet):
         )
 
         selected_indices_for_others = (
-            np.argwhere(1 - isin_selected_classes).reshape(-1).tolist()
+            np.argwhere(np.isin(ds.targets, self.other_classes)).reshape(-1).tolist()
         )
 
         avg_num_samples_per_class = int(
