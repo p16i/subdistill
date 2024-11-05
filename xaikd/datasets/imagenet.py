@@ -532,9 +532,10 @@ class ImageNetSuperClassesAndOthers(ImageNet):
             target_mapping[class_ix] = ix
 
         # for the other classes, we set their targets to be self.num_classes - 1
-        for ix, class_ix in enumerate(
-            set(range(1000)).difference(self.selected_classes)
-        ):
+        for ix, class_ix in enumerate(set(range(10)).difference(self.selected_classes)):
+            if class_ix in self.selected_classes:
+                continue
+
             target_mapping[class_ix] = self.num_classes - 1
 
         self._target_mapping = target_mapping
@@ -564,9 +565,9 @@ class ImageNetSuperClassesAndOthers(ImageNet):
             )
         )
 
-        selected_indices_for_others = rng.permutation(selected_indices_for_others)[
-            :avg_num_samples_per_class
-        ].tolist()
+        selected_indices_for_others = rng.permutation(
+            selected_indices_for_others
+        ).tolist()
 
         selected_indices = (
             selected_indices_for_selected_classes + selected_indices_for_others
