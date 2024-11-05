@@ -89,7 +89,12 @@ def accuracy(
 
     arr_aurocs = metric_auroc.compute().numpy()
 
+    is_below_half = arr_aurocs < 0.5
+
+    arr_aurocs = (1 - is_below_half) * arr_aurocs + is_below_half * (1 - arr_aurocs)
+
     np.testing.assert_array_equal(arr_aurocs.shape, (num_classes,))
+    assert (arr_aurocs >= 0.5).all()
 
     arr_aurocs = arr_aurocs.astype(float).tolist()
 
