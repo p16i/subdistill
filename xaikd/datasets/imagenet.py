@@ -519,7 +519,11 @@ class ImageNetSuperclassValSplitWithThreeSpuriousFeatures(
 
 
 class ImageNetSuperClassesAndOthers(ImageNet):
-    def __init__(self, selected_classes: typing.List[int]):
+    def __init__(
+        self,
+        selected_classes: typing.List[int],
+        num_other_classes: int,
+    ):
         super().__init__()
 
         # remark: the targets are defined in the ImageNet dataset.
@@ -531,7 +535,11 @@ class ImageNetSuperClassesAndOthers(ImageNet):
         for ix, class_ix in enumerate(self.selected_classes):
             target_mapping[class_ix] = ix
 
-        self.other_classes = list(range(10))
+        self.other_classes = list(set(range(1000)).difference(self.selected_classes))[
+            :num_other_classes
+        ]
+
+        assert len(self.other_classes) == num_other_classes
 
         # for the other classes, we set their targets to be self.num_classes - 1
         for ix, class_ix in enumerate(
@@ -562,12 +570,12 @@ class ImageNetSuperClassesAndOthers(ImageNet):
             np.argwhere(np.isin(ds.targets, self.other_classes)).reshape(-1).tolist()
         )
 
-        avg_num_samples_per_class = int(
-            np.ceil(
-                np.bincount(labels[selected_indices_for_selected_classes]).sum()
-                / len(self.selected_classes)
-            )
-        )
+        # avg_num_samples_per_class = int(
+        #     np.ceil(
+        #         np.bincount(labels[selected_indices_for_selected_classes]).sum()
+        #         / len(self.selected_classes)
+        #     )
+        # )
 
         selected_indices_for_others = rng.permutation(
             selected_indices_for_others
@@ -612,9 +620,12 @@ def ano():
         selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
         DATASETS[slug] = partial(ImageNetSuperClass, selected_classes=selected_classes)
 
-        DATASETS[f"{slug}-and-others"] = partial(
-            ImageNetSuperClassesAndOthers, selected_classes=selected_classes
-        )
+        for num_other_classes in [5, 10, 50, 100]:
+            DATASETS[f"{slug}-and-{num_other_classes}-others"] = partial(
+                ImageNetSuperClassesAndOthers,
+                selected_classes=selected_classes,
+                num_other_classes=num_other_classes,
+            )
 
         dataclass = TorchVisionDatasetImageNetWithWatermark
 
