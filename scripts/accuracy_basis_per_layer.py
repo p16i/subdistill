@@ -21,6 +21,7 @@ from xaikd import attributors
 from xaikd import datasets
 from xaikd.utils import metrics
 import numpy as np
+import pandas as pd
 
 
 @click.command()
@@ -77,7 +78,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         module: nn.Module = utils.interceptor.get_module(model, layer)
 
-        original_accuracy, _ = metrics.accuracy(
+        original_accuracy, original_xent = metrics.accuracy(
             model,
             dataloader=dl_val,
             num_classes=len(dataset.selected_classes),
@@ -101,9 +102,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         _, d = arr_act.shape
 
-        arr_ks = (
-            [1] + list(filter(lambda k: k % 2 == 0, np.arange(2, d // 2))) + [d // 2, d]
-        )
+        arr_ks = np.linspace(d // 4, d, num=10).astype(int)
 
         for basis_name in tqdm(
             basis_names.split(","),
@@ -122,38 +121,44 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                 ),
             )
 
-            arr_accuracies = []
-            arr_losses = []
+            arr_rows = []
             for k in tqdm(arr_ks, desc=f"[dataset={dataset_name}; basis={basis_name}]"):
-                try:
+                row = dict(
+                    k=k,
+                    original_xent=original_xent,
+                    original_accuracy=original_accuracy,
+                )
 
-                    hook = module.register_forward_hook(
-                        basis.construct_fh_rank_k_projection(k, device=device)
-                    )
-                    acc, loss = metrics.accuracy(
-                        model,
-                        dl_val,
-                        num_classes=dataset.num_classes,
-                        device=device,
-                        verbose=False,
-                    )
-                    print(f"basis_name={basis_name}; k={k}: acc={acc}")
-                    arr_losses.append(loss)
-                    arr_accuracies.append(acc)
-                finally:
-                    hook.remove()
+                projector = basis.construct_fh_rank_k_projection(k, device=device)
+
+                for dataset_label, dl in [
+                    ("train", dl_train),
+                    ("val", dl_val),
+                ]:
+                    hook = None
+                    try:
+                        hook = module.register_forward_hook(projector)
+                        acc, loss = metrics.accuracy(
+                            model,
+                            dl,
+                            num_classes=dataset.num_classes,
+                            device=device,
+                            verbose=False,
+                        )
+
+                        row[f"{dataset_label}-xent"] = loss
+                        row[f"{dataset_label}-acc"] = loss
+                    finally:
+                        if hook is not None:
+                            hook.remove()
+                arr_rows.append(row)
 
             os.makedirs(f"{output_dir}/{basis_name}", exist_ok=True)
 
-            utils.dump_json(
-                Path(f"{output_dir}/{basis_name}/accuracy.json"),
-                dict(
-                    accuracies=arr_accuracies,
-                    losses=arr_losses,
-                    arr_ks=list(map(int, arr_ks)),
-                    dims=dims,
-                    original_accuracy=original_accuracy,
-                ),
+            df = pd.DataFrame(arr_rows)
+            df.to_csv(
+                Path(f"{output_dir}/{basis_name}/accuracy.csv"),
+                index=False,
             )
 
     time_took = datetime.now() - start_time
