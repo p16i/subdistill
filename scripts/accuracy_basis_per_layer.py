@@ -125,7 +125,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
             for k in tqdm(arr_ks, desc=f"[dataset={dataset_name}; basis={basis_name}]"):
                 row = dict(
                     k=k,
-                    original_xent=original_xent,
+                    original_loss=original_xent,
                     original_accuracy=original_accuracy,
                 )
 
@@ -146,8 +146,8 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                             verbose=False,
                         )
 
-                        row[f"{dataset_label}-xent"] = loss
-                        row[f"{dataset_label}-acc"] = loss
+                        row[f"{dataset_label}_loss"] = loss
+                        row[f"{dataset_label}_acc"] = acc
                     finally:
                         if hook is not None:
                             hook.remove()
