@@ -11,7 +11,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 
 from xaikd import utils, bases, models
 
@@ -49,9 +49,18 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
     utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
     model.to(device)
 
-    dl_train = datasets.build_dataloader(
-        dataset.create_subset(train_split=True), shuffle=False
-    )
+    ds_train = dataset.create_subset(train_split=True)
+
+    if dataset_name == "imagenet":
+        print("we use only 1% of training data for the imagenet dataset")
+        percentage = 0.1
+        trng = torch.Generator()
+        trng.manual_seed(1)
+        ds_train, _ = random_split(
+            ds_train, [percentage, 1 - percentage], generator=trng
+        )
+
+    dl_train = datasets.build_dataloader(ds_train, shuffle=False)
 
     dl_val = datasets.build_dataloader(
         dataset.create_subset(train_split=False), shuffle=False
@@ -102,7 +111,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         _, d = arr_act.shape
 
-        arr_ks = np.linspace(d // 4, d, num=10).astype(int)
+        arr_ks = np.linspace(0, d, num=15).astype(int)
 
         for basis_name in tqdm(
             basis_names.split(","),
