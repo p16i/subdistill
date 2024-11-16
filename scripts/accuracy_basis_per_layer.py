@@ -51,11 +51,6 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     ds_train = dataset.create_subset(train_split=True)
 
-    if dataset == "imagenet":
-        trng = torch.Generator()
-        trng.manual_seed(1)
-        ds_train, _ = random_split(ds_train, [0.1, 0.9])
-
     dl_train = datasets.build_dataloader(ds_train, shuffle=False)
 
     dl_val = datasets.build_dataloader(
@@ -107,7 +102,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         _, d = arr_act.shape
 
-        arr_ks = np.linspace(1, d, num=15).astype(int)
+        arr_ks = np.linspace(d // 2, d, num=5).astype(int)
 
         for basis_name in tqdm(
             basis_names.split(","),
