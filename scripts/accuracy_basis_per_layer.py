@@ -43,11 +43,12 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
     device = utils.get_device()
 
     model = models.get_trained_model(model_name)
-    model = nn.DataParallel(model)
 
     dataset = datasets.construct(dataset_name)
 
     utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+
+    model = nn.DataParallel(model)
     model.to(device)
 
     ds_train = dataset.create_subset(train_split=True)
