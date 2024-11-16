@@ -43,6 +43,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
     device = utils.get_device()
 
     model = models.get_trained_model(model_name)
+    model = nn.DataParallel(model)
 
     dataset = datasets.construct(dataset_name)
 
