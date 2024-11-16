@@ -159,7 +159,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                             dl,
                             num_classes=dataset.num_classes,
                             device=device,
-                            verbose=False,
+                            verbose=True,
                         )
 
                         row[f"{dataset_label}_loss"] = loss
