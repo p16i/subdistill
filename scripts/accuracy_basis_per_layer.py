@@ -57,10 +57,20 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     ds_train = dataset.create_subset(train_split=True)
 
-    dl_train = datasets.build_dataloader(ds_train, shuffle=False)
+    dl_train = DataLoader(
+        ds_train,
+        batch_size=64,
+        num_workers=16,
+        pin_memory=True,
+        shuffle=False,
+    )
 
-    dl_val = datasets.build_dataloader(
-        dataset.create_subset(train_split=False), shuffle=False
+    dl_val = DataLoader(
+        dataset.create_subset(train_split=False),
+        batch_size=64,
+        num_workers=16,
+        pin_memory=True,
+        shuffle=False,
     )
 
     original_accuracy, original_xent = metrics.accuracy(
