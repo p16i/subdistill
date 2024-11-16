@@ -51,10 +51,23 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     ds_train = dataset.create_subset(train_split=True)
 
+    if dataset == "imagenet":
+        trng = torch.Generator()
+        trng.manual_seed(1)
+        ds_train, _ = random_split(ds_train, [0.1, 0.9])
+
     dl_train = datasets.build_dataloader(ds_train, shuffle=False)
 
     dl_val = datasets.build_dataloader(
         dataset.create_subset(train_split=False), shuffle=False
+    )
+
+    original_accuracy, original_xent = metrics.accuracy(
+        model,
+        dataloader=dl_val,
+        num_classes=len(dataset.selected_classes),
+        device=device,
+        verbose=True,
     )
 
     for layer in layers.split(","):
@@ -77,14 +90,6 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
         )
 
         module: nn.Module = utils.interceptor.get_module(model, layer)
-
-        original_accuracy, original_xent = metrics.accuracy(
-            model,
-            dataloader=dl_val,
-            num_classes=len(dataset.selected_classes),
-            device=device,
-            verbose=True,
-        )
 
         logit_modifier = attributors.WinningClassEvidence(
             num_classes=len(dataset.selected_classes)
