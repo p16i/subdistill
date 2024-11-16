@@ -51,15 +51,6 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     ds_train = dataset.create_subset(train_split=True)
 
-    if dataset_name == "imagenet":
-        print("we use only 1% of training data for the imagenet dataset")
-        percentage = 0.1
-        trng = torch.Generator()
-        trng.manual_seed(1)
-        ds_train, _ = random_split(
-            ds_train, [percentage, 1 - percentage], generator=trng
-        )
-
     dl_train = datasets.build_dataloader(ds_train, shuffle=False)
 
     dl_val = datasets.build_dataloader(
