@@ -48,7 +48,11 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
 
-    model = nn.DataParallel(model)
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        model = nn.DataParallel(
+            model, device_ids=np.arange(torch.cuda.device_count()).tolist()
+        )
     model.to(device)
 
     ds_train = dataset.create_subset(train_split=True)
