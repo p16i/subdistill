@@ -234,3 +234,31 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
             assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
         else:
             assert len(arr_victim_indices) == 0
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("train_split", [True, False])
+def test_construct_dataset_subclass_and_others(train_split):
+    total_classes_per_superclass = 5
+    dataset_name = "cifar100-people-and-others"
+    dataset = datasets.construct(dataset_name)
+
+    assert dataset.num_classes == total_classes_per_superclass + 1
+
+    ds = dataset.create_subset(train_split=train_split)
+
+    total_samples_per_class = 500 if train_split else 100
+    expected_total_samples = 50000 if train_split else 10000
+
+    dl = datasets.build_dataloader(ds, shuffle=False, batch_size=100000)
+
+    x, y = next(iter(dl))
+
+    np.testing.assert_equal(x.shape[0], expected_total_samples)
+    bin_count = np.bincount(y)
+    np.testing.assert_equal(bin_count[:-1], total_samples_per_class)
+    np.testing.assert_equal(
+        bin_count[-1],
+        expected_total_samples - total_samples_per_class * total_classes_per_superclass,
+    )
+    np.testing.assert_equal(len(bin_count), total_classes_per_superclass + 1)

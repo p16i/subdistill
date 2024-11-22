@@ -267,3 +267,26 @@ def test_dataset_with_three_spurious_correlations(
             np.testing.assert_allclose(
                 count_spurious_types, expected_count_spurious_type, atol=atol
             )
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize("num_others", [5, 50])
+@pytest.mark.parametrize("train_split", [False])
+def test_construct_dataset_subclass_and_others(num_others, train_split):
+    total_classes_per_superclass = 6
+    dataset_name = f"imagenet-butterfly-and-{num_others}-others"
+    dataset = datasets.construct(dataset_name)
+
+    assert dataset.num_classes == total_classes_per_superclass + 1
+
+    ds = dataset.create_subset(train_split=train_split)
+
+    arr_ys = []
+
+    for x, y in datasets.build_dataloader(ds, shuffle=False):
+        arr_ys.extend(y.numpy().tolist())
+
+    arr_ys = np.array(arr_ys)
+
+    assert (np.bincount(arr_ys) > 0).all()
+    np.isin(np.unique(arr_ys), np.arange(total_classes_per_superclass))
