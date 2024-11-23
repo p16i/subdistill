@@ -86,8 +86,15 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
         shuffle=False,
     )
 
+    logit_filters = construct_select_logits_of_selected_classes_and_others(
+        dataset.selected_classes,
+        total_orig_num_classes=total_orig_num_classes,
+    )
+
+    model_with_modified_logits = DummyModule(model, logit_filters)
+
     orig_accuracy, orig_xent, orig_arr_aurocs = metrics.accuracy(
-        model,
+        model=model_with_modified_logits,
         dataloader=dl_val,
         num_classes=len(dataset.selected_classes),
         device=device,
@@ -169,7 +176,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                     try:
                         hook = module.register_forward_hook(projector)
                         acc, loss, arr_aurocs = metrics.accuracy(
-                            model,
+                            model_with_modified_logits,
                             dl,
                             num_classes=dataset.num_classes,
                             device=device,
