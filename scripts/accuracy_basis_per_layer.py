@@ -17,11 +17,22 @@ from xaikd import utils, bases, models
 
 from xaikd import constants
 from xaikd import attributors
+from xaikd.utils.modules import construct_select_logits_of_selected_classes_and_others
 
 from xaikd import datasets
 from xaikd.utils import metrics
 import numpy as np
 import pandas as pd
+
+
+class DummyModule(nn.Module):
+    def __init__(self, model: nn.Module, logit_filter: typing.Callable):
+        super().__init__()
+        self.model = model
+        self.logit_filter = logit_filter
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.logit_filter(self.model(x))
 
 
 @click.command()
@@ -46,7 +57,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     dataset = datasets.construct(dataset_name)
 
-    utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+    total_orig_num_classes: int = model.__last_layer.weight.shape[0]
     print(f"using device={device} (with n={torch.cuda.device_count()})")
 
     if torch.cuda.device_count() > 1:
@@ -57,22 +68,13 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     ds_train = dataset.create_subset(train_split=True)
 
-    trng = torch.Generator()
-    trng.manual_seed(1)
-    assert dataset_name == "imagenet"
-    ds_train_small, _ = random_split(ds_train, [0.1, 0.9], generator=trng)
+    num_workers = utils.get_num_workers()
+    click.echo(f"Using {num_workers} workers!")
 
     dl_train = DataLoader(
         ds_train,
         batch_size=64,
-        num_workers=16,
-        pin_memory=True,
-        shuffle=False,
-    )
-    dl_train_small = DataLoader(
-        ds_train_small,
-        batch_size=64,
-        num_workers=16,
+        num_workers=num_workers,
         pin_memory=True,
         shuffle=False,
     )
@@ -85,13 +87,21 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
         shuffle=False,
     )
 
-    original_accuracy, original_xent = metrics.accuracy(
+    orig_accuracy, orig_xent, orig_arr_aurocs = metrics.accuracy(
         model,
         dataloader=dl_val,
         num_classes=len(dataset.selected_classes),
         device=device,
         verbose=True,
     )
+
+    ref_stats = dict(
+        orig_loss=orig_xent,
+        orig_accuracy=orig_accuracy,
+    )
+
+    for cix, auroc in enumerate(orig_arr_aurocs):
+        ref_stats[f"orig_auroc_{cix}"] = auroc
 
     for layer in layers.split(","):
 
@@ -115,7 +125,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
         module: nn.Module = utils.interceptor.get_module(model, layer)
 
         logit_modifier = attributors.WinningClassEvidence(
-            num_classes=len(dataset.selected_classes)
+            num_classes=total_orig_num_classes
         )
 
         arr_act, arr_ctx = attributors.extract_activation_context(
@@ -123,14 +133,14 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
             layer=layer,
             dataset=dataset,
             rng=rng,
-            data_loader=dl_train_small,
+            data_loader=dl_train,
             device=device,
             logit_modifier=logit_modifier,
         )
 
         _, d = arr_act.shape
 
-        arr_ks = np.linspace(d // 2, d, num=5).astype(int)
+        arr_ks = np.linspace(d, d, num=10).astype(int)
 
         for basis_name in tqdm(
             basis_names.split(","),
@@ -141,20 +151,13 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
             basis.fit(
                 arr_act=arr_act,
                 arr_ctx=arr_ctx,
-                # this is mainly for pcalookahead
-                model=model,
-                layer=layer,
-                dataloader=datasets.build_dataloader(
-                    dataset.create_subset(train_split=True), shuffle=False
-                ),
             )
 
             arr_rows = []
             for k in tqdm(arr_ks, desc=f"[dataset={dataset_name}; basis={basis_name}]"):
                 row = dict(
                     k=k,
-                    original_loss=original_xent,
-                    original_accuracy=original_accuracy,
+                    *ref_stats,
                 )
 
                 projector = basis.construct_fh_rank_k_projection(k, device=device)
@@ -166,7 +169,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                     hook = None
                     try:
                         hook = module.register_forward_hook(projector)
-                        acc, loss = metrics.accuracy(
+                        acc, loss, arr_aurocs = metrics.accuracy(
                             model,
                             dl,
                             num_classes=dataset.num_classes,
@@ -176,9 +179,13 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
                         row[f"{dataset_label}_loss"] = loss
                         row[f"{dataset_label}_acc"] = acc
+
+                        for cix, auroc in enumerate(arr_aurocs):
+                            row[f"{dataset_label}_auroc_{cix}"] = auroc
                     finally:
                         if hook is not None:
                             hook.remove()
+
                 arr_rows.append(row)
 
             os.makedirs(f"{output_dir}/{basis_name}", exist_ok=True)
