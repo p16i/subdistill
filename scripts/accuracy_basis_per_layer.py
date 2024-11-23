@@ -107,7 +107,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
     )
 
     for cix, auroc in enumerate(orig_arr_aurocs):
-        ref_stats[f"orig_auroc_{cix}"] = auroc
+        ref_stats[f"orig_auroc_c{cix}"] = auroc
 
     for layer in layers.split(","):
 
@@ -146,7 +146,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         _, d = arr_act.shape
 
-        arr_ks = np.linspace(d, d, num=10).astype(int)
+        arr_ks = np.linspace(1, d, num=10).astype(int)
 
         for basis_name in tqdm(
             basis_names.split(","),
@@ -187,7 +187,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                         row[f"{dataset_label}_acc"] = acc
 
                         for cix, auroc in enumerate(arr_aurocs):
-                            row[f"{dataset_label}_auroc_{cix}"] = auroc
+                            row[f"{dataset_label}_auroc_c{cix}"] = auroc
                     finally:
                         if hook is not None:
                             hook.remove()
