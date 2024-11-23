@@ -15,7 +15,7 @@ from pathlib import Path
 from PIL import Image
 
 
-from . import interceptor, spurious_feature_generator, pixelflipping
+from . import interceptor, spurious_feature_generator, pixelflipping, git
 
 import yaml
 
@@ -30,6 +30,15 @@ def get_device() -> str:
         return "cuda"
     else:
         return "cpu"
+
+
+def get_num_workers() -> int:
+    num_cpus = os.cpu_count()
+
+    if num_cpus == None:
+        return 4
+    else:
+        return num_cpus
 
 
 def _string_serializer(item):
@@ -222,11 +231,6 @@ def get_dimensions_at_layers(
             hook.remove()
 
     return dimensions
-
-
-def get_git_hash() -> str:
-    return "xxxxx"
-    return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
 
 
 def resolve_lambda_layer(

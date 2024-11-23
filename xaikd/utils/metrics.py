@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 from torch import nn
 from torch.nn import functional as F
 from torchmetrics import Accuracy, MeanMetric
-from torchmetrics.classification import BinaryAUROC, BinaryAccuracy
+from torchmetrics.classification import BinaryAUROC, BinaryAccuracy, MulticlassAUROC
 
 from xaikd import bases
 
@@ -56,7 +56,7 @@ def accuracy(
     num_classes: int,
     device: str,
     verbose=False,
-) -> typing.Tuple[float, float]:
+) -> typing.Tuple[float, float, typing.List[float]]:
     """_summary_
 
     Args:
@@ -74,16 +74,32 @@ def accuracy(
 
     metric_acc = Accuracy(task="multiclass", num_classes=num_classes)
     metric_xent = MeanMetric()
+    metric_auroc = MulticlassAUROC(num_classes=num_classes, average=None)
 
     for x, y in tqdm(
         dataloader, desc="computing accuracy for selected claseses", disable=not verbose
     ):
         logits = model(x.to(device)).cpu()
+
+        assert logits.shape[1] == num_classes
+
         metric_acc.update(logits, y)
         xent = F.cross_entropy(logits, y, reduction="none")
         metric_xent.update(xent)
+        metric_auroc.update(logits, y)
 
-    return float(metric_acc.compute()), float(metric_xent.compute())
+    arr_aurocs = metric_auroc.compute().numpy()
+
+    is_below_half = arr_aurocs < 0.5
+
+    arr_aurocs = (1 - is_below_half) * arr_aurocs + is_below_half * (1 - arr_aurocs)
+
+    np.testing.assert_array_equal(arr_aurocs.shape, (num_classes,))
+    assert (arr_aurocs >= 0.5).all()
+
+    arr_aurocs = arr_aurocs.astype(float).tolist()
+
+    return float(metric_acc.compute()), float(metric_xent.compute()), arr_aurocs
 
 
 def accuracy_with_subclasses(

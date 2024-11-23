@@ -5,6 +5,8 @@ from torch.nn.modules import batchnorm
 import numpy as np
 from copy import deepcopy
 
+import typing
+
 from scipy.stats import ortho_group
 
 
@@ -60,9 +62,11 @@ class Centering2D(batchnorm._BatchNorm):
         return F.batch_norm(
             input,
             # If buffers are not to be tracked, ensure that they won't be updated
-            self.running_mean
-            if not self.training or self.track_running_stats
-            else None,
+            (
+                self.running_mean
+                if not self.training or self.track_running_stats
+                else None
+            ),
             # Pat's change: we do NOT use self.running_var here.
             torch.ones(d).to(input.device),
             None,
@@ -156,3 +160,36 @@ def merge_convKxK_and_conv1x1(convK: nn.Conv2d, conv1: nn.Conv2d) -> nn.Conv2d:
     merged_conv.bias = nn.Parameter(bh)
 
     return merged_conv
+
+
+def construct_select_logits_of_selected_classes_and_others(
+    selected_classes: typing.List[int],
+    total_orig_num_classes: int,
+) -> typing.Callable[[torch.Tensor], torch.Tensor]:
+
+    selected_classes = selected_classes
+    other_classes = list(
+        set(np.arange(total_orig_num_classes)).difference(selected_classes)
+    )
+
+    def func(logits: torch.Tensor) -> torch.Tensor:
+        logits_selected_classes = logits[:, selected_classes]
+
+        logits_other_classes = logits[:, other_classes]
+
+        best_logit_other_class = torch.max(
+            logits_other_classes, dim=1, keepdim=True
+        ).values
+
+        logits_selected_and_other_classes = torch.concat(
+            (logits_selected_classes, best_logit_other_class), dim=1
+        )
+
+        np.testing.assert_equal(
+            logits_selected_and_other_classes.shape,
+            (logits.shape[0], len(selected_classes) + 1),
+        )
+
+        return logits_selected_and_other_classes
+
+    return func
