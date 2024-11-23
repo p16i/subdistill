@@ -96,7 +96,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
     orig_accuracy, orig_xent, orig_arr_aurocs = metrics.accuracy(
         model=model_with_modified_logits,
         dataloader=dl_val,
-        num_classes=len(dataset.selected_classes),
+        num_classes=dataset.num_classes,
         device=device,
         verbose=True,
     )
