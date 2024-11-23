@@ -163,7 +163,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
             for k in tqdm(arr_ks, desc=f"[dataset={dataset_name}; basis={basis_name}]"):
                 row = dict(
                     k=k,
-                    *ref_stats,
+                    **ref_stats,
                 )
 
                 projector = basis.construct_fh_rank_k_projection(k, device=device)
