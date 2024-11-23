@@ -67,11 +67,23 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     ds_train = dataset.create_subset(train_split=True)
 
+    trng = torch.Generator()
+    trng.manual_seed(1)
+    ds_train_small, _ = random_split(ds_train, [0.1, 0.9], generator=trng)
+
     num_workers = utils.get_num_workers()
     click.echo(f"Using {num_workers} workers!")
 
     dl_train = DataLoader(
         ds_train,
+        batch_size=64,
+        num_workers=num_workers,
+        pin_memory=True,
+        shuffle=False,
+    )
+
+    dl_train_small = DataLoader(
+        ds_train_small,
         batch_size=64,
         num_workers=num_workers,
         pin_memory=True,
@@ -139,7 +151,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
             layer=layer,
             dataset=dataset,
             rng=rng,
-            data_loader=dl_train,
+            data_loader=dl_train_small,
             device=device,
             logit_modifier=logit_modifier,
         )
