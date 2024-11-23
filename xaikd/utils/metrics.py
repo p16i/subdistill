@@ -81,7 +81,7 @@ def accuracy(
     ):
         logits = model(x.to(device)).cpu()
 
-        assert logits.shape[1] == num_classes
+        assert logits.shape[1] == num_classes, logits.shape
 
         metric_acc.update(logits, y)
         xent = F.cross_entropy(logits, y, reduction="none")
