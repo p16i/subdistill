@@ -81,7 +81,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
     dl_val = DataLoader(
         dataset.create_subset(train_split=False),
         batch_size=64,
-        num_workers=16,
+        num_workers=num_workers,
         pin_memory=True,
         shuffle=False,
     )
