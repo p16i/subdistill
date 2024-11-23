@@ -33,12 +33,13 @@ def get_device() -> str:
 
 
 def get_num_workers() -> int:
-    num_cpus = os.cpu_count()
 
-    if num_cpus == None:
-        return 4
+    output = subprocess.check_output("nproc").decode("utf-8").strip()
+
+    if output is not None:
+        return int(output)
     else:
-        return num_cpus
+        return 4
 
 
 def _string_serializer(item):
