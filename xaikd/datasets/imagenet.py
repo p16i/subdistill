@@ -535,11 +535,14 @@ class ImageNetSuperClassesAndOthers(ImageNet):
         for ix, class_ix in enumerate(self.selected_classes):
             target_mapping[class_ix] = ix
 
-        self.other_classes = list(set(range(1000)).difference(self.selected_classes))[
+        all_classes = set(range(1000))
+        self.other_classes = list(all_classes.difference(self.selected_classes))[
             :num_other_classes
         ]
 
-        assert len(self.other_classes) == num_other_classes
+        assert len(self.other_classes) == num_other_classes - len(
+            all_classes.intersection(self.selected_classes)
+        )
 
         # for the other classes, we set their targets to be self.num_classes - 1
         for ix, class_ix in enumerate(
@@ -610,7 +613,6 @@ def ano():
         slug = f"imagenet-{superclass}"
         selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
         DATASETS[slug] = partial(ImageNetSuperClass, selected_classes=selected_classes)
-
 
         for num_other_classes in [5, 10, 50, 100, 1000]:
             DATASETS[f"{slug}-and-{num_other_classes}-others"] = partial(
