@@ -161,7 +161,14 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         _, d = arr_act.shape
 
-        arr_ks = np.linspace(1, d, num=10).astype(int)
+        arr_ks = sorted(
+            list(
+                set(
+                    np.arange(1, 32, 2).tolist()
+                    + np.linspace(1, d, num=10).astype(int).tolist()
+                )
+            )
+        )
 
         for basis_name in tqdm(
             basis_names.split(","),
