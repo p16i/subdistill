@@ -23,6 +23,7 @@ from xaikd.utils import metrics
 import numpy as np
 import pandas as pd
 
+torch.multiprocessing.set_sharing_strategy("file_system")
 
 class DummyModule(nn.Module):
     def __init__(self, model: nn.Module, logit_filter: typing.Callable):
