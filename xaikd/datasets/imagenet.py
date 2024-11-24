@@ -540,8 +540,9 @@ class ImageNetSuperClassesAndOthers(ImageNet):
             :num_other_classes
         ]
 
-        assert len(self.other_classes) == num_other_classes - len(
-            all_classes.intersection(self.selected_classes)
+        np.testing.assert_equal(
+            len(self.other_classes),
+            num_other_classes - len(all_classes.intersection(self.selected_classes)),
         )
 
         # for the other classes, we set their targets to be self.num_classes - 1
