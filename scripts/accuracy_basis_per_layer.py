@@ -23,7 +23,6 @@ from xaikd.utils import metrics
 import numpy as np
 import pandas as pd
 
-torch.multiprocessing.set_sharing_strategy("file_system")
 
 class DummyModule(nn.Module):
     def __init__(self, model: nn.Module, logit_filter: typing.Callable):
@@ -109,13 +108,14 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     model_with_modified_logits = DummyModule(model, logit_filters)
 
-    orig_accuracy, orig_xent, orig_arr_aurocs = metrics.accuracy(
-        model=model_with_modified_logits,
-        dataloader=dl_val,
-        num_classes=dataset.num_classes,
-        device=device,
-        verbose=True,
-    )
+    with torch.no_grad():
+        orig_accuracy, orig_xent, orig_arr_aurocs = metrics.accuracy(
+            model=model_with_modified_logits,
+            dataloader=dl_val,
+            num_classes=dataset.num_classes,
+            device=device,
+            verbose=True,
+        )
 
     ref_stats = dict(
         orig_loss=orig_xent,
@@ -125,6 +125,9 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
     for cix, auroc in enumerate(orig_arr_aurocs):
         ref_stats[f"orig_auroc_c{cix}"] = auroc
 
+    logit_modifier = attributors.WinningClassEvidence(
+        num_classes=total_orig_num_classes
+    )
     for layer in layers.split(","):
 
         output_dir = Path(artifact_dir) / dataset_name / model_name / layer
@@ -145,10 +148,6 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
         )
 
         module: nn.Module = utils.interceptor.get_module(model, layer)
-
-        logit_modifier = attributors.WinningClassEvidence(
-            num_classes=total_orig_num_classes
-        )
 
         arr_act, arr_ctx = attributors.extract_activation_context(
             model=model,
@@ -191,13 +190,14 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                     hook = None
                     try:
                         hook = module.register_forward_hook(projector)
-                        acc, loss, arr_aurocs = metrics.accuracy(
-                            model_with_modified_logits,
-                            dl,
-                            num_classes=dataset.num_classes,
-                            device=device,
-                            verbose=True,
-                        )
+                        with torch.no_grad():
+                            acc, loss, arr_aurocs = metrics.accuracy(
+                                model_with_modified_logits,
+                                dl,
+                                num_classes=dataset.num_classes,
+                                device=device,
+                                verbose=True,
+                            )
 
                         row[f"{dataset_label}_loss"] = loss
                         row[f"{dataset_label}_acc"] = acc
