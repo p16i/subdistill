@@ -74,7 +74,9 @@ def accuracy(
 
     metric_acc = Accuracy(task="multiclass", num_classes=num_classes)
     metric_xent = MeanMetric()
-    metric_auroc = MulticlassAUROC(num_classes=num_classes, average=None)
+    metric_auroc = MulticlassAUROC(
+        num_classes=num_classes, average=None, thresholds=100
+    )
 
     for x, y in tqdm(
         dataloader, desc="computing accuracy for selected claseses", disable=not verbose
