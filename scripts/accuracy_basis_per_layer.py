@@ -80,6 +80,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
         num_workers=num_workers,
         pin_memory=True,
         shuffle=False,
+        persistent_workers=True,
     )
 
     dl_train_small = DataLoader(
@@ -88,6 +89,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
         num_workers=num_workers,
         pin_memory=True,
         shuffle=False,
+        persistent_workers=True,
     )
 
     dl_val = DataLoader(
@@ -96,6 +98,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
         num_workers=num_workers,
         pin_memory=True,
         shuffle=False,
+        persistent_workers=True,
     )
 
     logit_filters = construct_select_logits_of_selected_classes_and_others(
@@ -207,13 +210,11 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                 arr_rows.append(row)
 
             os.makedirs(f"{output_dir}/{basis_name}", exist_ok=True)
-
             df = pd.DataFrame(arr_rows)
             df.to_csv(
                 Path(f"{output_dir}/{basis_name}/accuracy.csv"),
                 index=False,
             )
-
     time_took = datetime.now() - start_time
     click.echo(f"Results saved to: {artifact_dir}")
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
