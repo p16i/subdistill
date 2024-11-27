@@ -356,6 +356,41 @@ class Cifar100SuperClassesAndOthersDataset(CIFAR100):
         return ds
 
 
+@dataclass
+class Cifar100OndAndOthersDataset(CIFAR100):
+    def __init__(
+        self,
+        selected_class: int,
+        verbose=False,
+    ):
+        super().__init__()
+
+        # remark: the targets are defined in the CIFAR100 dataset.
+        self.selected_classes = [selected_class]
+
+        self.num_classes = len(self.selected_classes) + 1
+
+        # for the selected classes, we reassign their targets to be {0, 1, self.num_classes -2}
+        target_mapping = dict()
+        for ix, class_ix in enumerate(self.selected_classes):
+            target_mapping[class_ix] = ix
+
+        # for the other classes, we set their targets to be self.num_classes - 1
+        for ix, class_ix in enumerate(
+            set(range(100)).difference(self.selected_classes)
+        ):
+            target_mapping[class_ix] = self.num_classes - 1
+
+        self._target_mapping = target_mapping
+
+    def create_subset(self, train_split=False) -> Dataset:
+        ds = super().create_subset(
+            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
+        )
+
+        return ds
+
+
 def ano():
     for super_class in constants.CIFAR100_SUPER_CLASSES:
         slug = f"cifar100-{super_class}"
@@ -374,6 +409,9 @@ def ano():
                 contamination_level=lvl,
             )
 
+    for cls_ix in [0, 71]:
+        slug = f"cifar100-c{cls_ix}-and-others"
+        DATASETS[slug] = partial(Cifar100OndAndOthersDataset, selected_class=cls_ix)
     for lvl in [0.0, 0.5, 1.0]:
         DATASETS[
             "--".join(["cifar100-valsplit-people", "spurious-plussign", str(lvl)])
