@@ -129,7 +129,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         _, d = arr_act.shape
 
-        arr_ks = np.linspace(d // 2, d, num=5).astype(int)
+        arr_ks = np.linspace(0, d, num=16).astype(int)
 
         for basis_name in tqdm(
             basis_names.split(","),
