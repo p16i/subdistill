@@ -59,7 +59,6 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     trng = torch.Generator()
     trng.manual_seed(1)
-    assert dataset_name == "imagenet"
     ds_train_small, _ = random_split(ds_train, [0.1, 0.9], generator=trng)
 
     dl_train = DataLoader(
