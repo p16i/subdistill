@@ -11,7 +11,7 @@ from pathlib import Path
 
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 
 from xaikd import utils, bases, models
 
@@ -21,6 +21,7 @@ from xaikd import attributors
 from xaikd import datasets
 from xaikd.utils import metrics
 import numpy as np
+import pandas as pd
 
 
 @click.command()
@@ -46,14 +47,50 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
     dataset = datasets.construct(dataset_name)
 
     utils.modify_last_layer_for_subclasses(model, dataset.selected_classes)
+    print(f"using device={device} (with n={torch.cuda.device_count()})")
+
+    if torch.cuda.device_count() > 1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
+        model = nn.DataParallel(model)
+
     model.to(device)
 
-    dl_train = datasets.build_dataloader(
-        dataset.create_subset(train_split=True), shuffle=False
+    ds_train = dataset.create_subset(train_split=True)
+
+    trng = torch.Generator()
+    trng.manual_seed(1)
+    assert dataset_name == "imagenet"
+    ds_train_small, _ = random_split(ds_train, [0.1, 0.9], generator=trng)
+
+    dl_train = DataLoader(
+        ds_train,
+        batch_size=64,
+        num_workers=16,
+        pin_memory=True,
+        shuffle=False,
+    )
+    dl_train_small = DataLoader(
+        ds_train_small,
+        batch_size=64,
+        num_workers=16,
+        pin_memory=True,
+        shuffle=False,
     )
 
-    dl_val = datasets.build_dataloader(
-        dataset.create_subset(train_split=False), shuffle=False
+    dl_val = DataLoader(
+        dataset.create_subset(train_split=False),
+        batch_size=64,
+        num_workers=16,
+        pin_memory=True,
+        shuffle=False,
+    )
+
+    original_accuracy, original_xent = metrics.accuracy(
+        model,
+        dataloader=dl_val,
+        num_classes=len(dataset.selected_classes),
+        device=device,
+        verbose=True,
     )
 
     for layer in layers.split(","):
@@ -77,14 +114,6 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         module: nn.Module = utils.interceptor.get_module(model, layer)
 
-        original_accuracy, _ = metrics.accuracy(
-            model,
-            dataloader=dl_val,
-            num_classes=len(dataset.selected_classes),
-            device=device,
-            verbose=True,
-        )
-
         logit_modifier = attributors.WinningClassEvidence(
             num_classes=len(dataset.selected_classes)
         )
@@ -94,16 +123,14 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
             layer=layer,
             dataset=dataset,
             rng=rng,
-            data_loader=dl_train,
+            data_loader=dl_train_small,
             device=device,
             logit_modifier=logit_modifier,
         )
 
         _, d = arr_act.shape
 
-        arr_ks = (
-            [1] + list(filter(lambda k: k % 2 == 0, np.arange(2, d // 2))) + [d // 2, d]
-        )
+        arr_ks = np.linspace(d // 2, d, num=5).astype(int)
 
         for basis_name in tqdm(
             basis_names.split(","),
@@ -122,38 +149,44 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
                 ),
             )
 
-            arr_accuracies = []
-            arr_losses = []
+            arr_rows = []
             for k in tqdm(arr_ks, desc=f"[dataset={dataset_name}; basis={basis_name}]"):
-                try:
+                row = dict(
+                    k=k,
+                    original_loss=original_xent,
+                    original_accuracy=original_accuracy,
+                )
 
-                    hook = module.register_forward_hook(
-                        basis.construct_fh_rank_k_projection(k, device=device)
-                    )
-                    acc, loss = metrics.accuracy(
-                        model,
-                        dl_val,
-                        num_classes=dataset.num_classes,
-                        device=device,
-                        verbose=False,
-                    )
-                    print(f"basis_name={basis_name}; k={k}: acc={acc}")
-                    arr_losses.append(loss)
-                    arr_accuracies.append(acc)
-                finally:
-                    hook.remove()
+                projector = basis.construct_fh_rank_k_projection(k, device=device)
+
+                for dataset_label, dl in [
+                    ("train", dl_train),
+                    ("val", dl_val),
+                ]:
+                    hook = None
+                    try:
+                        hook = module.register_forward_hook(projector)
+                        acc, loss = metrics.accuracy(
+                            model,
+                            dl,
+                            num_classes=dataset.num_classes,
+                            device=device,
+                            verbose=True,
+                        )
+
+                        row[f"{dataset_label}_loss"] = loss
+                        row[f"{dataset_label}_acc"] = acc
+                    finally:
+                        if hook is not None:
+                            hook.remove()
+                arr_rows.append(row)
 
             os.makedirs(f"{output_dir}/{basis_name}", exist_ok=True)
 
-            utils.dump_json(
-                Path(f"{output_dir}/{basis_name}/accuracy.json"),
-                dict(
-                    accuracies=arr_accuracies,
-                    losses=arr_losses,
-                    arr_ks=list(map(int, arr_ks)),
-                    dims=dims,
-                    original_accuracy=original_accuracy,
-                ),
+            df = pd.DataFrame(arr_rows)
+            df.to_csv(
+                Path(f"{output_dir}/{basis_name}/accuracy.csv"),
+                index=False,
             )
 
     time_took = datetime.now() - start_time

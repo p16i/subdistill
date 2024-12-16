@@ -26,6 +26,11 @@ from tqdm import tqdm
 
 from xaikd import constants, utils
 
+from .multitask_mnist_fmnist import (
+    MultiTaskMNISTFashionMNIST,
+    MultiTaskEMNISTFashionMNIST,
+)
+
 
 DATASETS = dict()
 
