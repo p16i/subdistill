@@ -21,7 +21,9 @@ from . import pcalookahead
 from enum import Enum
 
 from xaikd.bases import pcalookahead
+from xaikd.bases.learners import PRCAGreedyLeaner
 from xaikd import models
+
 
 EPS = 1e-6
 BASES = dict()
