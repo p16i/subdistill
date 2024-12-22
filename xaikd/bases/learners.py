@@ -20,6 +20,8 @@ class PRCAGreedyLeaner:
             self.obj_func = PRCAGreedyLeaner._obj_abs
         elif mode == "recon":
             self.obj_func = PRCAGreedyLeaner._obj_recon
+        elif mode == "recon-idv":
+            self.obj_func = PRCAGreedyLeaner._obj_recon_idv
         elif mode == "reconnaive":
             self.obj_func = PRCAGreedyLeaner._obj_recon_naive
         else:
@@ -142,6 +144,39 @@ class PRCAGreedyLeaner:
         assert len(activation_projected.shape) == len(context_projected.shape) == 1
 
         relevance_original = (activation * context).sum(dim=1)
+        relevance_projected = activation_projected * context_projected
+        assert relevance_original.shape == relevance_projected.shape
+
+        obj = (relevance_original - relevance_projected) ** 2
+
+        assert len(obj.shape) == 1 and obj.shape[0] == activation.shape[0]
+
+        # convert the problem into maximization problem.
+        loss = -obj.mean()
+
+        reg = (beta * torch.abs(activation_projected)).mean()
+
+        return loss + reg
+
+    @staticmethod
+    def _obj_recon_idv(
+        activation: torch.Tensor,
+        context: torch.Tensor,
+        IUUt: torch.Tensor,
+        u: torch.Tensor,
+        beta=0,
+    ) -> torch.Tensor:
+        activation = activation @ IUUt
+        context = context @ IUUt
+
+        uuT = u.outer(u)
+
+        activation_projected = activation @ uuT
+        context_projected = context @ uuT
+
+        assert len(activation_projected.shape) == len(context_projected.shape) == 1
+
+        relevance_original = activation * context
         relevance_projected = activation_projected * context_projected
         assert relevance_original.shape == relevance_projected.shape
 
