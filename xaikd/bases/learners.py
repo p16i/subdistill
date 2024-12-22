@@ -7,6 +7,13 @@ import numpy.typing as npt
 from tqdm.autonotebook import tqdm
 
 
+def atol(mode):
+    if mode == "reconnaive":
+        return 1e-2
+    else:
+        return 1e-5
+
+
 class PRCAGreedyLeaner:
     def __init__(self, mode: str) -> None:
         if mode == "abs":
