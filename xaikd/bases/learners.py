@@ -4,16 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 
-from tqdm import tqdm
-
-raise NotImplementedError("obsolete")
-
-
-def atol(mode):
-    if mode == "reconnaive":
-        return 1e-2
-    else:
-        return 1e-5
+from tqdm.autonotebook import tqdm
 
 
 class PRCAGreedyLeaner:
@@ -87,6 +78,7 @@ class PRCAGreedyLeaner:
                     v = v / torch.linalg.norm(v)
 
                     if (v @ ov).abs() > (1 - eps):
+                        # stop if the solution isn't update anymore.
                         break
 
             # testing orthogonality
