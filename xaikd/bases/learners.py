@@ -184,14 +184,12 @@ class PRCAGreedyLeaner:
 
         obj = (relevance_original - relevance_projected) ** 2
 
-        assert len(obj.shape) == 1 and obj.shape[0] == activation.shape[0]
+        assert len(obj.shape) == 2 and obj.shape == activation.shape
 
         # convert the problem into maximization problem.
         loss = -obj.mean()
 
-        reg = (beta * torch.abs(activation_projected)).mean()
-
-        return loss + reg
+        return loss
 
     @staticmethod
     def _obj_recon_naive(
@@ -201,6 +199,7 @@ class PRCAGreedyLeaner:
         u: torch.Tensor,
         beta=0,
     ) -> torch.Tensor:
+        raise
         # activation = activation @ IUUt
         # context = context @ IUUt
 
