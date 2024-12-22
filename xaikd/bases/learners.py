@@ -174,7 +174,9 @@ class PRCAGreedyLeaner:
         activation_projected = activation @ uuT
         context_projected = context @ uuT
 
-        assert len(activation_projected.shape) == len(context_projected.shape) == 1
+        assert len(activation_projected.shape) == len(context_projected.shape) == 2
+
+        assert activation.shape == activation_projected.shape
 
         relevance_original = activation * context
         relevance_projected = activation_projected * context_projected
