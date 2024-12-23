@@ -69,6 +69,9 @@ class PRCAGreedyLearner:
 
             # take a random vector
             v = torch.randn(d, generator=rng).to(device)
+
+            v = U_complement @ v
+
             v = v / torch.linalg.norm(v)
             v = v.to(device)
 
@@ -303,7 +306,7 @@ class PRCARecon:
                         # fast version
                         max_alpha = 2 * np.pi / (torch.linalg.norm(g) + 1e-16)
 
-                        arr_steps = torch.linspace(0, max_alpha - 1e6, 100).to(device)
+                        arr_steps = torch.linspace(0, max_alpha, 100).to(device)
                         norm_g = torch.linalg.norm(g)
 
                         # construct candidate from exponential map at different time steps
