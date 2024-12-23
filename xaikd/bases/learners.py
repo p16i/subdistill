@@ -69,9 +69,6 @@ class PRCAGreedyLearner:
 
             # take a random vector
             v = torch.randn(d, generator=rng).to(device)
-
-            v = U_complement @ v
-
             v = v / torch.linalg.norm(v)
             v = v.to(device)
 
