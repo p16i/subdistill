@@ -19,7 +19,7 @@ def exponential_map(p, g, t):
     return torch.cos(norm_g * t) * p + torch.sin(norm_g * t) * (g / (norm_g + 1e-16))
 
 
-class PRCARecon:
+class PRCAGreedyLearner:
     def __init__(self, mode: str) -> None:
         if mode == "abs":
             self.obj_func = PRCARecon._obj_abs
