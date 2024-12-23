@@ -377,7 +377,7 @@ class PRCARecon:
             Q, R = torch.linalg.qr(U)
             U = Q
         np.testing.assert_allclose(
-            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=atol(self.mode)
+            (U.T @ U).detach().cpu().numpy(), np.eye(d), atol=1e-6
         )
 
         return U.detach().cpu().numpy()
