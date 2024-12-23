@@ -304,7 +304,7 @@ class PRCARecon:
                     def linesearch(p, g):
                         # todo: separate this from function
                         # fast version
-                        max_alpha = 2 * np.pi / (torch.linalg.norm(g) + 1e-16)
+                        max_alpha = 2 * np.pi / torch.linalg.norm(g)
 
                         arr_steps = torch.linspace(0, max_alpha, 100).to(device)
                         norm_g = torch.linalg.norm(g)
@@ -312,7 +312,7 @@ class PRCARecon:
                         # construct candidate from exponential map at different time steps
                         term_cos = torch.outer(p, torch.cos(norm_g * arr_steps))
                         term_sin = torch.outer(
-                            (g / norm_g + 1e-16), torch.sin(norm_g * arr_steps)
+                            (g / norm_g), torch.sin(norm_g * arr_steps)
                         )
 
                         arr_directions = term_cos + term_sin
@@ -341,7 +341,13 @@ class PRCARecon:
 
                         return best_lr
 
+                    if torch.linalg.norm(grad).detach().cpu().numpy() == 0:
+                        break
+
                     lr = linesearch(v, grad)
+
+                    assert lr >= 0
+
                     if lr == 0:
                         break
 
