@@ -345,11 +345,6 @@ class PRCARecon:
                     if lr == 0:
                         break
 
-                    if k == 0:
-                        print(
-                            f"[k=0]: iter {_} best lr={lr:.4e}: norm(grad)={torch.linalg.norm(grad).detach().cpu().numpy():.4e}"
-                        )
-
                     # update v with gradient `ascent`.
                     v = exponential_map(v, grad, lr)
 
