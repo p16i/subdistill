@@ -360,11 +360,6 @@ class PRCARecon:
                         # stop if the solution isn't update anymore.
                         break
 
-            if k < 5:
-                print(
-                    f"[k={k}] obj={obj:.4e} (norm(grad)={torch.linalg.norm(grad).detach().cpu().numpy():.4e})"
-                )
-
             U[:, k] = v.detach()
 
         with torch.no_grad():
