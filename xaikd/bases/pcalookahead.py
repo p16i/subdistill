@@ -118,6 +118,7 @@ def fit_v2(
                 act: torch.Tensor = first_module(x)
 
             shape_act = act.shape
+            # todo: write unittests for this
             if len(shape_act) == 2:
                 # make it conv like
                 act = act.unsqueeze(2).unsqueeze(3)
@@ -131,6 +132,7 @@ def fit_v2(
 
             np.testing.assert_equal(actual_logits.shape, expected_logits.shape)
 
+            # this is to handle the case of binary classification
             if len(actual_logits.shape) == 1:
                 actual_logits = actual_logits.unsqueeze(1)
                 expected_logits = expected_logits.unsqueeze(1)
