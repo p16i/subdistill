@@ -84,15 +84,11 @@ def fit_v2(
     dataloader: DataLoader,
     Uinit: npt.NDArray,
     k: int,
-    seed=1,
     epochs=5,
     verbose=False,
     device="cpu",
+    lr=1e-3,
 ) -> npt.NDArray:
-    lr = 1e-3
-
-    rng = torch.Generator()
-    rng.manual_seed(seed)
 
     d, kp = Uinit.shape
 
@@ -106,7 +102,7 @@ def fit_v2(
 
     optimizer = torch.optim.Adam(ortho_layer.parameters(), lr=lr)
 
-    pgb = tqdm(range(epochs))
+    pgb = tqdm(range(epochs), disable=not verbose)
     for epoch in tqdm(pgb):
         for x, y in dataloader:
             optimizer.zero_grad()
