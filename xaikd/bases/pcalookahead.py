@@ -111,18 +111,17 @@ def fit_v2(
         for x, y in dataloader:
             optimizer.zero_grad()
 
+            # shape: (k, d)
             U = ortho_layer.weight.T
+            proj_mat = (U.T @ U).unsqueeze(2).unsqueeze(3)
 
             x = x.to(device)
 
             with torch.no_grad():
-                expected_logits = model(x)
+                expected_logits = second_module(first_module(x))
                 act = first_module(x)
 
-            recon = F.conv2d(
-                F.conv2d(act, U.T.unsqueeze(2).unsqueeze(3)),
-                U.unsqueeze(2).unsqueeze(3),
-            )
+            recon = F.conv2d(act, proj_mat)
 
             actual_logits = second_module(recon)
 
