@@ -112,7 +112,7 @@ def fit_v2(
             optimizer.zero_grad()
 
             # shape: (k, d)
-            U = ortho_layer.weight.T
+            U = ortho_layer.weight
             proj_mat = (U.T @ U).unsqueeze(2).unsqueeze(3)
 
             x = x.to(device)
