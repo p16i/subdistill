@@ -121,11 +121,15 @@ def fit_v2(
                 expected_logits = second_module(first_module(x))
                 act: torch.Tensor = first_module(x)
 
-            if len(act.shape) == 2:
+            shape_act = act.shape
+            if len(shape_act) == 2:
                 # make it conv like
                 act = act.unsqueeze(2).unsqueeze(3)
 
             recon = F.conv2d(act, proj_mat)
+
+            if len(shape_act) == 2:
+                recon = recon.squeeze(3).squeeze(2)
 
             actual_logits = second_module(recon)
 
