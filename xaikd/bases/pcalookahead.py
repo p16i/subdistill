@@ -133,6 +133,12 @@ def fit_v2(
 
             actual_logits = second_module(recon)
 
+            np.testing.assert_equal(actual_logits.shape, expected_logits.shape)
+
+            if len(actual_logits.shape) == 1:
+                actual_logits = actual_logits.unsqueeze(1)
+                expected_logits = expected_logits.unsqueeze(1)
+
             loss = torch.linalg.norm(actual_logits - expected_logits, ord=2, dim=1)
             loss = loss.mean()
 
