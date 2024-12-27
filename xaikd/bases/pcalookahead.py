@@ -81,7 +81,6 @@ def fit(
 def fit_v2(
     first_module: torch.nn.Module,
     second_module: torch.nn.Module,
-    layer: str,
     dataloader: DataLoader,
     Uinit: npt.NDArray,
     k: int,
