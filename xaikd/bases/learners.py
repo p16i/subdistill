@@ -554,7 +554,7 @@ class PRCASignAlignGreedy:
 
                 perc_sign_align = sign_align.detach().cpu().numpy()
                 tbar.set_description_str(
-                    f"DevPRCASignAlign [device={device}] perc_sign_align={perc_sign_align:.4f}"
+                    f"PRCASignAlignGreedy [device={device}] perc_sign_align={perc_sign_align:.4f}"
                 )
 
         with torch.no_grad():
