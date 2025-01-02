@@ -21,7 +21,12 @@ from . import pcalookahead
 from enum import Enum
 
 from xaikd.bases import pcalookahead
-from xaikd.bases.learners import PRCAGreedyLearner, PRCAReconGreedy, PRCASignAlignGreedy
+from xaikd.bases.learners import (
+    PRCAGreedyLearner,
+    PRCAReconGreedy,
+    PRCASignAlignGreedy,
+    PRCASignAlignGreedyV2,
+)
 from xaikd import models
 
 
