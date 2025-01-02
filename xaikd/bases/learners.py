@@ -591,7 +591,7 @@ class PRCASignAlignGreedy:
         return loss
 
 
-class PRCASignGreedyV2:
+class PRCASignAlignGreedyV2:
     @torch.no_grad()
     def fit(
         self, arr_act: npt.NDArray, arr_ctx: npt.NDArray, device="cpu"
