@@ -589,3 +589,62 @@ class PRCASignAlignGreedy:
         loss = obj.mean()
 
         return loss
+
+
+class PRCASignGreedyV2:
+    @torch.no_grad()
+    def fit(
+        self, arr_act: npt.NDArray, arr_ctx: npt.NDArray, device="cpu"
+    ) -> npt.NDArray:
+        n, d = arr_act.shape
+
+        I = torch.eye(d).to(device)
+
+        arr_act: torch.Tensor = torch.from_numpy(arr_act).to(device)
+        arr_ctx: torch.Tensor = torch.from_numpy(arr_ctx).to(device)
+
+        U_prev = self._solve_objective(arr_act, arr_ctx)
+        assert U_prev.shape == (d, 1)
+
+        for k in tqdm(range(1, d), desc="PRCASignGreedyV2"):
+
+            U_comp = I - U_prev @ U_prev.T
+
+            arr_act_on_U_comp = arr_act @ U_comp
+            arr_ctx_on_U_comp = arr_ctx @ U_comp
+
+            u_star = self._solve_objective(arr_act_on_U_comp, arr_ctx_on_U_comp)
+
+            # stacking prev results and the eigenvector
+            # shape : (d, k+1)
+            U_prev_and_k = torch.hstack([U_prev, u_star])
+
+            # performing gram-schmidt
+            U_prev, _ = torch.linalg.qr(U_prev_and_k)
+
+            assert U_prev.shape == (d, k + 1)
+
+            # sanity check
+            Vk = U_prev.detach().cpu().numpy()
+            np.testing.assert_allclose(Vk.T @ Vk, np.eye(k + 1), atol=1e-6)
+
+        U = U_prev.detach().cpu().numpy()
+
+        # sanity_check
+        np.testing.assert_allclose(U.T @ U, np.eye(d), atol=1e-6)
+
+        return U
+
+    def _solve_objective(
+        self, arr_act: torch.Tensor, arr_ctx: torch.Tensor
+    ) -> torch.Tensor:
+
+        arr_rel = (arr_act * arr_ctx).sum(dim=1, keepdim=True)
+
+        arr_act_with_rel = arr_act * arr_rel
+
+        cov = arr_act_with_rel.T @ arr_ctx + arr_ctx.T @ arr_act_with_rel
+
+        _, eigvecs = torch.linalg.eigh(cov)
+
+        return eigvecs[:, -1].reshape((-1, 1))
