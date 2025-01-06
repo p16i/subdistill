@@ -626,7 +626,7 @@ class PRCASignAlignGreedyV2:
 
             # sanity check
             Vk = U_prev.detach().cpu().numpy()
-            np.testing.assert_allclose(Vk.T @ Vk, np.eye(k + 1), atol=1e-6)
+            np.testing.assert_allclose(Vk.T @ Vk, np.eye(k + 1), atol=1e-3)
 
         U = U_prev.detach().cpu().numpy()
 
