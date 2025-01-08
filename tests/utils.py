@@ -150,3 +150,30 @@ def test_transformation_with_linear():
     actual = utils.convolve_feature_map_with_linear(feat, linear).numpy()
 
     np.testing.assert_allclose(actual, expected, atol=1e-6)
+
+
+@torch.no_grad()
+def test_compute_log_odd_wining():
+    logits = torch.tensor(
+        [
+            [5.0, 3],
+            [2, 10],
+        ]
+    )
+
+    p_y_gx_x = torch.softmax(logits, dim=1).detach().numpy()
+
+    actual_log_odd = utils.compute_log_odd_winning(logits=logits).detach().numpy()
+
+    p_winning = np.array(
+        [
+            p_y_gx_x[0, 0],
+            p_y_gx_x[1, 1],
+        ]
+    )
+
+    expected_log_odd = np.log(p_winning) - np.log(1 - p_winning)
+
+    np.testing.assert_allclose(actual_log_odd, expected_log_odd)
+
+    assert False
