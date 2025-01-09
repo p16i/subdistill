@@ -143,6 +143,19 @@ def freeze_model(model: torch.nn.Module) -> torch.nn.Module:
     return model
 
 
+def compute_log_odd_winning(logits: torch.Tensor) -> torch.Tensor:
+
+    ns, nc = logits.shape
+
+    values, _ = torch.topk(logits, dim=1, k=nc)
+
+    logit_winning = values[:, 0]
+    lse_others = torch.logsumexp(values[:, 1:], dim=1)
+    log_odd = logit_winning - lse_others
+
+    return log_odd
+
+
 def query_module_children_with_type(
     module: nn.Module, module_type: typing.Type[T]
 ) -> typing.List[T]:

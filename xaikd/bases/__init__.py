@@ -21,7 +21,14 @@ from . import pcalookahead
 from enum import Enum
 
 from xaikd.bases import pcalookahead
+from xaikd.bases.learners import (
+    PRCAGreedyLearner,
+    PRCAReconGreedy,
+    PRCASignAlignGreedy,
+    PRCASignAlignGreedyV2,
+)
 from xaikd import models
+
 
 EPS = 1e-6
 BASES = dict()
@@ -204,6 +211,24 @@ class PCA(Orthogonal):
         arr_ctx,
     ):
         cov = arr_act.T @ arr_act
+
+        eigvals, eigvecs = np.linalg.eigh(cov)
+
+        sorted_ix = np.argsort(-eigvals)
+
+        U = eigvecs[:, sorted_ix].copy()
+
+        return U
+
+
+@register_basis("cpca")
+class PCAofContext(Orthogonal):
+    def _solve(
+        self,
+        arr_act,
+        arr_ctx,
+    ):
+        cov = arr_ctx.T @ arr_ctx
 
         eigvals, eigvecs = np.linalg.eigh(cov)
 

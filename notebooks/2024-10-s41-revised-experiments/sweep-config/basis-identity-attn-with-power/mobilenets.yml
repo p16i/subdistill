@@ -1,0 +1,56 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+parameters:
+  output-dir:
+    value: /tmp
+  teacher:
+    values: 
+      - imagenet-mobilenetl-tv
+  student:
+    values:
+      # - student-mobilenets
+      # - student-mobilenetxs
+      - student-mobilenets-wo-last-act
+      - student-mobilenetxs-wo-last-act
+  dataset:
+    value: imagenet-butterfly
+  layers:
+    value: features.12:features.8,features.16:features.12
+  dataset-variant:
+    values:
+      - spurious-threespurious--1.0
+  training-size:
+    value: 1.0
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  layer-policy:
+    values:
+      # - nothing
+      # - basis-identity-attn:pca--uncentered
+      # - basis-identity-attnp1:prca-sortabs-corrected-sign--uncentered
+      # - basis-identity-attnp2:prca-sortabs-corrected-sign--uncentered
+      # - basis-identity-attnp4:prca-sortabs-corrected-sign--uncentered
+      # - basis-identity:prca-sortabs-corrected-sign--uncentered
+      - basis-identity:prca-sortabs--uncentered
+      - basis-rotation:prca-sortabs--uncentered
+      - basis-identity:pca--uncentered
+      - basis-rotation:pca--uncentered
+      # - basis-scale:pca--uncentered
+      # - basis-scale:prca-sortabs--uncentered
+  lambda-task:
+      value: 0.0
+  lambda-kd:
+      value: 1.0
+  lambda-layer:
+      value: 10

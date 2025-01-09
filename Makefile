@@ -22,4 +22,4 @@ srun5h:
 	srun -p gpu-5h --pty --gres=gpu:1 --constraint="40gb" /bin/bash
 
 srun2d:
-	srun -p gpu-2d --pty --gres=gpu:1 --constraint="40gb" /bin/bash
+	srun -p gpu-2d --pty --gres=gpu:1 --cpus-per-task=16 --constraint="40gb" /bin/bash

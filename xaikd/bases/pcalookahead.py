@@ -1,7 +1,7 @@
 import numpy as np
 import numpy.typing as npt
 
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 import torch
 
 from xaikd import models
@@ -64,6 +64,78 @@ def fit(
             )
 
             actual_logits = second_module(recon)
+
+            loss = torch.linalg.norm(actual_logits - expected_logits, ord=2, dim=1)
+            loss = loss.mean()
+
+            loss.backward()
+            optimizer.step()
+
+            loss = loss.detach().cpu().numpy()
+
+            pgb.set_description(f"PCA-LH Optimization: k={k}; loss={loss:.4f} ")
+
+    return ortho_layer.weight.T.detach().cpu().numpy()
+
+
+def fit_v2(
+    first_module: torch.nn.Module,
+    second_module: torch.nn.Module,
+    dataloader: DataLoader,
+    Uinit: npt.NDArray,
+    k: int,
+    epochs=5,
+    verbose=False,
+    device="cpu",
+    lr=1e-3,
+) -> npt.NDArray:
+
+    d, kp = Uinit.shape
+
+    assert kp == k
+
+    linear_layer = torch.nn.Linear(k, d, bias=False)
+
+    linear_layer.weight = torch.nn.Parameter(torch.from_numpy(Uinit.T).float())
+
+    ortho_layer = orthogonal(linear_layer).to(device)
+
+    optimizer = torch.optim.Adam(ortho_layer.parameters(), lr=lr)
+
+    pgb = tqdm(range(epochs), disable=not verbose)
+    for epoch in tqdm(pgb):
+        for x, y in dataloader:
+            optimizer.zero_grad()
+
+            # shape: (k, d)
+            U = ortho_layer.weight
+            proj_mat = (U.T @ U).unsqueeze(2).unsqueeze(3)
+
+            x = x.to(device)
+
+            with torch.no_grad():
+                expected_logits = second_module(first_module(x))
+                act: torch.Tensor = first_module(x)
+
+            shape_act = act.shape
+            # todo: write unittests for this
+            if len(shape_act) == 2:
+                # make it conv like
+                act = act.unsqueeze(2).unsqueeze(3)
+
+            recon = F.conv2d(act, proj_mat)
+
+            if len(shape_act) == 2:
+                recon = recon.squeeze(3).squeeze(2)
+
+            actual_logits = second_module(recon)
+
+            np.testing.assert_equal(actual_logits.shape, expected_logits.shape)
+
+            # this is to handle the case of binary classification
+            if len(actual_logits.shape) == 1:
+                actual_logits = actual_logits.unsqueeze(1)
+                expected_logits = expected_logits.unsqueeze(1)
 
             loss = torch.linalg.norm(actual_logits - expected_logits, ord=2, dim=1)
             loss = loss.mean()

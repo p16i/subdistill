@@ -59,7 +59,6 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
     trng = torch.Generator()
     trng.manual_seed(1)
-    assert dataset_name == "imagenet"
     ds_train_small, _ = random_split(ds_train, [0.1, 0.9], generator=trng)
 
     dl_train = DataLoader(
@@ -130,7 +129,7 @@ def main(model_name, layers, dataset_name, basis_names, artifact_dir):
 
         _, d = arr_act.shape
 
-        arr_ks = np.linspace(d // 2, d, num=5).astype(int)
+        arr_ks = np.linspace(1, d, num=16).astype(int)
 
         for basis_name in tqdm(
             basis_names.split(","),
