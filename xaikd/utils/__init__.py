@@ -147,16 +147,13 @@ def compute_log_odd_winning(logits: torch.Tensor) -> torch.Tensor:
 
     ns, nc = logits.shape
 
-    p_y_gv_x = torch.softmax(logits, dim=1)
+    values, _ = torch.topk(logits, dim=1, k=nc)
 
-    wining_index = torch.argmax(p_y_gv_x, dim=1)
-    assert wining_index.shape == (ns,)
+    logit_winning = values[:, 0]
+    lse_others = torch.logsumexp(values[:, 1:], dim=1)
+    log_odd = logit_winning - lse_others
 
-    p_y_winning = torch.gather(p_y_gv_x, dim=1, index=wining_index.reshape((ns, 1)))
-    p_y_winning = p_y_winning.squeeze(dim=1)
-    assert p_y_winning.shape == (ns,), p_y_winning.shape
-
-    return torch.log(p_y_winning) - torch.log(1 - p_y_winning)
+    return log_odd
 
 
 def query_module_children_with_type(
