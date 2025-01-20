@@ -17,11 +17,11 @@ def test_gather_locations_along_axis():
 
     for axis in [-1, -2]:
 
-        arr_locations = utils.ndarray_subsampling.get_random_permutations(
+        arr_locations = utils.ndarray_sampling.get_random_permutations(
             rng=rng, n=x.shape[0], total=x.shape[axis], num_chosen=num_locations
         )
 
-        actual = utils.ndarray_subsampling.gather_locations_along_axis(
+        actual = utils.ndarray_sampling.gather_locations_along_axis(
             x, axis=axis, arr_selected_locations=arr_locations
         )
 
@@ -58,12 +58,12 @@ def test_gather_locations_along_axes():
     arr_locations = []
     for axis, num_locations in zip(axes, arr_num_locations):
         arr_locations.append(
-            utils.ndarray_subsampling.get_random_permutations(
+            utils.ndarray_sampling.get_random_permutations(
                 rng=rng, n=x.shape[0], total=x.shape[axis], num_chosen=num_locations
             )
         )
 
-    actual = utils.ndarray_subsampling.gather_locations_along_axes(
+    actual = utils.ndarray_sampling.gather_locations_along_axes(
         x, axes=axes, arr_selected_locations=arr_locations
     )
 
