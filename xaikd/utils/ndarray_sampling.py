@@ -8,7 +8,10 @@ def get_random_permutations(
 ):
 
     if num_chosen > total:
-        print(f"[warning] num_chosen ({num_chosen}) > total ({total}); effectively, we only permutate locations.")
+        print(
+            f"[warning] num_chosen ({num_chosen}) > total ({total}); effectively, we only permutate locations."
+        )
+        num_chosen = total
 
     candidates = np.arange(total)
 
@@ -19,6 +22,7 @@ def get_random_permutations(
     arr_selected = np.array(arr_selected)
 
     np.testing.assert_equal(arr_selected.shape, (n, num_chosen))
+
     return arr_selected
 
 
