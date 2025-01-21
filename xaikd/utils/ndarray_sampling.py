@@ -10,7 +10,7 @@ def get_random_permutations(
     if num_chosen > total:
         if verbose:
             print(
-                f"[warning] num_chosen ({num_chosen}) > total ({total}); effectively, we only permutate locations."
+                f"[warning] num_chosen ({num_chosen}) > total ({total}); effectively, we only permute locations."
             )
         num_chosen = total
 
