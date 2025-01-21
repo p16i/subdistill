@@ -4,13 +4,14 @@ from numpy import typing as npt
 
 
 def get_random_permutations(
-    rng: np.random.Generator, n: int, total: int, num_chosen: int
+    rng: np.random.Generator, n: int, total: int, num_chosen: int, verbose=False
 ):
 
     if num_chosen > total:
-        print(
-            f"[warning] num_chosen ({num_chosen}) > total ({total}); effectively, we only permutate locations."
-        )
+        if verbose:
+            print(
+                f"[warning] num_chosen ({num_chosen}) > total ({total}); effectively, we only permutate locations."
+            )
         num_chosen = total
 
     candidates = np.arange(total)
