@@ -20,7 +20,7 @@ from zennit.torchvision import ResNetCanonizer, VGGCanonizer
 from zennit.composites import EpsilonGammaBox
 from zennit.attribution import Gradient
 
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from xaikd import utils
 from xaikd import datasets
