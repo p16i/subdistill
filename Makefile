@@ -23,3 +23,8 @@ srun5h:
 
 srun2d:
 	srun -p gpu-2d --pty --gres=gpu:1 --cpus-per-task=16 --constraint="40gb" /bin/bash
+
+
+
+remove-branches:
+	git branch --merged=main | grep -v main  | xargs -I{} git branch -d {}
