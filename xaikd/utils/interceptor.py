@@ -2,9 +2,13 @@ import typing
 import torch
 
 from torch import nn
+from torch.utils.data import DataLoader
+from torch.nn import functional as F
 from torch.utils import hooks
 
 from xaikd import utils
+from xaikd.utils.metrics import MetricFunction
+from tqdm.autonotebook import tqdm
 
 
 ATTRIBUTE_INTERCEPTED_OUTPUT = "__output"
@@ -106,3 +110,29 @@ def forward_and_intercept_intermediate_layers(
     assert len(layers) == len(arr_intermediate_feats)
 
     return logits, arr_intermediate_feats
+
+
+def attach_projection_forward_hook_at_layer_and_evaluate_metrics(
+    model: nn.Module,
+    layer: str,
+    dataloader: DataLoader,
+    forward_hook_func: typing.Callable[
+        [nn.Module, torch.Tensor, torch.Tensor], torch.Tensor
+    ],
+    metric: MetricFunction,
+    device: str,
+    verbose=False,
+):
+    module = get_module(model=model, layer_str=layer)
+
+    hook = module.register_forward_hook(forward_hook_func)
+
+    try:
+
+        return metric(
+            model=model, dataloader=dataloader, device=device, verbose=verbose
+        )
+
+    finally:
+        if hook is not None:
+            hook.remove()

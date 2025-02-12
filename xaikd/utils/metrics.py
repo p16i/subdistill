@@ -2,6 +2,8 @@ import typing
 import numpy as np
 import numpy.typing as npt
 
+from abc import ABC, abstractmethod
+
 import torch
 
 from tqdm import tqdm
@@ -20,34 +22,10 @@ from tqdm import tqdm
 def auroc(
     model: nn.Module,
     dataloader: DataLoader,
-    classes: typing.Tuple[int, int],
     device: str,
-    should_convert_auroc=False,
-) -> typing.Tuple[float, float]:
-    model.eval()
-    c1, c2 = classes
-
-    metric_auroc = BinaryAUROC()
-    metric_binary = BinaryAccuracy()
-    model = model.to(device)
-    for x, y in dataloader:
-        logits = model(x.to(device)).cpu()
-
-        logodd = logits[:, c1] - logits[:, c2]
-
-        assert np.logical_or(y == c1, y == c2).all()
-
-        ybin = torch.from_numpy(np.where(y == c1, 0, 1))
-        metric_auroc.update(logodd, ybin)
-        metric_binary.update((logodd < 0).int(), ybin.int())
-
-    auroc = metric_auroc.compute()
-    if should_convert_auroc:
-        auroc = np.max([auroc, 1 - auroc])
-
-    bin_accuracy = metric_binary.compute()
-
-    return float(auroc), float(bin_accuracy)
+    should_convert_auroc=True,
+) -> float:
+    raise NotImplementedError("obsolete")
 
 
 def accuracy(
@@ -119,11 +97,12 @@ def auroc_with_basis(
     module: nn.Module,
     dataloader: DataLoader,
     classes: typing.Tuple[int, int],
-    basis: bases.Basis,
+    basis: bases.OrthogonalBasis,
     device: str,
     arr_ks: typing.List[int],
     should_convert_auroc: bool,
 ) -> typing.List[float]:
+    raise NotImplementedError("obsolete")
     model.eval()
 
     arr_aurocs = []
@@ -175,3 +154,39 @@ def unexplained_relevance(
         stats.append(float(np.mean(unexplained_relevance)))
 
     return stats
+
+
+class MetricFunction(ABC):
+    @abstractmethod
+    def __call__(
+        self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
+    ) -> typing.Dict[str, float]:
+        pass
+
+
+class MetricAUROC(MetricFunction):
+    def __init__(self, convert_auroc=True):
+        self.convert_auroc = convert_auroc
+
+    def __call__(
+        self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
+    ) -> typing.Dict[str, float]:
+
+        assert not model.training
+
+        metric_auroc = BinaryAUROC(bin=50)
+
+        for x, y in tqdm(dataloader, desc="Computing AUROC", disable=not verbose):
+            logodd = model(x.to(device)).cpu()
+
+            assert len(logodd.shape) == 1, f"{logodd.shape}"
+
+            metric_auroc.update(logodd, y)
+
+        auroc = metric_auroc.compute()
+        if self.convert_auroc:
+            auroc = np.max([auroc, 1 - auroc])
+
+            assert 0.5 <= auroc <= 1.0
+
+        return dict(auroc=float(auroc))
