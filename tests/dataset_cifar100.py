@@ -234,3 +234,41 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
             assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
         else:
             assert len(arr_victim_indices) == 0
+
+
+@torch.no_grad()
+def test_construct_superclass_vs_others():
+    dataset = datasets.construct("cifar100-people-vs-others")
+
+    assert len(dataset.selected_classes) == 5
+
+    for train_split in [True, False]:
+        ds = dataset.create_subset(train_split=train_split)
+
+        arr_ys = []
+        dl = datasets.build_dataloader(dataset=ds, shuffle=False)
+        for _, y in dl:
+            arr_ys.extend(y.numpy().tolist())
+
+        arr_ys = np.array(arr_ys)
+
+        perc_y1 = (arr_ys == 1).mean()
+
+        np.testing.assert_allclose(perc_y1, 1 / len(constants.CIFAR100_SUPER_CLASSES))
+
+
+def test_get_fineclass_indices():
+    actual_names, actual_idx = (
+        datasets.cifar100.get_fineclass_names_indices_of_superclass("people")
+    )
+
+    expected_names = [
+        "baby",
+        "boy",
+        "girl",
+        "man",
+        "woman",
+    ]
+    expected_idx = sorted([11, 98, 35, 2, 46])
+    np.testing.assert_equal(actual_idx, expected_idx)
+    np.testing.assert_equal(actual_names, expected_names)
