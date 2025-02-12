@@ -1,0 +1,401 @@
+data_group,layer,k,basis_name,sample_selection_criteria,sample_selection_criteria_slug,val_auroc
+butterfly,layer1,1,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer1,1,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer1,1,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer1,1,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer1,16,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9645739197731018
+butterfly,layer1,16,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9480358958244324
+butterfly,layer1,16,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.8444421291351318
+butterfly,layer1,16,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5723845362663269
+butterfly,layer1,32,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9899570345878601
+butterfly,layer1,32,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9832795858383179
+butterfly,layer1,32,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.974907398223877
+butterfly,layer1,32,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.8063775300979614
+butterfly,layer1,48,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.993300199508667
+butterfly,layer1,48,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9932959675788879
+butterfly,layer1,48,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.991618812084198
+butterfly,layer1,48,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9882970452308655
+butterfly,layer1,64,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9933035969734192
+butterfly,layer1,64,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9933035969734192
+butterfly,layer1,64,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9933034181594849
+butterfly,layer1,64,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9933034181594849
+butterfly,layer1,1,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer1,1,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer1,1,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer1,1,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer1,16,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9698485136032104
+butterfly,layer1,16,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9664333462715149
+butterfly,layer1,16,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.8846021294593811
+butterfly,layer1,16,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5363052487373352
+butterfly,layer1,32,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9899591207504272
+butterfly,layer1,32,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9882863163948059
+butterfly,layer1,32,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9799283742904663
+butterfly,layer1,32,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9315550327301025
+butterfly,layer1,48,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9933010935783386
+butterfly,layer1,48,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.993300199508667
+butterfly,layer1,48,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9932982325553894
+butterfly,layer1,48,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9882937669754028
+butterfly,layer1,64,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9933035969734192
+butterfly,layer1,64,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9933035969734192
+butterfly,layer1,64,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9933035969734192
+butterfly,layer1,64,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9933035969734192
+butterfly,layer1,1,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer1,1,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer1,1,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer1,1,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer1,16,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9648661613464355
+butterfly,layer1,16,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9598401784896851
+butterfly,layer1,16,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9005962014198303
+butterfly,layer1,16,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.6314201951026917
+butterfly,layer1,32,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9916268587112427
+butterfly,layer1,32,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9882856011390686
+butterfly,layer1,32,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9799220561981201
+butterfly,layer1,32,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9298552870750427
+butterfly,layer1,48,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9933028817176819
+butterfly,layer1,48,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9932999014854431
+butterfly,layer1,48,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9932900071144104
+butterfly,layer1,48,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9916337132453918
+butterfly,layer1,64,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9933035969734192
+butterfly,layer1,64,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9933035969734192
+butterfly,layer1,64,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9933035969734192
+butterfly,layer1,64,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9933035969734192
+butterfly,layer1,1,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer1,1,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer1,1,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer1,1,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer1,16,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9615516662597656
+butterfly,layer1,16,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9498377442359924
+butterfly,layer1,16,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9210137128829956
+butterfly,layer1,16,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.6261047720909119
+butterfly,layer1,32,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9899594187736511
+butterfly,layer1,32,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9849559664726257
+butterfly,layer1,32,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9749315977096558
+butterfly,layer1,32,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9232134222984314
+butterfly,layer1,48,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9933027625083923
+butterfly,layer1,48,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9932986497879028
+butterfly,layer1,48,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9932955503463745
+butterfly,layer1,48,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9916337132453918
+butterfly,layer1,64,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9933035969734192
+butterfly,layer1,64,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9933035969734192
+butterfly,layer1,64,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9933035969734192
+butterfly,layer1,64,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9933035969734192
+butterfly,layer1,1,PCA,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer1,1,GradPCA,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer1,1,PRCASortAbs,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer1,1,PRCAPosDef,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer1,16,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9581881165504456
+butterfly,layer1,16,PCA,SelectNSamples(N=∞),select-all,0.9548652172088623
+butterfly,layer1,16,PRCASortAbs,SelectNSamples(N=∞),select-all,0.934306263923645
+butterfly,layer1,16,GradPCA,SelectNSamples(N=∞),select-all,0.6487176418304443
+butterfly,layer1,32,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9916254878044128
+butterfly,layer1,32,PCA,SelectNSamples(N=∞),select-all,0.9866211414337158
+butterfly,layer1,32,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9832589626312256
+butterfly,layer1,32,GradPCA,SelectNSamples(N=∞),select-all,0.9048781991004944
+butterfly,layer1,48,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9933028221130371
+butterfly,layer1,48,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9932954907417297
+butterfly,layer1,48,GradPCA,SelectNSamples(N=∞),select-all,0.9916364550590515
+butterfly,layer1,48,PCA,SelectNSamples(N=∞),select-all,0.9882931113243103
+butterfly,layer1,64,PCA,SelectNSamples(N=∞),select-all,0.9933035969734192
+butterfly,layer1,64,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9933035969734192
+butterfly,layer1,64,GradPCA,SelectNSamples(N=∞),select-all,0.9933034181594849
+butterfly,layer1,64,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9933034181594849
+butterfly,layer2,1,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer2,1,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer2,1,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer2,1,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer2,16,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.8527693152427673
+butterfly,layer2,16,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.7144731879234314
+butterfly,layer2,16,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5739071369171143
+butterfly,layer2,16,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5299896001815796
+butterfly,layer2,32,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9766000509262085
+butterfly,layer2,32,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9763986468315125
+butterfly,layer2,32,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9365110993385315
+butterfly,layer2,32,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.912485659122467
+butterfly,layer2,48,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9866160750389099
+butterfly,layer2,48,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9849059581756592
+butterfly,layer2,48,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9715937376022339
+butterfly,layer2,48,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9615071415901184
+butterfly,layer2,64,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9916280508041382
+butterfly,layer2,64,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.988275408744812
+butterfly,layer2,64,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9866077899932861
+butterfly,layer2,64,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9765996932983398
+butterfly,layer2,1,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer2,1,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer2,1,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer2,1,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer2,16,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9214320778846741
+butterfly,layer2,16,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.8082774877548218
+butterfly,layer2,16,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.6531771421432495
+butterfly,layer2,16,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.6356149315834045
+butterfly,layer2,32,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9832843542098999
+butterfly,layer2,32,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9715263843536377
+butterfly,layer2,32,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9664655327796936
+butterfly,layer2,32,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9562295079231262
+butterfly,layer2,48,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9882899522781372
+butterfly,layer2,48,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9866048693656921
+butterfly,layer2,48,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9815874695777893
+butterfly,layer2,48,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9763850569725037
+butterfly,layer2,64,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9916326403617859
+butterfly,layer2,64,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.988277792930603
+butterfly,layer2,64,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9866262674331665
+butterfly,layer2,64,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9866098761558533
+butterfly,layer2,1,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer2,1,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer2,1,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer2,1,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer2,16,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.8831241726875305
+butterfly,layer2,16,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.8608390092849731
+butterfly,layer2,16,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.8208073377609253
+butterfly,layer2,16,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.6279616951942444
+butterfly,layer2,32,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9815213680267334
+butterfly,layer2,32,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9795330166816711
+butterfly,layer2,32,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9782829284667969
+butterfly,layer2,32,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9549341201782227
+butterfly,layer2,48,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9899651408195496
+butterfly,layer2,48,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9899434447288513
+butterfly,layer2,48,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9882880449295044
+butterfly,layer2,48,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9782436490058899
+butterfly,layer2,64,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9916353225708008
+butterfly,layer2,64,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9899557828903198
+butterfly,layer2,64,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9882962703704834
+butterfly,layer2,64,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9882907867431641
+butterfly,layer2,1,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer2,1,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer2,1,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer2,1,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer2,16,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.8481686115264893
+butterfly,layer2,16,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.8284868001937866
+butterfly,layer2,16,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.7642622590065002
+butterfly,layer2,16,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5865043997764587
+butterfly,layer2,32,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9881460070610046
+butterfly,layer2,32,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9828928709030151
+butterfly,layer2,32,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9766208529472351
+butterfly,layer2,32,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9432832598686218
+butterfly,layer2,48,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9916023015975952
+butterfly,layer2,48,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9866312742233276
+butterfly,layer2,48,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9849544167518616
+butterfly,layer2,48,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9765735268592834
+butterfly,layer2,64,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9932880401611328
+butterfly,layer2,64,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9916351437568665
+butterfly,layer2,64,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9882962107658386
+butterfly,layer2,64,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9849569201469421
+butterfly,layer2,1,PCA,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer2,1,GradPCA,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer2,1,PRCASortAbs,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer2,1,PRCAPosDef,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer2,16,PRCAPosDef,SelectNSamples(N=∞),select-all,0.8615000247955322
+butterfly,layer2,16,GradPCA,SelectNSamples(N=∞),select-all,0.8093929886817932
+butterfly,layer2,16,PRCASortAbs,SelectNSamples(N=∞),select-all,0.7658472657203674
+butterfly,layer2,16,PCA,SelectNSamples(N=∞),select-all,0.5682264566421509
+butterfly,layer2,32,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9832794666290283
+butterfly,layer2,32,GradPCA,SelectNSamples(N=∞),select-all,0.9775018692016602
+butterfly,layer2,32,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9631103873252869
+butterfly,layer2,32,PCA,SelectNSamples(N=∞),select-all,0.939939022064209
+butterfly,layer2,48,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9849583506584167
+butterfly,layer2,48,PCA,SelectNSamples(N=∞),select-all,0.9849541783332825
+butterfly,layer2,48,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9849321842193604
+butterfly,layer2,48,GradPCA,SelectNSamples(N=∞),select-all,0.9682477116584778
+butterfly,layer2,64,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9883032441139221
+butterfly,layer2,64,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9882884621620178
+butterfly,layer2,64,PCA,SelectNSamples(N=∞),select-all,0.9866321682929993
+butterfly,layer2,64,GradPCA,SelectNSamples(N=∞),select-all,0.9816290140151978
+butterfly,layer3,1,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer3,1,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer3,1,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer3,1,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer3,16,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.8800727725028992
+butterfly,layer3,16,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.792078971862793
+butterfly,layer3,16,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.7877045273780823
+butterfly,layer3,16,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.6443418264389038
+butterfly,layer3,32,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9764374494552612
+butterfly,layer3,32,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9679564237594604
+butterfly,layer3,32,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9339891672134399
+butterfly,layer3,32,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9184802174568176
+butterfly,layer3,48,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9875845313072205
+butterfly,layer3,48,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9831904172897339
+butterfly,layer3,48,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9794079661369324
+butterfly,layer3,48,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9585888981819153
+butterfly,layer3,64,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9880349040031433
+butterfly,layer3,64,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9849270582199097
+butterfly,layer3,64,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9830686450004578
+butterfly,layer3,64,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9677268862724304
+butterfly,layer3,1,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer3,1,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer3,1,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer3,1,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer3,16,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.8372460007667542
+butterfly,layer3,16,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.7797513008117676
+butterfly,layer3,16,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.7191110253334045
+butterfly,layer3,16,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.6231918334960938
+butterfly,layer3,32,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9714611172676086
+butterfly,layer3,32,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9686939716339111
+butterfly,layer3,32,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9646108746528625
+butterfly,layer3,32,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9537752270698547
+butterfly,layer3,48,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9843418598175049
+butterfly,layer3,48,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9812186360359192
+butterfly,layer3,48,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9798897504806519
+butterfly,layer3,48,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9679609537124634
+butterfly,layer3,64,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9916099309921265
+butterfly,layer3,64,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9881446957588196
+butterfly,layer3,64,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9879683256149292
+butterfly,layer3,64,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9781548380851746
+butterfly,layer3,1,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer3,1,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer3,1,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer3,1,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer3,16,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9300792217254639
+butterfly,layer3,16,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.7562384009361267
+butterfly,layer3,16,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.6816279292106628
+butterfly,layer3,16,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5016666650772095
+butterfly,layer3,32,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.975784182548523
+butterfly,layer3,32,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9665461182594299
+butterfly,layer3,32,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9564021229743958
+butterfly,layer3,32,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9198139309883118
+butterfly,layer3,48,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9879826307296753
+butterfly,layer3,48,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9847868084907532
+butterfly,layer3,48,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9732822179794312
+butterfly,layer3,48,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9732434153556824
+butterfly,layer3,64,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9931809306144714
+butterfly,layer3,64,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9882896542549133
+butterfly,layer3,64,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9882251620292664
+butterfly,layer3,64,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9782651662826538
+butterfly,layer3,1,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer3,1,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer3,1,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer3,1,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer3,16,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.8282633423805237
+butterfly,layer3,16,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5066666603088379
+butterfly,layer3,16,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer3,16,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer3,32,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9625104665756226
+butterfly,layer3,32,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9581072926521301
+butterfly,layer3,32,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9315920472145081
+butterfly,layer3,32,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.6983333230018616
+butterfly,layer3,48,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9864112138748169
+butterfly,layer3,48,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9846120476722717
+butterfly,layer3,48,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.966627299785614
+butterfly,layer3,48,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9532734751701355
+butterfly,layer3,64,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9914960265159607
+butterfly,layer3,64,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9865546822547913
+butterfly,layer3,64,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9782976508140564
+butterfly,layer3,64,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9716203808784485
+butterfly,layer3,1,PCA,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer3,1,GradPCA,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer3,1,PRCASortAbs,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer3,1,PRCAPosDef,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer3,16,PRCASortAbs,SelectNSamples(N=∞),select-all,0.6011831164360046
+butterfly,layer3,16,GradPCA,SelectNSamples(N=∞),select-all,0.5049999952316284
+butterfly,layer3,16,PRCAPosDef,SelectNSamples(N=∞),select-all,0.5016666650772095
+butterfly,layer3,16,PCA,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer3,32,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9322083592414856
+butterfly,layer3,32,GradPCA,SelectNSamples(N=∞),select-all,0.8748979568481445
+butterfly,layer3,32,PRCAPosDef,SelectNSamples(N=∞),select-all,0.84661465883255
+butterfly,layer3,32,PCA,SelectNSamples(N=∞),select-all,0.7549883723258972
+butterfly,layer3,48,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9730532169342041
+butterfly,layer3,48,GradPCA,SelectNSamples(N=∞),select-all,0.9714202880859375
+butterfly,layer3,48,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9616041779518127
+butterfly,layer3,48,PCA,SelectNSamples(N=∞),select-all,0.9431970715522766
+butterfly,layer3,64,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9798493981361389
+butterfly,layer3,64,GradPCA,SelectNSamples(N=∞),select-all,0.9781776666641235
+butterfly,layer3,64,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9749538898468018
+butterfly,layer3,64,PCA,SelectNSamples(N=∞),select-all,0.9749276638031006
+butterfly,layer4,1,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9844203591346741
+butterfly,layer4,1,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.8968608379364014
+butterfly,layer4,1,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5899814367294312
+butterfly,layer4,1,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.5
+butterfly,layer4,16,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9956005215644836
+butterfly,layer4,16,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9929535388946533
+butterfly,layer4,16,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9904153347015381
+butterfly,layer4,16,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9890802502632141
+butterfly,layer4,32,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9931116104125977
+butterfly,layer4,32,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.992915153503418
+butterfly,layer4,32,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.992861807346344
+butterfly,layer4,32,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9928265810012817
+butterfly,layer4,48,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9931218028068542
+butterfly,layer4,48,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9930453896522522
+butterfly,layer4,48,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.993033766746521
+butterfly,layer4,48,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9927377700805664
+butterfly,layer4,64,PRCAPosDef,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9931396842002869
+butterfly,layer4,64,PRCASortAbs,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9931311011314392
+butterfly,layer4,64,GradPCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9931245446205139
+butterfly,layer4,64,PCA,"SelectNSamples(N=5, total=12812, [-1.01, 3.59])",select-5,0.9914034605026245
+butterfly,layer4,1,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9877403378486633
+butterfly,layer4,1,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.8710171580314636
+butterfly,layer4,1,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5401478409767151
+butterfly,layer4,1,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.5
+butterfly,layer4,16,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.995074450969696
+butterfly,layer4,16,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9946568012237549
+butterfly,layer4,16,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9945986866950989
+butterfly,layer4,16,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9944256544113159
+butterfly,layer4,32,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.996083676815033
+butterfly,layer4,32,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9946473240852356
+butterfly,layer4,32,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9930985569953918
+butterfly,layer4,32,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.993091344833374
+butterfly,layer4,48,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.996445894241333
+butterfly,layer4,48,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9931835532188416
+butterfly,layer4,48,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9931698441505432
+butterfly,layer4,48,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9931420683860779
+butterfly,layer4,64,PRCAPosDef,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9932299256324768
+butterfly,layer4,64,PCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9932224154472351
+butterfly,layer4,64,GradPCA,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9932197332382202
+butterfly,layer4,64,PRCASortAbs,"SelectNSamples(N=10, total=12812, [-1.90, 5.19])",select-10,0.9932000041007996
+butterfly,layer4,1,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.993199348449707
+butterfly,layer4,1,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer4,1,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer4,1,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.5
+butterfly,layer4,16,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9947462677955627
+butterfly,layer4,16,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9947018027305603
+butterfly,layer4,16,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9946317672729492
+butterfly,layer4,16,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9656091332435608
+butterfly,layer4,32,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9948583245277405
+butterfly,layer4,32,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9932255744934082
+butterfly,layer4,32,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9932198524475098
+butterfly,layer4,32,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9864250421524048
+butterfly,layer4,48,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9932698011398315
+butterfly,layer4,48,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9932687282562256
+butterfly,layer4,48,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9932625889778137
+butterfly,layer4,48,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9915264248847961
+butterfly,layer4,64,PRCAPosDef,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.993287980556488
+butterfly,layer4,64,PRCASortAbs,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9932842254638672
+butterfly,layer4,64,GradPCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.993282675743103
+butterfly,layer4,64,PCA,"SelectNSamples(N=50, total=12812, [-4.46, 12.68])",select-50,0.9915720820426941
+butterfly,layer4,1,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9926880598068237
+butterfly,layer4,1,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer4,1,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer4,1,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.5
+butterfly,layer4,16,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.99424809217453
+butterfly,layer4,16,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9942425489425659
+butterfly,layer4,16,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9941315054893494
+butterfly,layer4,16,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.6081348061561584
+butterfly,layer4,32,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9946882128715515
+butterfly,layer4,32,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9946845769882202
+butterfly,layer4,32,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9946730732917786
+butterfly,layer4,32,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.8214042782783508
+butterfly,layer4,48,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9931482672691345
+butterfly,layer4,48,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9931426048278809
+butterfly,layer4,48,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9931203126907349
+butterfly,layer4,48,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9614250659942627
+butterfly,layer4,64,PRCAPosDef,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9931947588920593
+butterfly,layer4,64,GradPCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9931920766830444
+butterfly,layer4,64,PRCASortAbs,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9931714534759521
+butterfly,layer4,64,PCA,"SelectNSamplesOppositeSide(N=50, total=12812, [-31.21, 8.06])",select-opposite-side-50,0.9864577651023865
+butterfly,layer4,1,GradPCA,SelectNSamples(N=∞),select-all,0.992682695388794
+butterfly,layer4,1,PCA,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer4,1,PRCASortAbs,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer4,1,PRCAPosDef,SelectNSamples(N=∞),select-all,0.5
+butterfly,layer4,16,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9937212467193604
+butterfly,layer4,16,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9936437010765076
+butterfly,layer4,16,GradPCA,SelectNSamples(N=∞),select-all,0.9934861063957214
+butterfly,layer4,16,PCA,SelectNSamples(N=∞),select-all,0.9731635451316833
+butterfly,layer4,32,GradPCA,SelectNSamples(N=∞),select-all,0.9943565726280212
+butterfly,layer4,32,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9942701458930969
+butterfly,layer4,32,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9942131042480469
+butterfly,layer4,32,PCA,SelectNSamples(N=∞),select-all,0.9825481176376343
+butterfly,layer4,48,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9944924116134644
+butterfly,layer4,48,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9929159283638
+butterfly,layer4,48,GradPCA,SelectNSamples(N=∞),select-all,0.9928616881370544
+butterfly,layer4,48,PCA,SelectNSamples(N=∞),select-all,0.9890998601913452
+butterfly,layer4,64,PRCASortAbs,SelectNSamples(N=∞),select-all,0.9945617914199829
+butterfly,layer4,64,PRCAPosDef,SelectNSamples(N=∞),select-all,0.9930217266082764
+butterfly,layer4,64,GradPCA,SelectNSamples(N=∞),select-all,0.992989182472229
+butterfly,layer4,64,PCA,SelectNSamples(N=∞),select-all,0.9895133376121521
