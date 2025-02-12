@@ -1,5 +1,6 @@
 import os
 import typing
+from functools import partial
 import numpy as np
 from numpy._typing import NDArray
 import numpy.typing as npt
@@ -13,7 +14,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import DataLoader
-from abc import ABC
+from abc import ABC, abstractmethod
 
 from . import pcalookahead
 
@@ -32,6 +33,25 @@ from xaikd import models
 
 EPS = 1e-6
 BASES = dict()
+
+
+def _solve_eigh(
+    cov: npt.NDArray, sort_with_abs_eigvals=False
+) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+    eigvals, eigvecs = np.linalg.eigh(cov)
+
+    assert len(eigvals.shape) == 1
+
+    if sort_with_abs_eigvals:
+        eigvals = np.abs(eigvals)
+
+    # we sort in descending order
+    indices = np.argsort(-eigvals)
+    eigvals = eigvals[indices]
+    eigvecs = eigvecs[:, indices]
+
+    return eigvals, eigvecs
+
 
 AdapterMode = Enum("AdapterMode", ["ENCODER", "DECODER"])
 
@@ -76,39 +96,46 @@ class Adapter(torch.nn.Module):
         return x
 
 
-def register_basis(name):
+def register_basis():
     """Decorator to register a data modality provider."""
 
     def wrapped(cls):
         """Wrapped function to register a data modality provider with name `name`"""
-        BASES[name] = cls
+
+        slug = cls.slug()
+
+        assert not (slug in BASES)
+
+        BASES[slug] = cls
 
         return cls
 
     return wrapped
 
 
-class Basis(ABC):
-    U: npt.NDArray
-    scale: npt.NDArray
-    mean: npt.NDArray
-
+class OrthogonalBasis(ABC):
     def __init__(self, centering: bool = False):
         self.centering = centering
 
-    def fit(self, arr_act: npt.NDArray, arr_ctx: npt.NDArray, **kwargs):
-        raise NotImplementedError("...")
+    @property
+    def mean(self) -> npt.NDArray:
+        return self._mean
 
-    def _estimate_scale_factor(self, x: npt.NDArray, U: npt.NDArray) -> npt.NDArray:
-        # remark: if centering (i.e., `mean(activation)=0`), then
-        # this expresssion is `standard deviation`
-        return np.mean((x @ U) ** 2, axis=0)
+    @property
+    def U(self) -> npt.NDArray:
+        return self._U
 
-    def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
-        U = torch.from_numpy(self.U[:, :k]).float()
-        mean = torch.from_numpy(self.mean).float()
+    @property
+    def scale_factors(self) -> npt.NDArray:
+        return self._scale_factors
 
-        return Adapter(U=U, mean=mean, mode=mode, device=device)
+    @abstractmethod
+    def _solve(
+        self,
+        arr_act: npt.NDArray,
+        arr_ctx: npt.NDArray,
+    ) -> npt.NDArray:
+        pass
 
     def construct_fh_rank_k_projection(self, k: int, device: str) -> typing.Callable:
         encoder = self.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device)
@@ -120,27 +147,17 @@ class Basis(ABC):
 
         return fh
 
-    def __str__(self) -> str:
-        return getattr(self, "__name")
+    def estimate_scale_factors(self, x: npt.NDArray, U: npt.NDArray) -> npt.NDArray:
+        # remark: if centering (i.e., `mean(activation)=0`), then
+        # this expresssion is `standard deviation`
+        return np.mean((x @ U) ** 2, axis=0)
 
-    def get_scale_factors_for_k(self, k: int) -> npt.NDArray:
-        return self.scale[:k]
+    def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
+        U = torch.from_numpy(self.U[:, :k]).float()
+        mean = torch.from_numpy(self.mean).float()
 
+        return Adapter(U=U, mean=mean, mode=mode, device=device)
 
-def get_basis(slug, **kwargs) -> Basis:
-    name_slug, centering_slug = slug.split("--")
-    centering = True if centering_slug == "centered" else False
-
-    assert centering_slug in ["uncentered", "centered"], f"Value `{centering_slug}`"
-
-    basis = BASES[name_slug](centering=centering, **kwargs)
-
-    setattr(basis, "__name", slug)
-
-    return basis
-
-
-class Orthogonal(Basis):
     def fit(self, arr_act, arr_ctx, **kwargs):
         _, d = arr_act.shape
 
@@ -152,25 +169,32 @@ class Orthogonal(Basis):
             # remark: the name might be a bit confusing
             arr_centered_arr = arr_act
 
-        U = self._solve(arr_act=arr_centered_arr, arr_ctx=arr_ctx)
+        self._U = self._solve(arr_act=arr_centered_arr, arr_ctx=arr_ctx)
 
-        scale = self._estimate_scale_factor(arr_centered_arr, U)
+        self._scale_factors = self.estimate_scale_factors(arr_centered_arr, self._U)
 
-        self.U = U
-        self.scale = scale
-        self.mean = mean
+        self._mean = mean
 
-    def _solve(
-        self,
-        arr_act: npt.NDArray,
-        arr_ctx: npt.NDArray,
-    ) -> npt.NDArray:
-        # remark: if centerining = true, then arr_act is already centered.
-        raise NotImplementedError("...")
+    def get_Uk(self, k: int) -> NDArray[np.float32]:
+        return self.U[:, :k]
+
+    def get_scale_factors_for_k(self, k: int) -> NDArray[np.float32]:
+        return self.scale_factors[:k]
+
+    @classmethod
+    def slug(cls):
+        return cls.__name__.lower()
 
 
-@register_basis("identity")
-class Identity(Orthogonal):
+def get_basis(basis_name, **kwargs) -> OrthogonalBasis:
+
+    basis = BASES[basis_name](**kwargs)
+
+    return basis
+
+
+@register_basis()
+class Identity(OrthogonalBasis):
     def _solve(
         self,
         arr_act,
@@ -181,8 +205,8 @@ class Identity(Orthogonal):
         return np.eye(d)
 
 
-@register_basis("random")
-class Random(Orthogonal):
+@register_basis()
+class Random(OrthogonalBasis):
 
     def fit(self, arr_act, arr_ctx, **kwargs):
         assert "seed" in kwargs, "please specify `seed`"
@@ -203,8 +227,8 @@ class Random(Orthogonal):
         return U
 
 
-@register_basis("pca")
-class PCA(Orthogonal):
+@register_basis()
+class PCA(OrthogonalBasis):
     def _solve(
         self,
         arr_act,
@@ -212,17 +236,13 @@ class PCA(Orthogonal):
     ):
         cov = arr_act.T @ arr_act
 
-        eigvals, eigvecs = np.linalg.eigh(cov)
+        _, eigvecs = _solve_eigh(cov)
 
-        sorted_ix = np.argsort(-eigvals)
-
-        U = eigvecs[:, sorted_ix].copy()
-
-        return U
+        return eigvecs
 
 
-@register_basis("cpca")
-class PCAofContext(Orthogonal):
+@register_basis()
+class GradPCA(OrthogonalBasis):
     def _solve(
         self,
         arr_act,
@@ -230,17 +250,13 @@ class PCAofContext(Orthogonal):
     ):
         cov = arr_ctx.T @ arr_ctx
 
-        eigvals, eigvecs = np.linalg.eigh(cov)
+        _, eigvecs = _solve_eigh(cov)
 
-        sorted_ix = np.argsort(-eigvals)
-
-        U = eigvecs[:, sorted_ix].copy()
-
-        return U
+        return eigvecs
 
 
-@register_basis("prca-sortabs")
-class PRCASortAbs(Orthogonal):
+@register_basis()
+class PRCASortAbs(OrthogonalBasis):
     def _solve(
         self,
         arr_act,
@@ -248,18 +264,12 @@ class PRCASortAbs(Orthogonal):
     ):
         cov = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
 
-        eigvals, eigvecs = np.linalg.eigh(cov)
-
-        sorted_ix = np.argsort(-np.abs(eigvals))
-
-        U = eigvecs[:, sorted_ix].copy()
-        assert not np.isnan(U).any()
-
-        return U
+        _, eigvecs = _solve_eigh(cov, sort_with_abs_eigvals=True)
+        return eigvecs
 
 
-@register_basis("prca")
-class PRCA(Orthogonal):
+@register_basis()
+class PRCA(OrthogonalBasis):
     def _solve(
         self,
         arr_act,
@@ -267,72 +277,110 @@ class PRCA(Orthogonal):
     ):
         cov = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
 
-        eigvals, eigvecs = np.linalg.eigh(cov)
-
-        sorted_ix = np.argsort(-eigvals)
-
-        U = eigvecs[:, sorted_ix].copy()
-
-        return U
+        _, eigvecs = _solve_eigh(cov, sort_with_abs_eigvals=False)
+        return eigvecs
 
 
-@register_basis("pcalookahead")
-class PCALookAhead(Orthogonal):
-    def fit(self, arr_act, arr_ctx, **kwargs):
-        assert self.centering == False, "we only support `uncentered` version` for now"
+@register_basis()
+class PRCAPosDef(OrthogonalBasis):
+    def _solve(
+        self,
+        arr_act,
+        arr_ctx,
+    ):
 
-        self.model = kwargs["model"]
-        self.layer = kwargs["layer"]
-        self.dataloader = kwargs["dataloader"]
-        self.arr_act = arr_act
+        cov_a = arr_act.T @ arr_act
 
-        self._cache = dict()
-        self.U = self._get_initialization(
-            model=self.model, arr_act=arr_act, arr_ctx=arr_ctx
+        tr_cov_a = np.trace(cov_a)
+
+        cov_c = arr_ctx.T @ arr_ctx
+        tr_cov_c = np.trace(cov_c)
+
+        cov_ac = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+
+        cov_pos_def = (
+            (2 / tr_cov_a) * cov_a
+            + (2 / tr_cov_c) * cov_c
+            + (1 / np.power(tr_cov_a * tr_cov_c, 0.5)) * cov_ac
         )
+        eigvals, eigvecs = _solve_eigh(cov_pos_def)
 
-    def _get_initialization(
-        self, model: nn.Module, arr_act: npt.NDArray, arr_ctx: npt.NDArray
-    ) -> npt.NDArray:
-        if isinstance(model, models.vit.VisionTransformer):
-            ref_basis = PCA()
-        else:
-            ref_basis = PRCASortAbs()
-        ref_basis.fit(arr_act=arr_act, arr_ctx=arr_ctx)
+        assert (eigvals >= 0).all()
 
-        return ref_basis.U
+        return eigvecs
 
-    def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
-        assert self.centering == False, "we only support `uncetered` version"
 
-        if not k in self._cache:
+# @register_basis("pcalookahead")
+# class PCALookAhead(Orthogonal):
+#     def fit(self, arr_act, arr_ctx, **kwargs):
+#         assert self.centering == False, "we only support `uncentered` version` for now"
 
-            Uinit = self.U[:, :k].copy()
+#         self.model = kwargs["model"]
+#         self.layer = kwargs["layer"]
+#         self.dataloader = kwargs["dataloader"]
+#         self.arr_act = arr_act
 
-            U = pcalookahead.fit(
-                model=self.model,
-                layer=self.layer,
-                dataloader=self.dataloader,
-                Uinit=Uinit,
-                k=k,
-                verbose=False,
-                device=device,
-            )
-            scale = self._estimate_scale_factor(self.arr_act, U)
-            self._cache[k] = (U, scale)
-        else:
-            U, scale = self._cache[k]
+#         self._cache = dict()
+#         self.U = self._get_initialization(
+#             model=self.model, arr_act=arr_act, arr_ctx=arr_ctx
+#         )
 
-        d, k = U.shape
+#     def _get_initialization(
+#         self, model: nn.Module, arr_act: npt.NDArray, arr_ctx: npt.NDArray
+#     ) -> npt.NDArray:
+#         if isinstance(model, models.vit.VisionTransformer):
+#             ref_basis = PCA()
+#         else:
+#             ref_basis = PRCASortAbs()
+#         ref_basis.fit(arr_act=arr_act, arr_ctx=arr_ctx)
 
-        return Adapter(
-            U=torch.from_numpy(U).float(),
-            mean=torch.zeros(d).float(),
-            mode=mode,
-            device=device,
-        )
+#         return ref_basis.U
 
-    def get_scale_factors_for_k(self, k: int) -> npt.NDArray:
-        _, scale = self._cache[k]
+#     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
+#         assert self.centering == False, "we only support `uncetered` version"
 
-        return scale
+#         if not k in self._cache:
+
+#             Uinit = self.U[:, :k].copy()
+
+#             U = pcalookahead.fit(
+#                 model=self.model,
+#                 layer=self.layer,
+#                 dataloader=self.dataloader,
+#                 Uinit=Uinit,
+#                 k=k,
+#                 verbose=False,
+#                 device=device,
+#             )
+#             scale = self._estimate_scale_factor(self.arr_act, U)
+#             self._cache[k] = (U, scale)
+#         else:
+#             U, scale = self._cache[k]
+
+#         d, k = U.shape
+
+#         return Adapter(
+#             U=torch.from_numpy(U).float(),
+#             mean=torch.zeros(d).float(),
+#             mode=mode,
+#             device=device,
+#         )
+
+#     def get_scale_factors_for_k(self, k: int) -> npt.NDArray:
+#         _, scale = self._cache[k]
+
+#         return scale
+
+
+def _add_centering_variants():
+
+    for base_variant_cls in [PCA]:
+        base_variant_slug = base_variant_cls.slug()
+        slug = f"{base_variant_slug}centering"
+        print(slug)
+
+        assert not (slug in BASES)
+        BASES[slug] = partial(base_variant_cls, centering=True)
+
+
+_add_centering_variants()
