@@ -253,7 +253,6 @@ class BinaryLogOddWinning(LogitModifier):
         self.threshold = threshold
 
     def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor:
-        print(logits.shape)
         (n,) = logits.shape
 
         assert len(logits.shape) == 1
