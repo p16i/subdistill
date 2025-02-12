@@ -176,3 +176,17 @@ def test_compute_log_odd_wining():
     expected_log_odd = np.log(p_winning) - np.log(1 - p_winning)
 
     np.testing.assert_allclose(actual_log_odd, expected_log_odd, atol=1e-4)
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("0", 0),
+        ("88", 88),
+        ("layer3", None),
+        ("-1", -1),
+    ],
+)
+def test_parse_number_if_possible(text, expected):
+    actual = utils.parse_number_if_possible(text)
+    assert actual == expected

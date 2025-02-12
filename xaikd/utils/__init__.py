@@ -2,6 +2,7 @@ import os
 import typing
 import numpy.typing as npt
 import subprocess
+import re
 
 import json
 import torch
@@ -243,7 +244,6 @@ def get_dimensions_at_layers(
 
 
 def get_git_hash() -> str:
-    return "xxxxx"
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
 
 
@@ -269,3 +269,12 @@ def resolve_lambda_layer(
         )
 
         return lambda_layer
+
+
+def parse_number_if_possible(text: str) -> typing.Union[None, int]:
+    is_int = re.match(r"-?\d+", text) is not None
+
+    if is_int:
+        return int(text)
+    else:
+        return None

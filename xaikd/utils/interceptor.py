@@ -4,29 +4,31 @@ import torch
 from torch import nn
 from torch.utils import hooks
 
+from xaikd import utils
+
 
 ATTRIBUTE_INTERCEPTED_OUTPUT = "__output"
 
 
 def get_module(model: nn.Module, layer_str: str) -> nn.Module:
-    slugs = layer_str.split(".")
+    arr_level_layers = layer_str.split(".")
 
-    if len(slugs) == 1:
-        module = getattr(model, layer_str)
-    elif len(slugs) == 2:
-        layer, index = slugs
-        module = getattr(model, layer)[int(index)]
-    elif len(slugs) == 3:
-        # for vit (e.g., encoders.layers.0)
-        layer1, layer2, index = slugs
-        module = getattr(getattr(model, layer1), layer2)[int(index)]
-    else:
-        raise ValueError(f"layer={layer_str}; not exists")
+    parent_module = model
 
-    if isinstance(module, nn.Sequential):
-        return module[-1]
-    else:
-        return module
+    for attr_name in arr_level_layers:
+        parsed_attr_name = utils.parse_number_if_possible(attr_name)
+
+        if parsed_attr_name is not None:
+            assert isinstance(parent_module, nn.Sequential)
+            assert isinstance(parsed_attr_name, int)
+
+            parent_module = parent_module[parsed_attr_name]
+        else:
+            parent_module = getattr(parent_module, attr_name)
+
+    module = parent_module
+
+    return module
 
 
 def attach_hook_intercept_layer_output(
