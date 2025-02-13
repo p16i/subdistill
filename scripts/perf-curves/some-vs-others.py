@@ -24,7 +24,7 @@ from xaikd.utils import click_types
 @click.command()
 @click.option("--arch", default="cifar100-resnet18-v1", type=str)
 @click.option(
-    "--arr-layers", default=["layer1", "layer2"], required=True, type=click_types.List()
+    "--arr-layers", default=["layer1", "layer2", "layer3", "layer4"], required=True, type=click_types.List()
 )
 @click.option("--dataset-name", required=True, type=str)
 # @click.option("--sample-selection-criteria", type=str)
