@@ -172,9 +172,9 @@ def main(
             dest_path = output_dir / arch / dataset_name / layer / basis_name
             os.makedirs(dest_path, exist_ok=True)
 
-            df.to_csv(dest_ptah / "stats.csv", index=False)
+            df.to_csv(dest_path / "stats.csv", index=False)
             utils.dump_json_with_string_serializer(
-                dest=dest_ptah / "meta.json", data=arguments
+                dest=dest_path / "meta.json", data=arguments
             )
 
     time_took = datetime.now() - start_time
