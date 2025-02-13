@@ -133,10 +133,6 @@ def main(
 
             basis.fit(arr_act=arr_act, arr_ctx=arr_grad)
 
-            # todo: parameterize also `sample-selection-criteria`
-            artifact_dir = output_dir / arch / dataset_name / layer
-            os.makedirs(artifact_dir, exist_ok=True)
-
             arr_stat_rows = []
 
             for k in tqdm(arr_ks, desc=f"basis_name={basis_name}"):
@@ -172,11 +168,13 @@ def main(
 
             df = pd.DataFrame(arr_stat_rows)
 
-            dest_file = artifact_dir / basis_name
+            # todo: parameterize also `sample-selection-criteria`
+            dest_path = output_dir / arch / dataset_name / layer / basis_name
+            os.makedirs(dest_path, exist_ok=True)
 
-            df.to_csv(dest_file / "stats.csv", index=False)
+            df.to_csv(dest_ptah / "stats.csv", index=False)
             utils.dump_json_with_string_serializer(
-                dest=dest_file / "meta.json", data=arguments
+                dest=dest_ptah / "meta.json", data=arguments
             )
 
     time_took = datetime.now() - start_time
