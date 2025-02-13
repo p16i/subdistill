@@ -172,9 +172,12 @@ def main(
 
             df = pd.DataFrame(arr_stat_rows)
 
-            dest_file = artifact_dir / f"{basis_name}.csv"
+            dest_file = artifact_dir / basis_name
 
-            df.to_csv(dest_file, index=False)
+            df.to_csv(dest_file / "stats.csv", index=False)
+            utils.dump_json_with_string_serializer(
+                dest=dest_file / "meta.json", data=arguments
+            )
 
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
