@@ -84,6 +84,7 @@ def test_analytic_basis(basis_name):
         "prcaposdef",
         "prca-ablation-a-ac",
         "prca-ablation-c-ac",
+        "prca-ablation-a-c",
     ],
 )
 def test_correct_scale_orthogoal_bases(basis_name):

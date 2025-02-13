@@ -206,6 +206,33 @@ class PRCAPosDef(OrthogonalBasis):
 
 
 @register_basis()
+class PRCAPosDefSigmaASigmaC(OrthogonalBasis):
+    @classmethod
+    def slug(cls):
+        return "prca-ablation-a-c"
+
+    def _solve(
+        self,
+        arr_act,
+        arr_ctx,
+    ):
+
+        cov_a = arr_act.T @ arr_act
+
+        tr_cov_a = np.trace(cov_a)
+
+        cov_c = arr_ctx.T @ arr_ctx
+        tr_cov_c = np.trace(cov_c)
+
+        cov = (2 / tr_cov_a) * cov_a + (2 / tr_cov_c) * cov_c
+        eigvals, eigvecs = utils.solve_eigh(cov)
+
+        assert (eigvals >= 0).all()
+
+        return eigvecs
+
+
+@register_basis()
 class PRCAPosDefAblationSigmaASigmaAC(OrthogonalBasis):
     @classmethod
     def slug(cls):
@@ -226,10 +253,8 @@ class PRCAPosDefAblationSigmaASigmaAC(OrthogonalBasis):
 
         cov_ac = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
 
-        cov_pos_def = (2 / tr_cov_a) * cov_a + (
-            1 / np.power(tr_cov_a * tr_cov_c, 0.5)
-        ) * cov_ac
-        eigvals, eigvecs = utils.solve_eigh(cov_pos_def)
+        cov = (2 / tr_cov_a) * cov_a + (1 / np.power(tr_cov_a * tr_cov_c, 0.5)) * cov_ac
+        _, eigvecs = utils.solve_eigh(cov)
 
         return eigvecs
 
@@ -255,10 +280,8 @@ class PRCAPosDefAblationSigmaCSigmaAC(OrthogonalBasis):
 
         cov_ac = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
 
-        cov_pos_def = (2 / tr_cov_c) * cov_c + (
-            1 / np.power(tr_cov_a * tr_cov_c, 0.5)
-        ) * cov_ac
-        eigvals, eigvecs = utils.solve_eigh(cov_pos_def)
+        cov = (2 / tr_cov_c) * cov_c + (1 / np.power(tr_cov_a * tr_cov_c, 0.5)) * cov_ac
+        _, eigvecs = utils.solve_eigh(cov)
 
         return eigvecs
 
