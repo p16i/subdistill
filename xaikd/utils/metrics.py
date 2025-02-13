@@ -12,9 +12,7 @@ from torch.utils.data import DataLoader
 from torch import nn
 from torch.nn import functional as F
 from torchmetrics import Accuracy, MeanMetric
-from torchmetrics.classification import BinaryAUROC, BinaryAccuracy
-
-from xaikd import bases
+from torchmetrics.classification import BinaryAUROC
 
 from tqdm import tqdm
 
@@ -92,41 +90,41 @@ def accuracy_with_subclasses(
     return float(metric_acc.compute()), float(metric_xent.compute())
 
 
-def auroc_with_basis(
-    model: nn.Module,
-    module: nn.Module,
-    dataloader: DataLoader,
-    classes: typing.Tuple[int, int],
-    basis: bases.OrthogonalBasis,
-    device: str,
-    arr_ks: typing.List[int],
-    should_convert_auroc: bool,
-) -> typing.List[float]:
-    raise NotImplementedError("obsolete")
-    model.eval()
+# def auroc_with_basis(
+#     model: nn.Module,
+#     module: nn.Module,
+#     dataloader: DataLoader,
+#     classes: typing.Tuple[int, int],
+#     basis: bases.OrthogonalBasis,
+#     device: str,
+#     arr_ks: typing.List[int],
+#     should_convert_auroc: bool,
+# ) -> typing.List[float]:
+#     raise NotImplementedError("obsolete")
+#     model.eval()
 
-    arr_aurocs = []
+#     arr_aurocs = []
 
-    for k in tqdm(arr_ks, desc=f"[basis={basis}]"):
-        try:
-            hook = module.register_forward_hook(
-                basis.construct_fh_rank_k_projection(k, device=device)
-            )
+#     for k in tqdm(arr_ks, desc=f"[basis={basis}]"):
+#         try:
+#             hook = module.register_forward_hook(
+#                 basis.construct_fh_rank_k_projection(k, device=device)
+#             )
 
-            value = auroc(
-                model,
-                dataloader=dataloader,
-                classes=classes,
-                device=device,
-                should_convert_auroc=should_convert_auroc,
-            )
+#             value = auroc(
+#                 model,
+#                 dataloader=dataloader,
+#                 classes=classes,
+#                 device=device,
+#                 should_convert_auroc=should_convert_auroc,
+#             )
 
-            arr_aurocs.append(value)
+#             arr_aurocs.append(value)
 
-        finally:
-            hook.remove()
+#         finally:
+#             hook.remove()
 
-    return arr_aurocs
+#     return arr_aurocs
 
 
 def unexplained_relevance(
