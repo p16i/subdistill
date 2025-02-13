@@ -74,7 +74,7 @@ class ImageNet(DatasetConfiguration):
             target_transform=target_transform,
         )
 
-    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+    def transform_target(self, target: int) -> int:
         return target
 
 
@@ -518,12 +518,39 @@ class ImageNetSuperclassValSplitWithThreeSpuriousFeatures(
         return ds
 
 
+class ImageNetSuperclassVsOthers(ImageNet):
+    def __init__(self, super_class: str):
+        super().__init__()
+
+        self.selected_classes = IMAGENET_SUPERCLASS_MAPPING[super_class]
+
+    def transform_target(self, target: int) -> int:
+        if target in self.selected_classes:
+            return 1
+        else:
+            return 0
+
+    def create_subset(
+        self,
+        train_split=False,
+        target_transform: typing.Union[None, typing.Callable] = None,
+    ) -> Dataset:
+
+        return super().create_subset(
+            train_split=train_split, target_transform=self.transform_target
+        )
+
+
 def ano():
     # construct watermark only
     for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
         slug = f"imagenet-{superclass}"
         selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
         DATASETS[slug] = partial(ImageNetSuperClass, selected_classes=selected_classes)
+
+        sslug = f"imagenet-{superclass}-vs-others"
+
+        DATASETS[sslug] = partial(ImageNetSuperclassVsOthers, super_class=superclass)
 
         dataclass = TorchVisionDatasetImageNetWithWatermark
 
