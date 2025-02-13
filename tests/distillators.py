@@ -80,8 +80,15 @@ def test_distillation_runnable_and_correct(
         dataset.create_subset(train_split=False), ratio=0.05, seed=1
     )
 
-    train_loader = datasets.build_dataloader(ds_training, shuffle=True)
-    val_loader = datasets.build_dataloader(ds_val, shuffle=False)
+    train_loader = datasets.build_dataloader(
+        ds_training,
+        shuffle=True,
+        persistent_workers=False,
+        pin_memory=False,
+    )
+    val_loader = datasets.build_dataloader(
+        ds_val, shuffle=False, persistent_workers=False, pin_memory=False
+    )
 
     teacher_dims_mapping = utils.get_dimensions_at_layers(
         teacher_model, train_loader, teacher_layers
@@ -224,7 +231,10 @@ def test_get_parameters(layers, parameter_partition_mode):
     )
 
     train_loader = datasets.build_dataloader(
-        dataset.create_subset(train_split=True), shuffle=False
+        dataset.create_subset(train_split=True),
+        shuffle=False,
+        persistent_workers=False,
+        pin_memory=False,
     )
 
     teacher_dims_mapping = utils.get_dimensions_at_layers(
