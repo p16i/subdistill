@@ -81,12 +81,9 @@ def main(
 
     logit_modifier = attributors.BinaryLogOddWinning(threshold=logodd_threshold)
 
-    ds_train = dataset.create_subset(train_split=True)
-
-    trng = torch.Generator()
-    trng.manual_seed(seed)
-    if data_size < 1.0:
-        ds_train, _ = random_split(ds_train, [data_size, 1 - data_size], generator=trng)
+    ds_train = datasets.subsample_dataset(
+        dataset=dataset.create_subset(train_split=True), ratio=data_size, seed=seed
+    )
 
     click.echo(
         f"Perf Curve for `{dataset_name}` (data_size={data_size}, logit_modifier={logit_modifier})"
@@ -96,9 +93,8 @@ def main(
         ds_train,
         shuffle=False,
     )
-    ds_val = dataset.create_subset(train_split=False)
     dl_val = datasets.build_dataloader(
-        ds_val,
+        dataset.create_subset(train_split=False),
         shuffle=False,
     )
 
