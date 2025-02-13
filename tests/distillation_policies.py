@@ -107,7 +107,7 @@ def test_basis_identity_learnable(teacher_dims, student_dims):
         output_dir = Path(tmpdirname)
         act = rng.random((batch_size, teacher_dims))
         print(act.shape)
-        basis = bases.get_basis("random--uncentered")
+        basis = bases.get_basis("random")
 
         basis.fit(arr_act=act, arr_ctx=act, seed=1)
 
@@ -185,7 +185,7 @@ def test_vkd_extended():
 
 
 def test_basis_rotation():
-    basis = bases.get_basis("random--uncentered")
+    basis = bases.get_basis("random")
 
     rng = torch.Generator()
     rng.manual_seed(1)
