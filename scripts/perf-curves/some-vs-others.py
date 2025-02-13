@@ -31,6 +31,7 @@ from xaikd.utils import click_types, metrics
 @click.option("--output-dir", default="./tmp", type=click_types.Path())
 @click.option("--num-steps", default=20)
 @click.option("--seed", default=1)
+@click.option("--data-size", default=1.0)
 @click.option(
     "--logodd-threshold",
     default=0,
@@ -46,6 +47,7 @@ def main(
     dataset_name: str,
     arr_basis_names: click_types.List.output_type,
     # sample_selection_criteria: str,
+    data_size: int,
     output_dir: click_types.Path.output_type,
     num_steps: int,
     logodd_threshold: float,
@@ -83,10 +85,13 @@ def main(
 
     trng = torch.Generator()
     trng.manual_seed(seed)
-    # todo: remove this when finishing
-    DEV_DS = 0.01
-    # todo: remove this when finishing
-    ds_train, _ = random_split(ds_train, [DEV_DS, 1 - DEV_DS], generator=trng)
+    if data_size < 1.0:
+        ds_train, _ = random_split(ds_train, [data_size, 1 - data_size], generator=trng)
+
+    click.echo(
+        f"Perf Curve for `{dataset_name}` (data_size={data_size}, logit_modifier={logit_modifier})"
+    )
+
     dl_train = datasets.build_dataloader(
         ds_train,
         shuffle=False,
