@@ -21,7 +21,7 @@ from . import (
 )
 
 
-from xaikd import constants
+from xaikd import constants, interceptor
 
 
 T = typing.TypeVar("T")
