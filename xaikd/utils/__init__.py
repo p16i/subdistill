@@ -278,3 +278,21 @@ def parse_number_if_possible(text: str) -> typing.Union[None, int]:
         return int(text)
     else:
         return None
+
+
+def solve_eigh(
+    cov: npt.NDArray, sort_with_abs_eigvals=False
+) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+    eigvals, eigvecs = np.linalg.eigh(cov)
+
+    assert len(eigvals.shape) == 1
+
+    if sort_with_abs_eigvals:
+        eigvals = np.abs(eigvals)
+
+    # we sort in descending order
+    indices = np.argsort(-eigvals)
+    eigvals = eigvals[indices]
+    eigvecs = eigvecs[:, indices]
+
+    return eigvals, eigvecs

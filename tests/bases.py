@@ -4,59 +4,7 @@ import numpy as np
 import numpy.typing as npt
 
 
-from xaikd import bases
-
-
-def test_solve_eigh():
-    rng = np.random.default_rng(seed=1)
-    arr_act = rng.integers(
-        0,
-        10,
-        size=(10, 5),
-    )
-    arr_ctx = rng.integers(0, 10, size=(10, 5))
-
-    # case 1: psd
-    cov = arr_act.T @ arr_act
-
-    actual_cov_eigvals, actual_cov_eigvecs = bases._solve_eigh(cov=cov)
-    expected_cov_eigvals, expected_cov_eigvecs = np.linalg.eigh(cov)
-
-    np.testing.assert_allclose(
-        actual_cov_eigvals,
-        np.flip(expected_cov_eigvals),
-    )
-
-    assert (actual_cov_eigvals >= 0).all()
-
-    np.testing.assert_allclose(
-        actual_cov_eigvecs,
-        np.flip(expected_cov_eigvecs, axis=1),
-    )
-
-    # case 2: indefinite
-    ccov = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
-
-    # case 2.1: sort raw eigvals
-    ccov_eigvals, ccov_eigvecs = np.linalg.eigh(ccov)
-    assert (np.mean(ccov_eigvals >= 0) > 0) and (np.mean(ccov_eigvals < 0) > 0)
-
-    actual_ccov_eigvals, actual_ccov_eigvecs = bases._solve_eigh(cov=ccov)
-    np.testing.assert_allclose(actual_ccov_eigvals, np.flip(ccov_eigvals))
-    np.testing.assert_allclose(actual_ccov_eigvecs, np.flip(ccov_eigvecs, axis=1))
-
-    # case 2.2: sort abs eigvals
-    actual_ccov_abs_eigvals, actual_ccov_abs_eigvecs = bases._solve_eigh(
-        cov=ccov, sort_with_abs_eigvals=True
-    )
-    ccov_abs_eigvals = np.abs(ccov_eigvals)
-    sorted_abs_idx = np.argsort(-ccov_abs_eigvals)
-
-    expected_ccov_abs_eigvals = ccov_abs_eigvals[sorted_abs_idx]
-    expected_ccov_abs_eigvecs = ccov_eigvecs[:, sorted_abs_idx]
-
-    np.testing.assert_allclose(actual_ccov_abs_eigvals, expected_ccov_abs_eigvals)
-    np.testing.assert_allclose(actual_ccov_abs_eigvecs, expected_ccov_abs_eigvecs)
+from xaikd import bases, utils
 
 
 @pytest.mark.parametrize(
@@ -73,7 +21,7 @@ def test_analytic_basis(basis_name):
 
     arr_modified_act = arr_act
 
-    basis: bases.Orthogonal = bases.get_basis(basis_name)
+    basis = bases.get_basis(basis_name)
 
     basis.fit(arr_act, arr_ctx)
 
@@ -134,6 +82,8 @@ def test_analytic_basis(basis_name):
         "gradpca",
         "prcasortabs",
         "prcaposdef",
+        "prca-ablation-a-ac",
+        "prca-ablation-c-ac",
     ],
 )
 def test_correct_scale_orthogoal_bases(basis_name):
@@ -142,7 +92,7 @@ def test_correct_scale_orthogoal_bases(basis_name):
     arr_act = np.random.randn(n, d)
     arr_ctx = np.random.randn(n, d)
 
-    basis: bases.Orthogonal = bases.get_basis(basis_name)
+    basis = bases.get_basis(basis_name)
 
     basis.fit(arr_act=arr_act, arr_ctx=arr_ctx, seed=1)
 
@@ -162,7 +112,7 @@ def test_correct_scale_orthogoal_bases(basis_name):
 def test_centering_orthogonal_bases(basis_name, mat_func, criteria):
     np.random.seed(1)
     n, d = 10, 5
-    basis: bases.Orthogonal = bases.get_basis(basis_name)
+    basis = bases.get_basis(basis_name)
 
     activation = np.random.randn(n, d)
     context = np.random.randn(n, d)
