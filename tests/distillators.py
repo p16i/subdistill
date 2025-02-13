@@ -24,8 +24,7 @@ from xaikd import (
     utils,
 )
 
-from xaikd import datasets
-from xaikd.utils import metrics
+from xaikd import datasets, metrics
 from xaikd.distillation_policies import LayerPolicyCollection
 
 
