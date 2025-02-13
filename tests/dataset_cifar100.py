@@ -1,21 +1,18 @@
 from collections import OrderedDict
 
-import os
 import pytest
 
 import numpy as np
 import torch
 
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader
 from torch import nn
 from torchvision.datasets import CIFAR100
 
 import pandas as pd
 from copy import deepcopy
 
-from xaikd import models, utils
-from xaikd import datasets, constants
-from xaikd.utils import metrics
+from xaikd import utils, datasets, constants
 
 DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
     datasets.constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
