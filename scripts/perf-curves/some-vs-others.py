@@ -17,8 +17,8 @@ from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
 
-from xaikd import utils, models, datasets, attributors, bases
-from xaikd.utils import click_types, metrics
+from xaikd import utils, models, datasets, attributors, bases, metrics
+from xaikd.utils import click_types
 
 
 @click.command()

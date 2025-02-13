@@ -7,8 +7,7 @@ from torch.nn import functional as F
 from torch.utils import hooks
 
 from xaikd import utils
-from xaikd.utils.metrics import MetricFunction
-from tqdm.autonotebook import tqdm
+from xaikd.metrics import MetricFunction
 
 
 ATTRIBUTE_INTERCEPTED_OUTPUT = "__output"
