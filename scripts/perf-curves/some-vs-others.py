@@ -17,7 +17,7 @@ from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
 
-from xaikd import utils, models, datasets, attributors, bases, metrics
+from xaikd import utils, models, datasets, attributors, bases, metrics, interceptor
 from xaikd.utils import click_types
 
 
@@ -148,7 +148,7 @@ def main(
                 )
 
                 for prefix, dl in [("val", dl_val)]:
-                    _stats = utils.interceptor.attach_projection_forward_hook_at_layer_and_evaluate_metrics(
+                    _stats = interceptor.attach_projection_forward_hook_at_layer_and_evaluate_metrics(
                         model=model,
                         layer=base_layer_name,
                         dataloader=dl_val,

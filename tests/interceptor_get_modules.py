@@ -2,8 +2,7 @@ import pytest
 
 from collections import OrderedDict
 from torch import nn
-from xaikd import models
-from xaikd.utils import interceptor
+from xaikd import models, interceptor
 
 
 class RefModule(nn.Module):

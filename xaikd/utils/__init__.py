@@ -13,17 +13,13 @@ import torchvision
 
 from pathlib import Path
 
-from PIL import Image
-
 
 from . import (
-    interceptor,
     spurious_feature_generator,
     pixelflipping,
     ndarray_sampling,
 )
 
-import yaml
 
 from xaikd import constants
 
@@ -253,6 +249,8 @@ def resolve_lambda_layer(
     lambda_layer: typing.Union[float, None],
     default_config_key: typing.Union[str, None],
 ) -> float:
+
+    # todo: this should be part of constants
 
     if lambda_layer is not None:
         return lambda_layer
