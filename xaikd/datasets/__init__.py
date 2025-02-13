@@ -59,6 +59,8 @@ def build_dataloader(
     num_workers=12,
     batch_size=64,
     drop_last=False,
+    pin_memory=True,
+    persistent_workers=True,
 ) -> DataLoader:
 
     return DataLoader(
@@ -67,6 +69,8 @@ def build_dataloader(
         batch_size=batch_size,
         shuffle=shuffle,
         drop_last=drop_last,
+        pin_memory=pin_memory,
+        persistent_workers=persistent_workers,
     )
 
 
