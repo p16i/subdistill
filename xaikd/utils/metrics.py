@@ -174,7 +174,7 @@ class MetricAUROC(MetricFunction):
 
         assert not model.training
 
-        metric_auroc = BinaryAUROC(bin=50)
+        metric_auroc = BinaryAUROC(thresholds=100)
 
         for x, y in tqdm(dataloader, desc="Computing AUROC", disable=not verbose):
             logodd = model(x.to(device)).cpu()
