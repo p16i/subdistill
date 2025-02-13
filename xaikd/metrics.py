@@ -55,7 +55,11 @@ class MetricFunction(ABC):
     @abstractmethod
     def __call__(
         self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
-    ) -> typing.Dict[str, float]:
+    ) -> typing.Tuple[float]:
+        pass
+
+    @abstractmethod
+    def __str__(self) -> str:
         pass
 
 
@@ -63,9 +67,12 @@ class MetricAUROC(MetricFunction):
     def __init__(self, convert_auroc=True):
         self.convert_auroc = convert_auroc
 
+    def __str__(self) -> str:
+        return "auroc"
+
     def __call__(
         self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
-    ) -> typing.Dict[str, float]:
+    ):
 
         assert not model.training
 
@@ -84,4 +91,6 @@ class MetricAUROC(MetricFunction):
 
             assert 0.5 <= auroc <= 1.0
 
-        return dict(auroc=float(auroc))
+        auroc = float(auroc)
+
+        return (auroc,)

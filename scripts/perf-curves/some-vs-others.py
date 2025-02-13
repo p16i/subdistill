@@ -24,12 +24,16 @@ from xaikd.utils import click_types
 @click.command()
 @click.option("--arch", default="cifar100-resnet18-v1", type=str)
 @click.option(
-    "--arr-layers", default=["layer1", "layer2", "layer3", "layer4"], required=True, type=click_types.List()
+    "--arr-layers",
+    default=["layer1", "layer2", "layer3", "layer4"],
+    required=True,
+    type=click_types.List(),
 )
 @click.option("--dataset-name", required=True, type=str)
 # @click.option("--sample-selection-criteria", type=str)
 @click.option("--output-dir", default="./tmp", type=click_types.Path())
 @click.option("--num-steps", default=20)
+@click.option("--max-k", default=None, type=int)
 @click.option("--seed", default=1)
 @click.option("--data-size", default=1.0)
 @click.option(
@@ -52,6 +56,7 @@ def main(
     num_steps: int,
     logodd_threshold: float,
     seed: int,
+    max_k: typing.Union[None, int],
 ):
     arguments = locals()
     start_time = datetime.now()
@@ -104,14 +109,16 @@ def main(
 
     metric = metrics.MetricAUROC()
 
-    ref_auroc = metric(model=model, dataloader=dl_val, device=device, verbose=True)[
-        "auroc"
-    ]
-    print(f"Ref auroc (val)={ref_auroc:.4f}")
+    (ref_auroc,) = metric(model=model, dataloader=dl_val, device=device, verbose=True)
+    print(f"Ref metric={metric} (val_set)={ref_auroc:.4f}")
 
     for layer in tqdm(arr_layers, desc="estimate performance curve at layer"):
         d = dict_layer_dims[layer]
-        arr_ks = np.linspace(start=1, stop=d, num=num_steps).astype(int)
+        stop_at = d if max_k is None else max_k
+
+        arr_ks = np.linspace(start=1, stop=stop_at, num=num_steps).astype(int)
+        # we include K=d for sanity check
+        arr_ks = list(sorted(set(arr_ks.tolist() + [d])))
 
         base_layer_name = f"base.{layer}"
 
@@ -124,7 +131,9 @@ def main(
             device=device,
         )
 
-        for basis_name in tqdm(arr_basis_names, desc=f"[layer={layer}]"):
+        for basis_name in tqdm(
+            arr_basis_names, desc=f"[layer={layer},d={d}] arr_ks={arr_ks}"
+        ):
             basis = bases.get_basis(basis_name=basis_name)
 
             basis.fit(arr_act=arr_act, arr_ctx=arr_grad)
@@ -148,17 +157,18 @@ def main(
                 )
 
                 for prefix, dl in [("val", dl_val)]:
-                    _stats = interceptor.attach_projection_forward_hook_at_layer_and_evaluate_metrics(
-                        model=model,
-                        layer=base_layer_name,
-                        dataloader=dl_val,
-                        forward_hook_func=forward_hook_func,
-                        metric=metric,
-                        device=device,
+                    (_auroc,) = (
+                        interceptor.attach_projection_forward_hook_at_layer_and_evaluate_metrics(
+                            model=model,
+                            layer=base_layer_name,
+                            dataloader=dl,
+                            forward_hook_func=forward_hook_func,
+                            metric=metric,
+                            device=device,
+                        )
                     )
 
-                    for k, v in _stats.items():
-                        dict_stats[f"{prefix}-{k}"] = v
+                    dict_stats[f"{prefix}_auroc"] = _auroc
 
                 arr_stat_rows.append(dict_stats)
 
