@@ -77,6 +77,11 @@ def build_dataloader(
 def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
     assert 0 < ratio <= 1
 
+    if ratio == 1:
+        # todo: add test for this
+        # remark: we simply return the original dataset but wrap it in Subset.
+        return Subset(dataset=dataset, indices=list(range(len(dataset))))
+
     rng = torch.Generator()
     rng.manual_seed(seed)
 
