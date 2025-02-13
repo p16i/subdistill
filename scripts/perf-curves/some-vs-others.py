@@ -38,7 +38,7 @@ from xaikd.utils import click_types, metrics
 )
 @click.option(
     "--arr-basis-names",
-    default=["pca", "gradpca"],
+    default=["pca", "gradpca", "prcaposdef", "prcasortabs", "prca"],
     type=click_types.List(),
 )
 def main(
