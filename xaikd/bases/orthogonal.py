@@ -196,7 +196,7 @@ class PRCAPosDef(OrthogonalBasis):
         cov_pos_def = (
             (2 / tr_cov_a) * cov_a
             + (2 / tr_cov_c) * cov_c
-            + (1 / np.power(tr_cov_a * tr_cov_c, 0.5)) * cov_ac
+            + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_ac
         )
         eigvals, eigvecs = utils.solve_eigh(cov_pos_def)
 
@@ -253,7 +253,7 @@ class PRCAPosDefAblationSigmaASigmaAC(OrthogonalBasis):
 
         cov_ac = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
 
-        cov = (2 / tr_cov_a) * cov_a + (1 / np.power(tr_cov_a * tr_cov_c, 0.5)) * cov_ac
+        cov = (2 / tr_cov_a) * cov_a + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_ac
         _, eigvecs = utils.solve_eigh(cov)
 
         return eigvecs
@@ -280,7 +280,7 @@ class PRCAPosDefAblationSigmaCSigmaAC(OrthogonalBasis):
 
         cov_ac = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
 
-        cov = (2 / tr_cov_c) * cov_c + (1 / np.power(tr_cov_a * tr_cov_c, 0.5)) * cov_ac
+        cov = (2 / tr_cov_c) * cov_c + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_ac
         _, eigvecs = utils.solve_eigh(cov)
 
         return eigvecs
