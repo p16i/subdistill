@@ -94,3 +94,31 @@ class MetricAUROC(MetricFunction):
         auroc = float(auroc)
 
         return (auroc,)
+
+
+class MetricAccuracy(MetricFunction):
+    def __init__(self, num_classes: int):
+        self.num_classes = num_classes
+
+    def __str__(self) -> str:
+        return "accuracy"
+
+    def __call__(
+        self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
+    ):
+
+        assert not model.training
+
+        metric = Accuracy(task="multiclass", num_classes=self.num_classes)
+
+        for x, y in tqdm(dataloader, desc="Computing ACC", disable=not verbose):
+            logits = model(x.to(device)).cpu()
+
+            assert len(logits.shape) == 2, f"{logits.shape}"
+            assert logits.shape[1] == self.num_classes
+
+            metric.update(logits, y)
+
+        metric = float(metric.compute())
+
+        return (metric,)
