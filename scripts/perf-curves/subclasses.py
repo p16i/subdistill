@@ -147,15 +147,15 @@ def main(
                     k=k, device=device
                 )
 
-                dict_stats = dict(
-                    arch=arch,
-                    layer=layer,
-                    d=d,
-                    dataset_name=dataset_name,
-                    basis_name=basis_name,
-                    k=k,
-                    ref_auroc=ref_acc,
-                )
+                dict_stats = {
+                    "arch": arch,
+                    "layer": layer,
+                    "d": d,
+                    "dataset_name": dataset_name,
+                    "basis_name": basis_name,
+                    "k": k,
+                    f"ref_{metric}": ref_acc,
+                }
 
                 for prefix, dl in [("val", dl_val)]:
                     (_acc,) = (
