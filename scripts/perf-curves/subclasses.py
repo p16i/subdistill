@@ -116,6 +116,8 @@ def main(
     for layer in tqdm(arr_layers, desc="estimate performance curve at layer"):
         d = dict_layer_dims[layer]
         stop_at = d if max_k is None else max_k
+        # if max_k is > d then, we set stop at to d
+        stop_at = np.min([d, stop_at])
 
         arr_ks = np.linspace(start=1, stop=stop_at, num=num_steps).astype(int)
         # we include K=d for sanity check
