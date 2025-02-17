@@ -110,7 +110,7 @@ class MetricAccuracy(MetricFunction):
         assert not model.training
 
         metric = Accuracy(task="multiclass", num_classes=self.num_classes)
-
+        # todo:  no grad feature
         for x, y in tqdm(dataloader, desc="Computing ACC", disable=not verbose):
             logits = model(x.to(device)).cpu()
 
