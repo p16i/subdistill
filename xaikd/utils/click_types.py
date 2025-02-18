@@ -1,5 +1,5 @@
 import click
-
+import typing
 import pathlib
 
 from xaikd import models
@@ -17,12 +17,22 @@ class DatasetConfiguration(click.ParamType):
 
 
 class Path(click.ParamType):
+    output_type = pathlib.Path
+
     def convert(self, value, param, ctx):
+        if isinstance(value, self.output_type):
+            return value
+
         return pathlib.Path(value)
 
 
 class List(click.ParamType):
+    output_type = typing.List[str]
+
     def convert(self, value, param, ctx):
+        if isinstance(value, typing.List):
+            return value
+
         return value.split(",")
 
 

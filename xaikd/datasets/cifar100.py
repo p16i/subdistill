@@ -30,6 +30,26 @@ CLEVER_HAN_SYMBOL = "+"
 COLOR = "red"
 
 
+DF_SUPERCLASS_MAPPING = pd.read_csv(constants.CIFAR100_SUPER_CLASS_MAPPING)
+
+
+def get_fineclass_names_indices_of_superclass(
+    superclass: str,
+) -> typing.Tuple[typing.List[str], typing.List[int]]:
+    assert superclass in constants.CIFAR100_SUPER_CLASSES
+
+    df_selected = DF_SUPERCLASS_MAPPING[
+        DF_SUPERCLASS_MAPPING.coarse_label_name == superclass
+    ]
+
+    df_selected = df_selected.sort_values(by="fine_label")
+
+    arr_idx = df_selected.fine_label.values.tolist()
+    arr_names = df_selected.fine_label_name.values.tolist()
+
+    return arr_names, arr_idx
+
+
 def add_cleverhan_symbol(img, rng: np.random.Generator):
     copied_img = img.copy()
 
@@ -80,7 +100,7 @@ class CIFAR100(DatasetConfiguration):
         self.dataclass = tvd.CIFAR100
         self.root = DATADIR / "cifar100"
 
-    def transform_target(self, target: torch.Tensor) -> torch.Tensor:
+    def transform_target(self, target: int) -> int:
         return target
 
     def create_subset(
@@ -101,10 +121,14 @@ class CIFAR100(DatasetConfiguration):
 class Cifar100SuperClassesDataset(CIFAR100):
     def __init__(
         self,
-        super_class: str,
+        super_class: str,  # todo: change to `superclass``
         verbose=False,
     ):
         super().__init__()
+
+        arr_fineclass_names, arr_fineclass_idx = (
+            get_fineclass_names_indices_of_superclass(super_class)
+        )
 
         df_meta = pd.read_csv(constants.CIFAR100_SUPER_CLASS_MAPPING)
 
@@ -112,13 +136,13 @@ class Cifar100SuperClassesDataset(CIFAR100):
         df_selected = df_selected.sort_values(by="fine_label")
         if verbose:
             print(
-                f"We are building `cifar100-{super_class}` containing {df_selected.shape[0]} fine classes"
+                f"We are building `cifar100-{super_class}` containing {len(arr_fineclass_names)} fine classes"
             )
-            for row in df_selected.to_dict("records"):
-                print("> %s (%d)" % (row["fine_label_name"], row["fine_label"]))
+            for idx, name in zip(arr_fineclass_idx, arr_fineclass_names):
+                print(f"> {name} ({idx})")
 
         # remark: the targets are defined in the CIFAR100 dataset.
-        self.selected_classes = df_selected.fine_label.values.tolist()
+        self.selected_classes = arr_fineclass_idx
 
         self.num_classes = len(self.selected_classes)
 
@@ -310,10 +334,39 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
         return ds
 
 
-def ano():
+class CIFAR100SuperclassVsOthers(CIFAR100):
+    def __init__(self, super_class: str):
+        super().__init__()
+
+        _, self.selected_classes = get_fineclass_names_indices_of_superclass(
+            superclass=super_class
+        )
+
+    def transform_target(self, target: int) -> int:
+        if target in self.selected_classes:
+            return 1
+        else:
+            return 0
+
+    def create_subset(
+        self,
+        train_split=False,
+        target_transform: typing.Union[None, typing.Callable] = None,
+    ) -> Dataset:
+
+        return super().create_subset(
+            train_split=train_split, target_transform=self.transform_target
+        )
+
+
+def construct_variant_datasets():
     for super_class in constants.CIFAR100_SUPER_CLASSES:
         slug = f"cifar100-{super_class}"
         DATASETS[slug] = partial(Cifar100SuperClassesDataset, super_class=super_class)
+
+        DATASETS[f"cifar100-{super_class}-vs-others"] = partial(
+            CIFAR100SuperclassVsOthers, super_class=super_class
+        )
 
         for lvl in [0.125, 0.25, 0.5, 0.75, 1.0]:
             sslug = "--".join([slug, "spurious-plussign", str(lvl)])
@@ -334,4 +387,4 @@ def ano():
         )
 
 
-ano()
+construct_variant_datasets()

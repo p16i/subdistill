@@ -15,9 +15,7 @@ from torchvision.datasets import CIFAR100
 import pandas as pd
 from copy import deepcopy
 
-from xaikd import models, utils
-from xaikd import datasets
-from xaikd.utils import metrics
+from xaikd import models, utils, datasets, metrics
 
 DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
     datasets.constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"

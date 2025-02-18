@@ -14,6 +14,8 @@ from torch.utils.data import random_split
 
 from xaikd import datasets
 
+pytest.skip("obsolete", allow_module_level=True)
+
 
 @pytest.mark.slow
 @pytest.mark.gpu

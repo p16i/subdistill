@@ -1,9 +1,13 @@
 import numpy as np
 import pytest
 
-from xaikd import datasets, constants
+import torch
+
+from xaikd import datasets
 from tests import dataset_cifar100
-from torchvision.datasets import ImageNet
+
+
+from tqdm import tqdm
 
 
 @pytest.mark.parametrize(
@@ -267,3 +271,30 @@ def test_dataset_with_three_spurious_correlations(
             np.testing.assert_allclose(
                 count_spurious_types, expected_count_spurious_type, atol=atol
             )
+
+
+@torch.no_grad()
+@pytest.mark.slow()
+def test_construct_superclass_vs_others():
+    dataset = datasets.construct("imagenet-butterfly-vs-others")
+
+    num_classes = len(dataset.selected_classes)
+    assert num_classes == len(
+        datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["butterfly"]
+    )
+
+    # remark: we use the val set and subsample it
+    # to make the test run in reasonable time
+    ds = dataset.create_subset(train_split=False)
+    ds = datasets.subsample_dataset(ds, ratio=0.1, seed=1)
+
+    arr_ys = []
+    dl = datasets.build_dataloader(dataset=ds, shuffle=False)
+    for _, y in tqdm(dl):
+        arr_ys.extend(y.numpy().tolist())
+
+    arr_ys = np.array(arr_ys)
+
+    perc_y1 = (arr_ys == 1).mean()
+
+    np.testing.assert_allclose(perc_y1, 6 / 1000, atol=1e-3)

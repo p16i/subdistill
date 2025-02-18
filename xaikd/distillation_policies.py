@@ -10,7 +10,7 @@ from torch.nn import functional as F
 
 from xaikd.utils.modules import Centering2D
 from xaikd import utils
-from xaikd.bases import Basis, AdapterMode
+from xaikd.bases import AdapterMode, OrthogonalBasis
 from xaikd.utils.dkd import dkd_loss
 
 
@@ -682,7 +682,7 @@ class AttentionTransferPolicy(LayerPolicy):
 @register_layer_policy("basis-identity")
 class OrthogonalBasisIdentityPolicy(LayerPolicy):
     def __init__(
-        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
         super().__init__()
 
@@ -721,7 +721,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
 @register_layer_policy("basis-rotation")
 class OrthogonalBasisRotationPolicy(OrthogonalBasisIdentityPolicy):
     def __init__(
-        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
 
         super().__init__(
@@ -761,7 +761,7 @@ class OrthogonalBasisRotationPolicy(OrthogonalBasisIdentityPolicy):
 @register_layer_policy("basis-identity-learnable")
 class OrthogonalBasisIdentityLearnablePolicy(OrthogonalBasisIdentityPolicy):
     def __init__(
-        self, teacher_dims: int, student_dims: int, device: str, basis: Basis
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
         super().__init__(
             teacher_dims=teacher_dims,
@@ -894,7 +894,12 @@ class OrthogonalRandomPolicy(LayerPolicy):
 @register_layer_policy("basis-attention")
 class OrthogonalBasisAttentionPolicy(LayerPolicy):
     def __init__(
-        self, teacher_dims: int, student_dims: int, device: str, basis: Basis, ord=2
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        ord=2,
     ) -> None:
         super().__init__()
 
@@ -940,7 +945,12 @@ class OrthogonalBasisAttention20DimsPolicy(LayerPolicy):
     k = 20
 
     def __init__(
-        self, teacher_dims: int, student_dims: int, device: str, basis: Basis, ord=2
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        ord=2,
     ) -> None:
         super().__init__()
 

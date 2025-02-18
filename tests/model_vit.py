@@ -8,6 +8,7 @@ import torchvision
 
 from xaikd import models, utils
 
+from torch import nn
 from torch.utils.data import TensorDataset, DataLoader
 
 
@@ -74,4 +75,7 @@ def test_intercept_module(lix):
     finally:
         hook.remove()
 
-    assert isinstance(module, models.vit.ConvertTensorfromViTToCNNLikeShape)
+    assert isinstance(module, nn.Sequential)
+    assert isinstance(
+        module[-1], models.vit.ConvertTensorfromViTToCNNLikeShape
+    ), f"type(module)={type(module)}"

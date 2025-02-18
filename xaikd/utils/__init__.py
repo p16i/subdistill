@@ -2,6 +2,7 @@ import os
 import typing
 import numpy.typing as npt
 import subprocess
+import re
 
 import json
 import torch
@@ -12,19 +13,15 @@ import torchvision
 
 from pathlib import Path
 
-from PIL import Image
-
 
 from . import (
-    interceptor,
     spurious_feature_generator,
     pixelflipping,
     ndarray_sampling,
 )
 
-import yaml
 
-from xaikd import constants
+from xaikd import constants, interceptor
 
 
 T = typing.TypeVar("T")
@@ -212,6 +209,7 @@ def modify_last_layer_for_subclasses(
 def get_dimensions_at_layers(
     model: nn.Module, dataloader: DataLoader, layers: typing.List[str], device="cpu"
 ) -> typing.Dict[str, int]:
+    # todo: this should be part of interceptor
     assert not model.training
 
     hooks = []
@@ -243,7 +241,6 @@ def get_dimensions_at_layers(
 
 
 def get_git_hash() -> str:
-    return "xxxxx"
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode("utf-8").strip()
 
 
@@ -253,6 +250,8 @@ def resolve_lambda_layer(
     lambda_layer: typing.Union[float, None],
     default_config_key: typing.Union[str, None],
 ) -> float:
+
+    # todo: this should be part of constants
 
     if lambda_layer is not None:
         return lambda_layer
@@ -269,3 +268,30 @@ def resolve_lambda_layer(
         )
 
         return lambda_layer
+
+
+def parse_number_if_possible(text: str) -> typing.Union[None, int]:
+    is_int = re.match(r"-?\d+", text) is not None
+
+    if is_int:
+        return int(text)
+    else:
+        return None
+
+
+def solve_eigh(
+    cov: npt.NDArray, sort_with_abs_eigvals=False
+) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+    eigvals, eigvecs = np.linalg.eigh(cov)
+
+    assert len(eigvals.shape) == 1
+
+    if sort_with_abs_eigvals:
+        eigvals = np.abs(eigvals)
+
+    # we sort in descending order
+    indices = np.argsort(-eigvals)
+    eigvals = eigvals[indices]
+    eigvecs = eigvecs[:, indices]
+
+    return eigvals, eigvecs

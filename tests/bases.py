@@ -4,12 +4,13 @@ import numpy as np
 import numpy.typing as npt
 
 
-from xaikd import bases
+from xaikd import bases, utils
 
 
-@pytest.mark.parametrize("basis_name", ["pca", "prca-sortabs", "prca"])
-@pytest.mark.parametrize("suffix", ["centered", "uncentered"])
-def test_analytic_basis(basis_name, suffix):
+@pytest.mark.parametrize(
+    "basis_name", ["pca", "gradpca", "prcasortabs", "prca", "prcaposdef"]
+)
+def test_analytic_basis(basis_name):
     rng = np.random.default_rng(seed=1)
     n, d = 10, 4
 
@@ -18,22 +19,34 @@ def test_analytic_basis(basis_name, suffix):
 
     mean = arr_act.mean(axis=0)
 
-    if suffix == "centered":
-        arr_modified_act = arr_act - mean
-    else:
-        arr_modified_act = arr_act
+    arr_modified_act = arr_act
 
-    basis = bases.get_basis(f"{basis_name}--{suffix}")
-    print(f"centerning={basis.centering}")
+    basis = bases.get_basis(basis_name)
 
     basis.fit(arr_act, arr_ctx)
 
     # compute expected U
+    expected_U = None
     if basis_name == "pca":
         expected_U = np.flip(
             np.linalg.eigh(arr_modified_act.T @ arr_modified_act)[1], axis=1
         )
-    elif basis_name in ["prca", "prca-sortabs"]:
+    elif basis_name == "gradpca":
+        expected_U = np.flip(np.linalg.eigh(arr_ctx.T @ arr_ctx)[1], axis=1)
+    elif basis_name == "prcaposdef":
+
+        cov_a = arr_act.T @ arr_act
+        cov_c = arr_ctx.T @ arr_ctx
+
+        cov_ac = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+
+        cov_posdef = 2 * (
+            cov_a / np.trace(cov_a) + cov_c / np.trace(cov_c)
+        ) + cov_ac / np.power(np.trace(cov_a) * np.trace(cov_c), 0.5)
+
+        expected_U = np.flip(np.linalg.eigh(cov_posdef)[1], axis=1)
+
+    elif basis_name in ["prca", "prcasortabs"]:
         eigvals, eigvecs = np.linalg.eigh(
             arr_modified_act.T @ arr_ctx + arr_ctx.T @ arr_modified_act
         )
@@ -41,16 +54,15 @@ def test_analytic_basis(basis_name, suffix):
 
         if basis_name == "prca":
             expected_U = np.flip(eigvecs, axis=1)
-        elif basis_name == "prca-sortabs":
+        elif basis_name == "prcasortabs":
             expected_U = eigvecs[:, np.argsort(-np.abs(eigvals))]
-        else:
-            raise
-    else:
-        raise
+
+    if expected_U is None:
+        raise ValueError(f"{basis_name} has no expected_U!")
     # end
 
     # verification
-    if suffix == "centered":
+    if basis.centering:
         np.testing.assert_allclose(basis.mean, mean)
     else:
         np.testing.assert_allclose(basis.mean, np.zeros(d))
@@ -58,121 +70,68 @@ def test_analytic_basis(basis_name, suffix):
     np.testing.assert_allclose(basis.U, expected_U)
 
     np.testing.assert_allclose(
-        basis.scale, np.mean((arr_modified_act @ basis.U) ** 2, axis=0)
+        basis.scale_factors, np.mean((arr_modified_act @ basis.U) ** 2, axis=0)
     )
 
 
-# @pytest.mark.parametrize("basis_mode", ["centered", "uncentered"])
-# @pytest.mark.parametrize(
-#     "basis_name,criteria",
-#     [
-#         ("prca", lambda eigvals: eigvals),
-#         ("prca-sortabs", lambda eigvals: np.abs(eigvals)),
-#     ],
-# )
-# def test_prca(basis_name, basis_mode, criteria):
-#     np.random.seed(1)
-#     n, d = 10, 5
+@pytest.mark.parametrize(
+    "basis_name",
+    [
+        "random",
+        "pca",
+        "gradpca",
+        "prcasortabs",
+        "prcaposdef",
+        "prca-ablation-a-ac",
+        "prca-ablation-c-ac",
+        "prca-ablation-a-c",
+    ],
+)
+def test_correct_scale_orthogoal_bases(basis_name):
+    np.random.seed(1)
+    n, d = 10, 5
+    arr_act = np.random.randn(n, d)
+    arr_ctx = np.random.randn(n, d)
 
-#     activation = np.random.randn(n, d) + 2
-#     context = np.random.rand(n, d)
+    basis = bases.get_basis(basis_name)
 
-#     if basis_mode == "centered":
-#         mean = activation.mean(axis=0)
-#     else:
-#         mean = np.zeros(d)
+    basis.fit(arr_act=arr_act, arr_ctx=arr_ctx, seed=1)
 
-#     centered_activation = activation - mean
+    U = basis.U
+    scale = basis.scale_factors
 
-#     crosscov = ((centered_activation.T @ context) + context.T @ centered_activation) / n
-
-#     eigvals, eigvecs = np.linalg.eigh(crosscov)
-
-#     basis = bases.get_basis(f"{basis_name}--{basis_mode}")
-
-#     U, scale = basis.fit(activation, context, mean=mean, device="cpu")
-
-#     expected_U = eigvecs[:, np.argsort(-criteria(eigvals))]
-
-#     np.testing.assert_allclose(U, expected_U)
-
-#     np.testing.assert_allclose(scale, np.mean((centered_activation @ U) ** 2, axis=0))
-
-#     assert f"{basis}" == f"{basis_name}--{basis_mode}"
+    np.testing.assert_allclose(scale, np.mean((arr_act @ U) ** 2, axis=0))
 
 
-# @pytest.mark.parametrize("variant", ["abs", "recon", "reconreg0.1"])
-# @pytest.mark.parametrize("slug", ["centered"])
-# def test_instantiate_prca_greedy_basese(variant, slug):
-#     basis = bases.get_basis(f"prca-{variant}--{slug}")
-#     assert True
+@pytest.mark.parametrize(
+    "basis_name,mat_func,criteria",
+    [
+        ("pca", lambda d: d[0].T @ d[0], lambda x: x),
+        ("pcacentering", lambda d: d[0].T @ d[0], lambda x: x),
+    ],
+)
+def test_centering_orthogonal_bases(basis_name, mat_func, criteria):
+    np.random.seed(1)
+    n, d = 10, 5
+    basis = bases.get_basis(basis_name)
 
+    activation = np.random.randn(n, d)
+    context = np.random.randn(n, d)
 
-# @pytest.mark.parametrize(
-#     "basis_name",
-#     [
-#         "pca",
-#         "prca-abs",
-#         "prca",
-#         "prca-sortabs",
-#         "prca-recon",
-#         "act-recon",
-#         "rel-recon",
-#         "rel-raw",
-#         "random",
-#     ],
-# )
-# @pytest.mark.parametrize("basis_mode", ["centered", "uncentered"])
-# def test_correct_scale(basis_name, basis_mode):
-#     np.random.seed(1)
-#     n, d = 10, 5
-#     activation = np.random.randn(n, d)
-#     context = np.random.randn(n, d)
+    mean = np.mean(activation, axis=0)
 
-#     mean = activation.mean(axis=0)
+    assert ("centering" in basis_name) == basis.centering
 
-#     modified_activation = activation - mean if basis_mode == "centered" else activation
+    modified_activation = activation - mean if basis.centering else activation
 
-#     basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=1)
+    expected_eigvals, expected_eigvecs = np.linalg.eigh(
+        mat_func((modified_activation, context))
+    )
 
-#     eigvecs, scale = basis.fit(
-#         activation=activation, context=context, mean=mean, device="cpu"
-#     )
+    expected_U = expected_eigvecs[:, np.argsort(-criteria(expected_eigvals))]
 
-#     np.testing.assert_allclose(
-#         scale, np.mean((modified_activation @ eigvecs) ** 2, axis=0)
-#     )
+    basis.fit(arr_act=activation, arr_ctx=context, device="cpu")
 
+    actual_U = basis.U
 
-# @pytest.mark.parametrize(
-#     "basis_name,mat_func,criteria",
-#     [
-#         ("pca", lambda d: d[0].T @ d[0], lambda x: x),
-#         ("prca", lambda d: d[0].T @ d[1] + d[1].T @ d[0], lambda x: x),
-#         ("prca-sortabs", lambda d: d[0].T @ d[1] + d[1].T @ d[0], lambda x: np.abs(x)),
-#     ],
-# )
-# @pytest.mark.parametrize("basis_mode", ["centered", "uncentered"])
-# def test_centering(basis_name, mat_func, criteria, basis_mode):
-#     np.random.seed(1)
-#     n, d = 10, 5
-#     activation = np.random.randn(n, d)
-#     context = np.random.randn(n, d)
-
-#     mean = np.mean(activation, axis=0)
-
-#     modified_activation = activation - mean if basis_mode == "centered" else activation
-
-#     expected_eigvals, expected_eigvecs = np.linalg.eigh(
-#         mat_func((modified_activation, context))
-#     )
-
-#     expected_U = expected_eigvecs[:, np.argsort(-criteria(expected_eigvals))]
-
-#     basis = bases.get_basis(f"{basis_name}--{basis_mode}", seed=1)
-
-#     actual_U, _ = basis.fit(
-#         activation=activation, context=context, mean=mean, device="cpu"
-#     )
-
-#     np.testing.assert_allclose(actual_U, expected_U)
+    np.testing.assert_allclose(actual_U, expected_U)
