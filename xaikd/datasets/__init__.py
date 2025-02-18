@@ -31,7 +31,7 @@ from .multitask_mnist_fmnist import (
     MultiTaskEMNISTFashionMNIST,
 )
 
-
+# todo: write a function that add class to this dict with a pre-step that check name collistion
 DATASETS = dict()
 
 DATADIR = Path(os.getenv("DATASET_ROOT", "./datasets"))
@@ -56,21 +56,31 @@ def register_dataset(name):
 def build_dataloader(
     dataset: Dataset,
     shuffle,
-    num_workers=2,
+    num_workers=12,
     batch_size=64,
     drop_last=False,
+    pin_memory=True,
+    persistent_workers=True,
 ) -> DataLoader:
+
     return DataLoader(
         dataset,
         num_workers=num_workers,
         batch_size=batch_size,
         shuffle=shuffle,
         drop_last=drop_last,
+        pin_memory=pin_memory,
+        persistent_workers=persistent_workers,
     )
 
 
 def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
     assert 0 < ratio <= 1
+
+    if ratio == 1:
+        # todo: add test for this
+        # remark: we simply return the original dataset but wrap it in Subset.
+        return Subset(dataset=dataset, indices=list(range(len(dataset))))
 
     rng = torch.Generator()
     rng.manual_seed(seed)

@@ -2,6 +2,8 @@ import pytest
 
 import numpy as np
 import torch
+from collections import OrderedDict
+from torch import nn
 from torch.utils.data import DataLoader, Subset, TensorDataset
 
 from xaikd import attributors, datasets, utils, models
@@ -131,3 +133,78 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
     np.testing.assert_allclose(arr_act, expected_arr_act, atol=1e-6)
 
     np.testing.assert_allclose(arr_ctx, expected_arr_ctx, atol=1e-6)
+
+
+def test_extract_act_grad():
+    seed = 1
+    torch.manual_seed(seed)
+
+    X = torch.randn(10, 3, 32, 32)
+    y = torch.randint(0, 10, size=(10,))
+
+    model_part1 = nn.Sequential(
+        nn.Conv2d(3, 16, kernel_size=3),
+        nn.GELU(),
+        nn.Conv2d(16, 26, kernel_size=3),
+        nn.GELU(),
+    )
+
+    model_part2 = nn.Sequential(
+        nn.Conv2d(26, 32, kernel_size=3),
+        nn.GELU(),
+        nn.Conv2d(32, 7, kernel_size=3),
+        nn.GELU(),
+        nn.AdaptiveAvgPool2d(output_size=1),
+        nn.Flatten(start_dim=1),
+        nn.Linear(7, 1),
+        # We do this flatten to squeeze the last dim
+        nn.Flatten(start_dim=0),
+    )
+
+    logit_modifier = attributors.BinaryLogOddWinning(threshold=0)
+
+    act: torch.Tensor = model_part1(X).detach()
+    act.requires_grad_(True)
+    logit_modifier(model_part2(act), None).sum().backward()
+
+    grad = act.grad
+    assert grad is not None
+
+    num_spatial_locations = int(np.prod(act.shape[2:]))
+
+    arr_expected_acts, arr_expected_grads = utils.subsample_tensors(
+        act.detach().numpy(),
+        grad.detach().numpy(),
+        num_locations=num_spatial_locations,
+        rng=np.random.default_rng(seed=seed),
+    )
+
+    model = nn.Sequential(
+        OrderedDict([("layer1", model_part1), ("layer2", model_part2)])
+    )
+
+    dl = DataLoader(
+        TensorDataset(X, y),
+        shuffle=False,
+        batch_size=10,
+    )
+
+    arr_actual_acts, arr_actual_grads = attributors.extract_activation_grad(
+        model=model,
+        layer="layer1",
+        dataloader=dl,
+        logit_modifier=logit_modifier,
+        device="cpu",
+        rng=np.random.default_rng(seed=seed),
+        number_of_selected_spatial_locations=num_spatial_locations,
+    )
+
+    np.testing.assert_allclose(
+        arr_actual_acts,
+        arr_expected_acts,
+    )
+
+    np.testing.assert_allclose(
+        arr_actual_grads,
+        arr_expected_grads,
+    )

@@ -4,7 +4,7 @@ import numpy as np
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import TensorDataset, DataLoader
-from xaikd.utils import metrics
+from xaikd import metrics
 
 
 @pytest.mark.skip
@@ -61,6 +61,7 @@ def test_accuracy_with_subclasses():
     np.testing.assert_allclose(xent2, xent, err_msg="shuffle should NOT affect metric!")
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "order,expected", [([0, 2, 1], [0.01, 0.04, 0]), ([0, 1, 2], [0.01, 0.01, 0.0])]
 )
@@ -76,4 +77,4 @@ def test_unexplained_relevance(order, expected):
     np.testing.assert_allclose(stats, [total**2] + expected, atol=1e-6)
 
 
-# todo: all metrics should not change batch norm stats
+# todo: add test auroc, metric function

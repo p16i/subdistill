@@ -245,6 +245,24 @@ class LogOddEvidence(LogitModifier):
         return "logodd"
 
 
+class BinaryLogOddWinning(LogitModifier):
+    def __init__(
+        self,
+        threshold: float,
+    ) -> None:
+        self.threshold = threshold
+
+    def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor:
+        (n,) = logits.shape
+
+        assert len(logits.shape) == 1
+
+        return torch.abs(logits - self.threshold)
+
+    def __str__(self) -> str:
+        return f"binary-winning-logodd-{self.threshold}"
+
+
 def extract_activation_context(
     model: nn.Module,
     layer: str,
@@ -305,6 +323,65 @@ def extract_activation_context(
         hook.remove()
 
     print(f"{layer}: output-dims={output_dimensions}")
+
+    arr_act = np.vstack(arr_act)
+    arr_ctx = np.vstack(arr_ctx)
+
+    return arr_act, arr_ctx
+
+
+def extract_activation_grad(
+    model: nn.Module,
+    layer: str,
+    dataloader: DataLoader,
+    logit_modifier: LogitModifier,
+    rng: np.random.Generator,
+    device="cpu",
+    number_of_selected_spatial_locations=20,
+    verbose=False,
+) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+    arr_act = []
+    arr_ctx = []
+
+    try:
+        module, hook = utils.interceptor.attach_hook_intercept_layer_output(
+            model, layer, should_retain_grad=True, detach_output=False
+        )
+
+        for batch in tqdm(dataloader, desc=f"extract act-grad at layer={layer}"):
+            x, y = batch
+            x = x.to(device)
+
+            logits = model(x)
+
+            logit_modifier(logits=logits, targets=y).sum().backward()
+
+            act = utils.interceptor.get_output(module)
+
+            assert act.grad is not None
+            ctx = act.grad
+
+            output_dimensions = act.shape[1:]
+
+            assert ctx.shape == act.shape
+
+            act = act.detach().cpu().numpy()
+            ctx = ctx.detach().cpu().numpy()
+
+            selected_act, selected_ctx = utils.subsample_tensors(
+                act,
+                ctx,
+                num_locations=number_of_selected_spatial_locations,
+                rng=rng,
+            )
+            arr_act.append(selected_act)
+            arr_ctx.append(selected_ctx)
+
+    finally:
+        hook.remove()
+
+    if verbose:
+        print(f"{layer}: output-dims={output_dimensions}")
 
     arr_act = np.vstack(arr_act)
     arr_ctx = np.vstack(arr_ctx)

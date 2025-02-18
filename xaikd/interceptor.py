@@ -2,31 +2,36 @@ import typing
 import torch
 
 from torch import nn
+from torch.utils.data import DataLoader
+from torch.nn import functional as F
 from torch.utils import hooks
+
+from xaikd import utils
+from xaikd.metrics import MetricFunction
 
 
 ATTRIBUTE_INTERCEPTED_OUTPUT = "__output"
 
 
 def get_module(model: nn.Module, layer_str: str) -> nn.Module:
-    slugs = layer_str.split(".")
+    arr_level_layers = layer_str.split(".")
 
-    if len(slugs) == 1:
-        module = getattr(model, layer_str)
-    elif len(slugs) == 2:
-        layer, index = slugs
-        module = getattr(model, layer)[int(index)]
-    elif len(slugs) == 3:
-        # for vit (e.g., encoders.layers.0)
-        layer1, layer2, index = slugs
-        module = getattr(getattr(model, layer1), layer2)[int(index)]
-    else:
-        raise ValueError(f"layer={layer_str}; not exists")
+    parent_module = model
 
-    if isinstance(module, nn.Sequential):
-        return module[-1]
-    else:
-        return module
+    for attr_name in arr_level_layers:
+        parsed_attr_name = utils.parse_number_if_possible(attr_name)
+
+        if parsed_attr_name is not None:
+            assert isinstance(parent_module, nn.Sequential)
+            assert isinstance(parsed_attr_name, int)
+
+            parent_module = parent_module[parsed_attr_name]
+        else:
+            parent_module = getattr(parent_module, attr_name)
+
+    module = parent_module
+
+    return module
 
 
 def attach_hook_intercept_layer_output(
@@ -104,3 +109,29 @@ def forward_and_intercept_intermediate_layers(
     assert len(layers) == len(arr_intermediate_feats)
 
     return logits, arr_intermediate_feats
+
+
+def attach_projection_forward_hook_at_layer_and_evaluate_metrics(
+    model: nn.Module,
+    layer: str,
+    dataloader: DataLoader,
+    forward_hook_func: typing.Callable[
+        [nn.Module, torch.Tensor, torch.Tensor], torch.Tensor
+    ],
+    metric: MetricFunction,
+    device: str,
+    verbose=False,
+):
+    module = get_module(model=model, layer_str=layer)
+
+    hook = module.register_forward_hook(forward_hook_func)
+
+    try:
+
+        return metric(
+            model=model, dataloader=dataloader, device=device, verbose=verbose
+        )
+
+    finally:
+        if hook is not None:
+            hook.remove()

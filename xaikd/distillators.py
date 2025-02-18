@@ -20,7 +20,7 @@ from pathlib import Path
 
 from xaikd import distillation_policies, utils, bases, models
 from xaikd import datasets
-from xaikd.utils import metrics
+from xaikd import metrics
 
 from torchmetrics import Accuracy, MeanMetric
 

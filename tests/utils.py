@@ -176,3 +176,69 @@ def test_compute_log_odd_wining():
     expected_log_odd = np.log(p_winning) - np.log(1 - p_winning)
 
     np.testing.assert_allclose(actual_log_odd, expected_log_odd, atol=1e-4)
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("0", 0),
+        ("88", 88),
+        ("layer3", None),
+        ("-1", -1),
+    ],
+)
+def test_parse_number_if_possible(text, expected):
+    actual = utils.parse_number_if_possible(text)
+    assert actual == expected
+
+
+def test_solve_eigh():
+    rng = np.random.default_rng(seed=1)
+    arr_act = rng.integers(
+        0,
+        10,
+        size=(10, 5),
+    )
+    arr_ctx = rng.integers(0, 10, size=(10, 5))
+
+    # case 1: psd
+    cov = arr_act.T @ arr_act
+
+    actual_cov_eigvals, actual_cov_eigvecs = utils.solve_eigh(cov=cov)
+    expected_cov_eigvals, expected_cov_eigvecs = np.linalg.eigh(cov)
+
+    np.testing.assert_allclose(
+        actual_cov_eigvals,
+        np.flip(expected_cov_eigvals),
+    )
+
+    assert (actual_cov_eigvals >= 0).all()
+
+    np.testing.assert_allclose(
+        actual_cov_eigvecs,
+        np.flip(expected_cov_eigvecs, axis=1),
+    )
+
+    # case 2: indefinite
+    ccov = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+
+    # case 2.1: sort raw eigvals
+    ccov_eigvals, ccov_eigvecs = np.linalg.eigh(ccov)
+    assert (np.mean(ccov_eigvals >= 0) > 0) and (np.mean(ccov_eigvals < 0) > 0)
+
+    actual_ccov_eigvals, actual_ccov_eigvecs = utils.solve_eigh(cov=ccov)
+    np.testing.assert_allclose(actual_ccov_eigvals, np.flip(ccov_eigvals))
+    np.testing.assert_allclose(actual_ccov_eigvecs, np.flip(ccov_eigvecs, axis=1))
+
+    # case 2.2: sort abs eigvals
+    actual_ccov_abs_eigvals, actual_ccov_abs_eigvecs = utils.solve_eigh(
+        cov=ccov, sort_with_abs_eigvals=True
+    )
+    ccov_abs_eigvals = np.abs(ccov_eigvals)
+    sorted_abs_idx = np.argsort(-ccov_abs_eigvals)
+
+    expected_ccov_abs_eigvals = ccov_abs_eigvals[sorted_abs_idx]
+    expected_ccov_abs_eigvecs = ccov_eigvecs[:, sorted_abs_idx]
+
+    np.testing.assert_allclose(actual_ccov_abs_eigvals, expected_ccov_abs_eigvals)
+    np.testing.assert_allclose(actual_ccov_abs_eigvecs, expected_ccov_abs_eigvecs)

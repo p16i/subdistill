@@ -4,8 +4,7 @@ from types import MethodType
 import torch
 from torch import nn
 
-from xaikd import models, utils
-from xaikd.utils import interceptor
+from xaikd import models, utils, interceptor
 
 from collections import OrderedDict
 
