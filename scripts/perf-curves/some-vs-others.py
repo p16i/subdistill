@@ -17,7 +17,16 @@ from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
 
-from xaikd import utils, models, datasets, attributors, bases, metrics, interceptor
+from xaikd import (
+    utils,
+    models,
+    datasets,
+    attributors,
+    bases,
+    metrics,
+    interceptor,
+    logit_modifiers,
+)
 from xaikd.utils import click_types
 
 
@@ -84,7 +93,7 @@ def main(
     model.eval()
     model.to(device)
 
-    logit_modifier = attributors.BinaryLogOddWinning(threshold=logodd_threshold)
+    logit_modifier = logit_modifiers.BinaryLogOddWinning(threshold=logodd_threshold)
 
     ds_train = datasets.subsample_dataset(
         dataset=dataset.create_subset(train_split=True), ratio=data_size, seed=seed
