@@ -113,7 +113,7 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
         layer="layer3",
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
-        logit_modifier=attributors.TargetClassEvidence(num_classes=dataset.num_classes),
+        logit_modifier=logit_modifiers.MultiClassTargetLogit(),
         rng=np.random.default_rng(seed=1),
     )
 
@@ -124,7 +124,7 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
         layer="layer3",
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
-        logit_modifier=attributors.TargetClassEvidence(num_classes=dataset.num_classes),
+        logit_modifier=logit_modifiers.MultiClassTargetLogit(),
         rng=np.random.default_rng(seed=1),
     )
 
