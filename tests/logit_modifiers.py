@@ -114,4 +114,16 @@ def test_multiclass_logoddwinning():
     np.testing.assert_allclose(actual, expected)
 
 
-# todo: binary logodd winning
+@pytest.mark.parametrize(
+    "threshold,expected", [(0, [9, 4, 5, 8]), (1, [9 - 1, -(-4 - 1), 5 - 1, -(-8 - 1)])]
+)
+def test_binary_logoddwinning(threshold, expected):
+    logits = torch.tensor(
+        [9, -4, 5, -8],
+    ).float()
+
+    actual = logit_modifiers.BinaryLogOddWinning(threshold=threshold)(logits, None)
+
+    expected = torch.tensor(expected)
+
+    np.testing.assert_allclose(actual, expected)
