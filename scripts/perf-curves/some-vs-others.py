@@ -39,6 +39,7 @@ from xaikd.utils import click_types
     type=click_types.List(),
 )
 @click.option("--dataset-name", required=True, type=str)
+# todo: we need to implement this
 # @click.option("--sample-selection-criteria", type=str)
 @click.option("--output-dir", default="./tmp", type=click_types.Path())
 @click.option("--num-steps", default=20)
