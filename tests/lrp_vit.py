@@ -5,7 +5,7 @@ import torch
 from torchvision import transforms as T
 
 from zennit.attribution import Gradient
-from xaikd import models, attributors, lrp
+from xaikd import models, attributors, lrp, logit_modifiers
 
 
 from PIL import Image
@@ -71,7 +71,7 @@ def test_callable_and_no_nan(filename, target):
     input = transform(Image.open(filename)).unsqueeze(0)
     target = torch.tensor([target])
 
-    logit_mod = attributors.TargetClassEvidence(num_classes=1000)
+    logit_mod = logit_modifiers.MultiClassTargetLogit()
 
     with Gradient(
         model=model, composite=attributors.get_arch_specific_composite(model, lb, hb)
