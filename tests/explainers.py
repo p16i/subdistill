@@ -30,7 +30,7 @@ def _check_heatmap_finite(explainer_name: str, model_name: str):
     dl = DataLoader(ds)
 
     arr_logits, arr_heatmaps = explainer.explain(
-        dl, logit_modifiers.MultiClassTargetLogit(num_classes=1000), device=device
+        dl, logit_modifiers.MultiClassTargetLogit(), device=device
     )
 
     assert np.isfinite(arr_logits).all()
