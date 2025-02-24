@@ -118,7 +118,7 @@ def main(
         stop_at = np.floor(np.log2(d))
 
         arr_ks = np.power(2, np.arange(0, stop_at))
-        arr_ks = np.unique(arr_ks.tolist() + [d])
+        arr_ks = np.unique(arr_ks.tolist() + [d]).astype(int)
 
         base_layer_name = f"base.{layer}"
 
@@ -175,7 +175,9 @@ def main(
             df = pd.DataFrame(arr_stat_rows)
 
             # todo: parameterize also `sample-selection-criteria`
-            dest_path = output_dir / arch / dataset_name / layer / basis_name / logit_modifier
+            dest_path = (
+                output_dir / arch / dataset_name / layer / basis_name / logit_modifier
+            )
             os.makedirs(dest_path, exist_ok=True)
 
             df.to_csv(dest_path / "stats.csv", index=False)
