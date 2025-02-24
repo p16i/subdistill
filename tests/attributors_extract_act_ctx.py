@@ -6,7 +6,7 @@ from collections import OrderedDict
 from torch import nn
 from torch.utils.data import DataLoader, Subset, TensorDataset
 
-from xaikd import attributors, datasets, utils, models
+from xaikd import attributors, datasets, utils, models, logit_modifiers
 
 DEVICE = utils.get_device()
 
@@ -63,9 +63,7 @@ def _test_extract_activation_context(model_name, dataset_class, layer):
         layer=layer,
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
-        logit_modifier=attributors.WinningClassEvidence(
-            num_classes=dataset.num_classes
-        ),
+        logit_modifier=logit_modifiers.MultiClassWinningLogit(),
         strict_mode=True,
         rng=np.random.default_rng(seed=1),
     )
@@ -161,7 +159,7 @@ def test_extract_act_grad():
         nn.Flatten(start_dim=0),
     )
 
-    logit_modifier = attributors.BinaryLogOddWinning(threshold=0)
+    logit_modifier = logit_modifiers.BinaryLogOddWinning(threshold=0)
 
     act: torch.Tensor = model_part1(X).detach()
     act.requires_grad_(True)
