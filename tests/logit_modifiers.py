@@ -127,3 +127,21 @@ def test_binary_logoddwinning(threshold, expected):
     expected = torch.tensor(expected)
 
     np.testing.assert_allclose(actual, expected)
+
+
+@pytest.mark.parametrize(
+    "name,kwargs",
+    [
+        ("BinaryLogOddWinning", dict(threshold=0.0)),
+        ("MultiClassTargetLogit", dict()),
+        ("MultiClassAllLogits", dict()),
+        ("MultiClassWinningLogit", dict()),
+        ("MultiClassZeroLogit", dict()),
+        ("MultiClassDifferenceTop2Logits", dict()),
+        ("MultiClassDifferenceTop2Logits", dict()),
+        ("MultiClassLogOddWinning", dict()),
+    ],
+)
+def test_get_logit_modifier(name, kwargs):
+    logit_modifiers.get_logit_modifier(name, **kwargs)
+    assert True, f"{logit_modifiers}"

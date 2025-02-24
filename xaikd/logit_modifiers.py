@@ -12,12 +12,14 @@ from torch.nn import functional as F
 LOGIT_MODIFIERS = dict()
 
 
-def register(fn):
+def register_logit_modifier():
     def wrapper(cls):
         slug = cls.__name__
         assert not (slug in LOGIT_MODIFIERS)
         LOGIT_MODIFIERS[slug] = cls
         return cls
+
+    return wrapper
 
 
 class LogitModifier(ABC):
@@ -31,6 +33,11 @@ class LogitModifier(ABC):
         return self.__class__.__name__
 
 
+def get_logit_modifier(name, **kwargs) -> LogitModifier:
+    return LOGIT_MODIFIERS[name](**kwargs)
+
+
+@register_logit_modifier()
 class MultiClassTargetLogit(LogitModifier):
     def __call__(self, logits, targets) -> torch.Tensor:
         _, num_classes = logits.shape
@@ -38,12 +45,14 @@ class MultiClassTargetLogit(LogitModifier):
         return logits * F.one_hot(targets, num_classes).to(logits.device)
 
 
+@register_logit_modifier()
 class MultiClassAllLogits(LogitModifier):
     def __call__(self, logits, targets) -> torch.Tensor:
         logits = logits.clone()
         return logits
 
 
+@register_logit_modifier()
 class MultiClassWinningLogit(LogitModifier):
     def __call__(self, logits, targets) -> torch.Tensor:
         _, num_classes = logits.shape
@@ -52,12 +61,14 @@ class MultiClassWinningLogit(LogitModifier):
         return logits * F.one_hot(wining_targets, num_classes).to(logits.device)
 
 
+@register_logit_modifier()
 class MultiClassZeroLogit(LogitModifier):
     def __call__(self, logits, targets) -> torch.Tensor:
         logits = logits.clone()
         return torch.zeros_like(logits).to(logits.device)
 
 
+@register_logit_modifier()
 class MultiClassDifferenceTop2Logits(LogitModifier):
     def __call__(self, logits, targets) -> torch.Tensor:
         _, num_classes = logits.shape
@@ -69,6 +80,7 @@ class MultiClassDifferenceTop2Logits(LogitModifier):
         )
 
 
+@register_logit_modifier()
 class MultiClassLogOddWinning(LogitModifier):
     def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor:
         (n, d) = logits.shape
@@ -88,6 +100,7 @@ class MultiClassLogOddWinning(LogitModifier):
         return logodd
 
 
+@register_logit_modifier()
 class BinaryLogOddWinning(LogitModifier):
     def __init__(
         self,
