@@ -119,3 +119,28 @@ def test_logit_modifier_differencetop2winningclasses():
             [-0.6, 0.8, 0.0],
         ],
     )
+
+
+def test_logit_modifier_multi_logoddwinning():
+    logits = torch.tensor(
+        [
+            [3, 5, 9],
+            [6, 3, 1],
+            [6, 8, 2],
+        ]
+    ).float()
+
+    actual = attributors.MultiClassLogOddWinning()(logits, None)
+
+    expected_logit_winning = torch.tensor([9, 6, 8.0])
+    expected_logit_others = torch.tensor(
+        [
+            [3, 5],
+            [3, 1],
+            [6, 2],
+        ]
+    )
+
+    expected = expected_logit_winning - torch.logsumexp(expected_logit_others, dim=1)
+
+    np.testing.assert_allclose(actual, expected)

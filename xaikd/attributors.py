@@ -263,6 +263,28 @@ class BinaryLogOddWinning(LogitModifier):
         return f"binary-winning-logodd-{self.threshold}"
 
 
+class MultiClassLogOddWinning(LogitModifier):
+    def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor:
+        (n, d) = logits.shape
+
+        values, indices = torch.topk(logits, dim=1, k=d)
+        assert values.shape == logits.shape
+
+        logit_winning = values[:, 0]
+        logit_others = values[:, 1:]
+        assert logit_others.shape == (n, d - 1)
+        logodd = logit_winning - torch.logsumexp(logit_others, dim=1)
+
+        assert torch.isfinite(logodd).all()
+
+        assert logodd.shape == (n,)
+
+        return logodd
+
+    def __str__(self) -> str:
+        return f"multi-winning-logodd"
+
+
 def extract_activation_context(
     model: nn.Module,
     layer: str,
@@ -347,7 +369,7 @@ def extract_activation_grad(
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
             model, layer, should_retain_grad=True, detach_output=False
         )
-
+        # todo: is the order between hook and forward matter?
         for batch in tqdm(dataloader, desc=f"extract act-grad at layer={layer}"):
             x, y = batch
             x = x.to(device)
