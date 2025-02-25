@@ -19,11 +19,15 @@ from xaikd import constants
 
 MODEL_GENERATORS = dict()
 
+# These paths are from https://tubcloud.tu-berlin.de/apps/files/files/3567344323?dir=/projects/2023-knowledge-distillation
+# Remark: The URLs are difference because they have been generated at different times.
 MODEL_CHECKPOINT_MAPPING = {
     "cifar100-resnet18-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-resnet18-v1--model-sszu9jtz:best.pth",
     "cifar100-resnet18-v2": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-resnet18-v2--model-8no232l1:best.pth",
     "cifar100-resnet50-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-resnet50-v1--model-dxngvotm:best.pth",
     "cifar100-vgg11-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-vgg11-v1--model-rm0pe4r0:best.pth",
+    "celeba-resnet18-scratch": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba&files=celeba--scratch--n8r0q2vb.pth",
+    "celeba-resnet18-pretrained": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba&files=celeba--imagenet-pretrained--6oj5aaxl.pth",
 }
 
 
@@ -44,11 +48,21 @@ def get_trained_model(name: str) -> nn.Module:
 
     # todo: better organizing these if-else structures
     if name in MODEL_CHECKPOINT_MAPPING.keys():
-        num_classes = 10 if dataset == "cifar10" else 100
-
-        model = MODEL_GENERATORS[f"cifar-{arch}"](num_classes=num_classes)
-
         url = MODEL_CHECKPOINT_MAPPING[name]
+
+        if "cifar" in dataset:
+            num_classes = 10 if dataset == "cifar10" else 100
+
+            model = MODEL_GENERATORS[f"cifar-{arch}"](num_classes=num_classes)
+        elif dataset == "celeba":
+            assert arch == "resnet18"
+            CELEBA_NUM_ATTRIBUTES = 40
+            model = torchvision.models.resnet18(
+                weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
+            )
+            setattr(model, "num_classes", CELEBA_NUM_ATTRIBUTES)
+        else:
+            raise ValueError(f"`{name}` doesn't exist")
 
         model.load_state_dict(
             torch.hub.load_state_dict_from_url(url, file_name=f"{name}.pth")
@@ -102,7 +116,7 @@ def get_layer_output_dimensions(model: nn.Module, layer: str) -> int:
     return getattr(model, "__layer_dimension")[layer]
 
 
-from . import resnet, vgg, nfnet, vit, mobilenets, students, layers, resnet_celeba
+from . import resnet, vgg, nfnet, vit, mobilenets, students, layers
 
 
 def split_model_at_layer(model, layer: str) -> typing.Tuple[nn.Module, nn.Module]:
