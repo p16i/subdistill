@@ -7,7 +7,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from torchvision import transforms
 from PIL import Image
 
-from xaikd import explainers, models, datasets, attributors, utils
+from xaikd import explainers, models, datasets, attributors, utils, logit_modifiers
 
 
 def _check_heatmap_finite(explainer_name: str, model_name: str):
@@ -30,7 +30,7 @@ def _check_heatmap_finite(explainer_name: str, model_name: str):
     dl = DataLoader(ds)
 
     arr_logits, arr_heatmaps = explainer.explain(
-        dl, attributors.TargetClassEvidence(num_classes=1000), device=device
+        dl, logit_modifiers.MultiClassTargetLogit(), device=device
     )
 
     assert np.isfinite(arr_logits).all()
