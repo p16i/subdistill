@@ -38,7 +38,7 @@ from xaikd.utils import click_types
     required=True,
     type=click_types.List(),
 )
-@click.option("--task-id", required=True, type=int)
+@click.option("--attr-ix", required=True, type=int)
 # todo: we need to implement this
 # @click.option("--sample-selection-criteria", type=str)
 @click.option("--output-dir", default="./tmp", type=click_types.Path())
@@ -58,7 +58,7 @@ from xaikd.utils import click_types
 def main(
     arch: str,
     arr_layers: click_types.List.output_type,
-    task_id: int,
+    attr_ix: int,
     arr_basis_names: click_types.List.output_type,
     # sample_selection_criteria: str,
     data_size: int,
@@ -74,11 +74,11 @@ def main(
     rng = np.random.default_rng(seed=seed)
     device = utils.get_device()
 
-    dataset = datasets.construct("celeba")
+    dataset_name = f"celeba-attr{attr_ix}"
 
-    dataset_name = f"celeba-task{task_id}"
+    dataset = datasets.construct(dataset_name)
 
-    layer_task_logit_selection = models.layers.TaskLogitSelection(task_id=task_id)
+    layer_task_logit_selection = models.layers.TaskLogitSelection(task_id=attr_ix)
 
     base_model = models.get_trained_model(arch)
 
