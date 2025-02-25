@@ -27,7 +27,16 @@ def test_celeba_attr_callable_and_create_subsets(attr_ix, is_train):
 
     ds = dataset.create_subset(train_split=is_train)
     _, y = next(
-        iter(datasets.build_dataloader(ds, batch_size=batch_size, shuffle=False))
+        iter(
+            datasets.build_dataloader(
+                ds,
+                batch_size=batch_size,
+                shuffle=False,
+                persistent_workers=False,
+                pin_memory=False,
+                num_workers=1,
+            )
+        )
     )
 
     assert y.shape == (batch_size,), y.shape
