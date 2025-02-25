@@ -20,7 +20,7 @@ from xaikd import constants
 MODEL_GENERATORS = dict()
 
 # These paths are from https://tubcloud.tu-berlin.de/apps/files/files/3567344323?dir=/projects/2023-knowledge-distillation
-# Remark: The URLs are difference because they have been generated at different times.
+# Remark: The URLs are different because they have been generated at different times and different roots.
 MODEL_CHECKPOINT_MAPPING = {
     "cifar100-resnet18-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-resnet18-v1--model-sszu9jtz:best.pth",
     "cifar100-resnet18-v2": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-resnet18-v2--model-8no232l1:best.pth",
