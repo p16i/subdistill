@@ -17,6 +17,8 @@ import models as test_models
         "imagenet-resnet50-tv",
         "imagenet-resnet101-tv",
         "imagenet-resnet152-tv",
+        "celeba-resnet18-scratch",
+        "celeba-resnet18-pretrained",
     ],
 )
 @pytest.mark.slow
