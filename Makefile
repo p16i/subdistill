@@ -1,5 +1,5 @@
 test:
-	CUBLAS_WORKSPACE_CONFIG=:4096:8 pytest tests/*
+	pytest tests/*
 
 test-data-dir:
 	ASSERT_DATADIR=1 pytest tests/datasets_datadir.py
