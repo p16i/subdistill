@@ -84,9 +84,10 @@ def test_distillation_runnable_and_correct(
         shuffle=True,
         persistent_workers=False,
         pin_memory=False,
+        num_workers=1,
     )
     val_loader = datasets.build_dataloader(
-        ds_val, shuffle=False, persistent_workers=False, pin_memory=False
+        ds_val, shuffle=False, persistent_workers=False, pin_memory=False, num_workers=1
     )
 
     teacher_dims_mapping = utils.get_dimensions_at_layers(
@@ -234,6 +235,7 @@ def test_get_parameters(layers, parameter_partition_mode):
         shuffle=False,
         persistent_workers=False,
         pin_memory=False,
+        num_workers=1,
     )
 
     teacher_dims_mapping = utils.get_dimensions_at_layers(

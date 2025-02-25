@@ -27,7 +27,7 @@ def _check_heatmap_finite(explainer_name: str, model_name: str):
 
     ds = TensorDataset(x, y)
 
-    dl = DataLoader(ds)
+    dl = DataLoader(ds, num_workers=1)
 
     arr_logits, arr_heatmaps = explainer.explain(
         dl, logit_modifiers.MultiClassTargetLogit(), device=device
