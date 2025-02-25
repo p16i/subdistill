@@ -175,6 +175,7 @@ def main(
             df = pd.DataFrame(arr_stat_rows)
 
             # todo: parameterize also `sample-selection-criteria`
+            # todo: parameterize also `data-size`
             dest_path = (
                 output_dir / arch / dataset_name / layer / basis_name / logit_modifier
             )
