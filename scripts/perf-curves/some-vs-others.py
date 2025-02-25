@@ -185,7 +185,14 @@ def main(
             df = pd.DataFrame(arr_stat_rows)
 
             # todo: parameterize also `sample-selection-criteria`
-            dest_path = output_dir / arch / dataset_name / layer / basis_name
+            dest_path = (
+                output_dir
+                / arch
+                / dataset_name
+                / f"data-size{data_size}"
+                / layer
+                / basis_name
+            )
             os.makedirs(dest_path, exist_ok=True)
 
             df.to_csv(dest_path / "stats.csv", index=False)
