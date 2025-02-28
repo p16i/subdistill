@@ -124,4 +124,4 @@ def construct(name: str) -> DatasetConfiguration:
     return dataset
 
 
-from . import cifar100, imagenet
+from . import cifar100, imagenet, celeba

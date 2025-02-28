@@ -6,16 +6,35 @@ export WANDB_CACHE_DIR=/tmp/.cache/wandb
 # make result more deterministic
 export CUBLAS_WORKSPACE_CONFIG=:4096:8
 
-export APPTAINER_BINDPATH="/home/space/datasets"
 
-if [[ $WITH_DATA -eq 1 ]]; then
-    if [ ! -f "/tmp/imagenet.sqfs" ]; then
-        echo "copy data.."
-        time cp ~/datasets/imagenet.sqfs /tmp/
-    fi
-    APPTAINER_BINDPATH="$APPTAINER_BINDPATH,/tmp/imagenet.sqfs:/home/space/datasets/imagenet_torchvision/data:image-src=/"
+
+echo "======== Dataset Preparation ======="
+export DATASET_PATHS="/home/space/datasets"
+
+if [[ "$WITH_DATA" = "" ]]; then
+   WITH_DATA="cifar100,celeba,imagenet"
 fi
 
-apptainer run \
+if [[ -n "${WITH_DATA// /}" ]]; then
+     for DATASET in ${WITH_DATA//,/ }
+     do
+	     echo "Binding '$DATASET'"
+	     if [ ! -f "/tmp/$DATASET.sqfs" ]; then
+		 SQFS_PATH="/home/space/datasets-sqfs/xaikd/$DATASET.sqfs"
+		 echo "> copy $SQFS_PATH to /tmp/"
+		 time cp $SQFS_PATH /tmp/
+	     fi
+	     DATASET_PATH_TO_BIND="/tmp/$DATASET.sqfs:/datasets/$DATASET:image-src=/"
+	     echo "> $DATASET_PATH_TO_BIND"
+	     DATASET_PATHS="$DATASET_PATHS,$DATASET_PATH_TO_BIND"
+     done
+fi
+
+ls -la /tmp/*.sqfs
+
+echo "======== END Dataset Preparation ======="
+
+
+DATASET_ROOT=/datasets APPTAINER_BINDPATH=$DATASET_PATHS apptainer run  \
     --nv ./containers/py311v0.0.1.sif \
     "$@"

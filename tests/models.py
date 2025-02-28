@@ -22,7 +22,7 @@ def _test_get_model(slug):
     dataset, arch, variant = slug.split("-")
     if dataset == "cifar100":
         data = torch.rand(5, 3, 32, 32)
-    elif dataset == "imagenet":
+    elif dataset in ["imagenet", "celeba"]:
         data = torch.rand(5, 3, 224, 224)
 
     data = data.to(device)
