@@ -245,7 +245,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         teacher_y_pred = (teacher_logits > 0).detach().cpu()
         student_y_pred = (student_logits > 0).detach().cpu()
 
-        self.metric[f"{prefix}_auroc"].update(student_logits, y.cpu())
+        self.metric[f"{prefix}_auroc"].update(student_logits.detach().cpu(), y.cpu())
         self.metric[f"{prefix}_agreement"].update(student_y_pred == teacher_y_pred)
         self.metric[f"{prefix}_agreement_on_teacher_correct"].update(
             (teacher_y_pred == y.cpu()) * (student_y_pred == teacher_y_pred)
