@@ -108,6 +108,7 @@ def get_trained_model(name: str) -> nn.Module:
 
 
 def get_untrained_model(name: str, num_classes: int, **kwargs) -> nn.Module:
+    print(f"Constructing untrain-model={name} with ( {num_classes} outputs)")
     return MODEL_GENERATORS[name](num_classes=num_classes, **kwargs)
 
 
