@@ -268,7 +268,7 @@ def main(
     teacher_model = nn.Sequential(
         OrderedDict(
             [
-                ("base", models.get_trained_model(teacher)),
+                ("base", models.get_trained_model(teacher).to(device)),
                 ("layer_logodd", layer_logodd_selected_classes),
             ]
         )
@@ -279,7 +279,7 @@ def main(
     arr_teacher_layers = list(map(lambda t: f"base.{t}", arr_teacher_layers))
 
     dict_teacher_layer_dim = utils.get_dimensions_at_layers(
-        teacher_model, train_loader, layers=arr_teacher_layers
+        teacher_model, train_loader, layers=arr_teacher_layers, device=device
     )
 
     dict_student_layer_dim = utils.get_dimensions_at_layers(
@@ -290,6 +290,7 @@ def main(
         ).eval(),
         train_loader,
         layers=arr_student_layers,
+        device=device,
     )
 
     print("Layerwise Distillation with the following layers:")
