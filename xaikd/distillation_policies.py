@@ -128,6 +128,8 @@ def get_last_layer_policy(name: str) -> LastLayerPolicy:
         # ref: temperature value from
         # https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L78
         return KLPolicy(temperature=4.0)
+    elif name == "binkd":
+        return BinaryKLPolicy()
     elif name == "dkd":
         return DKDPolicy(
             # cf. https://github.com/megvii-research/mdistiller/blob/master/configs/imagenet/r34_r18/dkd.yaml#L29
@@ -198,6 +200,37 @@ class KLPolicy(LastLayerPolicy):
         # We muliply with scaling factor as mentioned in Hinton et al. (2015)
         # (cf. the paragraph before Section 2.1).
         return (self.T**2) * kl
+
+
+class BinaryKLPolicy(LastLayerPolicy):
+
+    def __init__(self):
+        super().__init__()
+
+        self.transformer_teacher_feats = nn.Identity()
+        self.transformer_student_feats = nn.Identity()
+
+    def criterion(
+        self,
+        teacher_logits: torch.Tensor,
+        student_logits: torch.Tensor,
+        target: torch.Tensor,
+    ) -> torch.Tensor:
+        n = target.shape[0]
+
+        assert teacher_logits.shape == student_logits.shape
+
+        student_yp_gv_x = torch.sigmoid(student_logits)
+        teacher_yp_gv_x = torch.sigmoid(teacher_logits)
+
+        # todo: check whether this is the special os KLDiv
+        kl = -(
+            teacher_yp_gv_x * torch.log(student_yp_gv_x)
+            + (1 - teacher_yp_gv_x) * torch.log(1 - student_yp_gv_x)
+        )
+        kl = kl.mean()
+
+        return kl
 
 
 class DKDPolicy(LastLayerPolicy):
