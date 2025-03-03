@@ -287,7 +287,7 @@ def main(
             student,
             num_classes=dataset.num_classes,
             class_indices=dataset.selected_classes,
-        ).eval().to(device),
+        ).eval(),
         train_loader,
         layers=arr_student_layers,
         device=device,
@@ -439,8 +439,8 @@ def main(
             student_pred = student_logits.squeeze(1) > 0
 
             arr_targets.extend(y.numpy().tolist())
-            arr_teacher_pred.extend(teacher_pred.numpy().tolist())
-            arr_student_pred.extend(student_pred.numpy().tolist())
+            arr_teacher_pred.extend(teacher_pred.cpu().numpy().tolist())
+            arr_student_pred.extend(student_pred.cpu().numpy().tolist())
 
         logger.log_table(
             "prediction",
