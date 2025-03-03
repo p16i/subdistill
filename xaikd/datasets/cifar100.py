@@ -342,6 +342,8 @@ class CIFAR100SuperclassVsOthers(CIFAR100):
             superclass=super_class
         )
 
+        self.num_classes = 1
+
     def transform_target(self, target: int) -> int:
         if target in self.selected_classes:
             return 1

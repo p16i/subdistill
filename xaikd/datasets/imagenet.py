@@ -523,6 +523,7 @@ class ImageNetSuperclassVsOthers(ImageNet):
         super().__init__()
 
         self.selected_classes = IMAGENET_SUPERCLASS_MAPPING[super_class]
+        self.num_classes = 1
 
     def transform_target(self, target: int) -> int:
         if target in self.selected_classes:

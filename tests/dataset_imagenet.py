@@ -279,6 +279,8 @@ def test_construct_superclass_vs_others():
     dataset = datasets.construct("imagenet-butterfly-vs-others")
 
     num_classes = len(dataset.selected_classes)
+
+    assert dataset.num_classes == 1
     assert num_classes == len(
         datasets.imagenet.IMAGENET_SUPERCLASS_MAPPING["butterfly"]
     )

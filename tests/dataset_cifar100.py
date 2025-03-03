@@ -238,6 +238,7 @@ def test_construct_superclass_vs_others():
     dataset = datasets.construct("cifar100-people-vs-others")
 
     assert len(dataset.selected_classes) == 5
+    assert dataset.num_classes == 1
 
     for train_split in [True, False]:
         ds = dataset.create_subset(train_split=train_split)

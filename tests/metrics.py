@@ -77,4 +77,17 @@ def test_unexplained_relevance(order, expected):
     np.testing.assert_allclose(stats, [total**2] + expected, atol=1e-6)
 
 
-# todo: add test auroc, metric function
+def test_metric_auroc_callable():
+    metric = metrics.MetricAUROC()
+
+    # todo: add call with mock data
+
+
+def test_metric_aurocbinxent_callable():
+    metric = metrics.MetricAUROCBinaryCrossEntropy()
+    # todo: add call with mock data
+
+
+def test_metric_accuracy_callable():
+    metric = metrics.MetricAccuracy(100)
+    # todo: add call with mock data
