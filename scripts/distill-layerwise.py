@@ -51,7 +51,7 @@ def learn_basis(
     device: str,
     output_dir: Path,
     seed: int,
-) -> typing.Dict[str, bases.Basis]:
+) -> typing.Dict[str, bases.OrthogonalBasis]:
     # prepare bases
     arr_learned_bases = dict()
 
@@ -97,7 +97,7 @@ def build_dataloaders(
     training_size: float,
     seed: int,
 ) -> typing.Tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
-
+    # todo: perhaps, we can abstract this and add tests
     ds_train = dataset.create_subset(train_split=True)
 
     # remark: when ratio=1.0, we do this anyway; so the code below is more staight forward
@@ -153,7 +153,9 @@ def build_dataloaders(
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
 @click.option("--student", default="student-32-24-16-8", required=True)
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
-@click.option("--dataset-variant", default="", type=str, required=False)
+@click.option(
+    "--dataset-variant", default="", type=str, required=False
+)  # fixme: we don't need this
 @click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--layer-policy", type=str, required=True)
 @click.option(
@@ -165,11 +167,15 @@ def build_dataloaders(
 @click.option("--lambda-layer", default=None, type=float)
 @click.option("--default-lambda-layer-config", default=None, type=str)
 @click.option("--epochs", type=int, default=100, required=True)
-@click.option("--parameter-partition-mode", type=str, default="@0")
-@click.option("--wandb-experiment-group", type=str, default=None)
-@click.option("--finetuning-with-layer-loss", type=bool, default=True)
+@click.option(
+    "--parameter-partition-mode", type=str, default="@0"
+)  # todo: what is this again?
+@click.option(
+    "--finetuning-with-layer-loss", type=bool, default=True
+)  # todo: what is this?
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
+@click.option("--wandb-experiment-group", type=str, default=None)
 @click.option("--seed", type=int, default=1)
 @click.option("--output-dir", type=str, required=True)
 def main(
@@ -198,6 +204,7 @@ def main(
     dataset = "--".join([dataset, dataset_variant]) if dataset_variant else dataset
     del dataset_variant
 
+    # todo: this resolve_lambda_layer should be part of constant;
     lambda_layer = utils.resolve_lambda_layer(
         teacher_model_name=teacher,
         policy_name=layer_policy,
@@ -233,6 +240,7 @@ def main(
     # prepare dataset
     dataset = datasets.construct(dataset)
 
+    # fixme: this has to be change
     logit_mod = attributors.WinningClassEvidence(num_classes=dataset.num_classes)
 
     train_loader, train_loader_with_shuffle, train_loader_with_aug, val_loader = (
@@ -304,12 +312,13 @@ def main(
         )
 
         if "basis" in layer_policy:
-
+            # todo: add comment here
             kwargs["basis"] = arr_learned_bases[f"{teacher_layer}"]
 
             policy_name, _ = layer_policy.split(":")
         else:
             policy_name = layer_policy
+        # todo: perhaps, we can just abstract these kwargs into get_layer_policy
         policy = distillation_policies.get_layer_policy(policy_name, **kwargs)
 
         arr_layer_policies.append(policy)
@@ -320,7 +329,7 @@ def main(
         train_dataloader=train_loader_with_aug,
         val_dataloader=val_loader,
         device=device,
-        weight_decay=0.0,
+        weight_decay=0.0,  # todo: perhaps, we can just set this to zero in the LayerWise Distillator
         parameter_partition_mode=parameter_partition_mode,
     )
 
@@ -332,6 +341,7 @@ def main(
         ]
     )
 
+    # todo: what do we save in this dir?
     log_dir = output_dir / "distilled-models" / student_slug
     logger = WandbLogger(
         save_dir=WANDB_DIR,
@@ -340,7 +350,7 @@ def main(
             wandb_experiment_group
             if wandb_experiment_group is not None
             else arguments["output_dir"]
-        ),
+        ),  # todo: simpify this
         job_type="distillation",
         name=f"{student}-{last_layer_policy}-{layer_policy}-seed{seed}",
         notes=f"commit:{utils.get_git_hash()}",
