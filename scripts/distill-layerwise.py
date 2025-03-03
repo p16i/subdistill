@@ -107,9 +107,6 @@ def build_dataloaders(
     # remark: we have to do it this way because the current version of
     #  `contaminate_dataset` function only work with `Subset.
     ds_val = dataset.create_subset(train_split=False)
-    # fixme: this is for dev purpose
-    print("[warining]: we use only 0.01 of val dev purpose")
-    ds_val = datasets.subsample_dataset(ds_val, ratio=0.01, seed=seed)
 
     # remark: we set shuffle=False here becaue it is only used to learn bases.
     train_loader = datasets.build_dataloader(ds_train, shuffle=False)
@@ -146,8 +143,7 @@ def build_dataloaders(
         # cf. Ahn et al. (2017), VID, in Supplement Sec. A.3.
         # we scale batch_size such that when training_size < 1.0,
         # we get the same number of update steps.
-        # batch_size=int(np.ceil(64 * training_size)),
-        batch_size=64,  # fixme: this is for test
+        batch_size=int(np.ceil(64 * training_size)),
         drop_last=True,
     )
 
@@ -161,9 +157,6 @@ def build_dataloaders(
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
 @click.option("--student", default="student-32-24-16-8", required=True)
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
-@click.option(
-    "--dataset-variant", default="", type=str, required=False
-)  # fixme: we don't need this
 @click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--layer-policy", type=str, required=True)
 @click.option(
@@ -193,7 +186,6 @@ def main(
     teacher,
     student,
     dataset,
-    dataset_variant,
     training_size,
     last_layer_policy,
     layer_policy,
@@ -211,9 +203,6 @@ def main(
     output_dir,
     wandb_experiment_group,
 ):
-
-    dataset = "--".join([dataset, dataset_variant]) if dataset_variant else dataset
-    del dataset_variant
 
     # todo: this resolve_lambda_layer should be part of constant;
     lambda_layer = utils.resolve_lambda_layer(
@@ -283,6 +272,7 @@ def main(
     )
 
     dict_student_layer_dim = utils.get_dimensions_at_layers(
+        # we don't this to make sure that we don't use
         models.get_untrained_model(
             student,
             num_classes=dataset.num_classes,
