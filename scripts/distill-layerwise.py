@@ -287,7 +287,7 @@ def main(
             student,
             num_classes=dataset.num_classes,
             class_indices=dataset.selected_classes,
-        ).eval(),
+        ).eval().to(device),
         train_loader,
         layers=arr_student_layers,
         device=device,
