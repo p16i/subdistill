@@ -76,12 +76,15 @@ class MetricAUROC(MetricFunction):
         self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
     ):
 
+        raise NotImplementedError("obsolete this and use AUROCBinXent")
         assert not model.training
 
         metric_auroc = BinaryAUROC(thresholds=100)
 
         for x, y in tqdm(dataloader, desc="Computing AUROC", disable=not verbose):
             logodd = model(x.to(device)).cpu()
+
+            assert np.isin(y.numpy(), [0, 1]).all()
 
             assert len(logodd.shape) == 1, f"{logodd.shape}"
 
@@ -116,12 +119,25 @@ class MetricAUROCBinaryCrossEntropy(MetricFunction):
         metric_mean = MeanMetric()
 
         for x, y in tqdm(dataloader, desc="Computing AUROC", disable=not verbose):
+            n = x.shape[0]
             logodd = model(x.to(device)).cpu()
+
+            if len(logodd.shape) == 2:
+                assert logodd.shape == (n, 1)
+                logodd = logodd.squeeze(1)
 
             assert len(logodd.shape) == 1, f"{logodd.shape}"
 
+            assert np.isin(y.numpy(), [0, 1]).all()
+
             metric_auroc.update(logodd, y)
-            metric_mean.update(F.binary_cross_entropy_with_logits(logodd, y))
+            loss = F.binary_cross_entropy_with_logits(
+                logodd, y.float(), reduction="none"
+            )
+            assert len(loss.shape) == 1
+            assert logodd.shape == (n,)
+            assert loss.shape == (n,)
+            metric_mean.update(loss)
 
         auroc = metric_auroc.compute()
         if self.convert_auroc:
