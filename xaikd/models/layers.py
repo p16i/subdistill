@@ -38,3 +38,16 @@ class SubclassSelection(nn.Module):
 
     def forward(self, logits: torch.Tensor) -> torch.Tensor:
         return logits[:, self.selected_classes]
+
+
+class TaskLogitSelection(nn.Module):
+    def __init__(self, task_id) -> None:
+        super().__init__()
+        self.task_id = task_id
+
+    def forward(self, logits: torch.Tensor) -> torch.Tensor:
+        assert isinstance(logits, torch.Tensor)
+
+        _, num_tasks = logits.shape
+
+        return logits[:, self.task_id]

@@ -20,7 +20,19 @@ import models as test_models
     ],
 )
 @pytest.mark.slow
-def test_get_model(slug):
+def test_get_imagenet_model(slug):
+    test_models._test_get_model(slug)
+
+
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "celeba-resnet18-scratch",
+        "celeba-resnet18-pretrained",
+    ],
+)
+@pytest.mark.slow
+def test_get_celeba_model(slug):
     test_models._test_get_model(slug)
 
 

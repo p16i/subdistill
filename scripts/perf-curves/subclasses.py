@@ -17,7 +17,16 @@ from tqdm.auto import tqdm
 import numpy as np
 import pandas as pd
 
-from xaikd import utils, models, datasets, attributors, bases, metrics, interceptor
+from xaikd import (
+    utils,
+    models,
+    datasets,
+    attributors,
+    bases,
+    metrics,
+    interceptor,
+    logit_modifiers,
+)
 from xaikd.utils import click_types
 
 
@@ -30,16 +39,11 @@ from xaikd.utils import click_types
     type=click_types.List(),
 )
 @click.option("--dataset-name", required=True, type=str)
+@click.option("--logit-modifier", default="MultiClassLogOddWinning", type=str)
 # @click.option("--sample-selection-criteria", type=str)
 @click.option("--output-dir", default="./tmp", type=click_types.Path())
-@click.option("--num-steps", default=20)
-@click.option("--max-k", default=None, type=int)
 @click.option("--seed", default=1)
 @click.option("--data-size", default=1.0)
-@click.option(
-    "--logodd-threshold",
-    default=0,
-)
 @click.option(
     "--arr-basis-names",
     default=["pca", "gradpca", "prcaposdef", "prca-ablation-a-c"],
@@ -51,12 +55,10 @@ def main(
     dataset_name: str,
     arr_basis_names: click_types.List.output_type,
     # sample_selection_criteria: str,
+    logit_modifier: str,
     data_size: int,
     output_dir: click_types.Path.output_type,
-    num_steps: int,
-    logodd_threshold: float,
     seed: int,
-    max_k: typing.Union[None, int],
 ):
     arguments = locals()
     start_time = datetime.now()
@@ -83,16 +85,14 @@ def main(
     model.eval()
     model.to(device)
 
-    logit_modifier = attributors.DifferenceTop2WinningClassesEvidence(
-        num_classes=len(dataset.selected_classes)
-    )
+    logit_modifier_obj = logit_modifiers.get_logit_modifier(name=logit_modifier)
 
     ds_train = datasets.subsample_dataset(
         dataset=dataset.create_subset(train_split=True), ratio=data_size, seed=seed
     )
 
     click.echo(
-        f"Perf Curve for `{dataset_name}` (data_size={data_size}, logit_modifier={logit_modifier})"
+        f"Perf Curve for `{dataset_name}` (data_size={data_size}, logit_modifier={logit_modifier_obj})"
     )
 
     dl_train = datasets.build_dataloader(
@@ -115,13 +115,10 @@ def main(
 
     for layer in tqdm(arr_layers, desc="estimate performance curve at layer"):
         d = dict_layer_dims[layer]
-        stop_at = d if max_k is None else max_k
-        # if max_k is > d then, we set stop at to d
-        stop_at = np.min([d, stop_at])
+        stop_at = np.floor(np.log2(d))
 
-        arr_ks = np.linspace(start=1, stop=stop_at, num=num_steps).astype(int)
-        # we include K=d for sanity check
-        arr_ks = list(sorted(set(arr_ks.tolist() + [d])))
+        arr_ks = np.power(2, np.arange(0, stop_at))
+        arr_ks = np.unique(arr_ks.tolist() + [d]).astype(int)
 
         base_layer_name = f"base.{layer}"
 
@@ -129,7 +126,7 @@ def main(
             model=model,
             layer=base_layer_name,
             dataloader=dl_train,
-            logit_modifier=logit_modifier,
+            logit_modifier=logit_modifier_obj,
             rng=rng,
             device=device,
         )
@@ -178,7 +175,15 @@ def main(
             df = pd.DataFrame(arr_stat_rows)
 
             # todo: parameterize also `sample-selection-criteria`
-            dest_path = output_dir / arch / dataset_name / layer / basis_name
+            dest_path = (
+                output_dir
+                / arch
+                / dataset_name
+                / layer
+                / f"data-size{data_size}"
+                / basis_name
+                / logit_modifier
+            )
             os.makedirs(dest_path, exist_ok=True)
 
             df.to_csv(dest_path / "stats.csv", index=False)

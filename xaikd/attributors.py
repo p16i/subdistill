@@ -29,7 +29,10 @@ from xaikd import datasets
 from xaikd.models.interfaces import DistillableModel
 
 import zennit
+
 from xaikd import lrp
+
+from xaikd.logit_modifiers import LogitModifier
 
 
 from functools import partial
@@ -70,197 +73,6 @@ def make_attributor_for(
     composite = get_arch_specific_composite(model, lb=low, hb=high)
 
     return Gradient(model=model, composite=composite)
-
-
-class LogitModifier(ABC):
-    def __call__(
-        self, logits: torch.Tensor, targets: typing.Union[torch.Tensor, None]
-    ) -> torch.Tensor:
-        raise NotImplemented
-
-    def __str__(self) -> str:
-        raise NotImplemented
-
-
-class TargetClassEvidence(LogitModifier):
-    def __init__(self, num_classes: int) -> None:
-        self.num_classes = num_classes
-
-    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        logits = logits.clone()
-        return logits * F.one_hot(targets, self.num_classes).to(logits.device)
-
-    def __str__(self) -> str:
-        return "oneclass"
-
-
-class ALlClassesEvidence(LogitModifier):
-    def __init__(self, num_classes: int) -> None:
-        self.num_classes = num_classes
-
-    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        logits = logits.clone()
-        return logits
-
-    def __str__(self) -> str:
-        return "allclasses"
-
-
-class WinningClassEvidence(LogitModifier):
-    def __init__(self, num_classes: int) -> None:
-        self.num_classes = num_classes
-
-    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        logits = logits.clone()
-        wining_targets = torch.argmax(logits, dim=1)
-        return logits * F.one_hot(wining_targets, self.num_classes).to(logits.device)
-
-    def __str__(self) -> str:
-        return "winingclass"
-
-
-class WinningClassEvidenceOtherNegatives(LogitModifier):
-    def __init__(self, num_classes: int) -> None:
-        self.num_classes = num_classes
-
-    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        logits = logits.clone()
-        wining_targets = torch.argmax(logits, dim=1)
-        logit_winning = logits * F.one_hot(wining_targets, self.num_classes).to(
-            logits.device
-        )
-        other = torch.clamp_min(logits - logit_winning, 0)
-
-        return logit_winning - other
-
-    def __str__(self) -> str:
-        return "winingclass"
-
-
-class WinningClassOneHotEvidence(LogitModifier):
-    def __init__(self, num_classes: int) -> None:
-        self.num_classes = num_classes
-
-    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        logits = logits.clone()
-        wining_targets = torch.argmax(logits, dim=1)
-        return F.one_hot(wining_targets, self.num_classes).to(logits.device)
-
-    def __str__(self) -> str:
-        return "winingclass-onehot"
-
-
-class WinningClassInvLogitEvidence(LogitModifier):
-    def __init__(self, num_classes: int) -> None:
-        self.num_classes = num_classes
-
-    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        logits = logits.clone()
-        wining_targets = torch.argmax(logits, dim=1)
-        return (1 / logits**2) * F.one_hot(wining_targets, self.num_classes).to(
-            logits.device
-        )
-
-    def __str__(self) -> str:
-        return "winingclass-invlogit"
-
-
-class ZeroEvidence(LogitModifier):
-    def __init__(self, num_classes: int) -> None:
-        self.num_classes = num_classes
-
-    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        logits = logits.clone()
-        return torch.zeros_like(logits).to(logits.device)
-
-    def __str__(self) -> str:
-        return "zeroevidence"
-
-
-class DifferenceTop2WinningClassesEvidence(LogitModifier):
-    def __init__(self, num_classes: int) -> None:
-        self.num_classes = num_classes
-
-    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        logits = logits.clone()
-        # find the label of two winning classes
-        _, indices = torch.topk(logits, dim=1, k=2)
-        return logits * F.one_hot(indices[:, 0], self.num_classes) - logits * F.one_hot(
-            indices[:, 1], self.num_classes
-        )
-
-    def __str__(self) -> str:
-        return "contrasttop2"
-
-
-class OneClassLogSumExpEvidence(LogitModifier):
-    def __init__(self, dataset: datasets.DatasetConfiguration) -> None:
-        self.dataset = dataset
-
-    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        logits = logits.clone()
-        logexp = torch.logsumexp(
-            logits[:, self.dataset.selected_classes], dim=1, keepdim=True
-        )
-        return (logits - logexp) * F.one_hot(targets, self.dataset.num_classes).to(
-            logits.device
-        )
-
-    def __str__(self) -> str:
-        return "oneclasslogsum"
-
-
-class SelectedClassesEvidence(LogitModifier):
-    def __init__(self, selected_classes=typing.List[int]) -> None:
-        self.selected_classes = selected_classes
-
-    def __call__(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        output = torch.zeros_like(logits)
-        output[:, self.selected_classes] = logits[:, self.selected_classes]
-
-        return output
-
-    def __str__(self) -> str:
-        return "selectedclasses"
-
-
-class LogOddEvidence(LogitModifier):
-    def __init__(
-        self,
-        classes: typing.Tuple[int, int],
-    ) -> None:
-        assert len(classes) == 2
-
-        self.classes = classes
-
-    def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor:
-        output = torch.zeros_like(logits)
-        # todo: this that assinging with targets has no effect
-        output[:, self.classes[0]] = logits[:, self.classes[0]]
-        output[:, self.classes[1]] = -logits[:, self.classes[1]]
-
-        return output
-
-    def __str__(self) -> str:
-        return "logodd"
-
-
-class BinaryLogOddWinning(LogitModifier):
-    def __init__(
-        self,
-        threshold: float,
-    ) -> None:
-        self.threshold = threshold
-
-    def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor:
-        (n,) = logits.shape
-
-        assert len(logits.shape) == 1
-
-        return torch.abs(logits - self.threshold)
-
-    def __str__(self) -> str:
-        return f"binary-winning-logodd-{self.threshold}"
 
 
 def extract_activation_context(
@@ -347,7 +159,7 @@ def extract_activation_grad(
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
             model, layer, should_retain_grad=True, detach_output=False
         )
-
+        # todo: is the order between hook and forward matter?
         for batch in tqdm(dataloader, desc=f"extract act-grad at layer={layer}"):
             x, y = batch
             x = x.to(device)
