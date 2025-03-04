@@ -755,12 +755,13 @@ class AddBias(nn.Module):
     def __init__(self, d: int):
         super().__init__()
         self.bias = nn.Parameter(torch.zeros(d).reshape(1, d, 1, 1))
+        self.scaling = nn.Parameter(torch.tensor(1.0))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x + self.bias
+        return self.scaling * x + self.bias
 
 
-@register_layer_policy("basis-with-bias")
+@register_layer_policy("basis-with-bias-and-scale")
 class OrthogonalBasisIdentityPolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
