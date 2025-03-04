@@ -402,7 +402,7 @@ def main(
     last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
 
     print(
-        f"Result: [distill with:  `{layer_policy}`] acc={last_epoch_val_auroc:.4f} agreement={last_epoch_val_agreement:.4f}"
+        f"Result: [distill with:  `{layer_policy}`] auroc={last_epoch_val_auroc:.4f} agreement={last_epoch_val_agreement:.4f}"
     )
 
     for k, v in results.items():
