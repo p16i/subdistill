@@ -754,7 +754,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
 class AddBias(nn.Module):
     def __init__(self, d: int):
         super().__init__()
-        self.bias = nn.Parameter(torch.zeros(d))
+        self.bias = nn.Parameter(torch.zeros(d).reshape(1, d))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x + self.bias
