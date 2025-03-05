@@ -265,6 +265,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             metric = self.metric[slug]
             value = metric.compute()
+
+            if suffix == "auroc":
+                value = np.max([value, 1 - value])
+
             metric.reset()
 
             if not self.trainer.sanity_checking:
