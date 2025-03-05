@@ -14,10 +14,6 @@ from copy import deepcopy
 
 from xaikd import utils, datasets, constants
 
-DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
-    datasets.constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
-)
-
 
 @pytest.mark.parametrize(
     "name",
@@ -67,9 +63,9 @@ def test_original_dataset():
 def test_cifar100_superclass(superclass):
     dataset = datasets.construct(f"cifar100-{superclass}")
 
-    df = DF_CIFAR100_LABEL_MAPPING
-
-    fine_labels = df[df.coarse_label_name == superclass].fine_label.values.tolist()
+    fine_labels = datasets.cifar100.get_fineclass_names_indices_of_superclass(
+        superclass
+    )
 
     assert tuple(sorted(dataset.selected_classes)) == tuple(sorted(fine_labels))
 
@@ -86,10 +82,8 @@ def test_cifar100_superclass(superclass):
 def test_cifar100_superclass_transform_target(superclass):
     ds = datasets.construct(f"cifar100-{superclass}")
 
-    df = DF_CIFAR100_LABEL_MAPPING
-
-    fine_labels = sorted(
-        df[df.coarse_label_name == superclass].fine_label.values.tolist()
+    fine_labels = datasets.cifar100.get_fineclass_names_indices_of_superclass(
+        superclass
     )
 
     dl_val = datasets.build_dataloader(
