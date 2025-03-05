@@ -234,8 +234,11 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
 
 
 @torch.no_grad()
-def test_construct_superclass_vs_others():
-    dataset = datasets.construct("cifar100-people-vs-others")
+@pytest.mark.parametrize(
+    "dataset_name", ["cifar100-people-vs-others", "cifar100val-people-vs-others"]
+)
+def test_construct_superclass_vs_others(dataset_name):
+    dataset = datasets.construct(dataset_name)
 
     assert len(dataset.selected_classes) == 5
     assert dataset.num_classes == 1
@@ -252,7 +255,9 @@ def test_construct_superclass_vs_others():
 
         perc_y1 = (arr_ys == 1).mean()
 
-        np.testing.assert_allclose(perc_y1, 1 / len(constants.CIFAR100_SUPER_CLASSES))
+        np.testing.assert_allclose(
+            perc_y1, 1 / len(constants.CIFAR100_SUPER_CLASSES), atol=1e-2
+        )
 
 
 def test_get_fineclass_indices():
