@@ -32,7 +32,7 @@ def test_original_dataset():
     expected_ds = ImageNet(
         root=str(datasets.DATADIR / "imagenet"),
         transform=dataset.input_transformation,
-        train=train_split,
+        split="train" if train_split else "val",
     )
 
     np.testing.assert_equal(len(actual_ds), len(expected_ds))
@@ -43,7 +43,6 @@ def test_original_dataset():
     ):
         np.testing.assert_allclose(actual_x, expected_x)
         np.testing.assert_allclose(actual_y, expected_y)
-
 
         break
 
