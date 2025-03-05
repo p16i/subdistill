@@ -23,25 +23,29 @@ from xaikd.utils import spurious_feature_generator
 from ..register import add_dataset_to_registry
 
 from . import IMAGENET_SUPERCLASS_MAPPING
-from .original import ImageNet
+from .original import ImageNetBase
 
 
-class ImageNetSuperClass(ImageNet):
-    def __init__(self, selected_classes: typing.List[int]):
+class ImageNetSuperClass(ImageNetBase):
+
+    def __init__(
+        self,
+        superclass: str,
+    ):
         super().__init__()
 
+        self._superclass = superclass
+
         # remark: the targets are defined in the ImageNet dataset.
-        self.selected_classes = selected_classes
+        self._selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
 
         self._target_mapping = dict(
             zip(self.selected_classes, range(len(self.selected_classes)))
         )
 
-        self.num_classes = len(self.selected_classes)
-
-    def create_subset(self, train_split=False) -> Dataset:
+    def create_subset(self, train_split: bool):
         ds = super().create_subset(
-            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
+            train_split=train_split,
         )
 
         indices = np.argwhere(np.isin(ds.targets, self.selected_classes)).reshape(-1)
@@ -64,6 +68,21 @@ class ImageNetSuperClass(ImageNet):
         ds.targets = selected_targets
 
         return ds
+
+    @property
+    def selected_classes(self):
+        return self._selected_classes
+
+    @property
+    def num_classes(self):
+        return len(self.selected_classes)
+
+    @property
+    def target_transform(self):
+        def transform(target):
+            return self._target_mapping[target]
+
+        return transform
 
 
 class TorchVisionDatasetImageNetWithSpuriousFeature(tvd.ImageNet):
@@ -103,166 +122,170 @@ class TorchVisionDatasetImageNetWithSpuriousFeature(tvd.ImageNet):
         return sample, target
 
 
-class TorchVisionDatasetImageNetWithCopyrightTag(
-    TorchVisionDatasetImageNetWithSpuriousFeature
-):
-    victim_indices: typing.List[int]
+# class TorchVisionDatasetImageNetWithCopyrightTag(
+#     TorchVisionDatasetImageNetWithSpuriousFeature
+# ):
+#     victim_indices: typing.List[int]
 
-    slug = "spurious-copyright"
+#     slug = "spurious-copyright"
 
-    copyright = default_loader(
-        str(
-            Path(os.path.dirname(constants.PACKAGE_DIR))
-            / "resources"
-            / "copyright"
-            / "1.png"
-        )
-    )
+#     copyright = default_loader(
+#         str(
+#             Path(os.path.dirname(constants.PACKAGE_DIR))
+#             / "resources"
+#             / "copyright"
+#             / "1.png"
+#         )
+#     )
 
-    def modify_sample(
-        self, sample: spurious_feature_generator.TypeImage
-    ) -> spurious_feature_generator.TypeImage:
-        return spurious_feature_generator.imagenet_copyright(sample, self.copyright)
-
-
-class TorchVisionDatasetImageNetWithWatermark(
-    TorchVisionDatasetImageNetWithSpuriousFeature
-):
-    victim_indices: typing.List[int]
-
-    slug = "spurious-watermark"
-
-    def modify_sample(
-        self, sample: spurious_feature_generator.TypeImage
-    ) -> spurious_feature_generator.TypeImage:
-        return spurious_feature_generator.imagenet_center_watermark(sample)
+#     def modify_sample(
+#         self, sample: spurious_feature_generator.TypeImage
+#     ) -> spurious_feature_generator.TypeImage:
+#         return spurious_feature_generator.imagenet_copyright(sample, self.copyright)
 
 
-class TorchVisionDatasetImageNetWithJPEGArtifact(
-    TorchVisionDatasetImageNetWithSpuriousFeature
-):
-    victim_indices: typing.List[int]
+# class TorchVisionDatasetImageNetWithWatermark(
+#     TorchVisionDatasetImageNetWithSpuriousFeature
+# ):
+#     victim_indices: typing.List[int]
 
-    slug = "spurious-jpeg"
+#     slug = "spurious-watermark"
 
-    def modify_sample(
-        self, sample: spurious_feature_generator.TypeImage
-    ) -> spurious_feature_generator.TypeImage:
-        return spurious_feature_generator.jpeg_artifact(sample)
-
-
-class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
-
-    def __init__(
-        self,
-        selected_classes: typing.List[int],
-        contamination_level: float,
-        victim_class: int,
-        dataclass: typing.Type[tvd.ImageNet],
-    ):
-        super().__init__(selected_classes=selected_classes)
-
-        self.contamination_level = contamination_level
-
-        self.dataclass = dataclass
-        self.victim_class = victim_class
-
-    def create_subset(self, train_split=False) -> Dataset:
-        ds = super().create_subset(train_split)
-
-        ds: TorchVisionDatasetImageNetWithCopyrightTag
-
-        rng = np.random.default_rng(seed=1)
-
-        n = len(ds.targets)
-
-        if train_split:
-            victim_class = self.victim_class
-            # for `training` set,  we are only interested in only a class
-            indices = (
-                np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
-            )
-        else:
-            # for `validation` set,  samples from all classes have the same
-            # likelihood of having the spurious feature.
-            indices = list(range(n))
-
-        total = int(np.floor(len(indices) * self.contamination_level))
-
-        ds.victim_indices = rng.permutation(indices)[:total]
-
-        return ds
+#     def modify_sample(
+#         self, sample: spurious_feature_generator.TypeImage
+#     ) -> spurious_feature_generator.TypeImage:
+#         return spurious_feature_generator.imagenet_center_watermark(sample)
 
 
-class ImageNetSuperclasssValSplitWithSpurriousFeature(ImageNetSuperClass):
-    seed = 1
+# class TorchVisionDatasetImageNetWithJPEGArtifact(
+#     TorchVisionDatasetImageNetWithSpuriousFeature
+# ):
+#     victim_indices: typing.List[int]
 
-    def __init__(
-        self,
-        selected_classes: typing.List[int],
-        contamination_level: float,
-        dataclass: typing.Type[tvd.ImageNet],
-    ):
-        super().__init__(selected_classes=selected_classes)
+#     slug = "spurious-jpeg"
 
-        self.contamination_level = contamination_level
+#     def modify_sample(
+#         self, sample: spurious_feature_generator.TypeImage
+#     ) -> spurious_feature_generator.TypeImage:
+#         return spurious_feature_generator.jpeg_artifact(sample)
 
-        self.dataclass = dataclass
 
-    def create_subset(self, train_split=False) -> Dataset:
-        trng = torch.Generator()
-        trng.manual_seed(self.seed)
+# class ImageNetSuperclasssWithSpurriousFeature(ImageNetSuperClass):
 
-        # always use training set
-        ds = super().create_subset(train_split=True)
+#     def __init__(
+#         self,
+#         superclass: str,
+#         contamination_level: float,
+#         victim_class: int,
+#         dataclass: typing.Type[tvd.ImageNet],
+#     ):
+#         super().__init__(superclass=superclass)
 
-        ds: TorchVisionDatasetImageNetWithCopyrightTag
+#         self.contamination_level = contamination_level
 
-        subsets = random_split(
-            # if `use-val-split=True, both training and testing sets
-            # come from the training set.
-            ds,
-            [0.8, 0.2],
-            generator=trng,
-        )
+#         self._dataclass = dataclass
+#         self.victim_class = victim_class
 
-        rng = np.random.default_rng(seed=1)
+#     @property
+#     def dataclass(self):
+#         return self._dataclass
 
-        selected_subset = subsets[0] if train_split else subsets[1]
+#     def create_subset(self, train_split=False):
+#         ds = super().create_subset(train_split)
 
-        subset_data_indices = selected_subset.indices
+#         # ds: TorchVisionDatasetImageNetWithCopyrightTag
 
-        arr_samples = []
-        arr_targets = []
+#         rng = np.random.default_rng(seed=1)
 
-        for ix in tqdm(
-            subset_data_indices,
-            desc=f"Subseting train data (train_split={train_split}) or `{self.__class__.__name__}[{self.selected_classes}]` samples",
-        ):
-            arr_samples.append(ds.samples[ix])
-            arr_targets.append(ds.targets[ix])
+#         n = len(ds.targets)
 
-        # here, we override the original data
-        ds.samples = arr_samples
-        ds.imgs = arr_samples
-        ds.targets = arr_targets
+#         if train_split:
+#             victim_class = self.victim_class
+#             # for `training` set,  we are only interested in only a class
+#             indices = (
+#                 np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
+#             )
+#         else:
+#             # for `validation` set,  samples from all classes have the same
+#             # likelihood of having the spurious feature.
+#             indices = list(range(n))
 
-        if train_split:
-            victim_class = np.min(self.selected_classes)
-            # for `training` set,  we are only interested in only a class
-            indices = (
-                np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
-            )
-        else:
-            # for `validation` set,  samples from all classes have the same
-            # likelihood of having the spurious feature.
-            indices = list(range(len(ds.targets)))
+#         total = int(np.floor(len(indices) * self.contamination_level))
 
-        total = int(np.floor(len(indices) * self.contamination_level))
+#         ds.victim_indices = rng.permutation(indices)[:total]
 
-        ds.victim_indices = rng.permutation(indices)[:total]
+#         return ds
 
-        return ds
+
+# class ImageNetSuperclasssValSplitWithSpurriousFeature(ImageNetSuperClass):
+#     seed = 1
+
+#     def __init__(
+#         self,
+#         selected_classes: typing.List[int],
+#         contamination_level: float,
+#         dataclass: typing.Type[tvd.ImageNet],
+#     ):
+#         super().__init__(selected_classes=selected_classes)
+
+#         self.contamination_level = contamination_level
+
+#         self.dataclass = dataclass
+
+#     def create_subset(self, train_split=False) -> Dataset:
+#         trng = torch.Generator()
+#         trng.manual_seed(self.seed)
+
+#         # always use training set
+#         ds = super().create_subset(train_split=True)
+
+#         ds: TorchVisionDatasetImageNetWithCopyrightTag
+
+#         subsets = random_split(
+#             # if `use-val-split=True, both training and testing sets
+#             # come from the training set.
+#             ds,
+#             [0.8, 0.2],
+#             generator=trng,
+#         )
+
+#         rng = np.random.default_rng(seed=1)
+
+#         selected_subset = subsets[0] if train_split else subsets[1]
+
+#         subset_data_indices = selected_subset.indices
+
+#         arr_samples = []
+#         arr_targets = []
+
+#         for ix in tqdm(
+#             subset_data_indices,
+#             desc=f"Subseting train data (train_split={train_split}) or `{self.__class__.__name__}[{self.selected_classes}]` samples",
+#         ):
+#             arr_samples.append(ds.samples[ix])
+#             arr_targets.append(ds.targets[ix])
+
+#         # here, we override the original data
+#         ds.samples = arr_samples
+#         ds.imgs = arr_samples
+#         ds.targets = arr_targets
+
+#         if train_split:
+#             victim_class = np.min(self.selected_classes)
+#             # for `training` set,  we are only interested in only a class
+#             indices = (
+#                 np.argwhere(np.array(ds.targets) == victim_class).reshape(-1).tolist()
+#             )
+#         else:
+#             # for `validation` set,  samples from all classes have the same
+#             # likelihood of having the spurious feature.
+#             indices = list(range(len(ds.targets)))
+
+#         total = int(np.floor(len(indices) * self.contamination_level))
+
+#         ds.victim_indices = rng.permutation(indices)[:total]
+
+#         return ds
 
 
 class TorchVisionDatasetImageNetWithThreeSpuriousFeatures(tvd.ImageNet):
@@ -311,24 +334,28 @@ class ImageNetSuperclassWithThreeSpuriousFeatures(ImageNetSuperClass):
 
     def __init__(
         self,
-        selected_classes: typing.List[int],
+        superclass: str,
         contamination_level: float,
     ):
-        super().__init__(selected_classes=selected_classes)
+        super().__init__(superclass)
 
         assert 0 <= contamination_level <= 1.0
 
         self.contamination_level = contamination_level
 
-        self.dataclass = TorchVisionDatasetImageNetWithThreeSpuriousFeatures
+    @property
+    def dataclass(self):
+        return TorchVisionDatasetImageNetWithThreeSpuriousFeatures
 
     def _construct_dataset(
         self, train_split: bool
     ) -> TorchVisionDatasetImageNetWithThreeSpuriousFeatures:
         return super().create_subset(train_split)
 
-    def create_subset(self, train_split=False) -> Dataset:
+    def create_subset(self, train_split: bool):
         ds = self._construct_dataset(train_split=train_split)
+
+        assert isinstance(ds, TorchVisionDatasetImageNetWithThreeSpuriousFeatures)
 
         rng = np.random.default_rng(seed=1)
 
@@ -401,7 +428,10 @@ class ImageNetSuperclassValSplitWithThreeSpuriousFeatures(
             # if `use-val-split=True, both training and testing sets
             # come from the training set.
             ds,
-            [0.8, 0.2],
+            [
+                constants.TRAINING_VAL_SPLIT_RATIO,
+                1 - constants.TRAINING_VAL_SPLIT_RATIO,
+            ],
             generator=trng,
         )
 
@@ -427,60 +457,16 @@ class ImageNetSuperclassValSplitWithThreeSpuriousFeatures(
         return ds
 
 
-class ImageNetSuperclassVsOthers(ImageNet):
-    def __init__(self, super_class: str):
-        super().__init__()
-
-        self.selected_classes = IMAGENET_SUPERCLASS_MAPPING[super_class]
-        self.num_classes = 1
-
-    def transform_target(self, target: int) -> int:
-        if target in self.selected_classes:
-            return 1
-        else:
-            return 0
-
-    def create_subset(
-        self,
-        train_split=False,
-        target_transform: typing.Union[None, typing.Callable] = None,
-    ) -> Dataset:
-
-        return super().create_subset(
-            train_split=train_split, target_transform=self.transform_target
-        )
-
-
 def ano():
     # construct watermark only
     for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
         slug = f"imagenet-{superclass}"
-        selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
         add_dataset_to_registry(
-            slug, partial(ImageNetSuperClass, selected_classes=selected_classes)
+            slug, partial(ImageNetSuperClass, superclass=superclass)
         )
-
-        dataclass = TorchVisionDatasetImageNetWithWatermark
-
-        for ix, victim_class in enumerate(selected_classes):
-            for contamination_level in [0.125, 0.25, 0.5, 1.0]:
-                sslug = "--".join(
-                    [slug, f"{dataclass.slug}C{ix}", f"{contamination_level}"]
-                )
-                add_dataset_to_registry(
-                    sslug,
-                    partial(
-                        ImageNetSuperclasssWithSpurriousFeature,
-                        contamination_level=contamination_level,
-                        selected_classes=selected_classes,
-                        dataclass=dataclass,
-                        victim_class=victim_class,
-                    ),
-                )
 
     # construct threespurious
     for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
-        selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
 
         for slug, arr_contamination_levels, dataset_class in [
             (
@@ -508,7 +494,7 @@ def ano():
                     partial(
                         dataset_class,
                         contamination_level=contamination_level,
-                        selected_classes=selected_classes,
+                        superclass=superclass,
                     ),
                 )
 

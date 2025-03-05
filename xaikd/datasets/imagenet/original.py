@@ -1,8 +1,6 @@
 import typing
 import numpy as np
 
-from torch.utils.data import Dataset
-
 from torchvision import transforms
 from torchvision import datasets as tvd
 
@@ -15,25 +13,16 @@ from .. import DATADIR, DatasetConfiguration
 DEFAULT_TRANSFORMATION = ResNet18_Weights.IMAGENET1K_V1.transforms()
 
 
-@register_dataset("imagenet")
-class ImageNet(DatasetConfiguration):
-    selected_classes = list(range(1000))
-
-    def __init__(self):
-        # remark: we need to set this manually.
-        self.num_classes = 1000
-
-        self._normalizer = transforms.Normalize(
-            # ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L44
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225],
-        )
-
+class ImageNetBase(DatasetConfiguration):
+    @property
+    def input_transformation(self):
         # ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L38
-        self.input_transformation = DEFAULT_TRANSFORMATION
+        return DEFAULT_TRANSFORMATION
 
+    @property
+    def input_training_transformation(self):
         # ref: https://github.com/pytorch/examples/blob/main/imagenet/main.py#L238
-        self.input_training_transformation = transforms.Compose(
+        return transforms.Compose(
             [
                 transforms.RandomResizedCrop(224),
                 transforms.RandomHorizontalFlip(),
@@ -42,24 +31,54 @@ class ImageNet(DatasetConfiguration):
             ]
         )
 
+    @property
+    def _normalizer(self) -> transforms.Normalize:
+        # ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L44
+        return transforms.Normalize(
+            # ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L44
+            mean=[0.485, 0.456, 0.406],
+            std=[0.229, 0.224, 0.225],
+        )
+
+    def create_subset(
+        self,
+        train_split: bool,
+    ) -> tvd.ImageNet:
+        return self.dataclass(
+            root=str(DATADIR / "imagenet"),
+            split="train" if train_split else "val",
+            transform=self.input_transformation,
+            target_transform=self.target_transform,
+        )
+
+    @property
+    def dataclass(self):
+        return tvd.ImageNet
+
+
+@register_dataset("imagenet")
+class ImageNet(ImageNetBase):
+
+    def __init__(self):
         np.testing.assert_allclose(
             self.input_transformation.mean, self._normalizer.mean
         )
 
-        self.dataclass = tvd.ImageNet
-        self.root = DATADIR / "imagenet"
-
-    def create_subset(
-        self,
-        train_split=False,
-        target_transform: typing.Union[None, typing.Callable] = None,
-    ) -> Dataset:
-        return self.dataclass(
-            root=self.root,
-            split="train" if train_split else "val",
-            transform=self.input_transformation,
-            target_transform=target_transform,
-        )
-
     def transform_target(self, target: int) -> int:
         return target
+
+    @property
+    def selected_classes(self) -> typing.List[int]:
+        return list(range(1000))
+
+    @property
+    def num_classes(self):
+        return 1000
+
+    @property
+    def name(self) -> str:
+        return "imagenet"
+
+    @property
+    def target_transform(self):
+        return None

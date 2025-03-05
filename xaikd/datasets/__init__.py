@@ -88,7 +88,7 @@ class DatasetConfiguration(ABC):
     # data_dir = DATADIR
 
     @abstractmethod
-    def create_subset(self, train_split=False) -> Dataset:
+    def create_subset(self, train_split: bool) -> Dataset:
         pass
 
     @property
@@ -117,8 +117,15 @@ class DatasetConfiguration(ABC):
         pass
 
     @property
-    @abstractmethod
     def name(self) -> str:
+        # this is during the construction
+        assert hasattr(self, "__name")
+
+        return getattr(self, "__name")
+
+    @property
+    @abstractmethod
+    def dataclass(self) -> typing.Type[Dataset]:
         pass
 
     @property
