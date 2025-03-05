@@ -22,7 +22,8 @@ from tqdm import tqdm
 from xaikd import constants, utils
 from xaikd.utils import spurious_feature_generator
 
-from . import DATASETS, DATADIR, register_dataset, DatasetConfiguration
+from .register import register_dataset, add_dataset_to_registry
+from . import DATADIR, DatasetConfiguration
 
 DEFAULT_TRANSFORMATION = ResNet18_Weights.IMAGENET1K_V1.transforms()
 
@@ -547,11 +548,15 @@ def ano():
     for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
         slug = f"imagenet-{superclass}"
         selected_classes = IMAGENET_SUPERCLASS_MAPPING[superclass]
-        DATASETS[slug] = partial(ImageNetSuperClass, selected_classes=selected_classes)
+        add_dataset_to_registry(
+            slug, partial(ImageNetSuperClass, selected_classes=selected_classes)
+        )
 
         sslug = f"imagenet-{superclass}-vs-others"
 
-        DATASETS[sslug] = partial(ImageNetSuperclassVsOthers, super_class=superclass)
+        add_dataset_to_registry(
+            sslug, partial(ImageNetSuperclassVsOthers, super_class=superclass)
+        )
 
         dataclass = TorchVisionDatasetImageNetWithWatermark
 
@@ -560,12 +565,15 @@ def ano():
                 sslug = "--".join(
                     [slug, f"{dataclass.slug}C{ix}", f"{contamination_level}"]
                 )
-                DATASETS[sslug] = partial(
-                    ImageNetSuperclasssWithSpurriousFeature,
-                    contamination_level=contamination_level,
-                    selected_classes=selected_classes,
-                    dataclass=dataclass,
-                    victim_class=victim_class,
+                add_dataset_to_registry(
+                    sslug,
+                    partial(
+                        ImageNetSuperclasssWithSpurriousFeature,
+                        contamination_level=contamination_level,
+                        selected_classes=selected_classes,
+                        dataclass=dataclass,
+                        victim_class=victim_class,
+                    ),
                 )
 
     # construct threespurious
@@ -593,10 +601,13 @@ def ano():
                         f"{contamination_level}",
                     ]
                 )
-                DATASETS[sslug] = partial(
-                    dataset_class,
-                    contamination_level=contamination_level,
-                    selected_classes=selected_classes,
+                add_dataset_to_registry(
+                    sslug,
+                    partial(
+                        dataset_class,
+                        contamination_level=contamination_level,
+                        selected_classes=selected_classes,
+                    ),
                 )
 
 

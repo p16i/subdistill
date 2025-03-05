@@ -19,7 +19,15 @@ DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
 )
 
 
-@pytest.mark.parametrize("name", ["cifar100", "cifar100-people", "imagenet"])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "cifar100",
+        "cifar100-people",
+        # todo: the imagenet parameter should be with dataset_imagenet
+        "imagenet",
+    ],
+)
 def test_construct_dataset(name):
     dataset = datasets.construct(name)
 

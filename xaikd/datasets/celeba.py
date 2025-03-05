@@ -17,7 +17,8 @@ from torchvision import datasets as tvd
 from torchvision.models import ResNet18_Weights
 
 
-from . import DATADIR, DatasetConfiguration, register_dataset, DATASETS
+from .register import register_dataset, add_dataset_to_registry
+from . import DATADIR, DatasetConfiguration
 
 
 CELEBA_NUM_ATTRIBUTES = 40
@@ -104,7 +105,9 @@ class CelebAAttribute(CelebA):
 
 def _register_celeba_attributes():
     for attr_ix in range(CELEBA_NUM_ATTRIBUTES):
-        DATASETS[f"celeba-attr{attr_ix}"] = partial(CelebAAttribute, attr_ix=attr_ix)
+        add_dataset_to_registry(
+            f"celeba-attr{attr_ix}", partial(CelebAAttribute, attr_ix=attr_ix)
+        )
 
 
 _register_celeba_attributes()

@@ -31,26 +31,12 @@ from .multitask_mnist_fmnist import (
     MultiTaskEMNISTFashionMNIST,
 )
 
-# todo: write a function that add class to this dict with a pre-step that check name collistion
-DATASETS = dict()
 
 DATADIR = Path(os.getenv("DATASET_ROOT", "./datasets"))
 TORCHVISION_DATASET_DOWNLOAD = int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0"))
 
 if TORCHVISION_DATASET_DOWNLOAD:
     print(f"[warning!] TORCHVISION_DATASET_DOWNLOAD={TORCHVISION_DATASET_DOWNLOAD}")
-
-
-def register_dataset(name):
-    """Decorator to register a data modality provider."""
-
-    def wrapped(cls):
-        """Wrapped function to register a data modality provider with name `name`"""
-        DATASETS[name] = cls
-
-        return cls
-
-    return wrapped
 
 
 def build_dataloader(
@@ -115,13 +101,5 @@ class DatasetConfiguration(ABC):
         return getattr(self, "__name")
 
 
-def construct(name: str) -> DatasetConfiguration:
-    assert name in DATASETS, f"dataset={name} does not exist!"
-
-    dataset = DATASETS[name]()
-    setattr(dataset, "__name", name)
-
-    return dataset
-
-
+from .register import construct
 from . import cifar100, imagenet, celeba
