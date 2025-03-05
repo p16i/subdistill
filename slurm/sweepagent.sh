@@ -3,7 +3,7 @@
 #SBATCH --mem=128GB
 #SBATCH --cpus-per-task=12
 #SBATCH --gpus=1
-#SBATCH --constraint=40gb
+##SBATCH --constraint=40gb
 #SBATCH -o ./logs/array/%A_%a.out
 #SBATCH --mail-type=FAIL,END
 #SBATCH --mail-user=p.chormai@tu-berlin.de

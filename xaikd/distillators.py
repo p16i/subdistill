@@ -274,18 +274,19 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")
 
-        for layer, policy in zip(
-            self.layer_policy_collection.student_layers,
-            self.layer_policy_collection.policies,
-        ):
-            if (
-                hasattr(policy.transformer_student_feats, "weight")
-                and policy.transformer_student_feats.weight is not None
-            ):
-                W = policy.transformer_student_feats.weight
-                slug = f"student-transform-norm--{layer}"
+        # todo: check whether we still need to log this
+        # for layer, policy in zip(
+        #     self.layer_policy_collection.student_layers,
+        #     self.layer_policy_collection.policies,
+        # ):
+        #     if (
+        #         hasattr(policy.transformer_student_feats, "weight")
+        #         and policy.transformer_student_feats.weight is not None
+        #     ):
+        #         W = policy.transformer_student_feats.weight
+        #         slug = f"student-transform-norm--{layer}"
 
-                self.log(slug, torch.linalg.matrix_norm(W.squeeze()))
+        #         self.log(slug, torch.linalg.matrix_norm(W.squeeze()))
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")
