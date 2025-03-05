@@ -362,6 +362,8 @@ def test_construct_valsplit_superclass_vs_others(train_split):
 
     ds = dataset.create_subset(train_split=train_split)
 
+    assert ds.split == "train"
+
     actual = len(ds) / total
     if train_split:
         expected = constants.TRAINING_VAL_SPLIT_RATIO

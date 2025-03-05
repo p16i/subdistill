@@ -286,6 +286,9 @@ def test_construct_superclass_vs_others(dataset_name):
     for train_split in [True, False]:
         ds = dataset.create_subset(train_split=train_split)
 
+        if "valsplit" in dataset_name:
+            assert ds.train 
+
         arr_ys = []
         dl = datasets.build_dataloader(dataset=ds, shuffle=False)
         for _, y in dl:
