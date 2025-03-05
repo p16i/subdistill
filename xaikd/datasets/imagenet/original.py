@@ -76,9 +76,5 @@ class ImageNet(ImageNetBase):
         return 1000
 
     @property
-    def name(self) -> str:
-        return "imagenet"
-
-    @property
     def target_transform(self):
         return None
