@@ -56,7 +56,7 @@ class CIFAR100SuperclassVsOthers(CIFAR100Base):
 class CIFAR100ValSplitSuperclassVsOthers(CIFAR100SuperclassVsOthers):
     seed = 1
 
-    def create_subset(self, train_split=False, target_transform=None) -> Dataset:
+    def create_subset(self, train_split=False, target_transform=None):
         trng = torch.Generator()
         trng.manual_seed(self.seed)
 
@@ -106,7 +106,7 @@ def construct_variant_datasets():
         )
 
         add_dataset_to_registry(
-            f"cifar100val-{superclass}-vs-others",
+            f"cifar100-valsplit-{superclass}-vs-others",
             partial(CIFAR100ValSplitSuperclassVsOthers, superclass=superclass),
         )
 

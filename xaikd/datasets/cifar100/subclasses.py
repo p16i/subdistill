@@ -111,8 +111,6 @@ class Cifar100SuperClassesDataset(CIFAR100Base):
 
         # remark: the targets here are still in the old system.
         # They will be converted to the new zero-indexing with target_transforms.
-        # todo: add test
-        #   comparing naive cifar100 and this dataset should have the same val
         ds.targets = targets
 
         return ds

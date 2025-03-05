@@ -35,36 +35,61 @@ def test_construct_dataset(name):
     assert True
 
 
-@pytest.mark.parametrize(
-    "super_class", DF_CIFAR100_LABEL_MAPPING["coarse_label_name"].unique().tolist()
-)
-def test_cifar100_superclass(super_class):
-    ds: datasets.Cifar100SuperClassesDataset = datasets.construct(
-        f"cifar100-{super_class}"
+@pytest.mark.slow()
+def test_original_dataset():
+    train_split = False
+    dataset = datasets.construct("cifar100")
+
+    actual_ds = dataset.create_subset(train_split=train_split)
+
+    assert isinstance(actual_ds, CIFAR100)
+
+    expected_ds = CIFAR100(
+        root=str(datasets.DATADIR / "cifar100"),
+        transform=dataset.input_transformation,
+        train=train_split,
     )
+
+    np.testing.assert_equal(len(actual_ds), len(expected_ds))
+
+    for (actual_x, actual_y), (expected_x, expected_y) in zip(
+        datasets.build_dataloader(actual_ds, shuffle=False),
+        datasets.build_dataloader(expected_ds, shuffle=False),
+    ):
+        np.testing.assert_allclose(actual_x, expected_x)
+        np.testing.assert_allclose(actual_y, expected_y)
+
+
+@pytest.mark.parametrize(
+    "superclass",
+    ["people", "fish"],
+)
+def test_cifar100_superclass(superclass):
+    dataset = datasets.construct(f"cifar100-{superclass}")
 
     df = DF_CIFAR100_LABEL_MAPPING
 
-    fine_labels = df[df.coarse_label_name == super_class].fine_label.values.tolist()
+    fine_labels = df[df.coarse_label_name == superclass].fine_label.values.tolist()
 
-    assert tuple(sorted(ds.selected_classes)) == tuple(sorted(fine_labels))
+    assert tuple(sorted(dataset.selected_classes)) == tuple(sorted(fine_labels))
 
-    for ix, (_, y) in enumerate(DataLoader(ds.create_subset(train_split=False))):
-        assert (y.numpy() <= ds.num_classes - 1).all()
+    for train_split in [True, False]:
+        ds = dataset.create_subset(train_split=train_split)
+
+        np.testing.assert_equal(len(set(ds.targets).difference(fine_labels)), 0)
+
+        for _, y in DataLoader(ds):
+            assert (y.numpy() <= dataset.num_classes - 1).all()
 
 
-@pytest.mark.parametrize(
-    "super_class", DF_CIFAR100_LABEL_MAPPING["coarse_label_name"].unique().tolist()
-)
-def test_cifar100_superclass_transform_target(super_class):
-    ds: datasets.Cifar100SuperClassesDataset = datasets.construct(
-        f"cifar100-{super_class}"
-    )
+@pytest.mark.parametrize("superclass", ["people", "fish"])
+def test_cifar100_superclass_transform_target(superclass):
+    ds = datasets.construct(f"cifar100-{superclass}")
 
     df = DF_CIFAR100_LABEL_MAPPING
 
     fine_labels = sorted(
-        df[df.coarse_label_name == super_class].fine_label.values.tolist()
+        df[df.coarse_label_name == superclass].fine_label.values.tolist()
     )
 
     dl_val = datasets.build_dataloader(
@@ -237,9 +262,26 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
             assert len(arr_victim_indices) == 0
 
 
+def test_get_fineclass_indices():
+    actual_names, actual_idx = (
+        datasets.cifar100.get_fineclass_names_indices_of_superclass("people")
+    )
+
+    expected_names = [
+        "baby",
+        "boy",
+        "girl",
+        "man",
+        "woman",
+    ]
+    expected_idx = sorted([11, 98, 35, 2, 46])
+    np.testing.assert_equal(actual_idx, expected_idx)
+    np.testing.assert_equal(actual_names, expected_names)
+
+
 @torch.no_grad()
 @pytest.mark.parametrize(
-    "dataset_name", ["cifar100-people-vs-others", "cifar100val-people-vs-others"]
+    "dataset_name", ["cifar100-people-vs-others", "cifar100-valsplit-people-vs-others"]
 )
 def test_construct_superclass_vs_others(dataset_name):
     dataset = datasets.construct(dataset_name)
@@ -262,20 +304,3 @@ def test_construct_superclass_vs_others(dataset_name):
         np.testing.assert_allclose(
             perc_y1, 1 / len(constants.CIFAR100_SUPER_CLASSES), atol=1e-2
         )
-
-
-def test_get_fineclass_indices():
-    actual_names, actual_idx = (
-        datasets.cifar100.get_fineclass_names_indices_of_superclass("people")
-    )
-
-    expected_names = [
-        "baby",
-        "boy",
-        "girl",
-        "man",
-        "woman",
-    ]
-    expected_idx = sorted([11, 98, 35, 2, 46])
-    np.testing.assert_equal(actual_idx, expected_idx)
-    np.testing.assert_equal(actual_names, expected_names)
