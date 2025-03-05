@@ -13,33 +13,47 @@ from xaikd import constants
 from ..register import add_dataset_to_registry
 from . import get_fineclass_names_indices_of_superclass
 
-from .original import CIFAR100
+from .original import CIFAR100Base
 
 
-class CIFAR100SuperclassVsOthers(CIFAR100):
-    def __init__(self, super_class: str):
+class CIFAR100SuperclassVsOthers(CIFAR100Base):
+
+    def __init__(self, superclass: str):
         super().__init__()
-
-        _, self.selected_classes = get_fineclass_names_indices_of_superclass(
-            superclass=super_class
+        self._superclass = superclass
+        _, self._selected_classes = get_fineclass_names_indices_of_superclass(
+            superclass=superclass
         )
 
-        self.num_classes = 1
+    @property
+    def selected_classes(self):
+        return self._selected_classes
 
-    def transform_target(self, target: int) -> int:
-        if target in self.selected_classes:
-            return 1
-        else:
-            return 0
+    @property
+    def num_classes(self):
+        return 1
+
+    @property
+    def target_transform(self):
+        def transform(target):
+            if target in self.selected_classes:
+                return 1
+            else:
+                return 0
+
+        return transform
+
+    @property
+    def name(self):
+        return self._superclass
 
     def create_subset(
         self,
         train_split=False,
-        target_transform: typing.Union[None, typing.Callable] = None,
-    ) -> Dataset:
+    ):
 
         return super().create_subset(
-            train_split=train_split, target_transform=self.transform_target
+            train_split=train_split,
         )
 
 
@@ -50,7 +64,7 @@ class CIFAR100ValSplitSuperclassVsOthers(CIFAR100SuperclassVsOthers):
         trng = torch.Generator()
         trng.manual_seed(self.seed)
 
-        ds: CIFAR100 = super().create_subset(train_split=True)
+        ds = super().create_subset(train_split=True)
         total_size = ds.data.shape[0]
 
         np.testing.assert_allclose(total_size, 500 * 100)
@@ -88,16 +102,16 @@ class CIFAR100ValSplitSuperclassVsOthers(CIFAR100SuperclassVsOthers):
 
 
 def construct_variant_datasets():
-    for super_class in constants.CIFAR100_SUPER_CLASSES:
+    for superclass in constants.CIFAR100_SUPER_CLASSES:
 
         add_dataset_to_registry(
-            f"cifar100-{super_class}-vs-others",
-            partial(CIFAR100SuperclassVsOthers, super_class=super_class),
+            f"cifar100-{superclass}-vs-others",
+            partial(CIFAR100SuperclassVsOthers, superclass=superclass),
         )
 
         add_dataset_to_registry(
-            f"cifar100val-{super_class}-vs-others",
-            partial(CIFAR100ValSplitSuperclassVsOthers, super_class=super_class),
+            f"cifar100val-{superclass}-vs-others",
+            partial(CIFAR100ValSplitSuperclassVsOthers, superclass=superclass),
         )
 
 

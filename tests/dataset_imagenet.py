@@ -11,6 +11,17 @@ from tqdm import tqdm
 
 
 @pytest.mark.parametrize(
+    "name",
+    [
+        "imagenet",
+    ],
+)
+def test_construct_dataset(name):
+    dataset = datasets.construct(name)
+    assert True
+
+
+@pytest.mark.parametrize(
     "dataset_name,expected_class_indices",
     [
         ("imagenet-butterfly", [321, 322, 323, 324, 325, 326]),
