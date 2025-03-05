@@ -1,10 +1,12 @@
 import pytest
 
 import numpy as np
+import torch
+
 
 from torchvision.datasets import ImageNet
 
-from xaikd import datasets
+from xaikd import datasets, constants
 
 
 @pytest.mark.parametrize(

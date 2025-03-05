@@ -56,7 +56,6 @@ class ImageNetBase(DatasetConfiguration):
         return tvd.ImageNet
 
 
-# todo:  check correctness
 @register_dataset("imagenet")
 class ImageNet(ImageNetBase):
 
