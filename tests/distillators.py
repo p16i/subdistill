@@ -125,7 +125,7 @@ def test_distillation_runnable_and_correct(
     before_batch_norm_stats = get_batchnorm_statistics_from_model(teacher_model_before)
 
     distillator = distillators.Layerwise(
-        teacher=teacher_model.train(),
+        teacher=teacher_model,
         dataset=dataset,
         train_dataloader=train_loader,
         val_dataloader=val_loader,
@@ -177,7 +177,7 @@ def test_distillation_runnable_and_correct(
             (distillator.ref_acc, distillator.ref_xent), expected_teacher_acc_xent
         )
 
-        # check teacher parameters not get updated!
+        # ucheck teacher parameters not get updated!
         for before_params, after_params in zip(
             teacher_model_before.parameters(), teacher_model.parameters()
         ):
