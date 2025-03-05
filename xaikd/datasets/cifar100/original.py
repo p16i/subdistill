@@ -38,11 +38,15 @@ class CIFAR100Base(DatasetConfiguration):
             ]
         )
 
+    @property
+    def dataclass(self):
+        return tvd.CIFAR100
+
     def create_subset(
         self,
         train_split=False,
     ) -> tvd.CIFAR100:
-        return tvd.CIFAR100(
+        return self.dataclass(
             root=str(DATADIR / "cifar100"),
             train=train_split,
             transform=self.input_transformation,
@@ -61,10 +65,6 @@ class CIFAR100(CIFAR100Base):
     @property
     def num_classes(self) -> int:
         return 100
-
-    @property
-    def name(self):
-        return "cifar100"
 
     @property
     def target_transform(self) -> typing.Union[None, typing.Callable]:

@@ -43,10 +43,6 @@ class CIFAR100SuperclassVsOthers(CIFAR100Base):
 
         return transform
 
-    @property
-    def name(self):
-        return self._superclass
-
     def create_subset(
         self,
         train_split=False,

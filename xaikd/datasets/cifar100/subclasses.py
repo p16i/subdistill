@@ -93,10 +93,6 @@ class Cifar100SuperClassesDataset(CIFAR100Base):
 
         return _transform
 
-    @property
-    def name(self) -> str:
-        return self._superclass
-
     def create_subset(self, train_split=False):
         ds = super().create_subset(
             train_split=train_split,
