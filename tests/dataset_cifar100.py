@@ -63,7 +63,7 @@ def test_original_dataset():
 def test_cifar100_superclass(superclass):
     dataset = datasets.construct(f"cifar100-{superclass}")
 
-    fine_labels = datasets.cifar100.get_fineclass_names_indices_of_superclass(
+    _, fine_labels = datasets.cifar100.get_fineclass_names_indices_of_superclass(
         superclass
     )
 
@@ -82,7 +82,7 @@ def test_cifar100_superclass(superclass):
 def test_cifar100_superclass_transform_target(superclass):
     ds = datasets.construct(f"cifar100-{superclass}")
 
-    fine_labels = datasets.cifar100.get_fineclass_names_indices_of_superclass(
+    _, fine_labels = datasets.cifar100.get_fineclass_names_indices_of_superclass(
         superclass
     )
 
