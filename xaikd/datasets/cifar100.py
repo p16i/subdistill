@@ -70,7 +70,6 @@ def add_cleverhan_symbol(img, rng: np.random.Generator):
 
 
 @register_dataset("cifar100")
-@dataclass
 class CIFAR100(DatasetConfiguration):
     selected_classes = list(range(100))
 
@@ -117,7 +116,6 @@ class CIFAR100(DatasetConfiguration):
         )
 
 
-@dataclass
 class Cifar100SuperClassesDataset(CIFAR100):
     def __init__(
         self,
@@ -177,7 +175,6 @@ class Cifar100SuperClassesDataset(CIFAR100):
         return ds
 
 
-@dataclass
 class Cifar100SuperClassesWithSpuriousFeatureDataset(Cifar100SuperClassesDataset):
     seed = 1
 
