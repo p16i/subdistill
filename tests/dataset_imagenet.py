@@ -316,8 +316,17 @@ def test_dataset_with_three_spurious_correlations(
 
 @torch.no_grad()
 @pytest.mark.slow()
-def test_construct_superclass_vs_others():
-    dataset = datasets.construct("imagenet-butterfly-vs-others")
+@pytest.mark.parametrize(
+    "dataset_name",
+    [
+        "imagenet-butterfly-vs-others",
+        "imagenet-valsplit-butterfly-vs-others",
+    ],
+)
+def test_construct_superclass_vs_others(dataset_name):
+    dataset = datasets.construct(
+        dataset_name,
+    )
 
     num_classes = len(dataset.selected_classes)
 
@@ -341,3 +350,21 @@ def test_construct_superclass_vs_others():
     perc_y1 = (arr_ys == 1).mean()
 
     np.testing.assert_allclose(perc_y1, 6 / 1000, atol=1e-3)
+
+
+@pytest.mark.parametrize("train_split", [True, False])
+def test_construct_valsplit_superclass_vs_others(train_split):
+    dataset = datasets.construct(
+        "imagenet-valsplit-butterfly-vs-others",
+    )
+
+    total = len(datasets.construct("imagenet").create_subset(train_split=True))
+
+    ds = dataset.create_subset(train_split=train_split)
+
+    actual = len(ds) / total
+    if train_split:
+        expected = constants.TRAINING_VAL_SPLIT_RATIO
+    else:
+        expected = 1 - constants.TRAINING_VAL_SPLIT_RATIO
+    np.testing.assert_allclose(actual, expected, atol=0.01)
