@@ -13,7 +13,6 @@ from torch.utils.data import Dataset, random_split
 
 from torchvision import datasets as tvd
 
-from torchvision.models import ResNet18_Weights
 from torchvision.datasets.folder import default_loader
 
 from tqdm import tqdm
@@ -22,6 +21,7 @@ from xaikd import constants
 from xaikd.utils import spurious_feature_generator
 
 from ..register import add_dataset_to_registry
+
 from . import IMAGENET_SUPERCLASS_MAPPING
 from .original import ImageNet
 
