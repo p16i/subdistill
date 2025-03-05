@@ -189,7 +189,7 @@ def test_distillation_runnable_and_correct(
             device=device,
         )
         np.testing.assert_allclose(
-            (distillator.ref_auroc, distillator.ref_xent), expected_teacher_metric 
+            (distillator.ref_auroc, distillator.ref_xent), expected_teacher_metric
         )
 
         # ucheck teacher parameters not get updated!
@@ -281,7 +281,7 @@ def test_get_parameters(layers, parameter_partition_mode):
     model_training_wrapper = distillators.LayerwiseKDModelWrapper(
         teacher=teacher_model,
         student=student,
-        last_layer_policy="kd",
+        last_layer_policy="binkd",
         layerwise_policies=layer_policy_colleciton,
         lambda_kd=1,
         lambda_layer=1,
