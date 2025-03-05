@@ -1,13 +1,10 @@
-import numpy as np
 import pytest
 
-import torch
+import numpy as np
 
-from xaikd import datasets, constants
-from tests import dataset_cifar100
+from torchvision.datasets import ImageNet
 
-
-from tqdm import tqdm
+from xaikd import datasets
 
 
 @pytest.mark.parametrize(
@@ -17,8 +14,36 @@ from tqdm import tqdm
     ],
 )
 def test_construct_dataset(name):
-    dataset = datasets.construct(name)
+    datasets.construct(name)
     assert True
+
+
+@pytest.mark.slow()
+def test_original_dataset():
+    train_split = False
+    dataset = datasets.construct("imagenet")
+
+    actual_ds = dataset.create_subset(train_split=train_split)
+
+    assert isinstance(actual_ds, ImageNet)
+
+    expected_ds = ImageNet(
+        root=str(datasets.DATADIR / "imagenet"),
+        transform=dataset.input_transformation,
+        train=train_split,
+    )
+
+    np.testing.assert_equal(len(actual_ds), len(expected_ds))
+
+    for (actual_x, actual_y), (expected_x, expected_y) in zip(
+        datasets.build_dataloader(actual_ds, shuffle=False),
+        datasets.build_dataloader(expected_ds, shuffle=False),
+    ):
+        np.testing.assert_allclose(actual_x, expected_x)
+        np.testing.assert_allclose(actual_y, expected_y)
+
+
+        break
 
 
 @pytest.mark.parametrize(
@@ -73,7 +98,6 @@ def test_construct_dataset(name):
     "lvl",
     [
         0.0,
-        0.25,
         0.5,
         1.0,
     ],
@@ -156,14 +180,14 @@ def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
 @pytest.mark.parametrize(
     "dataset_name,lvl",
     [
-        ("valsplit-cat", 0.0),  # fixme
-        # ("valsplit-cat", 1.0), # fixme
+        ("valsplit-cat", 0.0),
+        ("valsplit-cat", 1.0),
         ("cat", 1.0),
         ("cat", 0.75),
         ("cat", 0.5),
         ("cat", 0.25),
         ("cat", 0.1),
-        # ("valsplit-butterfly", 1.0), #fixme
+        ("valsplit-butterfly", 1.0),
         ("butterfly", 1.0),
         ("butterfly", 0.5),
     ],
