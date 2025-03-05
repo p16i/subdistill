@@ -22,7 +22,8 @@ from xaikd import constants
 from xaikd.utils import spurious_feature_generator
 
 from ..register import add_dataset_to_registry
-from .original import ImageNet, IMAGENET_SUPERCLASS_MAPPING
+from . import IMAGENET_SUPERCLASS_MAPPING
+from .original import ImageNet
 
 
 class ImageNetSuperClass(ImageNet):

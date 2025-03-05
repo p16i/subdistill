@@ -5,7 +5,8 @@ from torch.utils.data import Dataset
 
 
 from ..register import add_dataset_to_registry
-from .original import ImageNet, IMAGENET_SUPERCLASS_MAPPING
+from . import IMAGENET_SUPERCLASS_MAPPING
+from .original import ImageNet
 
 
 class ImageNetSuperclassVsOthers(ImageNet):
