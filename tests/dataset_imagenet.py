@@ -333,7 +333,7 @@ def test_construct_superclass_vs_others():
 
     arr_ys = []
     dl = datasets.build_dataloader(dataset=ds, shuffle=False)
-    for _, y in tqdm(dl):
+    for _, y in dl:
         arr_ys.extend(y.numpy().tolist())
 
     arr_ys = np.array(arr_ys)
