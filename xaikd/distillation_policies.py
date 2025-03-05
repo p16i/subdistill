@@ -923,6 +923,45 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         return loss_mse
 
 
+@register_layer_policy("basis-bn-wo-normalization")
+class OrthogonalBasisIdentityPolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.BatchNorm2d(
+            num_features=k, track_running_stats=True, affine=True
+        ).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_layer_policy("basis-rotation")
 class OrthogonalBasisRotationPolicy(OrthogonalBasisIdentityPolicy):
     def __init__(
