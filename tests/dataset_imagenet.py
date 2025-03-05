@@ -353,6 +353,7 @@ def test_construct_superclass_vs_others(dataset_name):
 
 
 @pytest.mark.parametrize("train_split", [True, False])
+@pytest.mark.slow
 def test_construct_valsplit_superclass_vs_others(train_split):
     dataset = datasets.construct(
         "imagenet-valsplit-butterfly-vs-others",
