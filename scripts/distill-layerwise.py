@@ -118,12 +118,8 @@ def build_dataloaders(
     )
 
     print(f"Dataset Information")
-    for label, dl in [("train", train_loader), ("val", val_loader)]:
-        count = 0
-        for _, y in dl:
-            count += y.shape[0]
-
-        print(f"> split={label:5s}: count={count}")
+    for label, ds in [("train", ds_train), ("val", ds_val)]:
+        print(f"> split={label:5s}: count={len(ds)}")
 
     ds_train_with_aug = deepcopy(ds_train)
 
@@ -204,7 +200,6 @@ def main(
     wandb_experiment_group,
 ):
 
-    # todo: this resolve_lambda_layer should be part of constant;
     lambda_layer = constants.resolve_lambda_layer(
         teacher_model_name=teacher,
         policy_name=layer_policy,
