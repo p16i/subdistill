@@ -16,7 +16,13 @@ from xaikd.utils.modules import (
 )
 
 
-from . import register_model, MODEL_GENERATORS, vit_students, students_mobilenet
+from . import (
+    register_model,
+    MODEL_GENERATORS,
+    vit_students,
+    students_mobilenet,
+    students_lenets,
+)
 
 
 class ConvBN(nn.Module):
