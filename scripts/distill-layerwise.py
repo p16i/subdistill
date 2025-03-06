@@ -205,7 +205,7 @@ def main(
 ):
 
     # todo: this resolve_lambda_layer should be part of constant;
-    lambda_layer = utils.resolve_lambda_layer(
+    lambda_layer = constants.resolve_lambda_layer(
         teacher_model_name=teacher,
         policy_name=layer_policy,
         lambda_layer=lambda_layer,

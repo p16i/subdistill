@@ -99,46 +99,6 @@ def test_get_dimensions(arch, expected):
     np.testing.assert_equal(actual, expected)
 
 
-@pytest.mark.parametrize(
-    "lambda_layer,expected,teacher_name,policy_name,config_key",
-    [
-        (1, 1, "imagenet-resnet18-tv", None, None),
-        (
-            None,
-            constants.DEFAULT_LAMBDA_LAYER["dummy"]["imagenet-resnet18-tv"]["policy-1"],
-            "imagenet-resnet18-tv",
-            "policy-1",
-            "dummy",
-        ),
-    ],
-)
-def test_resolve_lambda_layer(
-    lambda_layer, expected, teacher_name, policy_name, config_key
-):
-
-    actual = utils.resolve_lambda_layer(
-        lambda_layer=lambda_layer,
-        teacher_model_name=teacher_name,
-        policy_name=policy_name,
-        default_config_key=config_key,
-    )
-
-    assert actual == expected
-
-
-def test_resolve_lambda_layer_failed():
-    lambda_layer = None
-    policy_name = None
-    config_key = None
-
-    with pytest.raises(Exception):
-        utils.resolve_lambda_layer(
-            lambda_layer=lambda_layer,
-            policy_name=policy_name,
-            default_config_key=config_key,
-        )
-
-
 @torch.no_grad()
 def test_transformation_with_linear():
     feat = torch.randn(20, 30, 7, 7)
