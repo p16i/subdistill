@@ -265,6 +265,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             metric = self.metric[slug]
             value = metric.compute()
+
+            if suffix == "auroc":
+                value = np.max([value, 1 - value])
+
             metric.reset()
 
             if not self.trainer.sanity_checking:
@@ -414,8 +418,8 @@ class Layerwise:
         )
 
         experiment_stat = dict(
-            teacher_acc=self.ref_auroc,
-            student_acc_before_training=student_auroc_before_training,
+            teacher_auroc=self.ref_auroc,
+            student_auroc_before_training=student_auroc_before_training,
             arr_metrics=training_wrapper.arr_metrics,
         )
 

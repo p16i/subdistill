@@ -9,45 +9,24 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, random_split
 
-from torchvision import transforms
-from torchvision import datasets as tvd
 
 from PIL import Image, ImageDraw
+
+from torchvision import datasets as tvd
+from torchvision import transforms
 
 
 from xaikd import constants
 
+from ..register import add_dataset_to_registry
 
-from . import (
-    TORCHVISION_DATASET_DOWNLOAD,
-    DATADIR,
-    DATASETS,
-    register_dataset,
-    DatasetConfiguration,
-)
+from . import get_fineclass_names_indices_of_superclass
+
+from .original import CIFAR100Base
+
 
 CLEVER_HAN_SYMBOL = "+"
 COLOR = "red"
-
-
-DF_SUPERCLASS_MAPPING = pd.read_csv(constants.CIFAR100_SUPER_CLASS_MAPPING)
-
-
-def get_fineclass_names_indices_of_superclass(
-    superclass: str,
-) -> typing.Tuple[typing.List[str], typing.List[int]]:
-    assert superclass in constants.CIFAR100_SUPER_CLASSES
-
-    df_selected = DF_SUPERCLASS_MAPPING[
-        DF_SUPERCLASS_MAPPING.coarse_label_name == superclass
-    ]
-
-    df_selected = df_selected.sort_values(by="fine_label")
-
-    arr_idx = df_selected.fine_label.values.tolist()
-    arr_names = df_selected.fine_label_name.values.tolist()
-
-    return arr_names, arr_idx
 
 
 def add_cleverhan_symbol(img, rng: np.random.Generator):
@@ -69,82 +48,29 @@ def add_cleverhan_symbol(img, rng: np.random.Generator):
     return copied_img
 
 
-@register_dataset("cifar100")
-@dataclass
-class CIFAR100(DatasetConfiguration):
-    selected_classes = list(range(100))
-
-    def __init__(self):
-        # ref: https://github.com/weiaicunzai/pytorch-cifar100/blob/master/conf/global_settings.py#L12C1-L13C83
-        self._normalizer = transforms.Normalize(
-            mean=(0.5070751592371323, 0.48654887331495095, 0.4409178433670343),
-            std=(0.2673342858792401, 0.2564384629170883, 0.27615047132568404),
-        )
-
-        self.input_transformation = transforms.Compose(
-            [transforms.ToTensor(), self._normalizer]
-        )
-
-        # ref: https://github.com/zju-vipa/NetGraft/blob/main/utils/data.py#L35
-        self.input_training_transformation = transforms.Compose(
-            [
-                transforms.RandomCrop(32, padding=4),
-                transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
-                self._normalizer,
-            ]
-        )
-
-        self.num_classes = 100
-        # remark: we use the transformation (Normalization) of CIFAR10 here!
-        self.dataclass = tvd.CIFAR100
-        self.root = DATADIR / "cifar100"
-
-    def transform_target(self, target: int) -> int:
-        return target
-
-    def create_subset(
-        self,
-        train_split=False,
-        target_transform: typing.Union[None, typing.Callable] = None,
-    ) -> Dataset:
-        return self.dataclass(
-            root=self.root,
-            train=train_split,
-            transform=self.input_transformation,
-            download=TORCHVISION_DATASET_DOWNLOAD,
-            target_transform=target_transform,
-        )
-
-
-@dataclass
-class Cifar100SuperClassesDataset(CIFAR100):
+class Cifar100SuperClassesDataset(CIFAR100Base):
     def __init__(
         self,
-        super_class: str,  # todo: change to `superclass``
+        superclass: str,
         verbose=False,
     ):
         super().__init__()
 
+        self._superclass = superclass
+
         arr_fineclass_names, arr_fineclass_idx = (
-            get_fineclass_names_indices_of_superclass(super_class)
+            get_fineclass_names_indices_of_superclass(superclass)
         )
 
-        df_meta = pd.read_csv(constants.CIFAR100_SUPER_CLASS_MAPPING)
-
-        df_selected = df_meta[df_meta.coarse_label_name == super_class]
-        df_selected = df_selected.sort_values(by="fine_label")
         if verbose:
             print(
-                f"We are building `cifar100-{super_class}` containing {len(arr_fineclass_names)} fine classes"
+                f"We are building `cifar100-{superclass}` containing {len(arr_fineclass_names)} fine classes"
             )
             for idx, name in zip(arr_fineclass_idx, arr_fineclass_names):
                 print(f"> {name} ({idx})")
 
         # remark: the targets are defined in the CIFAR100 dataset.
-        self.selected_classes = arr_fineclass_idx
-
-        self.num_classes = len(self.selected_classes)
+        self._selected_classes = arr_fineclass_idx
 
         # change name to mapping_old_and_new_target_indices
         # converting from old target (original dataset) to new target {0, 1,...})
@@ -152,9 +78,24 @@ class Cifar100SuperClassesDataset(CIFAR100):
             zip(self.selected_classes, range(len(self.selected_classes)))
         )
 
-    def create_subset(self, train_split=False) -> Dataset:
+    @property
+    def selected_classes(self):
+        return self._selected_classes
+
+    @property
+    def num_classes(self) -> int:
+        return len(self._selected_classes)
+
+    @property
+    def target_transform(self):
+        def _transform(t):
+            return self._target_mapping[t]
+
+        return _transform
+
+    def create_subset(self, train_split=False):
         ds = super().create_subset(
-            train_split=train_split, target_transform=lambda t: self._target_mapping[t]
+            train_split=train_split,
         )
         labels = ds.targets
 
@@ -170,27 +111,24 @@ class Cifar100SuperClassesDataset(CIFAR100):
 
         # remark: the targets here are still in the old system.
         # They will be converted to the new zero-indexing with target_transforms.
-        # todo: add test
-        #   comparing naive cifar100 and this dataset should have the same val
         ds.targets = targets
 
         return ds
 
 
-@dataclass
 class Cifar100SuperClassesWithSpuriousFeatureDataset(Cifar100SuperClassesDataset):
     seed = 1
 
     def __init__(
         self,
-        super_class: str,
+        superclass: str,
         contamination_level: float,
     ):
-        super().__init__(super_class=super_class)
+        super().__init__(superclass=superclass)
 
         self.contamination_level = contamination_level
 
-    def create_subset(self, train_split=False) -> Dataset:
+    def create_subset(self, train_split=False):
 
         ds = super().create_subset(train_split=train_split)
 
@@ -241,14 +179,14 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
 
     def __init__(
         self,
-        super_class: str,
+        superclass: str,
         contamination_level: float,
     ):
-        super().__init__(super_class=super_class)
+        super().__init__(superclass=superclass)
 
         self.contamination_level = contamination_level
 
-    def create_subset(self, train_split=False) -> Dataset:
+    def create_subset(self, train_split=False):
         trng = torch.Generator()
         trng.manual_seed(self.seed)
 
@@ -334,58 +272,35 @@ class Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset(
         return ds
 
 
-class CIFAR100SuperclassVsOthers(CIFAR100):
-    def __init__(self, super_class: str):
-        super().__init__()
-
-        _, self.selected_classes = get_fineclass_names_indices_of_superclass(
-            superclass=super_class
-        )
-
-        self.num_classes = 1
-
-    def transform_target(self, target: int) -> int:
-        if target in self.selected_classes:
-            return 1
-        else:
-            return 0
-
-    def create_subset(
-        self,
-        train_split=False,
-        target_transform: typing.Union[None, typing.Callable] = None,
-    ) -> Dataset:
-
-        return super().create_subset(
-            train_split=train_split, target_transform=self.transform_target
-        )
-
-
 def construct_variant_datasets():
     for super_class in constants.CIFAR100_SUPER_CLASSES:
         slug = f"cifar100-{super_class}"
-        DATASETS[slug] = partial(Cifar100SuperClassesDataset, super_class=super_class)
 
-        DATASETS[f"cifar100-{super_class}-vs-others"] = partial(
-            CIFAR100SuperclassVsOthers, super_class=super_class
+        add_dataset_to_registry(
+            slug, partial(Cifar100SuperClassesDataset, superclass=super_class)
         )
 
         for lvl in [0.125, 0.25, 0.5, 0.75, 1.0]:
             sslug = "--".join([slug, "spurious-plussign", str(lvl)])
 
-            DATASETS[sslug] = partial(
-                Cifar100SuperClassesWithSpuriousFeatureDataset,
-                super_class=super_class,
-                contamination_level=lvl,
+            add_dataset_to_registry(
+                sslug,
+                partial(
+                    Cifar100SuperClassesWithSpuriousFeatureDataset,
+                    superclass=super_class,
+                    contamination_level=lvl,
+                ),
             )
 
     for lvl in [0.0, 0.5, 1.0]:
-        DATASETS[
-            "--".join(["cifar100-valsplit-people", "spurious-plussign", str(lvl)])
-        ] = partial(
-            Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset,
-            super_class="people",
-            contamination_level=lvl,
+
+        add_dataset_to_registry(
+            "--".join(["cifar100-valsplit-people", "spurious-plussign", str(lvl)]),
+            partial(
+                Cifar100ValSplitSuperClassesWithSpuriousFeatureDataset,
+                superclass="people",
+                contamination_level=lvl,
+            ),
         )
 
 

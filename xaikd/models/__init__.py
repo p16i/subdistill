@@ -95,8 +95,6 @@ def get_trained_model(name: str) -> nn.Module:
 
     setattr(model, "__name", name)
 
-    setattr(model, "__layer_dimension", constants.ARCH_LAYER_DIMENSIONS[arch])
-
     model.eval()
 
     assert getattr(model, "num_classes")
