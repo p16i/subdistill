@@ -333,6 +333,7 @@ def main(
         else:
             policy_name = layer_policy
         # todo: perhaps, we can just abstract these kwargs into get_layer_policy
+        # todo: bring the basis_estimatino here?
         policy = distillation_policies.get_layer_policy(policy_name, **kwargs)
 
         arr_layer_policies.append(policy)
