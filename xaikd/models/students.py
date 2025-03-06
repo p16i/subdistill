@@ -21,7 +21,6 @@ from . import (
     MODEL_GENERATORS,
     vit_students,
     students_mobilenet,
-    students_lenets,
 )
 
 
