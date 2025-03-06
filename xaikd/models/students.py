@@ -183,7 +183,60 @@ def canonize_student_model(model: StudentModel) -> nn.Module:
     )
 
 
+class LeNet(nn.Module):
+    def __init__(self, num_classes=10, **kwargs):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 6, 5)
+        self.act1 = nn.ReLU()
+        self.pool1 = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.act2 = nn.ReLU()
+        self.pool2 = nn.MaxPool2d(2, 2)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)
+        self.act3 = nn.ReLU()
+        self.fc2 = nn.Linear(120, 84)
+        self.act4 = nn.ReLU()
+        self.fc3 = nn.Linear(84, num_classes)
+
+    def forward(self, x):
+        x = self.pool1(self.act1(self.conv1(x)))
+        x = self.pool2(self.act2(self.conv2(x)))
+        x = torch.flatten(x, start_dim=1)
+        x = self.act3(self.fc1(x))
+        x = self.act4(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+
+class LeNetXL(nn.Module):
+    def __init__(self, num_classes=10, **kwargs):
+        super().__init__()
+        self.conv1 = nn.Conv2d(3, 12, 5)
+        self.act1 = nn.ReLU()
+        self.pool1 = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(12, 32, 5)
+        self.act2 = nn.ReLU()
+        self.pool2 = nn.MaxPool2d(2, 2)
+        self.fc1 = nn.Linear(32 * 5 * 5, 120)
+        self.act3 = nn.ReLU()
+        self.fc2 = nn.Linear(120, 84)
+        self.act4 = nn.ReLU()
+        self.fc3 = nn.Linear(84, num_classes)
+
+    def forward(self, x):
+        x = self.pool1(self.act1(self.conv1(x)))
+        x = self.pool2(self.act2(self.conv2(x)))
+        x = torch.flatten(x, start_dim=1)
+        x = self.act3(self.fc1(x))
+        x = self.act4(self.fc2(x))
+        x = self.fc3(x)
+        return x
+
+
 def _generate_model_function():
+
+    MODEL_GENERATORS["student-lenet"] = LeNet
+    MODEL_GENERATORS["student-lenetxl"] = LeNetXL
 
     for arr_dims in constants.ARR_STUDENT_DIMENSIONS:
 

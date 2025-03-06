@@ -115,7 +115,7 @@ def get_layer_output_dimensions(model: nn.Module, layer: str) -> int:
     return getattr(model, "__layer_dimension")[layer]
 
 
-from . import resnet, vgg, nfnet, vit, mobilenets, students, layers, students_lenets
+from . import resnet, vgg, nfnet, vit, mobilenets, students, layers
 
 
 def split_model_at_layer(model, layer: str) -> typing.Tuple[nn.Module, nn.Module]:
