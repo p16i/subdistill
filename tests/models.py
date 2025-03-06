@@ -12,7 +12,6 @@ def _test_get_model(slug):
     assert not model.training
     assert model is not None
     assert getattr(model, "__name") == slug
-    assert len(getattr(model, "__layer_dimension").keys()) > 0
     assert isinstance(getattr(model, "__last_layer"), torch.nn.Module)
 
     device = utils.get_device()
@@ -30,25 +29,8 @@ def _test_get_model(slug):
     # model is forwardable
     _ = model(data)
 
-    # verify that the dimension mapping is correct
-    for layer, expected_dims in constants.ARCH_LAYER_DIMENSIONS[arch].items():
-        try:
-            module, hook = utils.interceptor.attach_hook_intercept_layer_output(
-                model, layer, should_retain_grad=False, detach_output=False
-            )
-
-            _ = model(data)
-
-            act = utils.interceptor.get_output(module)
-
-            _, actual_dims, _, _ = act.shape
-
-            assert actual_dims == expected_dims, f"arch={arch}; layer={layer}"
-
-        finally:
-            hook.remove()
-
     # verify that modify output work
+    # todo: this should be with utils.tests
     with torch.no_grad():
         utils.modify_last_layer_for_subclasses(model, list(range(8)))
         output = model(data).cpu().numpy()

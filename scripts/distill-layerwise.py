@@ -205,7 +205,7 @@ def main(
 ):
 
     # todo: this resolve_lambda_layer should be part of constant;
-    lambda_layer = utils.resolve_lambda_layer(
+    lambda_layer = constants.resolve_lambda_layer(
         teacher_model_name=teacher,
         policy_name=layer_policy,
         lambda_layer=lambda_layer,
@@ -333,6 +333,7 @@ def main(
         else:
             policy_name = layer_policy
         # todo: perhaps, we can just abstract these kwargs into get_layer_policy
+        # todo: bring the basis_estimatino here?
         policy = distillation_policies.get_layer_policy(policy_name, **kwargs)
 
         arr_layer_policies.append(policy)

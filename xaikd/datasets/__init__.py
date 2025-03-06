@@ -31,26 +31,12 @@ from .multitask_mnist_fmnist import (
     MultiTaskEMNISTFashionMNIST,
 )
 
-# todo: write a function that add class to this dict with a pre-step that check name collistion
-DATASETS = dict()
 
 DATADIR = Path(os.getenv("DATASET_ROOT", "./datasets"))
-TORCHVISION_DATASET_DOWNLOAD = int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0"))
+TORCHVISION_DATASET_DOWNLOAD = bool(int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0")))
 
 if TORCHVISION_DATASET_DOWNLOAD:
     print(f"[warning!] TORCHVISION_DATASET_DOWNLOAD={TORCHVISION_DATASET_DOWNLOAD}")
-
-
-def register_dataset(name):
-    """Decorator to register a data modality provider."""
-
-    def wrapped(cls):
-        """Wrapped function to register a data modality provider with name `name`"""
-        DATASETS[name] = cls
-
-        return cls
-
-    return wrapped
 
 
 def build_dataloader(
@@ -92,36 +78,71 @@ def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
 
 @dataclass
 class DatasetConfiguration(ABC):
-    num_classes: int
+    # num_classes: int
     # input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]]
-    _normalizer: transforms.Normalize
-    input_transformation: typing.Callable
-    input_training_transformation: typing.Callable
-    dataclass: typing.Callable
-    selected_classes: typing.List[int]
+    # _normalizer: transforms.Normalize
+    # input_transformation: typing.Callable
+    # input_training_transformation: typing.Callable
+    # dataclass: typing.Callable
+    # selected_classes: typing.List[int]
+    # data_dir = DATADIR
 
     @abstractmethod
-    def create_subset(self, train_split=False) -> Dataset:
+    def create_subset(self, train_split: bool) -> Dataset:
+        pass
+
+    @property
+    @abstractmethod
+    def input_transformation(self) -> typing.Callable:
+        pass
+
+    @property
+    @abstractmethod
+    def input_training_transformation(self) -> typing.Callable:
+        pass
+
+    @property
+    @abstractmethod
+    def _normalizer(self) -> transforms.Normalize:
+        pass
+
+    @property
+    @abstractmethod
+    def selected_classes(self) -> typing.List[int]:
+        pass
+
+    @property
+    @abstractmethod
+    def num_classes(self) -> int:
+        pass
+
+    @property
+    def name(self) -> str:
+        # this is during the construction
+        assert hasattr(self, "__name")
+
+        return getattr(self, "__name")
+
+    @property
+    @abstractmethod
+    def dataclass(self) -> typing.Type[Dataset]:
+        pass
+
+    @property
+    @abstractmethod
+    def target_transform(self) -> typing.Union[typing.Callable, None]:
         pass
 
     @property
     def input_statistics(self) -> typing.Tuple[typing.List[float], typing.List[float]]:
-        return [
+        return (
             self._normalizer.mean,
             self._normalizer.std,
-        ]
+        )
 
     def __str__(self) -> str:
-        return getattr(self, "__name")
+        return self.name
 
 
-def construct(name: str) -> DatasetConfiguration:
-    assert name in DATASETS, f"dataset={name} does not exist!"
-
-    dataset = DATASETS[name]()
-    setattr(dataset, "__name", name)
-
-    return dataset
-
-
+from .register import construct
 from . import cifar100, imagenet, celeba

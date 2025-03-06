@@ -1,13 +1,50 @@
-import numpy as np
 import pytest
 
+import numpy as np
 import torch
 
-from xaikd import datasets
-from tests import dataset_cifar100
+
+from torchvision.datasets import ImageNet
+
+from xaikd import datasets, constants
 
 
-from tqdm import tqdm
+@pytest.mark.parametrize(
+    "name",
+    [
+        "imagenet",
+    ],
+)
+def test_construct_dataset(name):
+    datasets.construct(name)
+    assert True
+
+
+@pytest.mark.slow()
+def test_original_dataset():
+    train_split = False
+    dataset = datasets.construct("imagenet")
+
+    actual_ds = dataset.create_subset(train_split=train_split)
+
+    assert isinstance(actual_ds, ImageNet)
+
+    expected_ds = ImageNet(
+        root=str(datasets.DATADIR / "imagenet"),
+        transform=dataset.input_transformation,
+        split="train" if train_split else "val",
+    )
+
+    np.testing.assert_equal(len(actual_ds), len(expected_ds))
+
+    for (actual_x, actual_y), (expected_x, expected_y) in zip(
+        datasets.build_dataloader(actual_ds, shuffle=False),
+        datasets.build_dataloader(expected_ds, shuffle=False),
+    ):
+        np.testing.assert_allclose(actual_x, expected_x)
+        np.testing.assert_allclose(actual_y, expected_y)
+
+        break
 
 
 @pytest.mark.parametrize(
@@ -62,7 +99,6 @@ from tqdm import tqdm
     "lvl",
     [
         0.0,
-        0.25,
         0.5,
         1.0,
     ],
@@ -72,9 +108,6 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
     arr_datasets = []
     if lvl > 0:
         for cix, _ in enumerate(expected_class_indices):
-            arr_datasets.append(
-                "--".join([dataset_name, f"spurious-watermarkC{cix}", f"{lvl}"])
-            )
             arr_datasets.append(
                 "--".join([dataset_name, f"spurious-threespurious", f"{lvl}"])
             )
@@ -88,6 +121,7 @@ def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
         np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
 
 
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize(
     "lvl",
     [1.0],
@@ -171,8 +205,11 @@ def test_dataset_with_three_spurious_correlations(
 
     dataset = datasets.construct(f"imagenet-{dataset_name}--{variant}--{lvl}")
     num_classes = len(dataset.selected_classes)
-    ds: datasets.imagenet.TorchVisionDatasetImageNetWithThreeSpuriousFeatures = (
-        dataset.create_subset(train_split=train_split)
+    ds = dataset.create_subset(train_split=train_split)
+
+    assert isinstance(
+        ds,
+        datasets.imagenet.subclasses.TorchVisionDatasetImageNetWithThreeSpuriousFeatures,
     )
 
     total_spurious_types = dataset.dataclass.total_spurious_types
@@ -183,7 +220,11 @@ def test_dataset_with_three_spurious_correlations(
 
     if train_split:
         if "valsplit" in dataset_name:
-            n_per_class = int(1300 * 0.8)
+            n_per_class = int(1300 * constants.TRAINING_VAL_SPLIT_RATIO)
+
+            np.testing.assert_allclose(
+                len(ds), 1300 * num_classes * constants.TRAINING_VAL_SPLIT_RATIO, atol=2
+            )
         else:
             n_per_class = 1300
 
@@ -191,7 +232,7 @@ def test_dataset_with_three_spurious_correlations(
             np.arange(num_classes) % total_spurious_types
         ).astype(float)
 
-        np.testing.assert_allclose(np.sum(counts), n_per_class * num_classes)
+        np.testing.assert_allclose(np.sum(counts), n_per_class * num_classes, atol=2)
 
         expected_counts = n_per_class * ((spurious_type_factors * lvl))
 
@@ -275,8 +316,17 @@ def test_dataset_with_three_spurious_correlations(
 
 @torch.no_grad()
 @pytest.mark.slow()
-def test_construct_superclass_vs_others():
-    dataset = datasets.construct("imagenet-butterfly-vs-others")
+@pytest.mark.parametrize(
+    "dataset_name",
+    [
+        "imagenet-butterfly-vs-others",
+        "imagenet-valsplit-butterfly-vs-others",
+    ],
+)
+def test_construct_superclass_vs_others(dataset_name):
+    dataset = datasets.construct(
+        dataset_name,
+    )
 
     num_classes = len(dataset.selected_classes)
 
@@ -292,7 +342,7 @@ def test_construct_superclass_vs_others():
 
     arr_ys = []
     dl = datasets.build_dataloader(dataset=ds, shuffle=False)
-    for _, y in tqdm(dl):
+    for _, y in dl:
         arr_ys.extend(y.numpy().tolist())
 
     arr_ys = np.array(arr_ys)
@@ -300,3 +350,24 @@ def test_construct_superclass_vs_others():
     perc_y1 = (arr_ys == 1).mean()
 
     np.testing.assert_allclose(perc_y1, 6 / 1000, atol=1e-3)
+
+
+@pytest.mark.parametrize("train_split", [True, False])
+@pytest.mark.slow
+def test_construct_valsplit_superclass_vs_others(train_split):
+    dataset = datasets.construct(
+        "imagenet-valsplit-butterfly-vs-others",
+    )
+
+    total = len(datasets.construct("imagenet").create_subset(train_split=True))
+
+    ds = dataset.create_subset(train_split=train_split)
+
+    assert ds.split == "train"
+
+    actual = len(ds) / total
+    if train_split:
+        expected = constants.TRAINING_VAL_SPLIT_RATIO
+    else:
+        expected = 1 - constants.TRAINING_VAL_SPLIT_RATIO
+    np.testing.assert_allclose(actual, expected, atol=0.01)

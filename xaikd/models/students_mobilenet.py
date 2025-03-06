@@ -356,6 +356,7 @@ def _student_very_small_cifarv2(num_classes, dim1, dim2, dim3, **kwargs) -> nn.M
 
 def _generate_model_function():
 
+    # fixme: use register function
     MODEL_GENERATORS[f"student-mobilenets"] = _student_s
     MODEL_GENERATORS[f"student-mobilenets-lastd25"] = partial(
         _student_very_small_bottleneck,

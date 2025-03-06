@@ -14,7 +14,7 @@ NUMBER_OF_SMALL_DATASET = 7
 NUMBER_OF_SPATIAL_LOCATIONS = 8
 
 
-class CIFAR100VerySmall(datasets.cifar100.CIFAR100):
+class CIFAR100VerySmall(datasets.cifar100.original.CIFAR100):
     def loader(self, batch_size=64, num_workers=2, train_split=False):
         ds = self.create_subset(train_split=train_split)
 
@@ -29,7 +29,7 @@ class CIFAR100VerySmall(datasets.cifar100.CIFAR100):
         )
 
 
-class ImageNetVerySmall(datasets.imagenet.ImageNet):
+class ImageNetVerySmall(datasets.imagenet.original.ImageNet):
     def loader(self, batch_size=64, num_workers=2, train_split=False):
 
         trng = torch.Generator()
