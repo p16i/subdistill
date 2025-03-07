@@ -231,22 +231,37 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                         on_epoch=True,
                     )
 
+        is_shown_in_prog_bar = prefix == "val"
         loss = 0
 
         if self.lambda_task > 0:
             assert torch.isfinite(loss_task)
             loss = loss + self.lambda_task * loss_task
+            self.log(
+                f"{prefix}_loss_task",
+                loss_task,
+                on_epoch=True,
+                prog_bar=is_shown_in_prog_bar,
+            )
         if self.lambda_kd > 0:
             assert torch.isfinite(loss_kd)
             loss = loss + self.lambda_kd * loss_kd
+            self.log(
+                f"{prefix}_loss_kd",
+                loss_kd,
+                on_epoch=True,
+                prog_bar=is_shown_in_prog_bar,
+            )
         if self.lambda_layer > 0:
             assert torch.isfinite(loss_layer)
             loss = loss + self.lambda_layer * loss_layer
 
-        prog_bar = prefix == "val"
-        self.log(f"{prefix}_loss_task", loss_task, on_epoch=True, prog_bar=prog_bar)
-        self.log(f"{prefix}_loss_kd", loss_kd, on_epoch=True, prog_bar=prog_bar)
-        self.log(f"{prefix}_loss_layer", loss_layer, on_epoch=True, prog_bar=prog_bar)
+            self.log(
+                f"{prefix}_loss_layer",
+                loss_layer,
+                on_epoch=True,
+                prog_bar=is_shown_in_prog_bar,
+            )
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
         teacher_y_pred = (teacher_logits > 0).detach().cpu()
