@@ -225,8 +225,6 @@ class BinaryKLPolicy(LastLayerPolicy):
         # todo: check whether this is the special os KLDiv
         kl = F.binary_cross_entropy_with_logits(student_logits, teacher_yp_gv_x)
 
-        kl = kl.mean()
-
         return kl
 
 
