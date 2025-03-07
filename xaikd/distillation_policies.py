@@ -220,14 +220,11 @@ class BinaryKLPolicy(LastLayerPolicy):
 
         assert teacher_logits.shape == student_logits.shape
 
-        student_yp_gv_x = torch.sigmoid(student_logits)
         teacher_yp_gv_x = torch.sigmoid(teacher_logits)
 
         # todo: check whether this is the special os KLDiv
-        kl = -(
-            teacher_yp_gv_x * torch.log(student_yp_gv_x)
-            + (1 - teacher_yp_gv_x) * torch.log(1 - student_yp_gv_x)
-        )
+        kl = F.binary_cross_entropy_with_logits(student_logits, teacher_yp_gv_x)
+
         kl = kl.mean()
 
         return kl
