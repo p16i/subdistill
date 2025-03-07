@@ -231,14 +231,16 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                         on_epoch=True,
                     )
 
-        assert torch.isfinite(loss_layer)
-        assert torch.isfinite(loss_task)
-        assert torch.isfinite(loss_kd)
+        loss = 0
 
-        loss = self.lambda_task * loss_task
+        if self.lambda_task > 0:
+            assert torch.isfinite(loss_task)
+            loss = loss + self.lambda_task * loss_task
         if self.lambda_kd > 0:
+            assert torch.isfinite(loss_kd)
             loss = loss + self.lambda_kd * loss_kd
         if self.lambda_layer > 0:
+            assert torch.isfinite(loss_layer)
             loss = loss + self.lambda_layer * loss_layer
 
         prog_bar = prefix == "val"
@@ -350,6 +352,8 @@ class Layerwise:
         finetuning_with_layer_loss: bool,
         # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
+
+        assert (np.array([lambda_task, lambda_kd, lambda_layer]) > 0).any()
 
         student.eval()
         student.to(device)
