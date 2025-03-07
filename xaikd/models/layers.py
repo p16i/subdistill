@@ -26,6 +26,8 @@ class LayerLogOddSelectedClasses(nn.Module):
             arr_neg_logits, dim=1
         )
 
+        assert torch.isfinite(logodd).all()
+
         return logodd
 
 
