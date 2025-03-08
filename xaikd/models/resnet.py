@@ -3,6 +3,7 @@ import numpy as np
 import typing
 
 import types
+from functools import partial
 
 from collections import OrderedDict
 
@@ -14,7 +15,7 @@ import torchvision
 from torchvision.models import resnet
 
 from . import interfaces
-from . import register_model
+from . import register_model, MODEL_GENERATORS
 
 
 def split_model_at(
@@ -47,25 +48,10 @@ def _resnet18_cifar(num_classes: int) -> nn.Module:
     model = torchvision.models.resnet18(weights=None, num_classes=num_classes)
 
     # why we use this? (ask Florian?)
+    # ref: https://github.com/p3i0t/SimCLR-CIFAR10/blob/master/models.py#L12
+    # SimCLR paper
     model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
     model.maxpool = nn.Identity()
-
-    model.avgpool = nn.AvgPool2d(kernel_size=4)
-
-    model.num_classes = num_classes
-
-    return model
-
-
-@register_model("cifar-resnet50")
-def _resnet50_cifar(num_classes: int) -> nn.Module:
-    model = torchvision.models.resnet50(weights=None, num_classes=num_classes)
-
-    # why we use this? (ask Florian?)
-    model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
-    model.maxpool = nn.Identity()
-
-    model.avgpool = nn.AvgPool2d(kernel_size=4)
 
     model.num_classes = num_classes
 
@@ -110,3 +96,59 @@ def _resnet152_imagenet() -> nn.Module:
     model.num_classes = 1000
 
     return model
+
+
+def construct_student_resnet18(in_planes: int, num_classes: int):
+    # ref:
+    model = resnet._resnet(
+        resnet.BasicBlock,
+        [2, 2, 2, 2],
+        weights=None,
+        progress=False,
+        num_classes=num_classes,
+    )
+
+    model.inplanes = in_planes
+
+    # see cifar100-resnet18
+    model.conv1 = nn.Conv2d(3, in_planes, 3, 1, 1, bias=False)
+    model.bn1 = nn.BatchNorm2d(in_planes)
+    model.maxpool = nn.Identity()
+
+    # similar to Line x-y
+    # we only change in planes
+    model.inplanes = in_planes
+    model.layer1 = model._make_layer(
+        block=resnet.BasicBlock,
+        planes=in_planes,
+        blocks=2,
+    )
+
+    model.layer2 = model._make_layer(
+        block=resnet.BasicBlock, planes=in_planes, blocks=2, stride=2, dilate=False
+    )
+
+    model.inplanes = in_planes
+    model.layer3 = model._make_layer(
+        block=resnet.BasicBlock, planes=in_planes, blocks=2, stride=2, dilate=False
+    )
+
+    model.inplanes = in_planes
+    model.layer4 = model._make_layer(
+        block=resnet.BasicBlock, planes=in_planes, blocks=2, stride=2, dilate=False
+    )
+
+    model.fc = nn.Linear(model.inplanes, num_classes)
+
+    return model
+
+
+def _register_student_resnet18_cifar():
+
+    for in_planes in [16, 32, 64]:
+        MODEL_GENERATORS[f"student-cifar-resnet18-{in_planes}"] = partial(
+            construct_student_resnet18, in_planes=in_planes
+        )
+
+
+_register_student_resnet18_cifar()
