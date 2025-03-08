@@ -174,7 +174,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         loss_kd = self.last_layer_policy(teacher_logits, student_logits, y)
 
-        loss_layer = 0
+        loss_layer = torch.tensor(0.0).to(loss_kd.device)
 
         is_finetuning = not should_detach_output(
             partition_mode=self.parameter_partition_mode,
@@ -192,7 +192,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
 
-            loss_layer += _loss_layer
+            loss_layer = loss_layer + _loss_layer
 
             layer_name = self.layer_policy_collection.student_layers[lix]
 
