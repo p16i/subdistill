@@ -8,6 +8,7 @@ from pytorch_lightning.loggers import Logger
 import pytorch_lightning as pl
 import numpy as np
 
+from tqdm import tqdm
 
 import torch
 from torch import nn
@@ -22,7 +23,8 @@ from xaikd import distillation_policies, utils, bases, models
 from xaikd import datasets
 from xaikd import metrics
 
-from torchmetrics import Accuracy, MeanMetric
+from torchmetrics import MeanMetric
+from torchmetrics.classification import BinaryAUROC
 
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 
@@ -94,9 +96,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} )"
         )
 
+        # todo: perhaps, torchvision has some functionairty for tihs
         self.metric = dict(
-            train_acc=Accuracy(task="multiclass", num_classes=num_classes),
-            val_acc=Accuracy(task="multiclass", num_classes=num_classes),
+            train_auroc=BinaryAUROC(thresholds=100),
+            val_auroc=BinaryAUROC(thresholds=100),
             train_agreement=MeanMetric(),
             val_agreement=MeanMetric(),
             train_agreement_on_teacher_correct=MeanMetric(),
@@ -104,8 +107,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         )
 
         self.arr_metrics = dict(
-            train_acc=[],
-            val_acc=[],
+            train_auroc=[],
+            val_auroc=[],
             train_agreement=[],
             val_agreement=[],
             train_agreement_on_teacher_correct=[],
@@ -128,6 +131,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
         return [optimizer], [scheduler]
 
+        # todo:  remove this
         # ref: https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L273
         # optimizer = torch.optim.SGD(
         #     parameters, lr=0.01, momentum=0.9, weight_decay=5e-4
@@ -136,6 +140,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
     def _compute_loss(self, batch, prefix, batch_idx):
         x, y = batch
+        n = x.shape[0]
+        if prefix == "val":
+            assert not self.student.training
 
         with torch.no_grad():
             (
@@ -147,7 +154,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 layers=self.layer_policy_collection.teacher_layers,
                 detach_output=False,
             )
-
         (
             student_logits,
             student_arr_intermediate_feats,
@@ -160,10 +166,15 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             ),
         )
 
-        loss_task = F.cross_entropy(student_logits, y)
+        assert student_logits.shape == (n, 1)
+
+        student_logits = student_logits.squeeze(1)
+
+        loss_task = F.binary_cross_entropy_with_logits(student_logits, y.float())
+
         loss_kd = self.last_layer_policy(teacher_logits, student_logits, y)
 
-        loss_layer = 0
+        loss_layer = torch.tensor(0.0).to(loss_kd.device)
 
         is_finetuning = not should_detach_output(
             partition_mode=self.parameter_partition_mode,
@@ -181,14 +192,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
 
-            loss_layer += _loss_layer
+            loss_layer = loss_layer + _loss_layer
 
             layer_name = self.layer_policy_collection.student_layers[lix]
 
             self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
-
-            policy.transformer_teacher_feats
-
             if prefix == "val":
                 for label, act in (
                     ("student", student_arr_intermediate_feats[lix]),
@@ -223,21 +231,43 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                         on_epoch=True,
                     )
 
-        loss = (
-            self.lambda_task * loss_task
-            + self.lambda_kd * loss_kd
-            + self.lambda_layer * loss_layer
-        )
+        is_shown_in_prog_bar = prefix == "val"
+        loss = 0
 
-        self.log(f"{prefix}_loss_task", loss_task, on_epoch=True)
-        self.log(f"{prefix}_loss_kd", loss_kd, on_epoch=True)
-        self.log(f"{prefix}_loss_layer", loss_layer, on_epoch=True)
+        if self.lambda_task > 0:
+            assert torch.isfinite(loss_task)
+            loss = loss + self.lambda_task * loss_task
+            self.log(
+                f"{prefix}_loss_task",
+                loss_task,
+                on_epoch=True,
+                prog_bar=is_shown_in_prog_bar,
+            )
+        if self.lambda_kd > 0:
+            assert torch.isfinite(loss_kd)
+            loss = loss + self.lambda_kd * loss_kd
+            self.log(
+                f"{prefix}_loss_kd",
+                loss_kd,
+                on_epoch=True,
+                prog_bar=is_shown_in_prog_bar,
+            )
+        if self.lambda_layer > 0:
+            assert torch.isfinite(loss_layer)
+            loss = loss + self.lambda_layer * loss_layer
+
+            self.log(
+                f"{prefix}_loss_layer",
+                loss_layer,
+                on_epoch=True,
+                prog_bar=is_shown_in_prog_bar,
+            )
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
-        teacher_y_pred = torch.argmax(teacher_logits, dim=1).detach().cpu()
-        student_y_pred = torch.argmax(student_logits, dim=1).detach().cpu()
+        teacher_y_pred = (teacher_logits > 0).detach().cpu()
+        student_y_pred = (student_logits > 0).detach().cpu()
 
-        self.metric[f"{prefix}_acc"].update(student_y_pred, y.cpu())
+        self.metric[f"{prefix}_auroc"].update(student_logits.detach().cpu(), y.cpu())
         self.metric[f"{prefix}_agreement"].update(student_y_pred == teacher_y_pred)
         self.metric[f"{prefix}_agreement_on_teacher_correct"].update(
             (teacher_y_pred == y.cpu()) * (student_y_pred == teacher_y_pred)
@@ -252,11 +282,15 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         return self._compute_loss(val_batch, "val", batch_idx)
 
     def _compute_metric(self, prefix):
-        for suffix in ["acc", "agreement", "agreement_on_teacher_correct"]:
+        for suffix in ["auroc", "agreement", "agreement_on_teacher_correct"]:
             slug = f"{prefix}_{suffix}"
 
             metric = self.metric[slug]
             value = metric.compute()
+
+            if suffix == "auroc":
+                value = np.max([value, 1 - value])
+
             metric.reset()
 
             if not self.trainer.sanity_checking:
@@ -266,26 +300,22 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")
 
-        for layer, policy in zip(
-            self.layer_policy_collection.student_layers,
-            self.layer_policy_collection.policies,
-        ):
-            if (
-                hasattr(policy.transformer_student_feats, "weight")
-                and policy.transformer_student_feats.weight is not None
-            ):
-                W = policy.transformer_student_feats.weight
-                slug = f"student-transform-norm--{layer}"
+        # todo: check whether we still need to log this
+        # for layer, policy in zip(
+        #     self.layer_policy_collection.student_layers,
+        #     self.layer_policy_collection.policies,
+        # ):
+        #     if (
+        #         hasattr(policy.transformer_student_feats, "weight")
+        #         and policy.transformer_student_feats.weight is not None
+        #     ):
+        #         W = policy.transformer_student_feats.weight
+        #         slug = f"student-transform-norm--{layer}"
 
-                self.log(slug, torch.linalg.matrix_norm(W.squeeze()))
+        #         self.log(slug, torch.linalg.matrix_norm(W.squeeze()))
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")
-
-    # def on_save_checkpoint(self, checkpoint):
-    #     print(checkpoint.keys())
-    #     raise
-    #     return dict(student=self.student)
 
 
 class Layerwise:
@@ -307,11 +337,12 @@ class Layerwise:
 
         self.device = device
 
+        self.metric_func = metrics.MetricAUROCBinaryCrossEntropy()
+
         with torch.no_grad():
-            self.ref_acc, self.ref_xent = metrics.accuracy(
+            self.ref_auroc, self.ref_xent = self.metric_func(
                 self.teacher.to(device),
                 val_dataloader,
-                num_classes=dataset.num_classes,
                 device=self.device,
             )
 
@@ -336,21 +367,24 @@ class Layerwise:
         finetuning_with_layer_loss: bool,
         # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
+
+        assert (np.array([lambda_task, lambda_kd, lambda_layer]) > 0).any()
+
+        student.eval()
         student.to(device)
 
         with torch.no_grad():
             (
-                student_acc_before_training,
+                student_auroc_before_training,
                 student_xent_before_training,
-            ) = metrics.accuracy(
+            ) = self.metric_func(
                 student,
                 dataloader=self.val_dataloader,
-                num_classes=self.dataset.num_classes,
                 device=self.device,
             )
 
         print(
-            f"[before training] metrics: student (teacher) | acc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
+            f"[before training] metrics: student (teacher) | auroc={student_auroc_before_training:.4f} ({self.ref_auroc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
         )
 
         # we set the seed here again because to make sure that the state of random generator for
@@ -399,38 +433,42 @@ class Layerwise:
 
         trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)
 
+        student.eval()
+
         self.post_training_sanitycheck(
             student=student,
             device=device,
-            expected_acc=training_wrapper.arr_metrics["val_acc"][-1],
+            expected=training_wrapper.arr_metrics["val_auroc"][-1],
         )
 
         experiment_stat = dict(
-            teacher_acc=self.ref_acc,
-            student_acc_before_training=student_acc_before_training,
+            teacher_auroc=self.ref_auroc,
+            student_auroc_before_training=student_auroc_before_training,
             arr_metrics=training_wrapper.arr_metrics,
         )
+
+        assert not student.training
 
         return student, experiment_stat
 
     def post_training_sanitycheck(
         self,
         student: nn.Module,
-        expected_acc: float,
+        expected: float,
         device: str,
     ):
         student.to(device)
         # sanity check: acc from student to should equal to the one we have evaluated!
         with torch.no_grad():
-            actual_acc, _ = metrics.accuracy(
+
+            actual, _ = self.metric_func(
                 student,
                 self.val_dataloader,
-                num_classes=self.dataset.num_classes,
                 device=device,
             )
 
             np.testing.assert_allclose(
-                actual_acc,
-                expected_acc,
-                err_msg="accuracy computed from modified student should match the last one returned from distillator",
+                actual,
+                expected,
+                err_msg="stats computed from modified student should match the last one returned from distillator",
             )

@@ -265,32 +265,6 @@ def get_git_hash() -> str:
     return git_revision
 
 
-def resolve_lambda_layer(
-    teacher_model_name: str,
-    policy_name: str,
-    lambda_layer: typing.Union[float, None],
-    default_config_key: typing.Union[str, None],
-) -> float:
-
-    # todo: this should be part of constants
-
-    if lambda_layer is not None:
-        return lambda_layer
-    else:
-        assert (
-            default_config_key is not None
-        ), "default_config should be specified when lambda_layer is none."
-
-        lambda_layer = constants.DEFAULT_LAMBDA_LAYER[default_config_key][
-            teacher_model_name
-        ][policy_name]
-        print(
-            f"Resolve `lambda_layer` from config:{default_config_key}[{teacher_model_name}][{policy_name}]"
-        )
-
-        return lambda_layer
-
-
 def parse_number_if_possible(text: str) -> typing.Union[None, int]:
     is_int = re.match(r"-?\d+", text) is not None
 

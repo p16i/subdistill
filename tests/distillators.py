@@ -4,6 +4,8 @@ import pytest
 
 import torch
 
+from collections import OrderedDict
+
 from torch import nn
 
 import tempfile
@@ -54,21 +56,34 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
     ],
 )
 @pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
-@pytest.mark.parametrize("last_layer_policy", ["kd"])
 def test_distillation_runnable_and_correct(
-    teacher_model_name, layers, parameter_partition_mode, last_layer_policy
+    teacher_model_name, layers, parameter_partition_mode
 ):
+
+    last_layer_policy = "binkd"
+
     ignore_layer_loss_fullupdate = False
     epochs = 1
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
-    teacher_model = models.get_trained_model(teacher_model_name)
+    dataset = datasets.construct("cifar100-people-vs-others")
 
-    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
-        "cifar100-people"
+    teacher_model = nn.Sequential(
+        OrderedDict(
+            [
+                ("base", models.get_trained_model(teacher_model_name)),
+                (
+                    "logodd",
+                    models.layers.LayerLogOddSelectedClasses(
+                        selected_classes=dataset.selected_classes
+                    ),
+                ),
+            ]
+        )
     )
+    teacher_model.eval()
 
-    utils.modify_last_layer_for_subclasses(teacher_model, dataset.selected_classes)
+    teacher_layers = list(map(lambda l: f"base.{l}", teacher_layers))
 
     device = utils.get_device()
 
@@ -125,7 +140,7 @@ def test_distillation_runnable_and_correct(
     before_batch_norm_stats = get_batchnorm_statistics_from_model(teacher_model_before)
 
     distillator = distillators.Layerwise(
-        teacher=teacher_model.train(),
+        teacher=teacher_model,
         dataset=dataset,
         train_dataloader=train_loader,
         val_dataloader=val_loader,
@@ -156,28 +171,28 @@ def test_distillation_runnable_and_correct(
 
     # post-training assertions
     with torch.no_grad():
+        metric = metrics.MetricAUROCBinaryCrossEntropy()
         # sanity check `student``
-        actual_acc, _ = metrics.accuracy(
+        actual_auroc, _ = metric(
             student,
             dataloader=val_loader,
-            num_classes=dataset.num_classes,
             device=device,
         )
-        expected_acc = results["arr_metrics"]["val_acc"][-1]
-        np.testing.assert_allclose(actual_acc, expected_acc)
+
+        expected_auroc = results["arr_metrics"]["val_auroc"][-1]
+        np.testing.assert_allclose(actual_auroc, expected_auroc)
 
         # sanity check `teacher`
-        expected_teacher_acc_xent = metrics.accuracy(
+        expected_teacher_metric = metric(
             teacher_model_before.to(device),
             dataloader=val_loader,
-            num_classes=dataset.num_classes,
             device=device,
         )
         np.testing.assert_allclose(
-            (distillator.ref_acc, distillator.ref_xent), expected_teacher_acc_xent
+            (distillator.ref_auroc, distillator.ref_xent), expected_teacher_metric
         )
 
-        # check teacher parameters not get updated!
+        # ucheck teacher parameters not get updated!
         for before_params, after_params in zip(
             teacher_model_before.parameters(), teacher_model.parameters()
         ):
@@ -266,7 +281,7 @@ def test_get_parameters(layers, parameter_partition_mode):
     model_training_wrapper = distillators.LayerwiseKDModelWrapper(
         teacher=teacher_model,
         student=student,
-        last_layer_policy="kd",
+        last_layer_policy="binkd",
         layerwise_policies=layer_policy_colleciton,
         lambda_kd=1,
         lambda_layer=1,

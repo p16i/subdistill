@@ -1,11 +1,12 @@
 import typing
 import numpy as np
 
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, ABCMeta
 
 
 from tqdm import tqdm
 
+import torch
 from torch.utils.data import DataLoader
 from torch import nn
 from torch.nn import functional as F
@@ -55,11 +56,14 @@ class MetricFunction(ABC):
     @abstractmethod
     def __call__(
         self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
-    ) -> typing.Tuple[float]:
+    ) -> typing.Tuple[float, ...]:
         pass
 
-    @abstractmethod
     def __str__(self) -> str:
+        return "-".join(self._metric_names())
+
+    @abstractmethod
+    def _metric_names(self) -> typing.Tuple[str, ...]:
         pass
 
 
@@ -67,19 +71,20 @@ class MetricAUROC(MetricFunction):
     def __init__(self, convert_auroc=True):
         self.convert_auroc = convert_auroc
 
-    def __str__(self) -> str:
-        return "auroc"
-
+    @torch.no_grad()
     def __call__(
         self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
     ):
 
+        raise NotImplementedError("obsolete this and use AUROCBinXent")
         assert not model.training
 
         metric_auroc = BinaryAUROC(thresholds=100)
 
         for x, y in tqdm(dataloader, desc="Computing AUROC", disable=not verbose):
             logodd = model(x.to(device)).cpu()
+
+            assert np.isin(y.numpy(), [0, 1]).all()
 
             assert len(logodd.shape) == 1, f"{logodd.shape}"
 
@@ -95,14 +100,67 @@ class MetricAUROC(MetricFunction):
 
         return (auroc,)
 
+    def _metric_names(self):
+        return ("auroc",)
+
+
+class MetricAUROCBinaryCrossEntropy(MetricFunction):
+    def __init__(self, convert_auroc=True):
+        self.convert_auroc = convert_auroc
+
+    @torch.no_grad()
+    def __call__(
+        self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
+    ):
+
+        assert not model.training
+
+        metric_auroc = BinaryAUROC(thresholds=100)
+        metric_mean = MeanMetric()
+
+        for x, y in tqdm(dataloader, desc="Computing AUROC", disable=not verbose):
+            n = x.shape[0]
+            logodd = model(x.to(device)).cpu()
+
+            assert torch.isfinite(logodd).all()
+
+            if len(logodd.shape) == 2:
+                assert logodd.shape == (n, 1)
+                logodd = logodd.squeeze(1)
+
+            assert len(logodd.shape) == 1, f"{logodd.shape}"
+
+            assert np.isin(y.numpy(), [0, 1]).all()
+
+            metric_auroc.update(logodd, y)
+            loss = F.binary_cross_entropy_with_logits(
+                logodd, y.float(), reduction="none"
+            )
+            assert len(loss.shape) == 1
+            assert logodd.shape == (n,)
+            assert loss.shape == (n,)
+            metric_mean.update(loss)
+
+        auroc = metric_auroc.compute()
+        if self.convert_auroc:
+            auroc = np.max([auroc, 1 - auroc])
+
+            assert 0.5 <= auroc <= 1.0
+
+        auroc = float(auroc)
+        binxent = float(metric_mean.compute())
+
+        return (auroc, binxent)
+
+    def _metric_names(self):
+        return ("auroc", "binxent")
+
 
 class MetricAccuracy(MetricFunction):
     def __init__(self, num_classes: int):
         self.num_classes = num_classes
 
-    def __str__(self) -> str:
-        return "accuracy"
-
+    @torch.no_grad()
     def __call__(
         self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
     ):
@@ -110,7 +168,6 @@ class MetricAccuracy(MetricFunction):
         assert not model.training
 
         metric = Accuracy(task="multiclass", num_classes=self.num_classes)
-        # todo:  no grad feature
         for x, y in tqdm(dataloader, desc="Computing ACC", disable=not verbose):
             logits = model(x.to(device)).cpu()
 
@@ -122,3 +179,6 @@ class MetricAccuracy(MetricFunction):
         metric = float(metric.compute())
 
         return (metric,)
+
+    def _metric_names(self):
+        return ("accuracy",)

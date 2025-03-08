@@ -128,6 +128,8 @@ def get_last_layer_policy(name: str) -> LastLayerPolicy:
         # ref: temperature value from
         # https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L78
         return KLPolicy(temperature=4.0)
+    elif name == "binkd":
+        return BinaryKLPolicy()
     elif name == "dkd":
         return DKDPolicy(
             # cf. https://github.com/megvii-research/mdistiller/blob/master/configs/imagenet/r34_r18/dkd.yaml#L29
@@ -198,6 +200,32 @@ class KLPolicy(LastLayerPolicy):
         # We muliply with scaling factor as mentioned in Hinton et al. (2015)
         # (cf. the paragraph before Section 2.1).
         return (self.T**2) * kl
+
+
+class BinaryKLPolicy(LastLayerPolicy):
+
+    def __init__(self):
+        super().__init__()
+
+        self.transformer_teacher_feats = nn.Identity()
+        self.transformer_student_feats = nn.Identity()
+
+    def criterion(
+        self,
+        teacher_logits: torch.Tensor,
+        student_logits: torch.Tensor,
+        target: torch.Tensor,
+    ) -> torch.Tensor:
+        n = target.shape[0]
+
+        assert teacher_logits.shape == student_logits.shape
+
+        teacher_yp_gv_x = torch.sigmoid(teacher_logits)
+
+        # todo: check whether this is the special os KLDiv
+        kl = F.binary_cross_entropy_with_logits(student_logits, teacher_yp_gv_x)
+
+        return kl
 
 
 class DKDPolicy(LastLayerPolicy):
@@ -706,6 +734,217 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         loss_mse = loss_mse.flatten(start_dim=1)
 
         loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
+class AddBias(nn.Module):
+    def __init__(self, d: int):
+        super().__init__()
+        self.bias = nn.Parameter(torch.zeros(d).reshape(1, d, 1, 1))
+        self.scaling = nn.Parameter(torch.tensor(1.0))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.scaling * x + self.bias
+
+
+@register_layer_policy("basis-with-bias-and-scale")
+class OrthogonalBasisIdentityPolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = AddBias(d=k).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
+@register_layer_policy("basis-bn-only-affine")
+class OrthogonalBasisIdentityPolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.BatchNorm2d(
+            num_features=k, track_running_stats=False, affine=True
+        ).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
+@register_layer_policy("basis-bn-only-runstats")
+class OrthogonalBasisIdentityPolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.BatchNorm2d(
+            num_features=k, track_running_stats=True, affine=False
+        ).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
+@register_layer_policy("basis-bn")
+class OrthogonalBasisIdentityPolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.BatchNorm2d(
+            num_features=k, track_running_stats=True, affine=True
+        ).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
+@register_layer_policy("basis-bn-wo-normalization")
+class OrthogonalBasisIdentityPolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.BatchNorm2d(
+            num_features=k, track_running_stats=True, affine=True
+        ).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
 
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)

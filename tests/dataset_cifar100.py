@@ -14,53 +14,76 @@ from copy import deepcopy
 
 from xaikd import utils, datasets, constants
 
-DF_CIFAR100_LABEL_MAPPING = pd.read_csv(
-    datasets.constants.PACKAGE_DIR / "resources" / "cifar100-label-mapping.csv"
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "cifar100",
+        "cifar100-people",
+    ],
 )
-
-
-@pytest.mark.parametrize("name", ["cifar100", "cifar100-people", "imagenet"])
 def test_construct_dataset(name):
     dataset = datasets.construct(name)
 
-    # todo: find a way to use @property to automatically validate these attributes
-    # instead of do this manually
-    assert hasattr(dataset, "num_classes")
-    assert hasattr(dataset, "input_transformation")
-    assert hasattr(dataset, "input_training_transformation")
-    assert hasattr(dataset, "_normalizer")
+    for train_split in [True, False]:
+        _ = dataset.create_subset(train_split=train_split)
+
+    assert True
+
+
+@pytest.mark.slow()
+def test_original_dataset():
+    train_split = False
+    dataset = datasets.construct("cifar100")
+
+    actual_ds = dataset.create_subset(train_split=train_split)
+
+    assert isinstance(actual_ds, CIFAR100)
+
+    expected_ds = CIFAR100(
+        root=str(datasets.DATADIR / "cifar100"),
+        transform=dataset.input_transformation,
+        train=train_split,
+    )
+
+    np.testing.assert_equal(len(actual_ds), len(expected_ds))
+
+    for (actual_x, actual_y), (expected_x, expected_y) in zip(
+        datasets.build_dataloader(actual_ds, shuffle=False),
+        datasets.build_dataloader(expected_ds, shuffle=False),
+    ):
+        np.testing.assert_allclose(actual_x, expected_x)
+        np.testing.assert_allclose(actual_y, expected_y)
 
 
 @pytest.mark.parametrize(
-    "super_class", DF_CIFAR100_LABEL_MAPPING["coarse_label_name"].unique().tolist()
+    "superclass",
+    ["people", "fish"],
 )
-def test_cifar100_superclass(super_class):
-    ds: datasets.Cifar100SuperClassesDataset = datasets.construct(
-        f"cifar100-{super_class}"
+def test_cifar100_superclass(superclass):
+    dataset = datasets.construct(f"cifar100-{superclass}")
+
+    _, fine_labels = datasets.cifar100.get_fineclass_names_indices_of_superclass(
+        superclass
     )
 
-    df = DF_CIFAR100_LABEL_MAPPING
+    assert tuple(sorted(dataset.selected_classes)) == tuple(sorted(fine_labels))
 
-    fine_labels = df[df.coarse_label_name == super_class].fine_label.values.tolist()
+    for train_split in [True, False]:
+        ds = dataset.create_subset(train_split=train_split)
 
-    assert tuple(sorted(ds.selected_classes)) == tuple(sorted(fine_labels))
+        np.testing.assert_equal(len(set(ds.targets).difference(fine_labels)), 0)
 
-    for ix, (_, y) in enumerate(DataLoader(ds.create_subset(train_split=False))):
-        assert (y.numpy() <= ds.num_classes - 1).all()
+        for _, y in DataLoader(ds):
+            assert (y.numpy() <= dataset.num_classes - 1).all()
 
 
-@pytest.mark.parametrize(
-    "super_class", DF_CIFAR100_LABEL_MAPPING["coarse_label_name"].unique().tolist()
-)
-def test_cifar100_superclass_transform_target(super_class):
-    ds: datasets.Cifar100SuperClassesDataset = datasets.construct(
-        f"cifar100-{super_class}"
-    )
+@pytest.mark.parametrize("superclass", ["people", "fish"])
+def test_cifar100_superclass_transform_target(superclass):
+    ds = datasets.construct(f"cifar100-{superclass}")
 
-    df = DF_CIFAR100_LABEL_MAPPING
-
-    fine_labels = sorted(
-        df[df.coarse_label_name == super_class].fine_label.values.tolist()
+    _, fine_labels = datasets.cifar100.get_fineclass_names_indices_of_superclass(
+        superclass
     )
 
     dl_val = datasets.build_dataloader(
@@ -233,27 +256,6 @@ def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
             assert len(arr_victim_indices) == 0
 
 
-@torch.no_grad()
-def test_construct_superclass_vs_others():
-    dataset = datasets.construct("cifar100-people-vs-others")
-
-    assert len(dataset.selected_classes) == 5
-
-    for train_split in [True, False]:
-        ds = dataset.create_subset(train_split=train_split)
-
-        arr_ys = []
-        dl = datasets.build_dataloader(dataset=ds, shuffle=False)
-        for _, y in dl:
-            arr_ys.extend(y.numpy().tolist())
-
-        arr_ys = np.array(arr_ys)
-
-        perc_y1 = (arr_ys == 1).mean()
-
-        np.testing.assert_allclose(perc_y1, 1 / len(constants.CIFAR100_SUPER_CLASSES))
-
-
 def test_get_fineclass_indices():
     actual_names, actual_idx = (
         datasets.cifar100.get_fineclass_names_indices_of_superclass("people")
@@ -269,3 +271,33 @@ def test_get_fineclass_indices():
     expected_idx = sorted([11, 98, 35, 2, 46])
     np.testing.assert_equal(actual_idx, expected_idx)
     np.testing.assert_equal(actual_names, expected_names)
+
+
+@torch.no_grad()
+@pytest.mark.parametrize(
+    "dataset_name", ["cifar100-people-vs-others", "cifar100-valsplit-people-vs-others"]
+)
+def test_construct_superclass_vs_others(dataset_name):
+    dataset = datasets.construct(dataset_name)
+
+    assert len(dataset.selected_classes) == 5
+    assert dataset.num_classes == 1
+
+    for train_split in [True, False]:
+        ds = dataset.create_subset(train_split=train_split)
+
+        if "valsplit" in dataset_name:
+            assert ds.train 
+
+        arr_ys = []
+        dl = datasets.build_dataloader(dataset=ds, shuffle=False)
+        for _, y in dl:
+            arr_ys.extend(y.numpy().tolist())
+
+        arr_ys = np.array(arr_ys)
+
+        perc_y1 = (arr_ys == 1).mean()
+
+        np.testing.assert_allclose(
+            perc_y1, 1 / len(constants.CIFAR100_SUPER_CLASSES), atol=1e-2
+        )

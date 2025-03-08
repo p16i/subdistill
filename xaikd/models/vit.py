@@ -95,6 +95,7 @@ def make_encoder_intermediate_output_have_cnn_like_shape_(model: VisionTransform
         # remark: we have to recreate these convertors for each layer
         # because output hooks are attached.
 
+        # todo: perhaps, we don't need to define these variables
         # convert from cnn-like to native shapes
         transform_to_native_shape = ConvertTensorfromCNNLikeToViTShape()
 
