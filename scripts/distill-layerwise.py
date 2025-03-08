@@ -98,7 +98,8 @@ def build_dataloaders(
     training_size: float,
     seed: int,
 ) -> typing.Tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
-    # todo: perhaps, we can abstract this and add tests
+    # todo: perhaps, we can abstract this  into datasets and add tests
+    # idea: return dl_train, dl_train_aug, dl_val, dl_test (when use_val=False, dl_val = dl_test)
     ds_train = dataset.create_subset(train_split=True)
 
     # remark: when ratio=1.0, we do this anyway; so the code below is more staight forward
