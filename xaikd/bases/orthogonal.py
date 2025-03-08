@@ -52,6 +52,7 @@ class OrthogonalBasis(ABC):
     def estimate_scale_factors(self, x: npt.NDArray, U: npt.NDArray) -> npt.NDArray:
         # remark: if centering (i.e., `mean(activation)=0`), then
         # this expresssion is `standard deviation`
+        # fixme: this part causes OOMs with imagenet-resnet50-tv on imagenet-butterfly-vs-others
         return np.mean((x @ U) ** 2, axis=0)
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
@@ -191,6 +192,7 @@ class PRCAPosDef(OrthogonalBasis):
         cov_c = arr_ctx.T @ arr_ctx
         tr_cov_c = np.trace(cov_c)
 
+        # fixme: cov_acca = cov_ac + cov_ac.T?
         cov_ac = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
 
         cov_pos_def = (

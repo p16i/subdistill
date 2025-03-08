@@ -41,7 +41,6 @@ def main(wandb_project, dry_run, config_files):
             sweep_config["parameters"]["wandb-experiment-group"] = dict(
                 value=sweep_group
             )
-            click.echo(f"- Sweep from `{folder_name}/{filename}`")
             total_runs = 1
             for k, v in sweep_config["parameters"].items():
                 assert isinstance(v, dict)
@@ -54,10 +53,12 @@ def main(wandb_project, dry_run, config_files):
 
             if not dry_run:
 
+                print("====== output from wandb.sdk ======")
                 sweep_id = wandb.sweep(
                     project=wandb_project,
                     sweep=sweep_config,
                 )
+                print("====== end ======")
 
             else:
                 sweep_id = "dry-run-dummy-id"
@@ -66,6 +67,7 @@ def main(wandb_project, dry_run, config_files):
             "<SWEEP_ID>", sweep_id
         )
 
+        click.echo(f"- Sweep from `{folder_name}/{filename}`")
         click.echo(
             f"\t- {WANDB_USERNAME}/{wandb_project}/{sweep_id} (total {total_runs} runs) ({url})"
         )

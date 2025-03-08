@@ -231,15 +231,37 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                         on_epoch=True,
                     )
 
-        loss = (
-            self.lambda_task * loss_task
-            + self.lambda_kd * loss_kd
-            + self.lambda_layer * loss_layer
-        )
+        is_shown_in_prog_bar = prefix == "val"
+        loss = 0
 
-        self.log(f"{prefix}_loss_task", loss_task, on_epoch=True)
-        self.log(f"{prefix}_loss_kd", loss_kd, on_epoch=True)
-        self.log(f"{prefix}_loss_layer", loss_layer, on_epoch=True)
+        if self.lambda_task > 0:
+            assert torch.isfinite(loss_task)
+            loss = loss + self.lambda_task * loss_task
+            self.log(
+                f"{prefix}_loss_task",
+                loss_task,
+                on_epoch=True,
+                prog_bar=is_shown_in_prog_bar,
+            )
+        if self.lambda_kd > 0:
+            assert torch.isfinite(loss_kd)
+            loss = loss + self.lambda_kd * loss_kd
+            self.log(
+                f"{prefix}_loss_kd",
+                loss_kd,
+                on_epoch=True,
+                prog_bar=is_shown_in_prog_bar,
+            )
+        if self.lambda_layer > 0:
+            assert torch.isfinite(loss_layer)
+            loss = loss + self.lambda_layer * loss_layer
+
+            self.log(
+                f"{prefix}_loss_layer",
+                loss_layer,
+                on_epoch=True,
+                prog_bar=is_shown_in_prog_bar,
+            )
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
         teacher_y_pred = (teacher_logits > 0).detach().cpu()
@@ -345,6 +367,8 @@ class Layerwise:
         finetuning_with_layer_loss: bool,
         # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
+
+        assert (np.array([lambda_task, lambda_kd, lambda_layer]) > 0).any()
 
         student.eval()
         student.to(device)

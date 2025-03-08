@@ -122,6 +122,8 @@ class MetricAUROCBinaryCrossEntropy(MetricFunction):
             n = x.shape[0]
             logodd = model(x.to(device)).cpu()
 
+            assert torch.isfinite(logodd).all()
+
             if len(logodd.shape) == 2:
                 assert logodd.shape == (n, 1)
                 logodd = logodd.squeeze(1)
