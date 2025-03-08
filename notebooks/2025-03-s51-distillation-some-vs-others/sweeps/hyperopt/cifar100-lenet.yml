@@ -16,20 +16,20 @@ parameters:
       - 1
       - 2
       - 3
-  epochs:
-    value: 50
   teacher:
     value: cifar100-resnet18-v1
+  layers:
+    value: layer3:pool1,layer4:pool2
   student:
-    value: student-mobilenetxs
+    value: student-lenet
   dataset:
     value: cifar100-valsplit-people-vs-others
   layer-policy:
      values: 
       - vid
-      - basis-bn:pca
-      - basis-bn:gradpca
-      - basis-identity:prcaposdef
+      - attention-transfer
+      - spkd
+      - vkd
       - basis-bn:prcaposdef
   lambda-task:
       value:  0.0
@@ -43,9 +43,6 @@ parameters:
         - 1.0
         - 10.0
         - 100.0
+        - 1000.0
   training-size:
-      values: 
-        - 0.03125
-        - 0.0625
-        # - 0.125
-        # - 1.0
+      value: 0.001
