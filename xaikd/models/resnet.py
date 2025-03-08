@@ -58,6 +58,19 @@ def _resnet18_cifar(num_classes: int) -> nn.Module:
     return model
 
 
+@register_model("cifar-resnet50")
+def _resnet50_cifar(num_classes: int) -> nn.Module:
+    model = torchvision.models.resnet50(weights=None, num_classes=num_classes)
+
+    # why we use this? (ask Florian?)
+    model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
+    model.maxpool = nn.Identity()
+
+    model.num_classes = num_classes
+
+    return model
+
+
 @register_model("imagenet-resnet18-tv")
 def _resnet18_imagenet() -> nn.Module:
     model = torchvision.models.resnet18(weights=resnet.ResNet18_Weights.IMAGENET1K_V1)
