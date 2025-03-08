@@ -111,7 +111,8 @@ def _resnet152_imagenet() -> nn.Module:
     return model
 
 
-def construct_student_resnet18(in_planes: int, num_classes: int):
+def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
+    # todo: add ref
     # ref:
     model = resnet._resnet(
         resnet.BasicBlock,
