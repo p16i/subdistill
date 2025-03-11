@@ -2,9 +2,6 @@ import pytest
 
 import numpy as np
 
-from torch.utils.data import Subset
-from torchvision.datasets import VisionDataset
-from torch.utils.data import DataLoader, Dataset
 from torchvision.transforms import (
     RandomCrop,
     RandomHorizontalFlip,
@@ -16,7 +13,7 @@ from torchvision.transforms import (
 
 from torchvision.models import ResNet18_Weights
 
-from xaikd import models, utils, datasets, metrics, constants
+from xaikd import datasets, metrics, constants
 
 
 @pytest.mark.parametrize("training_data_ratio", [0.01, 0.5, 1.0])
@@ -64,6 +61,7 @@ def test_train_transform_cifar100():
         assert isinstance(actual, expected_class)
 
 
+@pytest.mark.slow
 def test_train_transform_imagenet():
     use_validation_set = False
 
