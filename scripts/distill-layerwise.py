@@ -396,15 +396,14 @@ def main(
     )
 
     last_epoch_val_auroc = results["arr_metrics"]["val_auroc"][-1]
-    last_epoch_val_agreement = results["arr_metrics"]["val_agreement"][-1]
 
-    print(
-        f"Result: [distill with:  `{layer_policy}`] auroc={last_epoch_val_auroc:.4f} agreement={last_epoch_val_agreement:.4f}"
-    )
+    print(f"Result: [distill with:  `{layer_policy}`] auroc={last_epoch_val_auroc:.4f}")
 
     for k, v in results.items():
         logger.experiment.summary[k] = v
 
+
+    # do we actually need this?
     # log prediction
     # remark: this prediction is the of the latest model, which is NOT necesseary
     # the best.
@@ -425,6 +424,7 @@ def main(
 
             assert student_logits.shape == (x.shape[0], 1)
 
+            # todo: log logit instead maybe?
             student_pred = student_logits.squeeze(1) > 0
 
             arr_targets.extend(y.numpy().tolist())

@@ -84,8 +84,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         )
         self.lr = lr
 
-        self.arr_metrics = []
-
         self.lambda_layer = lambda_layer
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
@@ -100,12 +98,14 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.metric = dict(
             train_auroc=BinaryAUROC(thresholds=100),
             val_auroc=BinaryAUROC(thresholds=100),
+            # fixme: remove this
             train_agreement=MeanMetric(),
             val_agreement=MeanMetric(),
             train_agreement_on_teacher_correct=MeanMetric(),
             val_agreement_on_teacher_correct=MeanMetric(),
         )
 
+        # fixme: remove this
         self.arr_metrics = dict(
             train_auroc=[],
             val_auroc=[],
@@ -138,49 +138,41 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         # )
         # return optimizer
 
-    def _compute_loss(self, batch, prefix, batch_idx):
-        x, y = batch
-        n = x.shape[0]
-        if prefix == "val":
-            assert not self.student.training
+    def _compute_loss_task(
+        self, student_logits: torch.Tensor, target: torch.Tensor
+    ) -> torch.Tensor:
+        return F.binary_cross_entropy_with_logits(student_logits, target.float())
 
-        with torch.no_grad():
-            (
-                teacher_logits,
-                teacher_arr_intermediate_feats,
-            ) = utils.interceptor.forward_and_intercept_intermediate_layers(
-                self.teacher.model,
-                x,
-                layers=self.layer_policy_collection.teacher_layers,
-                detach_output=False,
-            )
-        (
-            student_logits,
-            student_arr_intermediate_feats,
-        ) = utils.interceptor.forward_and_intercept_intermediate_layers(
-            self.student,
-            x,
-            layers=self.layer_policy_collection.student_layers,
-            detach_output=should_detach_output(
-                self.parameter_partition_mode, self.current_epoch
-            ),
-        )
+    def _compute_loss_kd(
+        self,
+        teacher_logits: torch.Tensor,
+        student_logits: torch.Tensor,
+        target: torch.Tensor,
+    ) -> torch.Tensor:
 
-        assert student_logits.shape == (n, 1)
+        loss = self.last_layer_policy(teacher_logits, student_logits, target)
 
-        student_logits = student_logits.squeeze(1)
+        assert torch.isfinite(loss)
 
-        loss_task = F.binary_cross_entropy_with_logits(student_logits, y.float())
+        return loss
 
-        loss_kd = self.last_layer_policy(teacher_logits, student_logits, y)
+    def _compute_loss_layer(
+        self,
+        teacher_arr_intermediate_feats: typing.List[torch.Tensor],
+        student_arr_intermediate_feats: typing.List[torch.Tensor],
+        prefix: str,
+    ) -> torch.Tensor:
 
-        loss_layer = torch.tensor(0.0).to(loss_kd.device)
+        device = teacher_arr_intermediate_feats[0].device
+
+        loss_layer = torch.tensor(0.0).to(device)
 
         is_finetuning = not should_detach_output(
             partition_mode=self.parameter_partition_mode,
             current_epoch=self.current_epoch,
         )
 
+        # fixme we don't need this anymore i think
         if is_finetuning and not self.finetuning_with_layer_loss:
             layer_policies = []
         else:
@@ -231,49 +223,84 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                         on_epoch=True,
                     )
 
-        is_shown_in_prog_bar = prefix == "val"
-        loss = 0
+        assert torch.isfinite(loss_layer)
 
-        if self.lambda_task > 0:
-            assert torch.isfinite(loss_task)
-            loss = loss + self.lambda_task * loss_task
-            self.log(
-                f"{prefix}_loss_task",
-                loss_task,
-                on_epoch=True,
-                prog_bar=is_shown_in_prog_bar,
+        return loss_layer
+
+    def _compute_loss(self, batch, prefix, batch_idx):
+        x, y = batch
+        n = x.shape[0]
+
+        assert not self.teacher.model.training
+
+        if prefix == "val":
+            assert not self.student.training
+
+        with torch.no_grad():
+            (
+                teacher_logits,
+                teacher_arr_intermediate_feats,
+            ) = utils.interceptor.forward_and_intercept_intermediate_layers(
+                self.teacher.model,
+                x,
+                layers=self.layer_policy_collection.teacher_layers,
+                detach_output=False,
             )
-        if self.lambda_kd > 0:
-            assert torch.isfinite(loss_kd)
-            loss = loss + self.lambda_kd * loss_kd
-            self.log(
-                f"{prefix}_loss_kd",
-                loss_kd,
-                on_epoch=True,
-                prog_bar=is_shown_in_prog_bar,
-            )
-        if self.lambda_layer > 0:
-            assert torch.isfinite(loss_layer)
-            loss = loss + self.lambda_layer * loss_layer
-
-            self.log(
-                f"{prefix}_loss_layer",
-                loss_layer,
-                on_epoch=True,
-                prog_bar=is_shown_in_prog_bar,
-            )
-        self.log(f"{prefix}_loss_all", loss, on_epoch=True)
-
-        teacher_y_pred = (teacher_logits > 0).detach().cpu()
-        student_y_pred = (student_logits > 0).detach().cpu()
-
-        self.metric[f"{prefix}_auroc"].update(student_logits.detach().cpu(), y.cpu())
-        self.metric[f"{prefix}_agreement"].update(student_y_pred == teacher_y_pred)
-        self.metric[f"{prefix}_agreement_on_teacher_correct"].update(
-            (teacher_y_pred == y.cpu()) * (student_y_pred == teacher_y_pred)
+        (
+            student_logits,
+            student_arr_intermediate_feats,
+        ) = utils.interceptor.forward_and_intercept_intermediate_layers(
+            self.student,
+            x,
+            layers=self.layer_policy_collection.student_layers,
+            detach_output=should_detach_output(
+                self.parameter_partition_mode, self.current_epoch
+            ),
         )
 
+        assert student_logits.shape == (n, 1)
+
+        student_logits = student_logits.squeeze(1)
+
+        loss_task = self._compute_loss_task(student_logits=student_logits, target=y)
+        loss_kd = self._compute_loss_kd(
+            teacher_logits=teacher_logits, student_logits=student_logits, target=y
+        )
+        loss_layer = self._compute_loss_layer(
+            teacher_arr_intermediate_feats=teacher_arr_intermediate_feats,
+            student_arr_intermediate_feats=student_arr_intermediate_feats,
+            prefix=prefix,
+        )
+
+        loss = 0
+
+        for loss_label, loss_value, loss_coeff in [
+            ("task", loss_task, self.lambda_task),
+            ("kd", loss_kd, self.lambda_kd),
+            ("layer", loss_layer, self.lambda_layer),
+        ]:
+            if loss_coeff == 0:
+                continue
+
+            assert torch.isfinite(loss_value)
+
+            loss = loss + loss_coeff * loss_value
+
+            self.log(
+                f"{prefix}_loss_{loss_label}",
+                loss_value,
+                on_epoch=True,
+                prog_bar=prefix == "val",
+            )
+
+        self.log(f"{prefix}_loss_all", loss, on_epoch=True)
+
+        self.metric[f"{prefix}_auroc"].update(student_logits.detach().cpu(), y.cpu())
+
         return loss
+
+    def _in_prog_bar(self, prefix: str) -> bool:
+        return prefix == "val"
 
     def training_step(self, train_batch, batch_idx):
         return self._compute_loss(train_batch, "train", batch_idx)
@@ -299,20 +326,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")
-
-        # todo: check whether we still need to log this
-        # for layer, policy in zip(
-        #     self.layer_policy_collection.student_layers,
-        #     self.layer_policy_collection.policies,
-        # ):
-        #     if (
-        #         hasattr(policy.transformer_student_feats, "weight")
-        #         and policy.transformer_student_feats.weight is not None
-        #     ):
-        #         W = policy.transformer_student_feats.weight
-        #         slug = f"student-transform-norm--{layer}"
-
-        #         self.log(slug, torch.linalg.matrix_norm(W.squeeze()))
+        # todo: log best_val_auroc
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")
@@ -365,7 +379,6 @@ class Layerwise:
         seed: int,
         enable_checkpointing: bool,
         finetuning_with_layer_loss: bool,
-        # callbacks=[],
     ) -> typing.Tuple[nn.Module, typing.Dict]:
 
         assert (np.array([lambda_task, lambda_kd, lambda_layer]) > 0).any()
