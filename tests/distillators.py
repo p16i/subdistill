@@ -232,9 +232,7 @@ def test_distillation_runnable_and_correct(
 @pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
 def test_get_parameters(layers, parameter_partition_mode):
     ignore_layer_loss_fullupdate = False
-    dataset: datasets.Cifar100SuperClassesDataset = datasets.construct(
-        "cifar100-people"
-    )
+    dataset = datasets.construct("cifar100-people")
 
     device = utils.get_device()
 
