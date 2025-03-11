@@ -118,13 +118,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
         return [optimizer], [scheduler]
 
-        # todo:  remove this
-        # ref: https://github.com/HobbitLong/RepDistiller/blob/dcc043277f2820efafd679ffb82b8e8195b7e222/train_student.py#L273
-        # optimizer = torch.optim.SGD(
-        #     parameters, lr=0.01, momentum=0.9, weight_decay=5e-4
-        # )
-        # return optimizer
-
     def _compute_loss_task(
         self, student_logits: torch.Tensor, target: torch.Tensor
     ) -> torch.Tensor:
