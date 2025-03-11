@@ -33,8 +33,11 @@ from xaikd.distillation_policies import LayerPolicyCollection
 def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.Tensor]:
     stats = []
     for bn in utils.query_module_children_with_type(model, nn.BatchNorm2d):
+
+        assert not bn.running_mean is None
         stats.append(bn.running_mean.clone().cpu().numpy())
 
+        assert not bn.running_var is None
         stats.append(bn.running_var.clone().cpu().numpy())
 
     return stats
@@ -55,9 +58,9 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
         ),
     ],
 )
-@pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
 def test_distillation_runnable_and_correct(
-    teacher_model_name, layers, parameter_partition_mode
+    teacher_model_name,
+    layers,
 ):
 
     last_layer_policy = "binkd"
@@ -145,8 +148,6 @@ def test_distillation_runnable_and_correct(
         train_dataloader=train_loader,
         val_dataloader=val_loader,
         device=device,
-        weight_decay=0.0,
-        parameter_partition_mode=parameter_partition_mode,
     )
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -166,7 +167,6 @@ def test_distillation_runnable_and_correct(
             logger=TensorBoardLogger(tmpdirname),
             seed=1,
             enable_checkpointing=False,
-            finetuning_with_layer_loss=ignore_layer_loss_fullupdate,
         )
 
     # post-training assertions
@@ -229,9 +229,7 @@ def test_distillation_runnable_and_correct(
 
 
 @pytest.mark.parametrize("layers", [["layer3"], ["layer3", "layer4"]])
-@pytest.mark.parametrize("parameter_partition_mode", ["@1", "@0"])
-def test_get_parameters(layers, parameter_partition_mode):
-    ignore_layer_loss_fullupdate = False
+def test_get_parameters(layers):
     dataset = datasets.construct("cifar100-people")
 
     device = utils.get_device()
@@ -285,9 +283,6 @@ def test_get_parameters(layers, parameter_partition_mode):
         lambda_layer=1,
         lambda_task=1,
         lr=1e-5,
-        num_classes=dataset.num_classes,
-        parameter_partition_mode=parameter_partition_mode,
-        finetuning_with_layer_loss=ignore_layer_loss_fullupdate,
     )
 
     actual_num_params = utils.count_params_in_list_params(
@@ -301,22 +296,3 @@ def test_get_parameters(layers, parameter_partition_mode):
     expected_num_params = utils.count_params_in_list_params(expected_params)
 
     assert actual_num_params == expected_num_params
-
-
-@pytest.mark.parametrize(
-    "partition_mode,current_epoch,expected",
-    [
-        ("@10", 9, True),
-        ("@10", 10, False),
-        ("@80", 2, True),
-        ("@80", 10, True),
-        ("@80", 79, True),
-        ("@80", 80, False),
-    ],
-)
-def test_should_detach_output(partition_mode, current_epoch, expected):
-    actual = distillators.should_detach_output(
-        partition_mode=partition_mode, current_epoch=current_epoch
-    )
-
-    np.testing.assert_equal(actual, expected)

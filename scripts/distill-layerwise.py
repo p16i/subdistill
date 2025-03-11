@@ -35,7 +35,7 @@ from xaikd import (
 )
 
 
-from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.loggers.wandb import WandbLogger
 
 
 WANDB_DIR = os.getenv("WANDB_DIR", ".")
@@ -168,12 +168,6 @@ def build_dataloaders(
 @click.option("--lambda-layer", default=None, type=float)
 @click.option("--default-lambda-layer-config", default=None, type=str)
 @click.option("--epochs", type=int, default=100, required=True)
-@click.option(
-    "--parameter-partition-mode", type=str, default="@0"
-)  # todo: what is this again?
-@click.option(
-    "--finetuning-with-layer-loss", type=bool, default=True
-)  # todo: what is this?
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
 @click.option("--wandb-experiment-group", type=str, default=None)
@@ -192,8 +186,6 @@ def main(
     lambda_layer,
     default_lambda_layer_config,
     epochs,
-    parameter_partition_mode,  # todo: change to perform-fullupdate
-    finetuning_with_layer_loss,
     lr,
     enable_checkpointing,
     seed,
@@ -224,10 +216,7 @@ def main(
     )
 
     output_dir = (
-        Path(output_dir)
-        / f"{dataset}-tz{training_size}"
-        / teacher
-        / f"partitionMode{parameter_partition_mode}-seed{seed}"
+        Path(output_dir) / f"{dataset}-tz{training_size}" / teacher / f"seed{seed}"
     )
 
     os.makedirs(output_dir, exist_ok=True)
@@ -287,7 +276,7 @@ def main(
         dict_student_layer_dim.items(),
     ):
         print(
-            f"> mapping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim}, parameter_partition_mode={parameter_partition_mode})"
+            f"> mapping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim})"
         )
 
     logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
@@ -340,8 +329,6 @@ def main(
         train_dataloader=train_loader_with_aug,
         val_dataloader=val_loader,
         device=device,
-        weight_decay=0.0,  # todo: perhaps, we can just set this to zero in the LayerWise Distillator
-        parameter_partition_mode=parameter_partition_mode,
     )
 
     student_slug = "--".join(
@@ -392,7 +379,6 @@ def main(
         logger=logger,
         seed=seed,
         enable_checkpointing=enable_checkpointing,
-        finetuning_with_layer_loss=finetuning_with_layer_loss,
     )
 
     last_epoch_val_auroc = results["arr_metrics"]["val_auroc"][-1]
@@ -401,7 +387,6 @@ def main(
 
     for k, v in results.items():
         logger.experiment.summary[k] = v
-
 
     # do we actually need this?
     # log prediction

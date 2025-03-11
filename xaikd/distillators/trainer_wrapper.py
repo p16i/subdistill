@@ -16,16 +16,6 @@ from torchmetrics import MeanMetric
 from torchmetrics.classification import BinaryAUROC
 
 
-def should_detach_output(partition_mode: str, current_epoch: int) -> bool:
-    # partition_mode = @<int>
-    _, expected_epoch = partition_mode.split("@")
-    expected_epoch = int(expected_epoch)
-
-    output = current_epoch < expected_epoch
-
-    return output
-
-
 class Teacher(object):
     """The class is a wrapper to a PyTorch model.
     Its purpose is to prevent Lightning to set the wrapped model to training mode.
@@ -53,9 +43,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_layer: float,
         lambda_task: float,
         lambda_kd: float,
-        num_classes: int,
-        parameter_partition_mode: str,
-        finetuning_with_layer_loss: bool,
     ):
         super().__init__()
 
@@ -74,14 +61,12 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.lambda_layer = lambda_layer
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
-        self.parameter_partition_mode = parameter_partition_mode
-        self.finetuning_with_layer_loss = finetuning_with_layer_loss
 
         print(
             f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} )"
         )
 
-        # todo: perhaps, torchvision has some functionairty for tihs
+        # todo: perhaps, torchvision has some functionality for tihs
         self.metric = dict(
             train_auroc=BinaryAUROC(thresholds=100),
             val_auroc=BinaryAUROC(thresholds=100),
@@ -113,7 +98,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def configure_optimizers(self):
         parameters = self._get_parameters()
 
-        # pat's optimizer (used in S11, 12)
         optimizer = torch.optim.Adam(parameters, lr=self.lr, weight_decay=0.0)
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
         return [optimizer], [scheduler]
@@ -147,16 +131,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         loss_layer = torch.tensor(0.0).to(device)
 
-        is_finetuning = not should_detach_output(
-            partition_mode=self.parameter_partition_mode,
-            current_epoch=self.current_epoch,
-        )
-
-        # fixme we don't need this anymore i think
-        if is_finetuning and not self.finetuning_with_layer_loss:
-            layer_policies = []
-        else:
-            layer_policies = self.layer_policy_collection.policies
+        layer_policies = self.layer_policy_collection.policies
 
         for lix, policy in enumerate(layer_policies):
 
@@ -233,9 +208,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.student,
             x,
             layers=self.layer_policy_collection.student_layers,
-            detach_output=should_detach_output(
-                self.parameter_partition_mode, self.current_epoch
-            ),
+            detach_output=False,
         )
 
         assert student_logits.shape == (n, 1)
@@ -252,7 +225,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             prefix=prefix,
         )
 
-        loss = 0
+        loss = torch.tensor(0.0).to(teacher_logits.device)
 
         for loss_label, loss_value, loss_coeff in [
             ("task", loss_task, self.lambda_task),

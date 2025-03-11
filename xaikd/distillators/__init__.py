@@ -1,2 +1,2 @@
-from .trainer_wrapper import should_detach_output, LayerwiseKDModelWrapper
+from .trainer_wrapper import LayerwiseKDModelWrapper
 from .distillator import Layerwise

@@ -34,8 +34,6 @@ class Layerwise:
         train_dataloader: DataLoader,
         val_dataloader: DataLoader,
         device: str,
-        weight_decay: float,
-        parameter_partition_mode: str,
     ) -> None:
         self.dataset = dataset
         self.train_dataloader = train_dataloader
@@ -54,9 +52,6 @@ class Layerwise:
                 device=self.device,
             )
 
-        self.weight_decay = weight_decay
-        self.parameter_partition_mode = parameter_partition_mode
-
     def distill(
         self,
         student: nn.Module,
@@ -72,7 +67,6 @@ class Layerwise:
         lambda_layer: float,
         seed: int,
         enable_checkpointing: bool,
-        finetuning_with_layer_loss: bool,
     ) -> typing.Tuple[nn.Module, typing.Dict]:
 
         assert (np.array([lambda_task, lambda_kd, lambda_layer]) > 0).any()
@@ -109,9 +103,6 @@ class Layerwise:
             lambda_task=lambda_task,
             lambda_kd=lambda_kd,
             lambda_layer=lambda_layer,
-            num_classes=self.dataset.num_classes,
-            parameter_partition_mode=self.parameter_partition_mode,
-            finetuning_with_layer_loss=finetuning_with_layer_loss,
         )
 
         print(f"Training log is saved to `{log_dir}`")
