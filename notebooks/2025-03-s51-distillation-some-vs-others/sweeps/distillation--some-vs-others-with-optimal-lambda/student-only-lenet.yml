@@ -11,20 +11,12 @@ metric:
 parameters:
   output-dir:
     value: /tmp
-  seed:
-    values:
-      - 1
-      - 2
-      - 3
   teacher:
     value: cifar100-resnet18-v1
-  layers:
-    value: layer3:layer3,layer4:layer4
   student:
-    values: 
-      - student-cifar-resnet18-16
-      - student-cifar-resnet18-32
-      - student-cifar-resnet18-64
+    value: student-lenet
+  layers: 
+    value: layer3:pool1,layer4:pool2
   dataset:
     value: cifar100-people-vs-others
   layer-policy:
@@ -33,11 +25,18 @@ parameters:
       value:  1.0
   lambda-kd:
       value:  0.0
-  lambda-layer:
-      value:  0.0
+  default-lambda-layer-config:
+      value: cifar100-some-vs-others--small
   training-size:
     values:
-      # - 1.0
+      - 1.0
       - 0.5
-      - 0.1
-      - 0.01
+      - 0.25
+      - 0.125
+      - 0.0625
+      - 0.03125
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
