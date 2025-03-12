@@ -6,6 +6,8 @@ from torch.nn.modules import batchnorm
 import numpy as np
 from copy import deepcopy
 
+import tempfile
+import wandb
 from scipy.stats import ortho_group
 
 
@@ -162,7 +164,10 @@ def merge_convKxK_and_conv1x1(convK: nn.Conv2d, conv1: nn.Conv2d) -> nn.Conv2d:
 
 
 def load_model_from_checkpoint(
-    model_template_object: nn.Module, checkpoint_path: str, model_key: str, device: "cpu"
+    model_template_object: nn.Module,
+    checkpoint_path: str,
+    model_key: str,
+    device="cpu",
 ) -> nn.Module:
     # todo: add test
     ckpt = torch.load(
@@ -183,3 +188,33 @@ def load_model_from_checkpoint(
     trainer_wrapper.load_state_dict(student_state_dict)
 
     return model_template_object
+
+
+def load_model_from_wandb_artifact(
+    model_template_object: nn.Module,
+    run_path: str,
+    model_key: str,
+    wandb_artifact_suffix: str,
+    device="cpu",
+):
+    # todo: add test
+    agent = wandb.Api()
+
+    slugs = run_path.split("/")
+    wandb_project = "/".join(slugs[:2])
+    wandb_runid = slugs[-1]
+
+    artifact: wandb.Artifact = agent.artifact(
+        f"{wandb_project}/model-{wandb_runid}:{wandb_artifact_suffix}"
+    )
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        artifact_dir = artifact.download(root=tmpdirname)
+        model = load_model_from_checkpoint(
+            model_template_object=model_template_object,
+            checkpoint_path=f"{artifact_dir}/model.ckpt",
+            model_key=model_key,
+            device=device,
+        )
+        model.eval()
+        return model
