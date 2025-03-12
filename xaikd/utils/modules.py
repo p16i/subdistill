@@ -104,7 +104,10 @@ class Conv2dRotation(nn.Module):
 
 
 def convert_bn_to_conv(bn: nn.BatchNorm2d) -> nn.Conv2d:
+    assert bn.running_mean is not None
     bn_mean = bn.running_mean.clone()
+
+    assert bn.running_var is not None
     bn_std = (bn.running_var.clone() + bn.eps) ** 0.5
 
     if bn.affine:
