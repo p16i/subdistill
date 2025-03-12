@@ -46,7 +46,6 @@ def learn_basis(
     teacher_model: nn.Module,
     dataset: datasets.DatasetConfiguration,
     train_loader: DataLoader,
-    train_loader_with_shuffle: DataLoader,
     logit_mod: attributors.LogitModifier,
     layers: typing.List[str],
     layer_policy: str,
@@ -82,10 +81,6 @@ def learn_basis(
         basis.fit(
             arr_act,
             arr_ctx,
-            # for pca-lookahead
-            model=teacher_model,
-            layer=layer,
-            dataloader=train_loader_with_shuffle,
         )
 
         arr_learned_bases[f"{layer}"] = basis
@@ -93,62 +88,7 @@ def learn_basis(
     return arr_learned_bases
 
 
-def build_dataloaders(
-    dataset: datasets.DatasetConfiguration,
-    training_size: float,
-    seed: int,
-) -> typing.Tuple[DataLoader, DataLoader, DataLoader, DataLoader]:
-    # todo: perhaps, we can abstract this  into datasets and add tests
-    # idea: return dl_train, dl_train_aug, dl_val, dl_test (when use_val=False, dl_val = dl_test)
-    ds_train = dataset.create_subset(train_split=True)
-
-    # remark: when ratio=1.0, we do this anyway; so the code below is more staight forward
-    ds_train = datasets.subsample_dataset(ds_train, ratio=training_size, seed=seed)
-
-    # remark: we have to do it this way because the current version of
-    #  `contaminate_dataset` function only work with `Subset.
-    ds_val = dataset.create_subset(train_split=False)
-
-    # remark: we set shuffle=False here becaue it is only used to learn bases.
-    train_loader = datasets.build_dataloader(ds_train, shuffle=False)
-    train_loader_with_shuffle = datasets.build_dataloader(ds_train, shuffle=True)
-
-    val_loader = datasets.build_dataloader(
-        ds_val,
-        shuffle=False,
-    )
-
-    print(f"Dataset Information")
-    for label, ds in [("train", ds_train), ("val", ds_val)]:
-        print(f"> split={label:5s}: count={len(ds)}")
-
-    ds_train_with_aug = deepcopy(ds_train)
-
-    # We have to make sure that the `dataset` attribute is an actual dataset containing tranform.
-    # This avoids having a nested chain of Subsets.
-    assert hasattr(ds_train.dataset, "transform")
-    assert isinstance(ds_train.dataset, tvd.CIFAR100) or isinstance(
-        ds_train.dataset, tvd.ImageNet
-    )
-
-    ds_train_with_aug.dataset.transform = dataset.input_training_transformation
-
-    # this loader is used in the distillation process.
-    train_loader_with_aug = datasets.build_dataloader(
-        ds_train_with_aug,
-        shuffle=True,
-        # cf. Ahn et al. (2017), VID, in Supplement Sec. A.3.
-        # we scale batch_size such that when training_size < 1.0,
-        # we get the same number of update steps.
-        batch_size=int(np.ceil(64 * training_size)),
-        drop_last=True,
-    )
-
-    return train_loader, train_loader_with_shuffle, train_loader_with_aug, val_loader
-
-
 # todo: rename file to distill some-vs-others
-
 
 @click.command()
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
@@ -200,6 +140,10 @@ def main(
         default_config_key=default_lambda_layer_config,
     )
 
+    wanddb_experiment_group = (
+        wandb_experiment_group if not wandb_experiment_group is None else output_dir
+    )
+
     arguments = locals()
 
     pl.seed_everything(seed)
@@ -227,11 +171,12 @@ def main(
     # prepare dataset
     dataset = datasets.construct(dataset)
 
-    train_loader, train_loader_with_shuffle, train_loader_with_aug, val_loader = (
-        build_dataloaders(
-            dataset,
-            training_size=training_size,
+    train_loader, train_loader_with_aug, val_loader, test_loader = (
+        datasets.construct_dataloaders(
+            dataset=dataset,
+            training_data_ratio=training_size,
             seed=seed,
+            use_validation_set=True,
         )
     )
 
@@ -284,7 +229,6 @@ def main(
         teacher_model=teacher_model,
         dataset=dataset,
         train_loader=train_loader,
-        train_loader_with_shuffle=train_loader_with_shuffle,
         logit_mod=logit_mod,
         layers=arr_teacher_layers,
         layer_policy=layer_policy,
@@ -344,15 +288,11 @@ def main(
     logger = WandbLogger(
         save_dir=WANDB_DIR,
         project=WANDB_PROJECT,
-        group=(
-            wandb_experiment_group
-            if wandb_experiment_group is not None
-            else arguments["output_dir"]
-        ),  # todo: simpify this
+        group=wanddb_experiment_group,
         job_type="distillation",
         name=f"{student}-{last_layer_policy}-{layer_policy}-seed{seed}",
         notes=f"commit:{utils.get_git_hash()}",
-        log_model="all" if enable_checkpointing else False,
+        log_model="all" if enable_checkpointing else False,  # todo: save best
         config={
             **arguments,
             "policy": layer_policy,
@@ -385,10 +325,11 @@ def main(
 
     print(f"Result: [distill with:  `{layer_policy}`] auroc={last_epoch_val_auroc:.4f}")
 
+    # todo: log only important keys?
     for k, v in results.items():
         logger.experiment.summary[k] = v
 
-    # do we actually need this?
+    # todo:  do we actually need this?
     # log prediction
     # remark: this prediction is the of the latest model, which is NOT necesseary
     # the best.
