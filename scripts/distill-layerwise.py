@@ -90,6 +90,7 @@ def learn_basis(
 
 # todo: rename file to distill some-vs-others
 
+
 @click.command()
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
 @click.option("--student", default="student-32-24-16-8", required=True)
@@ -109,7 +110,7 @@ def learn_basis(
 @click.option("--default-lambda-layer-config", default=None, type=str)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--lr", type=float, default=0.0005, required=True)
-@click.option("--enable-checkpointing", type=bool, default=False, is_flag=True)
+@click.option("--upload-best-checkpoint", type=bool, default=False, is_flag=True)
 @click.option("--wandb-experiment-group", type=str, default=None)
 @click.option("--seed", type=int, default=1)
 @click.option("--output-dir", type=str, required=True)
@@ -127,7 +128,7 @@ def main(
     default_lambda_layer_config,
     epochs,
     lr,
-    enable_checkpointing,
+    upload_best_checkpoint,
     seed,
     output_dir,
     wandb_experiment_group,
@@ -202,7 +203,8 @@ def main(
     )
 
     dict_student_layer_dim = utils.get_dimensions_at_layers(
-        # we don't this to make sure that we don't use
+        # todo: abstract this inside the function and use deepcopy also add test
+        # we do this to prevent the inference with stats of the models
         models.get_untrained_model(
             student,
             num_classes=dataset.num_classes,
@@ -270,8 +272,9 @@ def main(
     distillator = distillators.Layerwise(
         teacher=teacher_model,
         dataset=dataset,
-        train_dataloader=train_loader_with_aug,
-        val_dataloader=val_loader,
+        dataloader_train=train_loader_with_aug,
+        dataloader_val=val_loader,
+        dataloader_test=test_loader,
         device=device,
     )
 
@@ -292,7 +295,6 @@ def main(
         job_type="distillation",
         name=f"{student}-{last_layer_policy}-{layer_policy}-seed{seed}",
         notes=f"commit:{utils.get_git_hash()}",
-        log_model="all" if enable_checkpointing else False,  # todo: save best
         config={
             **arguments,
             "policy": layer_policy,
@@ -301,7 +303,7 @@ def main(
         },
     )
 
-    trained_student, results = distillator.distill(
+    distillator.distill(
         student=student_model,
         last_layer_policy=last_layer_policy,
         layer_policies=distillation_policies.LayerPolicyCollection(
@@ -318,55 +320,8 @@ def main(
         log_dir=log_dir,
         logger=logger,
         seed=seed,
-        enable_checkpointing=enable_checkpointing,
+        upload_best_checkpoint=upload_best_checkpoint,
     )
-
-    last_epoch_val_auroc = results["arr_metrics"]["val_auroc"][-1]
-
-    print(f"Result: [distill with:  `{layer_policy}`] auroc={last_epoch_val_auroc:.4f}")
-
-    # todo: log only important keys?
-    for k, v in results.items():
-        logger.experiment.summary[k] = v
-
-    # todo:  do we actually need this?
-    # log prediction
-    # remark: this prediction is the of the latest model, which is NOT necesseary
-    # the best.
-    with torch.no_grad():
-        teacher_model.to(device)
-        trained_student.to(device)
-
-        assert teacher_model.training == trained_student.training == False
-
-        arr_targets = []
-        arr_student_pred = []
-        arr_teacher_pred = []
-
-        for x, y in val_loader:
-            x = x.to(device)
-            teacher_pred = teacher_model(x) > 0
-            student_logits = trained_student(x)
-
-            assert student_logits.shape == (x.shape[0], 1)
-
-            # todo: log logit instead maybe?
-            student_pred = student_logits.squeeze(1) > 0
-
-            arr_targets.extend(y.numpy().tolist())
-            arr_teacher_pred.extend(teacher_pred.cpu().numpy().tolist())
-            arr_student_pred.extend(student_pred.cpu().numpy().tolist())
-
-        logger.log_table(
-            "prediction",
-            dataframe=pd.DataFrame.from_dict(
-                dict(
-                    target=arr_targets,
-                    student_pred=arr_student_pred,
-                    teacher_pred=arr_teacher_pred,
-                )
-            ),
-        )
 
     wandb.finish()
 

@@ -14,11 +14,7 @@ import torchvision
 from pathlib import Path
 
 
-from . import (
-    spurious_feature_generator,
-    pixelflipping,
-    ndarray_sampling,
-)
+from . import spurious_feature_generator, pixelflipping, ndarray_sampling, modules
 
 
 from xaikd import constants, interceptor
@@ -210,6 +206,7 @@ def get_dimensions_at_layers(
     model: nn.Module, dataloader: DataLoader, layers: typing.List[str], device="cpu"
 ) -> typing.Dict[str, int]:
     # todo: this should be part of interceptor
+    # todo: add test that the function doesn't cause any statistics of the original model to change
     assert not model.training
 
     hooks = []

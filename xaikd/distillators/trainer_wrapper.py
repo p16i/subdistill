@@ -70,21 +70,12 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.metric = dict(
             train_auroc=BinaryAUROC(thresholds=100),
             val_auroc=BinaryAUROC(thresholds=100),
-            # fixme: remove this
-            train_agreement=MeanMetric(),
-            val_agreement=MeanMetric(),
-            train_agreement_on_teacher_correct=MeanMetric(),
-            val_agreement_on_teacher_correct=MeanMetric(),
         )
 
         # fixme: remove this
         self.arr_metrics = dict(
             train_auroc=[],
             val_auroc=[],
-            train_agreement=[],
-            val_agreement=[],
-            train_agreement_on_teacher_correct=[],
-            val_agreement_on_teacher_correct=[],
         )
 
     def _get_parameters(self) -> typing.List[nn.Parameter]:
@@ -243,7 +234,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 f"{prefix}_loss_{loss_label}",
                 loss_value,
                 on_epoch=True,
-                prog_bar=prefix == "val",
+                prog_bar=self._in_prog_bar(prefix),
             )
 
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
@@ -262,7 +253,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         return self._compute_loss(val_batch, "val", batch_idx)
 
     def _compute_metric(self, prefix):
-        for suffix in ["auroc", "agreement", "agreement_on_teacher_correct"]:
+        for suffix in ["auroc"]:
             slug = f"{prefix}_{suffix}"
 
             metric = self.metric[slug]
@@ -279,7 +270,13 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")
-        # todo: log best_val_auroc
+
+        if len(self.arr_metrics["val_auroc"]) > 0:
+            best_epoch = int(np.argmax(self.arr_metrics["val_auroc"]))
+            best_val_auroc = float(self.arr_metrics["val_auroc"][best_epoch])
+            self.log("best_epoch", best_epoch)
+            self.log("best_val_auroc", best_val_auroc)
+            self.log
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")

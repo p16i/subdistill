@@ -1,7 +1,9 @@
 import typing
 
 
-from pytorch_lightning.loggers import Logger
+from pytorch_lightning.loggers.wandb import WandbLogger
+from wandb import Artifact
+from wandb.wandb_run import Run
 
 
 import pytorch_lightning as pl
@@ -16,7 +18,7 @@ from torch.utils.data import DataLoader
 from pathlib import Path
 
 
-from xaikd import distillation_policies
+from xaikd import distillation_policies, utils
 from xaikd import datasets
 from xaikd import metrics
 
@@ -31,13 +33,15 @@ class Layerwise:
         self,
         teacher: nn.Module,
         dataset: datasets.DatasetConfiguration,
-        train_dataloader: DataLoader,
-        val_dataloader: DataLoader,
+        dataloader_train: DataLoader,
+        dataloader_val: DataLoader,
+        dataloader_test: DataLoader,
         device: str,
     ) -> None:
         self.dataset = dataset
-        self.train_dataloader = train_dataloader
-        self.val_dataloader = val_dataloader
+        self.dl_train = dataloader_train
+        self.dl_val = dataloader_val
+        self.dl_test = dataloader_test
 
         self.teacher = teacher
 
@@ -48,7 +52,7 @@ class Layerwise:
         with torch.no_grad():
             self.ref_auroc, self.ref_xent = self.metric_func(
                 self.teacher.to(device),
-                val_dataloader,
+                dataloader_val,
                 device=self.device,
             )
 
@@ -61,13 +65,13 @@ class Layerwise:
         device: str,
         lr: float,
         log_dir: Path,
-        logger: Logger,
+        logger: WandbLogger,
         lambda_task: float,
         lambda_kd: float,
         lambda_layer: float,
         seed: int,
-        enable_checkpointing: bool,
-    ) -> typing.Tuple[nn.Module, typing.Dict]:
+        upload_best_checkpoint: bool,
+    ) -> nn.Module:
 
         assert (np.array([lambda_task, lambda_kd, lambda_layer]) > 0).any()
 
@@ -80,9 +84,14 @@ class Layerwise:
                 student_xent_before_training,
             ) = self.metric_func(
                 student,
-                dataloader=self.val_dataloader,
+                dataloader=self.dl_val,
                 device=self.device,
             )
+
+        logger.experiment.summary["student_val_auroc_before_training"] = (
+            student_auroc_before_training
+        )
+        logger.experiment.summary["teacher_auroc"] = self.ref_auroc
 
         print(
             f"[before training] metrics: student (teacher) | auroc={student_auroc_before_training:.4f} ({self.ref_auroc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
@@ -107,14 +116,9 @@ class Layerwise:
 
         print(f"Training log is saved to `{log_dir}`")
 
-        callback_checkpoint = (
-            [
-                ModelCheckpoint(
-                    every_n_epochs=epochs // 2
-                ),  # here, we save two checkpoints; middle and last epochs
-            ]
-            if enable_checkpointing
-            else []
+        callback_checkpoint = ModelCheckpoint(
+            monitor="val_auroc",
+            mode="max",
         )
 
         trainer = pl.Trainer(
@@ -125,48 +129,112 @@ class Layerwise:
             deterministic="warn",
             callbacks=[
                 LearningRateMonitor(logging_interval="step"),
-                *callback_checkpoint,
+                callback_checkpoint,
             ],
         )
 
-        trainer.fit(training_wrapper, self.train_dataloader, self.val_dataloader)
+        trainer.fit(training_wrapper, self.dl_train, self.dl_val)
 
-        student.eval()
+        best_model_path = callback_checkpoint.best_model_path
+
+        assert callback_checkpoint.best_model_score is not None
+
+        best_epoch = np.argmax(training_wrapper.arr_metrics["val_auroc"])
+
+        best_student = utils.modules.load_model_from_checkpoint(
+            model_template_object=training_wrapper.student,
+            checkpoint_path=best_model_path,
+            model_key="student",
+            device=device,
+        )
+        best_student.eval()
 
         self.post_training_sanitycheck(
-            student=student,
+            student=best_student,
+            trainer=training_wrapper,
+            checkpoint_callback=callback_checkpoint,
             device=device,
-            expected=training_wrapper.arr_metrics["val_auroc"][-1],
         )
 
-        experiment_stat = dict(
-            teacher_auroc=self.ref_auroc,
-            student_auroc_before_training=student_auroc_before_training,
-            arr_metrics=training_wrapper.arr_metrics,
+        logger.experiment.summary["best_epoch"] = best_epoch
+
+        logger.experiment.summary["student_best_val_auroc"] = (
+            callback_checkpoint.best_model_score
+        )
+        self.log_test_metrics(best_student=best_student, logger=logger, device=device)
+
+        if upload_best_checkpoint:
+            wandb_run = logger.experiment
+            self.log_model(
+                wandb_run=wandb_run,
+                artifact_name=f"model-{wandb_run.id}",
+                model_path=best_model_path,
+                metadata=dict(
+                    epoch=best_epoch,
+                    score=callback_checkpoint.best_model_score,
+                    model_path=best_model_path,
+                ),
+                aliases=["best"],
+            )
+
+        print(
+            f"Result: best_epoch={best_epoch} best_val_auroc={callback_checkpoint.best_model_score:.4f}"
         )
 
-        assert not student.training
+        return best_student
 
-        return student, experiment_stat
-
+    @torch.no_grad()
     def post_training_sanitycheck(
         self,
         student: nn.Module,
-        expected: float,
+        trainer: LayerwiseKDModelWrapper,
+        checkpoint_callback: ModelCheckpoint,
         device: str,
     ):
+
+        assert not student.training
+
         student.to(device)
-        # sanity check: acc from student to should equal to the one we have evaluated!
-        with torch.no_grad():
 
-            actual, _ = self.metric_func(
-                student,
-                self.val_dataloader,
-                device=device,
-            )
+        actual, _ = self.metric_func(student, self.dl_val, device=device, verbose=True)
 
-            np.testing.assert_allclose(
-                actual,
-                expected,
-                err_msg="stats computed from modified student should match the last one returned from distillator",
-            )
+        assert checkpoint_callback.best_model_score is not None
+        expected = float(checkpoint_callback.best_model_score)
+
+        np.testing.assert_allclose(
+            [actual, np.max(trainer.arr_metrics["val_auroc"])],
+            expected,
+            err_msg="stats computed from modified student should match the last one returned from distillator",
+        )
+
+    @torch.no_grad()
+    def log_test_metrics(
+        self, best_student: nn.Module, logger: WandbLogger, device: str
+    ):
+        test_auroc, test_loss = self.metric_func(
+            best_student,
+            dataloader=self.dl_test,
+            device=device,
+            verbose=True,
+        )
+        logger.experiment.summary["student_test_auroc"] = test_auroc
+        logger.experiment.summary["student_test_loss"] = test_loss
+
+        return test_auroc, test_loss
+
+    def log_model(
+        self,
+        wandb_run: Run,
+        artifact_name: str,
+        metadata: typing.Dict,
+        model_path: str,
+        aliases: typing.List[str],
+    ):
+
+        artifact = Artifact(artifact_name, type="model", metadata=metadata)
+        artifact.add_file(model_path, name="model.ckpt")
+
+        wandb_run.log_artifact(
+            artifact,
+            aliases=aliases,
+        )

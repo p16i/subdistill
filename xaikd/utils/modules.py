@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import torch
 from torch import nn
 from torch.nn import functional as F
@@ -60,9 +61,11 @@ class Centering2D(batchnorm._BatchNorm):
         return F.batch_norm(
             input,
             # If buffers are not to be tracked, ensure that they won't be updated
-            self.running_mean
-            if not self.training or self.track_running_stats
-            else None,
+            (
+                self.running_mean
+                if not self.training or self.track_running_stats
+                else None
+            ),
             # Pat's change: we do NOT use self.running_var here.
             torch.ones(d).to(input.device),
             None,
@@ -156,3 +159,27 @@ def merge_convKxK_and_conv1x1(convK: nn.Conv2d, conv1: nn.Conv2d) -> nn.Conv2d:
     merged_conv.bias = nn.Parameter(bh)
 
     return merged_conv
+
+
+def load_model_from_checkpoint(
+    model_template_object: nn.Module, checkpoint_path: str, model_key: str, device: "cpu"
+) -> nn.Module:
+    # todo: add test
+    ckpt = torch.load(
+        checkpoint_path,
+        map_location=torch.device(device),
+        weights_only=False,
+    )
+
+    state_dict = ckpt["state_dict"]
+
+    student_state_dict = dict()
+
+    for key in state_dict.keys():
+        if key.split(".")[0] == model_key:
+            student_state_dict[key] = state_dict[key]
+
+    trainer_wrapper = nn.Sequential(OrderedDict([(model_key, model_template_object)]))
+    trainer_wrapper.load_state_dict(student_state_dict)
+
+    return model_template_object
