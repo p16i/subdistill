@@ -16,7 +16,7 @@ from pathlib import Path
 
 from copy import deepcopy
 
-from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.loggers.wandb import WandbLogger
 
 from xaikd import (
     distillation_policies,
@@ -145,13 +145,15 @@ def test_distillation_runnable_and_correct(
     distillator = distillators.Layerwise(
         teacher=teacher_model,
         dataset=dataset,
-        train_dataloader=train_loader,
-        val_dataloader=val_loader,
+        dataloader_train=train_loader,
+        dataloader_val=val_loader,
+        dataloader_test=val_loader,
         device=device,
     )
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        student, results = distillator.distill(
+        logger = WandbLogger(save_dir=tmpdirname, project="unittest")
+        student = distillator.distill(
             student=models.get_untrained_model(
                 constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
             ),
@@ -164,9 +166,9 @@ def test_distillation_runnable_and_correct(
             device=device,
             lr=1e-4,
             log_dir=Path(tmpdirname),
-            logger=TensorBoardLogger(tmpdirname),
+            logger=logger,
             seed=1,
-            enable_checkpointing=False,
+            upload_best_checkpoint=False,
         )
 
     # post-training assertions
@@ -179,7 +181,7 @@ def test_distillation_runnable_and_correct(
             device=device,
         )
 
-        expected_auroc = results["arr_metrics"]["val_auroc"][-1]
+        expected_auroc = logger.experiment.summary["student_best_val_auroc"]
         np.testing.assert_allclose(actual_auroc, expected_auroc)
 
         # sanity check `teacher`

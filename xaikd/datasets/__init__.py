@@ -162,7 +162,7 @@ def construct_dataloaders(
         assert 0 <= ratio_rest <= 1
 
         print(
-            f"[use_validation={use_validation_set}]: ratio_train={ratio_train}, ratio_val={ratio_val}"
+            f"[use_validation={use_validation_set}]: ratio_train={ratio_train:.4f}, ratio_val={ratio_val:.4f}"
         )
 
         ds_train, ds_val, _ = random_split(
