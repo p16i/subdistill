@@ -152,6 +152,7 @@ def test_distillation_runnable_and_correct(
     )
 
     with tempfile.TemporaryDirectory() as tmpdirname:
+        os.makedirs(tmpdirname)
         logger = WandbLogger(save_dir=tmpdirname, project="unittest")
         student = distillator.distill(
             student=models.get_untrained_model(
