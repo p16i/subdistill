@@ -64,7 +64,6 @@ class Layerwise:
         epochs: int,
         device: str,
         lr: float,
-        log_dir: Path,
         logger: WandbLogger,
         lambda_task: float,
         lambda_kd: float,
@@ -113,8 +112,6 @@ class Layerwise:
             lambda_kd=lambda_kd,
             lambda_layer=lambda_layer,
         )
-
-        print(f"Training log is saved to `{log_dir}`")
 
         callback_checkpoint = ModelCheckpoint(
             monitor="val_auroc",

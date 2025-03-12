@@ -165,7 +165,6 @@ def test_distillation_runnable_and_correct(
             lambda_layer=1.0,
             device=device,
             lr=1e-4,
-            log_dir=Path("./tmp"),  # todo: remove this attrib
             logger=logger,
             seed=1,
             upload_best_checkpoint=False,

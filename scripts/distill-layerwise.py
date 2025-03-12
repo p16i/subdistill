@@ -317,7 +317,6 @@ def main(
         lambda_layer=lambda_layer,
         device=device,
         lr=lr,
-        log_dir=log_dir,
         logger=logger,
         seed=seed,
         upload_best_checkpoint=upload_best_checkpoint,
