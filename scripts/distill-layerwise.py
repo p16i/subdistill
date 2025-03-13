@@ -286,8 +286,6 @@ def main(
         ]
     )
 
-    # todo: what do we save in this dir?
-    log_dir = output_dir / "distilled-models" / student_slug
     logger = WandbLogger(
         save_dir=WANDB_DIR,
         project=WANDB_PROJECT,
