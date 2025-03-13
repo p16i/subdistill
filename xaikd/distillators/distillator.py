@@ -54,6 +54,8 @@ class Layerwise:
                 self.teacher.to(device),
                 dataloader_val,
                 device=self.device,
+                verbose=True,
+                prefix="teacher_reference",
             )
 
     def distill(
@@ -85,6 +87,8 @@ class Layerwise:
                 student,
                 dataloader=self.dl_val,
                 device=self.device,
+                verbose=True,
+                prefix="student_before_training",
             )
 
         logger.experiment.summary["student_val_auroc_before_training"] = (
@@ -193,7 +197,13 @@ class Layerwise:
 
         student.to(device)
 
-        actual, _ = self.metric_func(student, self.dl_val, device=device, verbose=True)
+        actual, _ = self.metric_func(
+            student,
+            self.dl_val,
+            device=device,
+            verbose=True,
+            prefix="post_training_sanity_check: val_set",
+        )
 
         assert checkpoint_callback.best_model_score is not None
         expected = float(checkpoint_callback.best_model_score)
@@ -213,6 +223,7 @@ class Layerwise:
             dataloader=self.dl_test,
             device=device,
             verbose=True,
+            prefix="test set",
         )
         logger.experiment.summary["student_test_auroc"] = test_auroc
         logger.experiment.summary["student_test_loss"] = test_loss

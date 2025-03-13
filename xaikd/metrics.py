@@ -110,7 +110,12 @@ class MetricAUROCBinaryCrossEntropy(MetricFunction):
 
     @torch.no_grad()
     def __call__(
-        self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
+        self,
+        model: nn.Module,
+        dataloader: DataLoader,
+        device: str,
+        verbose=False,
+        prefix=None,
     ):
 
         assert not model.training
@@ -118,7 +123,11 @@ class MetricAUROCBinaryCrossEntropy(MetricFunction):
         metric_auroc = BinaryAUROC(thresholds=100)
         metric_mean = MeanMetric()
 
-        for x, y in tqdm(dataloader, desc="Computing AUROC", disable=not verbose):
+        desc = "Computing AUROC"
+        if prefix is not None:
+            desc = f"[{prefix}] {desc}"
+
+        for x, y in tqdm(dataloader, desc=desc, disable=not verbose):
             n = x.shape[0]
             logodd = model(x.to(device)).cpu()
 
