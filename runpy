@@ -22,7 +22,7 @@ if [[ -n "${WITH_DATA// /}" ]]; then
 	     if [ ! -f "/tmp/$DATASET.sqfs" ]; then
 		 SQFS_PATH="/home/space/datasets-sqfs/xaikd/$DATASET.sqfs"
 		 echo "> copy $SQFS_PATH to /tmp/"
-		 time cp $SQFS_PATH /tmp/
+		 time rsync --progress $SQFS_PATH /tmp/$DATASET.sqfs
 	     fi
 	     DATASET_PATH_TO_BIND="/tmp/$DATASET.sqfs:/datasets/$DATASET:image-src=/"
 	     echo "> $DATASET_PATH_TO_BIND"

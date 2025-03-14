@@ -70,7 +70,7 @@ def test_analytic_basis(basis_name):
     np.testing.assert_allclose(basis.U, expected_U)
 
     np.testing.assert_allclose(
-        basis.scale_factors, np.mean((arr_modified_act @ basis.U) ** 2, axis=0)
+        basis.scale_factors, [np.mean((arr_modified_act @ basis.U[:, 0]) ** 2)]
     )
 
 
@@ -100,7 +100,7 @@ def test_correct_scale_orthogoal_bases(basis_name):
     U = basis.U
     scale = basis.scale_factors
 
-    np.testing.assert_allclose(scale, np.mean((arr_act @ U) ** 2, axis=0))
+    np.testing.assert_allclose(scale, [np.mean((arr_act @ U[:, 0]) ** 2)])
 
 
 @pytest.mark.parametrize(

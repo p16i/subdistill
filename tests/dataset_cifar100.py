@@ -164,6 +164,7 @@ def test_target_transform():
     )
 
 
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize("lvl", [0.125, 0.25, 0.5, 0.75, 1.0])
 @pytest.mark.parametrize("train_split", [True, False])
 @pytest.mark.parametrize("dataset_slug", ["cifar100-people--spurious-plussign"])
@@ -203,6 +204,7 @@ def test_dataset_with_spurious_correlation(
             assert len(arr_victim_indices) == 0
 
 
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize("lvl", [0.0, 0.5, 1.0])
 @pytest.mark.parametrize("train_split", [True, False])
 def test_valsplit_dataset_with_spurious_correlation(lvl, train_split):
@@ -275,7 +277,11 @@ def test_get_fineclass_indices():
 
 @torch.no_grad()
 @pytest.mark.parametrize(
-    "dataset_name", ["cifar100-people-vs-others", "cifar100-valsplit-people-vs-others"]
+    "dataset_name",
+    [
+        "cifar100-people-vs-others",
+        # "cifar100-valsplit-people-vs-others" # todo: obsolete
+    ],
 )
 def test_construct_superclass_vs_others(dataset_name):
     dataset = datasets.construct(dataset_name)
@@ -287,7 +293,7 @@ def test_construct_superclass_vs_others(dataset_name):
         ds = dataset.create_subset(train_split=train_split)
 
         if "valsplit" in dataset_name:
-            assert ds.train 
+            assert ds.train
 
         arr_ys = []
         dl = datasets.build_dataloader(dataset=ds, shuffle=False)

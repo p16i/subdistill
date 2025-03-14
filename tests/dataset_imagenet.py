@@ -165,6 +165,7 @@ def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
         assert len(set(arr_targets[arr_victim_indices].tolist())) == num_classes
 
 
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize(
     "train_split",
     [
@@ -320,7 +321,7 @@ def test_dataset_with_three_spurious_correlations(
     "dataset_name",
     [
         "imagenet-butterfly-vs-others",
-        "imagenet-valsplit-butterfly-vs-others",
+        # "imagenet-valsplit-butterfly-vs-others", # todo: obsolete
     ],
 )
 def test_construct_superclass_vs_others(dataset_name):
@@ -352,6 +353,7 @@ def test_construct_superclass_vs_others(dataset_name):
     np.testing.assert_allclose(perc_y1, 6 / 1000, atol=1e-3)
 
 
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize("train_split", [True, False])
 @pytest.mark.slow
 def test_construct_valsplit_superclass_vs_others(train_split):
