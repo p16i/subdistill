@@ -7,7 +7,7 @@ import numpy.typing as npt
 from xaikd import bases, utils
 
 
-# todo: add prcaposdefweighting
+# fixme: add prcaposdefweighting
 @pytest.mark.parametrize(
     "basis_name", ["pca", "gradpca", "prcasortabs", "prca", "prcaposdef"]
 )

@@ -39,8 +39,6 @@ from xaikd.utils import click_types
     type=click_types.List(),
 )
 @click.option("--dataset-name", required=True, type=str)
-# todo: we need to implement this
-# @click.option("--sample-selection-criteria", type=str)
 @click.option("--output-dir", default="./tmp", type=click_types.Path())
 @click.option("--num-steps", default=20)
 @click.option("--max-k", default=None, type=int)
@@ -60,13 +58,12 @@ def main(
     arr_layers: click_types.List.output_type,
     dataset_name: str,
     arr_basis_names: click_types.List.output_type,
-    # sample_selection_criteria: str,
     data_size: int,
     output_dir: click_types.Path.output_type,
     num_steps: int,
     logodd_threshold: float,
     seed: int,
-    max_k: typing.Union[None, int],
+    max_k: typing.Optional[int],
 ):
     arguments = locals()
     start_time = datetime.now()
@@ -108,8 +105,14 @@ def main(
         ds_train,
         shuffle=False,
     )
-    dl_val = datasets.build_dataloader(
-        dataset.create_subset(train_split=False),
+
+    ds_test = dataset.create_subset(train_split=False)
+
+    # fixme: remove this dev code
+    ds_test = datasets.subsample_dataset(ds_test, ratio=0.01, seed=1)
+
+    dl_test = datasets.build_dataloader(
+        ds_test,
         shuffle=False,
     )
 
@@ -117,10 +120,12 @@ def main(
         model=base_model, dataloader=dl_train, layers=arr_layers, device=device
     )
 
-    metric = metrics.MetricAUROC()
+    metric = metrics.MetricAUROCBinaryCrossEntropy()
 
-    (ref_auroc,) = metric(model=model, dataloader=dl_val, device=device, verbose=True)
-    print(f"Ref metric={metric} (val_set)={ref_auroc:.4f}")
+    (ref_auroc, ref_loss) = metric(
+        model=model, dataloader=dl_test, device=device, verbose=True
+    )
+    print(f"Ref metric={metric} test_set: auroc={ref_auroc:.4f}, loss={ref_loss:.4f}")
 
     for layer in tqdm(arr_layers, desc="estimate performance curve at layer"):
         d = dict_layer_dims[layer]
@@ -132,7 +137,7 @@ def main(
 
         base_layer_name = f"base.{layer}"
 
-        arr_act, arr_grad = attributors.extract_activation_grad(
+        arr_logit, arr_act, arr_grad = attributors.extract_activation_grad(
             model=model,
             layer=base_layer_name,
             dataloader=dl_train,
@@ -146,7 +151,12 @@ def main(
         ):
             basis = bases.get_basis(basis_name=basis_name)
 
-            basis.fit(arr_act=arr_act, arr_ctx=arr_grad)
+            basis.fit(
+                arr_act=arr_act,
+                arr_ctx=arr_grad,
+                arr_logodd=arr_logit,
+                logodd_threshold=logit_modifier.threshold,
+            )
 
             arr_stat_rows = []
 
@@ -166,8 +176,8 @@ def main(
                     ref_auroc=ref_auroc,
                 )
 
-                for prefix, dl in [("val", dl_val)]:
-                    (_auroc,) = (
+                for prefix, dl in [("test", dl_test)]:
+                    (_auroc, _) = (
                         interceptor.attach_projection_forward_hook_at_layer_and_evaluate_metrics(
                             model=model,
                             layer=base_layer_name,
@@ -184,7 +194,6 @@ def main(
 
             df = pd.DataFrame(arr_stat_rows)
 
-            # todo: parameterize also `sample-selection-criteria`
             dest_path = (
                 output_dir
                 / arch
