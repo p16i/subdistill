@@ -108,9 +108,6 @@ def main(
 
     ds_test = dataset.create_subset(train_split=False)
 
-    # fixme: remove this dev code
-    ds_test = datasets.subsample_dataset(ds_test, ratio=0.01, seed=1)
-
     dl_test = datasets.build_dataloader(
         ds_test,
         shuffle=False,
