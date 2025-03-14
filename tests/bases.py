@@ -7,15 +7,18 @@ import numpy.typing as npt
 from xaikd import bases, utils
 
 
+# todo: add prcaposdefweighting
 @pytest.mark.parametrize(
     "basis_name", ["pca", "gradpca", "prcasortabs", "prca", "prcaposdef"]
 )
 def test_analytic_basis(basis_name):
     rng = np.random.default_rng(seed=1)
-    n, d = 10, 4
+    n, d, num_locations = 10, 4, 20
 
-    arr_act = rng.random(size=(n, d)) + 2
-    arr_ctx = rng.random(size=(n, d)) + 2
+    arr_act = rng.random(size=(n, d, num_locations)) + 2
+    arr_ctx = rng.random(size=(n, d, num_locations)) + 2
+    arr_logodd = rng.random(size=(n,))
+    logodd_threshold = 0.0
 
     mean = arr_act.mean(axis=0)
 
@@ -23,7 +26,16 @@ def test_analytic_basis(basis_name):
 
     basis = bases.get_basis(basis_name)
 
-    basis.fit(arr_act, arr_ctx)
+    basis.fit(
+        arr_act=arr_act,
+        arr_ctx=arr_ctx,
+        arr_logodd=arr_logodd,
+        logodd_threshold=logodd_threshold,
+    )
+
+    arr_modified_act = utils.flatten_3d_tensor(arr_modified_act)
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+    arr_act = utils.flatten_3d_tensor(arr_act)
 
     # compute expected U
     expected_U = None
@@ -77,7 +89,6 @@ def test_analytic_basis(basis_name):
 @pytest.mark.parametrize(
     "basis_name",
     [
-        "random",
         "pca",
         "gradpca",
         "prcasortabs",
@@ -89,18 +100,28 @@ def test_analytic_basis(basis_name):
 )
 def test_correct_scale_orthogoal_bases(basis_name):
     np.random.seed(1)
-    n, d = 10, 5
-    arr_act = np.random.randn(n, d)
-    arr_ctx = np.random.randn(n, d)
+    n, d, num_locations = 10, 5, 20
+    arr_act = np.random.randn(n, d, num_locations)
+    arr_ctx = np.random.randn(n, d, num_locations)
+    arr_logodd = np.random.randn(n)
+    logodd_threshold = 0.0
 
     basis = bases.get_basis(basis_name)
 
-    basis.fit(arr_act=arr_act, arr_ctx=arr_ctx, seed=1)
+    basis.fit(
+        arr_act=arr_act,
+        arr_ctx=arr_ctx,
+        arr_logodd=arr_logodd,
+        logodd_threshold=logodd_threshold,
+        seed=1,
+    )
 
     U = basis.U
     scale = basis.scale_factors
 
-    np.testing.assert_allclose(scale, [np.mean((arr_act @ U[:, 0]) ** 2)])
+    np.testing.assert_allclose(
+        scale, [np.mean((utils.flatten_3d_tensor(arr_act) @ U[:, 0]) ** 2)]
+    )
 
 
 @pytest.mark.parametrize(
@@ -112,11 +133,15 @@ def test_correct_scale_orthogoal_bases(basis_name):
 )
 def test_centering_orthogonal_bases(basis_name, mat_func, criteria):
     np.random.seed(1)
-    n, d = 10, 5
+    n, d, num_locations = 10, 5, 20
     basis = bases.get_basis(basis_name)
 
-    activation = np.random.randn(n, d)
-    context = np.random.randn(n, d)
+    activation = np.random.randn(n, d, num_locations)
+    context = np.random.randn(n, d, num_locations)
+    arr_logodd = np.random.randn(
+        n,
+    )
+    threshold = 0
 
     mean = np.mean(activation, axis=0)
 
@@ -125,12 +150,23 @@ def test_centering_orthogonal_bases(basis_name, mat_func, criteria):
     modified_activation = activation - mean if basis.centering else activation
 
     expected_eigvals, expected_eigvecs = np.linalg.eigh(
-        mat_func((modified_activation, context))
+        mat_func(
+            (
+                utils.flatten_3d_tensor(modified_activation),
+                utils.flatten_3d_tensor(context),
+            )
+        )
     )
 
     expected_U = expected_eigvecs[:, np.argsort(-criteria(expected_eigvals))]
 
-    basis.fit(arr_act=activation, arr_ctx=context, device="cpu")
+    basis.fit(
+        arr_act=activation,
+        arr_ctx=context,
+        arr_logodd=arr_logodd,
+        logodd_threshold=threshold,
+        device="cpu",
+    )
 
     actual_U = basis.U
 

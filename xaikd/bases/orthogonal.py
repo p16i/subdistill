@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import torch
 
+from scipy.stats import norm as norm_gaussian
 from scipy.stats import ortho_group
 
 from .register import register_basis
@@ -36,6 +37,8 @@ class OrthogonalBasis(ABC):
         self,
         arr_act: npt.NDArray,
         arr_ctx: npt.NDArray,
+        arr_logodd: npt.NDArray,
+        logodd_threshold: float,
     ) -> npt.NDArray:
         pass
 
@@ -49,14 +52,17 @@ class OrthogonalBasis(ABC):
 
         return fh
 
-    def estimate_scale_factors(self, x: npt.NDArray, U: npt.NDArray) -> npt.NDArray:
+    def estimate_scale_factors(
+        self, arr_act: npt.NDArray, U: npt.NDArray
+    ) -> npt.NDArray:
         # remark: if centering (i.e., `mean(activation)=0`), then
         # this expresssion is `standard deviation`
 
         u1 = U[:, 0]
 
         # we do this to make sure that it compatible with the basis
-        output = np.array([np.mean((x @ u1) ** 2)])
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        output = np.array([np.mean((arr_act @ u1) ** 2)])
 
         return output
 
@@ -66,8 +72,15 @@ class OrthogonalBasis(ABC):
 
         return Adapter(U=U, mean=mean, mode=mode, device=device)
 
-    def fit(self, arr_act, arr_ctx, **kwargs):
-        _, d = arr_act.shape
+    def fit(
+        self,
+        arr_act: npt.NDArray,
+        arr_ctx: npt.NDArray,
+        arr_logodd: npt.NDArray,
+        logodd_threshold: float,
+        **kwargs,
+    ):
+        _, d, _ = arr_act.shape
 
         if self.centering:
             mean = np.mean(arr_act, axis=0)
@@ -77,7 +90,12 @@ class OrthogonalBasis(ABC):
             # remark: the name might be a bit confusing
             arr_centered_arr = arr_act
 
-        self._U = self._solve(arr_act=arr_centered_arr, arr_ctx=arr_ctx)
+        self._U = self._solve(
+            arr_act=arr_centered_arr,
+            arr_ctx=arr_ctx,
+            arr_logodd=arr_logodd,
+            logodd_threshold=logodd_threshold,
+        )
 
         self._scale_factors = self.estimate_scale_factors(arr_centered_arr, self._U)
 
@@ -95,46 +113,11 @@ class OrthogonalBasis(ABC):
 
 
 @register_basis()
-class Identity(OrthogonalBasis):
-    def _solve(
-        self,
-        arr_act,
-        arr_ctx,
-    ):
-        _, d = arr_act.shape
-
-        return np.eye(d)
-
-
-@register_basis()
-class Random(OrthogonalBasis):
-
-    def fit(self, arr_act, arr_ctx, **kwargs):
-        assert "seed" in kwargs, "please specify `seed`"
-
-        seed = kwargs["seed"]
-
-        self.rng = np.random.default_rng(seed=seed)
-        super().fit(arr_act, arr_ctx, **kwargs)
-
-    def _solve(
-        self,
-        arr_act,
-        arr_ctx,
-    ):
-        _, d = arr_act.shape
-        U = ortho_group.rvs(dim=d, random_state=self.rng)
-
-        return U
-
-
-@register_basis()
 class PCA(OrthogonalBasis):
-    def _solve(
-        self,
-        arr_act,
-        arr_ctx,
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+
+        arr_act = utils.flatten_3d_tensor(arr_act)
+
         cov = arr_act.T @ arr_act
 
         _, eigvecs = utils.solve_eigh(cov)
@@ -144,11 +127,9 @@ class PCA(OrthogonalBasis):
 
 @register_basis()
 class GradPCA(OrthogonalBasis):
-    def _solve(
-        self,
-        arr_act,
-        arr_ctx,
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+
+        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
         cov = arr_ctx.T @ arr_ctx
 
         _, eigvecs = utils.solve_eigh(cov)
@@ -158,53 +139,50 @@ class GradPCA(OrthogonalBasis):
 
 @register_basis()
 class PRCASortAbs(OrthogonalBasis):
-    def _solve(
-        self,
-        arr_act,
-        arr_ctx,
-    ):
-        cov = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+        cov_ac = arr_act.T @ arr_ctx
+        cov_acca = cov_ac + cov_ac.T
 
-        _, eigvecs = utils.solve_eigh(cov, sort_with_abs_eigvals=True)
+        _, eigvecs = utils.solve_eigh(cov_acca, sort_with_abs_eigvals=True)
         return eigvecs
 
 
 @register_basis()
 class PRCA(OrthogonalBasis):
-    def _solve(
-        self,
-        arr_act,
-        arr_ctx,
-    ):
-        cov = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
 
-        _, eigvecs = utils.solve_eigh(cov, sort_with_abs_eigvals=False)
+        cov_ac = arr_act.T @ arr_ctx
+        cov_acca = cov_ac + cov_ac.T
+
+        _, eigvecs = utils.solve_eigh(cov_acca, sort_with_abs_eigvals=False)
         return eigvecs
 
 
 @register_basis()
 class PRCAPosDef(OrthogonalBasis):
-    def _solve(
-        self,
-        arr_act,
-        arr_ctx,
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
 
         cov_a = arr_act.T @ arr_act
-
         tr_cov_a = np.trace(cov_a)
 
         cov_c = arr_ctx.T @ arr_ctx
         tr_cov_c = np.trace(cov_c)
 
-        # fixme: cov_acca = cov_ac + cov_ac.T?
-        cov_ac = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+        cov_ac = arr_act.T @ arr_ctx
+        cov_acca = cov_ac + cov_ac.T
 
         cov_pos_def = (
-            (2 / tr_cov_a) * cov_a
+            (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
+            + (2 / tr_cov_a) * cov_a
             + (2 / tr_cov_c) * cov_c
-            + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_ac
         )
+
         eigvals, eigvecs = utils.solve_eigh(cov_pos_def)
 
         assert (eigvals >= 0).all()
@@ -218,11 +196,9 @@ class PRCAPosDefSigmaASigmaC(OrthogonalBasis):
     def slug(cls):
         return "prca-ablation-a-c"
 
-    def _solve(
-        self,
-        arr_act,
-        arr_ctx,
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
 
         cov_a = arr_act.T @ arr_act
 
@@ -245,22 +221,19 @@ class PRCAPosDefAblationSigmaASigmaAC(OrthogonalBasis):
     def slug(cls):
         return "prca-ablation-a-ac"
 
-    def _solve(
-        self,
-        arr_act,
-        arr_ctx,
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
 
         cov_a = arr_act.T @ arr_act
-
         tr_cov_a = np.trace(cov_a)
 
-        cov_c = arr_ctx.T @ arr_ctx
-        tr_cov_c = np.trace(cov_c)
+        tr_cov_c = np.trace(arr_ctx.T @ arr_ctx)
 
-        cov_ac = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+        cov_ac = arr_act.T @ arr_ctx
+        cov_acca = cov_ac + cov_ac.T
 
-        cov = (2 / tr_cov_a) * cov_a + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_ac
+        cov = (2 / tr_cov_a) * cov_a + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
         _, eigvecs = utils.solve_eigh(cov)
 
         return eigvecs
@@ -272,84 +245,77 @@ class PRCAPosDefAblationSigmaCSigmaAC(OrthogonalBasis):
     def slug(cls):
         return "prca-ablation-c-ac"
 
-    def _solve(
-        self,
-        arr_act,
-        arr_ctx,
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
 
-        cov_a = arr_act.T @ arr_act
-
-        tr_cov_a = np.trace(cov_a)
+        tr_cov_a = np.trace(arr_act.T @ arr_act)
 
         cov_c = arr_ctx.T @ arr_ctx
         tr_cov_c = np.trace(cov_c)
 
-        cov_ac = arr_act.T @ arr_ctx + arr_ctx.T @ arr_act
+        cov_ac = arr_act.T @ arr_ctx
+        cov_acca = cov_ac + cov_ac.T
 
-        cov = (2 / tr_cov_c) * cov_c + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_ac
+        cov = (2 / tr_cov_c) * cov_c + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
         _, eigvecs = utils.solve_eigh(cov)
 
         return eigvecs
 
 
-# @register_basis("pcalookahead")
-# class PCALookAhead(Orthogonal):
-#     def fit(self, arr_act, arr_ctx, **kwargs):
-#         assert self.centering == False, "we only support `uncentered` version` for now"
+class PRCAPosDefWeightSTDWithPercentile(OrthogonalBasis):
+    percentile = None
 
-#         self.model = kwargs["model"]
-#         self.layer = kwargs["layer"]
-#         self.dataloader = kwargs["dataloader"]
-#         self.arr_act = arr_act
+    def _compute_sample_weight(
+        self, arr_logodd: npt.NDArray, logodd_threshold: float
+    ) -> npt.NDArray:
+        y_pred = arr_logodd > logodd_threshold
+        assert self.percentile is not None
 
-#         self._cache = dict()
-#         self.U = self._get_initialization(
-#             model=self.model, arr_act=arr_act, arr_ctx=arr_ctx
-#         )
+        perc_pos = np.percentile(arr_logodd[y_pred == 1], self.percentile)
+        perc_neg = np.percentile(arr_logodd[y_pred == 0], 100 - self.percentile)
 
-#     def _get_initialization(
-#         self, model: nn.Module, arr_act: npt.NDArray, arr_ctx: npt.NDArray
-#     ) -> npt.NDArray:
-#         if isinstance(model, models.vit.VisionTransformer):
-#             ref_basis = PCA()
-#         else:
-#             ref_basis = PRCASortAbs()
-#         ref_basis.fit(arr_act=arr_act, arr_ctx=arr_ctx)
+        assert perc_pos > perc_neg
 
-#         return ref_basis.U
+        std = 0.5 * (perc_pos - perc_neg)
 
-#     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
-#         assert self.centering == False, "we only support `uncetered` version"
+        weights = norm_gaussian.pdf(
+            arr_logodd,
+            loc=logodd_threshold,
+            scale=std,
+        )
 
-#         if not k in self._cache:
+        weights = weights / np.sum(weights)
 
-#             Uinit = self.U[:, :k].copy()
+        assert weights.shape == arr_logodd.shape
 
-#             U = pcalookahead.fit(
-#                 model=self.model,
-#                 layer=self.layer,
-#                 dataloader=self.dataloader,
-#                 Uinit=Uinit,
-#                 k=k,
-#                 verbose=False,
-#                 device=device,
-#             )
-#             scale = self._estimate_scale_factor(self.arr_act, U)
-#             self._cache[k] = (U, scale)
-#         else:
-#             U, scale = self._cache[k]
+        return weights
 
-#         d, k = U.shape
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
 
-#         return Adapter(
-#             U=torch.from_numpy(U).float(),
-#             mean=torch.zeros(d).float(),
-#             mode=mode,
-#             device=device,
-#         )
+        weights = self._compute_sample_weight(
+            arr_logodd=arr_logodd, logodd_threshold=logodd_threshold
+        )
+        arr_ctx = arr_ctx * weights.reshape((-1, 1, 1))
 
-#     def get_scale_factors_for_k(self, k: int) -> npt.NDArray:
-#         _, scale = self._cache[k]
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
 
-#         return scale
+        cov_a = arr_act.T @ arr_act
+        tr_cov_a = np.trace(cov_a)
+
+        cov_c = arr_ctx.T @ arr_ctx
+        tr_cov_c = np.trace(cov_c)
+
+        cov_ac = arr_act.T @ arr_ctx
+        cov_acca = cov_ac + cov_ac.T
+
+        cov = (
+            (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
+            + (2 / tr_cov_a) * cov_a
+            + (2 / tr_cov_c) * cov_c
+        )
+
+        _, eigvecs = utils.solve_eigh(cov)
+
+        return eigvecs
