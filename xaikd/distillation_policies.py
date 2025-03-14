@@ -542,11 +542,12 @@ class VkD(LayerPolicy):
         def transform_student_fn(feat: torch.Tensor):
             b, d, h, w = feat.shape
 
+            # cf. https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L94
+            # remark: there, the mean of the student  feature is over sequence of tokens
+            # which is last dimensions in our case
+            # and it is similar to https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L96
             feat = feat.reshape((b, d, h * w))
 
-            # cf. https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L94
-            # remark: there, the mean is over sequence of tokens which is last dimensions in our case
-            # and it is similar to https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L96
             feat = feat.mean(-1)
 
             return self._transform_student(feat)
@@ -593,7 +594,7 @@ class VkD(LayerPolicy):
 
 @register_layer_policy("vkd-modified")
 class VkDModified(LayerPolicy):
-    # cite...
+    # ref: https://arxiv.org/abs/2403.06213
 
     def __init__(
         self,
