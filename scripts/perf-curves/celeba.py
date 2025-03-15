@@ -175,7 +175,7 @@ def main(
                 )
 
                 for prefix, dl in [("test", dl_test)]:
-                    (_auroc,) = (
+                    (_auroc, _) = (
                         interceptor.attach_projection_forward_hook_at_layer_and_evaluate_metrics(
                             model=model,
                             layer=base_layer_name,
