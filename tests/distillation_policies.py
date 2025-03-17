@@ -186,7 +186,7 @@ def test_vkd_extended():
     assert not torch.isnan(output)
 
 
-@pytest.skip(reason="obsolete")
+@pytest.mark.skip(reason="obsolete")
 def test_basis_rotation():
     basis = bases.get_basis("pca")
 
