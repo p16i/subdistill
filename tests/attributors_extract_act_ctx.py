@@ -164,7 +164,8 @@ def test_extract_act_grad():
 
     act: torch.Tensor = model_part1(X).detach()
     act.requires_grad_(True)
-    logit_modifier(model_part2(act), None).sum().backward()
+    arr_expected_logodd = model_part2(act)
+    logit_modifier(arr_expected_logodd, None).sum().backward()
 
     grad = act.grad
     assert grad is not None
@@ -188,14 +189,16 @@ def test_extract_act_grad():
         batch_size=10,
     )
 
-    arr_actual_acts, arr_actual_grads = attributors.extract_activation_grad(
-        model=model,
-        layer="layer1",
-        dataloader=dl,
-        logit_modifier=logit_modifier,
-        device="cpu",
-        rng=np.random.default_rng(seed=seed),
-        number_of_selected_spatial_locations=num_spatial_locations,
+    arr_actual_logodd, arr_actual_acts, arr_actual_grads = (
+        attributors.extract_activation_grad(
+            model=model,
+            layer="layer1",
+            dataloader=dl,
+            logit_modifier=logit_modifier,
+            device="cpu",
+            rng=np.random.default_rng(seed=seed),
+            number_of_selected_spatial_locations=num_spatial_locations,
+        )
     )
 
     np.testing.assert_allclose(
@@ -206,4 +209,9 @@ def test_extract_act_grad():
     np.testing.assert_allclose(
         arr_actual_grads,
         arr_expected_grads,
+    )
+
+    np.testing.assert_allclose(
+        arr_actual_logodd,
+        arr_expected_logodd.detach().cpu().numpy(),
     )
