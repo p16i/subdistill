@@ -100,7 +100,7 @@ def register_layer_policy(name):
 
 class LastLayerPolicy(Policy):
 
-    def forward(
+    def forward(  # type: ignore
         self,
         teacher_logits: torch.Tensor,
         student_logits: torch.Tensor,
@@ -110,7 +110,7 @@ class LastLayerPolicy(Policy):
             teacher_logits=teacher_logits, student_logits=student_logits, target=target
         )
 
-    def criterion(
+    def criterion(  # type: ignore
         self,
         teacher_logits: torch.Tensor,
         student_logits: torch.Tensor,
@@ -147,7 +147,7 @@ class LayerPolicyCollection(nn.ModuleList):
         self,
         teacher_layers: typing.List[str],
         student_layers: typing.List[str],
-        policies: typing.Iterable[Policy],
+        policies: typing.List[Policy],
     ) -> None:
         super().__init__(policies)
 
@@ -758,7 +758,7 @@ class AddBias(nn.Module):
 
 
 @register_layer_policy("basis-with-bias-and-scale")
-class OrthogonalBasisIdentityPolicy(LayerPolicy):
+class OrthogonalBasisIdentityBiasAndScalePolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
@@ -797,7 +797,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
 
 
 @register_layer_policy("basis-bn-only-affine")
-class OrthogonalBasisIdentityPolicy(LayerPolicy):
+class OrthogonalBasisIdentityBatchNormOnlyAffinePolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
@@ -838,7 +838,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
 
 
 @register_layer_policy("basis-bn-only-runstats")
-class OrthogonalBasisIdentityPolicy(LayerPolicy):
+class OrthogonalBasisIdentityBatchNormOnlyRunStatsPolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
@@ -879,7 +879,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
 
 
 @register_layer_policy("basis-bn")
-class OrthogonalBasisIdentityPolicy(LayerPolicy):
+class OrthogonalBasisIdentityBatchNormPolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
