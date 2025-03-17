@@ -69,8 +69,9 @@ def _test_extract_activation_context(model_name, dataset_class, layer):
     )
 
     assert arr_act.shape == (
-        NUMBER_OF_SPATIAL_LOCATIONS * NUMBER_OF_SMALL_DATASET,
+        NUMBER_OF_SMALL_DATASET,
         output_dims,
+        NUMBER_OF_SPATIAL_LOCATIONS,
     )
 
     assert arr_act.shape == arr_ctx.shape
