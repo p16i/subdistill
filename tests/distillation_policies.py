@@ -104,8 +104,7 @@ def test_basis_identity_learnable(teacher_dims, student_dims):
     device = "cpu"
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        output_dir = Path(tmpdirname)
-        act = rng.random((batch_size, teacher_dims))
+        act = rng.random((batch_size, teacher_dims, 5))
         logodd = 2 * rng.random((batch_size,)) - 1
         basis = bases.get_basis("pca")
 
