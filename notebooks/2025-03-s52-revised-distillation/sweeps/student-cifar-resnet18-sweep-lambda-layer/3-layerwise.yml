@@ -29,7 +29,9 @@ parameters:
         # - basis-bn:prcaposdef
         # - attention-transfer
         # - vid
-        - vkd
+        # - vkd
+        - spkd
+        - basis-bn:prcaposdef-with-weight-p1
   lambda-task:
       value:  0.0
   lambda-kd:
