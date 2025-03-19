@@ -206,7 +206,7 @@ def construct_dataloaders(
     # We have to make sure that the `dataset` attribute is an actual dataset containing tranform.
     # This avoids having a nested chain of Subsets.
     assert hasattr(ds_train.dataset, "transform")
-    assert isinstance(ds_train.dataset, (tvd.CIFAR100, tvd.ImageNet))
+    assert isinstance(ds_train.dataset, (tvd.CIFAR100, tvd.ImageNet, tvd.CelebA))
 
     assert not ds_train_with_aug.dataset is None
     ds_train_with_aug.dataset.transform = dataset.input_training_transformation  # type: ignore
