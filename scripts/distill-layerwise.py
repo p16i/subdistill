@@ -174,6 +174,17 @@ def main(
     # prepare dataset
     dataset = datasets.construct(dataset)
 
+    if isinstance(dataset, datasets.celeba.CelebAAttribute):
+        teacher_last_layer = models.layers.TaskLogitSelection(task_id=dataset.attr_ix)
+    elif isinstance(
+        dataset, datasets.cifar100.some_vs_others.CIFAR100SuperclassVsOthers
+    ):
+        teacher_last_layer = models.layers.LayerLogOddSelectedClasses(
+            selected_classes=dataset.selected_classes
+        )
+    else:
+        raise
+
     train_loader, train_loader_with_aug, val_loader, test_loader = (
         datasets.construct_dataloaders(
             dataset=dataset,
@@ -184,14 +195,11 @@ def main(
     )
 
     # prepare teacher
-    layer_logodd_selected_classes = models.layers.LayerLogOddSelectedClasses(
-        selected_classes=dataset.selected_classes
-    )
     teacher_model = nn.Sequential(
         OrderedDict(
             [
                 ("base", models.get_trained_model(teacher).to(device)),
-                ("layer_logodd", layer_logodd_selected_classes),
+                ("last_layer", teacher_last_layer),
             ]
         )
     )
