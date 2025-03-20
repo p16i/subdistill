@@ -997,7 +997,6 @@ class OrthogonalBasisIdentityBatchNormNoScalePolicy(LayerPolicy):
         # average over all samples
         loss_mse = loss_mse.mean()
 
- 
 
 @register_layer_policy("basis-bn-only-mean-no-scale")
 class OrthogonalBasisIdentityBatchNormOnlyMeanNoScalePolicy(LayerPolicy):
@@ -1035,7 +1034,7 @@ class OrthogonalBasisIdentityBatchNormOnlyMeanNoScalePolicy(LayerPolicy):
         # average over all samples
         loss_mse = loss_mse.mean()
 
-        return loss_mse       return loss_mse
+        return loss_mse
 
 
 @register_layer_policy("basis-rotation")
