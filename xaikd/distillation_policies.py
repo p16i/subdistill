@@ -1039,6 +1039,28 @@ class OrthogonalBasisRotationPolicy(OrthogonalBasisIdentityPolicy):
 
         self.transformer_student_feats = StudenTransform()
 
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
 
 @register_layer_policy("basis-identity-learnable")
 class OrthogonalBasisIdentityLearnablePolicy(OrthogonalBasisIdentityPolicy):
