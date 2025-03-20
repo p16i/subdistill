@@ -1,0 +1,53 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --upload-best-checkpoint
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_auroc
+parameters:
+  output-dir:
+    value: /tmp
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  teacher:
+    value: celeba-resnet18-pretrained
+  layers:
+    value: layer3:layer3,layer4:layer4
+  student:
+    value: student-resnet18-32
+  dataset:
+    value: celeba-attr31
+  layer-policy:
+     values: 
+        - basis-bn:prcaposdef
+        - basis-bn:prcaposdef-with-weight-p1
+        - attention-transfer
+        # - vid
+        # - vkd
+        # - spkd
+  lambda-task:
+      value:  0.0
+  lambda-kd:
+      value:  1.0
+  lambda-layer:
+      values:  
+        - 0.001
+        - 0.01
+        - 0.1
+        - 1
+        - 10
+        - 100
+  training-size:
+    values:
+      # - 1.0
+      # - 0.5
+      # - 0.1
+      - 0.01

@@ -69,8 +69,9 @@ def _test_extract_activation_context(model_name, dataset_class, layer):
     )
 
     assert arr_act.shape == (
-        NUMBER_OF_SPATIAL_LOCATIONS * NUMBER_OF_SMALL_DATASET,
+        NUMBER_OF_SMALL_DATASET,
         output_dims,
+        NUMBER_OF_SPATIAL_LOCATIONS,
     )
 
     assert arr_act.shape == arr_ctx.shape
@@ -106,6 +107,7 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
 
     train_dl = dataset.loader(train_split=True)
 
+    # todo: this should test extract_act_extract_grad
     arr_act, arr_ctx = attributors.extract_activation_context(
         model=model,
         data_loader=train_dl,
@@ -114,7 +116,7 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
         logit_modifier=logit_modifiers.MultiClassTargetLogit(),
-        rng=np.random.default_rng(seed=1),
+        rng=np.random.default_rng(seed=seed),
     )
 
     expected_arr_act, expected_arr_ctx = attributors.extract_activation_context(
@@ -125,7 +127,7 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
         device=DEVICE,
         number_of_selected_spatial_locations=NUMBER_OF_SPATIAL_LOCATIONS,
         logit_modifier=logit_modifiers.MultiClassTargetLogit(),
-        rng=np.random.default_rng(seed=1),
+        rng=np.random.default_rng(seed=seed),
     )
 
     np.testing.assert_allclose(arr_act, expected_arr_act, atol=1e-6)
@@ -163,7 +165,8 @@ def test_extract_act_grad():
 
     act: torch.Tensor = model_part1(X).detach()
     act.requires_grad_(True)
-    logit_modifier(model_part2(act), None).sum().backward()
+    arr_expected_logodd = model_part2(act)
+    logit_modifier(arr_expected_logodd, None).sum().backward()
 
     grad = act.grad
     assert grad is not None
@@ -187,14 +190,16 @@ def test_extract_act_grad():
         batch_size=10,
     )
 
-    arr_actual_acts, arr_actual_grads = attributors.extract_activation_grad(
-        model=model,
-        layer="layer1",
-        dataloader=dl,
-        logit_modifier=logit_modifier,
-        device="cpu",
-        rng=np.random.default_rng(seed=seed),
-        number_of_selected_spatial_locations=num_spatial_locations,
+    arr_actual_logodd, arr_actual_acts, arr_actual_grads = (
+        attributors.extract_activation_grad(
+            model=model,
+            layer="layer1",
+            dataloader=dl,
+            logit_modifier=logit_modifier,
+            device="cpu",
+            rng=np.random.default_rng(seed=seed),
+            number_of_selected_spatial_locations=num_spatial_locations,
+        )
     )
 
     np.testing.assert_allclose(
@@ -205,4 +210,9 @@ def test_extract_act_grad():
     np.testing.assert_allclose(
         arr_actual_grads,
         arr_expected_grads,
+    )
+
+    np.testing.assert_allclose(
+        arr_actual_logodd,
+        arr_expected_logodd.detach().cpu().numpy(),
     )

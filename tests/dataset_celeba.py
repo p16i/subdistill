@@ -34,7 +34,6 @@ def test_celeba_attr_callable_and_create_subsets(attr_ix, is_train):
                 shuffle=False,
                 persistent_workers=False,
                 pin_memory=False,
-                num_workers=1,
             )
         )
     )

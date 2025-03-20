@@ -38,7 +38,7 @@ class CelebABase(DatasetConfiguration):
         self,
         train_split=False,
         target_transform: typing.Union[None, typing.Callable] = None,
-    ) -> Dataset:
+    ) -> Dataset:  # todo:  fix type
         return self.dataclass(
             root=str(DATADIR),
             split="train" if train_split else "valid",

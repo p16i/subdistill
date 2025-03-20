@@ -6,6 +6,7 @@ import numpy.typing as npt
 
 
 from .orthogonal import *
+from .orthogonal_weighting import *
 from .register import BASES
 
 

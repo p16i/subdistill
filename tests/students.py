@@ -42,3 +42,41 @@ def test_canonize_student():
     actual = canonized_model(x)
 
     np.testing.assert_allclose(actual, expected, atol=1e-6)
+
+
+@torch.no_grad()
+@pytest.mark.parametrize(
+    "student_name",
+    [
+        "student-cifar-resnet18-16",
+        "student-cifar-resnet18-32",
+        "student-cifar-resnet18-64",
+    ],
+)
+@pytest.mark.slow()
+def test_cifar100_resnet(student_name):
+    x = torch.rand(5, 3, 32, 32)
+    model = models.get_untrained_model(student_name, num_classes=10)
+    model.eval()
+    output = model(x)
+    assert torch.isfinite(output).all()
+    assert output.shape == (5, 10)
+
+
+@torch.no_grad()
+@pytest.mark.parametrize(
+    "student_name",
+    [
+        "student-resnet18-16",
+        "student-resnet18-32",
+        "student-resnet18-64",
+    ],
+)
+@pytest.mark.slow()
+def test_resnet(student_name):
+    x = torch.rand(5, 3, 224, 224)
+    model = models.get_untrained_model(student_name, num_classes=10)
+    model.eval()
+    output = model(x)
+    assert torch.isfinite(output).all()
+    assert output.shape == (5, 10)

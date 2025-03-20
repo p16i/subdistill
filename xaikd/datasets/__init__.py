@@ -1,35 +1,33 @@
 from abc import ABC, abstractmethod
-import re
 import os
+
+from copy import deepcopy
 
 import typing
 
 from pathlib import Path
 
-import pandas as pd
 
 import numpy as np
-import numpy.typing as npt
 
 
 import torch
-from torch import nn
 from torch.utils.data import DataLoader, Subset, Dataset, random_split
 
+from torchvision import datasets as tvd
 from torchvision import transforms
 
 
 from dataclasses import dataclass
 
 
-from tqdm import tqdm
-
 from xaikd import constants, utils
 
-from .multitask_mnist_fmnist import (
-    MultiTaskMNISTFashionMNIST,
-    MultiTaskEMNISTFashionMNIST,
-)
+# todo: obsolte
+# from .multitask_mnist_fmnist import (
+#     MultiTaskMNISTFashionMNIST,
+#     MultiTaskEMNISTFashionMNIST,
+# )
 
 
 DATADIR = Path(os.getenv("DATASET_ROOT", "./datasets"))
@@ -43,7 +41,7 @@ def build_dataloader(
     dataset: Dataset,
     shuffle,
     num_workers=12,
-    batch_size=64,
+    batch_size=constants.DEFAULT_BATCH_SIZE,
     drop_last=False,
     pin_memory=True,
     persistent_workers=True,
@@ -60,8 +58,10 @@ def build_dataloader(
     )
 
 
-def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
+def subsample_dataset(dataset: tvd.VisionDataset, ratio: float, seed: int) -> Subset:
     assert 0 < ratio <= 1
+
+    assert isinstance(dataset, tvd.VisionDataset)
 
     if ratio == 1:
         # todo: add test for this
@@ -78,17 +78,8 @@ def subsample_dataset(dataset: Dataset, ratio: float, seed: int) -> Subset:
 
 @dataclass
 class DatasetConfiguration(ABC):
-    # num_classes: int
-    # input_statistics: typing.Tuple[typing.Tuple[float, ...], typing.Tuple[float, ...]]
-    # _normalizer: transforms.Normalize
-    # input_transformation: typing.Callable
-    # input_training_transformation: typing.Callable
-    # dataclass: typing.Callable
-    # selected_classes: typing.List[int]
-    # data_dir = DATADIR
-
     @abstractmethod
-    def create_subset(self, train_split: bool) -> Dataset:
+    def create_subset(self, train_split: bool) -> tvd.VisionDataset:
         pass
 
     @property
@@ -146,3 +137,89 @@ class DatasetConfiguration(ABC):
 
 from .register import construct
 from . import cifar100, imagenet, celeba
+
+
+def construct_dataloaders(
+    dataset: DatasetConfiguration,
+    training_data_ratio: float,
+    seed: int,
+    use_validation_set: bool,
+) -> typing.Tuple[
+    DataLoader[Subset[tvd.VisionDataset]],
+    DataLoader[Subset[tvd.VisionDataset]],
+    DataLoader[tvd.VisionDataset],
+    DataLoader[tvd.VisionDataset],
+]:
+
+    rng = torch.Generator()
+    rng.manual_seed(seed)
+    ds_train_raw = dataset.create_subset(train_split=True)
+    if use_validation_set:
+
+        ratio_train = np.min([constants.TRAINING_VAL_SPLIT_RATIO, training_data_ratio])
+        ratio_val = 1 - constants.TRAINING_VAL_SPLIT_RATIO
+        ratio_rest = 1 - (ratio_train + ratio_val)
+        assert 0 <= ratio_rest <= 1
+
+        print(
+            f"[use_validation={use_validation_set}]: ratio_train={ratio_train:.4f}, ratio_val={ratio_val:.4f}"
+        )
+
+        ds_train, ds_val, _ = random_split(
+            ds_train_raw,
+            [ratio_train, ratio_val, ratio_rest],
+            rng,
+        )
+    else:
+        # we do this to make the type compatable
+        ds_train, _ = random_split(
+            ds_train_raw,
+            [training_data_ratio, 1 - training_data_ratio],
+            rng,
+        )
+
+        ds_val = dataset.create_subset(train_split=False)
+
+    # remark: we have to do it this way because the current version of
+    #  `contaminate_dataset` function only work with `Subset.
+    ds_test = dataset.create_subset(train_split=False)
+
+    # remark: we set shuffle=False here becaue it is only used to learn bases.
+    dl_train = build_dataloader(ds_train, shuffle=False)
+
+    dl_val = build_dataloader(
+        ds_val,
+        shuffle=False,
+    )
+
+    dl_test = build_dataloader(
+        ds_test,
+        shuffle=False,
+    )
+
+    print(f"==== Dataset Information [use_validation_set={use_validation_set}] ====")
+    for label, ds in [("train", ds_train), ("val", ds_val), ("test", ds_test)]:
+        print(f"> split={label:5s}: count={len(ds)}")
+
+    ds_train_with_aug = deepcopy(ds_train)
+
+    # We have to make sure that the `dataset` attribute is an actual dataset containing tranform.
+    # This avoids having a nested chain of Subsets.
+    assert hasattr(ds_train.dataset, "transform")
+    assert isinstance(ds_train.dataset, (tvd.CIFAR100, tvd.ImageNet, tvd.CelebA))
+
+    assert not ds_train_with_aug.dataset is None
+    ds_train_with_aug.dataset.transform = dataset.input_training_transformation  # type: ignore
+
+    # this loader is used in the distillation process.
+    dl_train_with_aug = build_dataloader(
+        ds_train_with_aug,
+        shuffle=True,
+        # cf. Ahn et al. (2017), VID, in Supplement Sec. A.3.
+        # we scale batch_size such that when training_size < 1.0,
+        # we get the same number of update steps.
+        batch_size=int(np.ceil(constants.DEFAULT_BATCH_SIZE * training_data_ratio)),
+        drop_last=True,
+    )
+
+    return dl_train, dl_train_with_aug, dl_val, dl_test
