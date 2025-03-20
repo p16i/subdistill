@@ -827,6 +827,8 @@ class OrthogonalBasisIdentityBiasPolicy(LayerPolicy):
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
+        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
+
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
 
@@ -961,8 +963,8 @@ class OrthogonalBasisIdentityBatchNormPolicy(LayerPolicy):
         return loss_mse
 
 
-@register_layer_policy("basis-bn-wo-normalization")
-class OrthogonalBasisIdentityPolicy(LayerPolicy):
+@register_layer_policy("basis-bn-no-scale")
+class OrthogonalBasisIdentityBatchNormNoScalePolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:

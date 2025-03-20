@@ -27,9 +27,10 @@ parameters:
     value: celeba-attr31
   layer-policy:
      values: 
-        - basis-bn:prcaposdef
-        - basis-bn:prcaposdef-with-weight-p1
-        - attention-transfer
+        # - basis-bn:prcaposdef
+        # - basis-bn:prcaposdef-with-weight-p1
+        # - attention-transfer
+        - basis-bn:pca
         # - vid
         # - vkd
         # - spkd
