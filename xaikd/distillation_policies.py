@@ -807,7 +807,7 @@ class OrthogonalBasisIdentityBiasPolicy(LayerPolicy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-        class AddBiasAndScale(nn.Module):
+        class AddBias(nn.Module):
             def __init__(self, d: int):
                 super().__init__()
                 self.bias = nn.Parameter(torch.zeros(d).reshape(1, d, 1, 1))
@@ -815,7 +815,7 @@ class OrthogonalBasisIdentityBiasPolicy(LayerPolicy):
             def forward(self, x: torch.Tensor) -> torch.Tensor:
                 return x + self.bias
 
-        self.transformer_student_feats = AddBiasAndScale(d=k).to(device)
+        self.transformer_student_feats = AddBias(d=k).to(device)
 
     def criterion(self, transformed_teacher_feats, transformed_student_feats):
         b, k, w, h = transformed_teacher_feats.shape
