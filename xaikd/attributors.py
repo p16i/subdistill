@@ -151,10 +151,13 @@ def extract_activation_grad(
     device="cpu",
     number_of_selected_spatial_locations=20,
     verbose=False,
-) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
     arr_act = []
     arr_ctx = []
+    arr_logit = []
 
+    output_dimensions = None
+    hook = None
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
             model, layer, should_retain_grad=True, detach_output=False
@@ -188,17 +191,30 @@ def extract_activation_grad(
             )
             arr_act.append(selected_act)
             arr_ctx.append(selected_ctx)
+            arr_logit.extend(logits.detach().cpu().numpy().tolist())
 
     finally:
-        hook.remove()
+        if hook is not None:
+            hook.remove()
+
+    assert output_dimensions is not None
 
     if verbose:
         print(f"{layer}: output-dims={output_dimensions}")
 
+    nc, w, h = output_dimensions
+
     arr_act = np.vstack(arr_act)
     arr_ctx = np.vstack(arr_ctx)
+    arr_logit = np.array(arr_logit)
+    assert len(arr_logit.shape) == 1
 
-    return arr_act, arr_ctx
+    assert arr_act.shape[0] == arr_logit.shape[0]
+    assert arr_act.shape == arr_ctx.shape
+
+    print(f"> shape(arr_act)={arr_act.shape}; shape(arr_logits)={arr_logit.shape}")
+
+    return arr_logit, arr_act, arr_ctx
 
 
 def extract_activation(

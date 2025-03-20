@@ -100,7 +100,7 @@ def register_layer_policy(name):
 
 class LastLayerPolicy(Policy):
 
-    def forward(
+    def forward(  # type: ignore
         self,
         teacher_logits: torch.Tensor,
         student_logits: torch.Tensor,
@@ -110,7 +110,7 @@ class LastLayerPolicy(Policy):
             teacher_logits=teacher_logits, student_logits=student_logits, target=target
         )
 
-    def criterion(
+    def criterion(  # type: ignore
         self,
         teacher_logits: torch.Tensor,
         student_logits: torch.Tensor,
@@ -147,7 +147,7 @@ class LayerPolicyCollection(nn.ModuleList):
         self,
         teacher_layers: typing.List[str],
         student_layers: typing.List[str],
-        policies: typing.Iterable[Policy],
+        policies: typing.List[Policy],
     ) -> None:
         super().__init__(policies)
 
@@ -747,18 +747,8 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         return loss_mse
 
 
-class AddBias(nn.Module):
-    def __init__(self, d: int):
-        super().__init__()
-        self.bias = nn.Parameter(torch.zeros(d).reshape(1, d, 1, 1))
-        self.scaling = nn.Parameter(torch.tensor(1.0))
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.scaling * x + self.bias
-
-
 @register_layer_policy("basis-with-bias-and-scale")
-class OrthogonalBasisIdentityPolicy(LayerPolicy):
+class OrthogonalBasisIdentityBiasAndScalePolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
@@ -770,6 +760,60 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         self.transformer_teacher_feats = basis.construct_adapter(
             k=k, mode=AdapterMode.ENCODER, device=device
         )
+
+        class AddBiasAndScale(nn.Module):
+            def __init__(self, d: int):
+                super().__init__()
+                self.bias = nn.Parameter(torch.zeros(d).reshape(1, d, 1, 1))
+                self.scaling = nn.Parameter(torch.tensor(1.0))
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return self.scaling * x + self.bias
+
+        self.transformer_student_feats = AddBiasAndScale(d=k).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
+@register_layer_policy("basis-with-bias")
+class OrthogonalBasisIdentityBiasPolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        class AddBias(nn.Module):
+            def __init__(self, d: int):
+                super().__init__()
+                self.bias = nn.Parameter(torch.zeros(d).reshape(1, d, 1, 1))
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return x + self.bias
 
         self.transformer_student_feats = AddBias(d=k).to(device)
 
@@ -783,8 +827,6 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
-        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
-
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
 
@@ -797,7 +839,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
 
 
 @register_layer_policy("basis-bn-only-affine")
-class OrthogonalBasisIdentityPolicy(LayerPolicy):
+class OrthogonalBasisIdentityBatchNormOnlyAffinePolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
@@ -838,7 +880,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
 
 
 @register_layer_policy("basis-bn-only-runstats")
-class OrthogonalBasisIdentityPolicy(LayerPolicy):
+class OrthogonalBasisIdentityBatchNormOnlyRunStatsPolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
@@ -879,7 +921,7 @@ class OrthogonalBasisIdentityPolicy(LayerPolicy):
 
 
 @register_layer_policy("basis-bn")
-class OrthogonalBasisIdentityPolicy(LayerPolicy):
+class OrthogonalBasisIdentityBatchNormPolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
@@ -996,6 +1038,28 @@ class OrthogonalBasisRotationPolicy(OrthogonalBasisIdentityPolicy):
         )
 
         self.transformer_student_feats = StudenTransform()
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
 
 
 @register_layer_policy("basis-identity-learnable")

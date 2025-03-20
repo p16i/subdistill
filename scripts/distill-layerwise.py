@@ -42,11 +42,12 @@ WANDB_DIR = os.getenv("WANDB_DIR", ".")
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
 
 
+# todo: abstract this into the policy
 def learn_basis(
     teacher_model: nn.Module,
     dataset: datasets.DatasetConfiguration,
     train_loader: DataLoader,
-    logit_mod: attributors.LogitModifier,
+    logit_mod: logit_modifiers.BinaryLogOddWinning,
     layers: typing.List[str],
     layer_policy: str,
     device: str,
@@ -61,13 +62,15 @@ def learn_basis(
 
     _, basis_name = layer_policy.split(":")
 
+    assert isinstance(logit_mod, logit_modifiers.BinaryLogOddWinning)
+
     rng = np.random.default_rng(seed=seed)
 
     for layer in layers:
         layer_output_dir = output_dir / f"layer-{layer}"
 
         os.makedirs(layer_output_dir, exist_ok=True)
-        arr_act, arr_ctx = attributors.extract_activation_grad(
+        arr_logodd, arr_act, arr_ctx = attributors.extract_activation_grad(
             model=teacher_model,
             layer=layer,
             dataloader=train_loader,
@@ -79,16 +82,15 @@ def learn_basis(
         click.echo(f"[layer={layer}] fitting basis={basis_name}")
         basis = bases.get_basis(basis_name)
         basis.fit(
-            arr_act,
-            arr_ctx,
+            arr_act=arr_act,
+            arr_ctx=arr_ctx,
+            arr_logodd=arr_logodd,
+            logodd_threshold=logit_mod.threshold,
         )
 
         arr_learned_bases[f"{layer}"] = basis
 
     return arr_learned_bases
-
-
-# todo: rename file to distill some-vs-others
 
 
 @click.command()
@@ -172,6 +174,17 @@ def main(
     # prepare dataset
     dataset = datasets.construct(dataset)
 
+    if isinstance(dataset, datasets.celeba.CelebAAttribute):
+        teacher_last_layer = models.layers.TaskLogitSelection(task_id=dataset.attr_ix)
+    elif isinstance(
+        dataset, datasets.cifar100.some_vs_others.CIFAR100SuperclassVsOthers
+    ):
+        teacher_last_layer = models.layers.LayerLogOddSelectedClasses(
+            selected_classes=dataset.selected_classes
+        )
+    else:
+        raise
+
     train_loader, train_loader_with_aug, val_loader, test_loader = (
         datasets.construct_dataloaders(
             dataset=dataset,
@@ -182,14 +195,11 @@ def main(
     )
 
     # prepare teacher
-    layer_logodd_selected_classes = models.layers.LayerLogOddSelectedClasses(
-        selected_classes=dataset.selected_classes
-    )
     teacher_model = nn.Sequential(
         OrderedDict(
             [
                 ("base", models.get_trained_model(teacher).to(device)),
-                ("layer_logodd", layer_logodd_selected_classes),
+                ("last_layer", teacher_last_layer),
             ]
         )
     )

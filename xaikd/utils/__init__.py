@@ -77,15 +77,37 @@ def subsample_tensors(
         selected_act = flattened_act[:, selected]
         selected_ctx = flattened_ctx[:, selected]
 
-        arr_act.append(selected_act.T)
-        arr_ctx.append(selected_ctx.T)
+        arr_act.append(selected_act[np.newaxis, :, :])
+        arr_ctx.append(selected_ctx[np.newaxis, :, :])
 
     arr_act = np.vstack(arr_act)
     arr_ctx = np.vstack(arr_ctx)
 
-    assert arr_act.shape == (bs * np.min([num_locations, total_spatial_locations]), nc)
+    assert arr_act.shape == (bs, nc, np.min([num_locations, total_spatial_locations]))
+
+    assert arr_act.shape == arr_ctx.shape
 
     return arr_act, arr_ctx
+
+
+def flatten_3d_tensor(x: npt.NDArray) -> npt.NDArray:
+    """_summary_
+
+    Args:
+        x (torch.Tensor): _description_
+
+    Returns:
+        torch.Tensor: 2d tensor whose len(x.shape) == 2
+    """
+    bs, nc, num_spatial_locations = x.shape
+
+
+    x = np.transpose(x, [1, 0, 2])
+
+    x = x.reshape((nc, bs * num_spatial_locations))
+    x = x.T
+
+    return x
 
 
 def count_params_in_model(model: torch.nn.Module) -> typing.Tuple[int, int]:

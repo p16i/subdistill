@@ -18,7 +18,23 @@ def test_subsample():
     subsampled_act, subsampled_ctx = utils.subsample_tensors(act, ctx, num_locations=13)
 
     assert subsampled_act.shape == subsampled_ctx.shape
-    assert subsampled_act.shape == (10 * 13, 3)
+    assert subsampled_act.shape == (10, 3, 13)
+
+
+def test_flatten():
+    bs = 10
+    wh = 20
+    x = torch.randn(bs, 16, wh).numpy()
+
+    flatten_x = utils.flatten_3d_tensor(x)
+
+    for i in range(bs):
+        for j in range(wh):
+
+            pos = i * wh + j
+            actual = flatten_x[pos]
+            expected = x[i, :, j]
+            np.testing.assert_allclose(actual, expected)
 
 
 def test_count_params():

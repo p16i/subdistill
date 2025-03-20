@@ -274,8 +274,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         if len(self.arr_metrics["val_auroc"]) > 0:
             best_epoch = int(np.argmax(self.arr_metrics["val_auroc"]))
             best_val_auroc = float(self.arr_metrics["val_auroc"][best_epoch])
-            self.log("best_epoch", best_epoch)
-            self.log("best_val_auroc", best_val_auroc)
+            self.log("best_epoch", best_epoch, prog_bar=True)
+            self.log("best_val_auroc", best_val_auroc, prog_bar=True)
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")

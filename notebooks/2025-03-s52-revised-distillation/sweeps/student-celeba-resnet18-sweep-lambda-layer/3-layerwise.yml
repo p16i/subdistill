@@ -3,6 +3,7 @@ command:
   - python
   - ${program}
   - ${args}
+  - --upload-best-checkpoint
 program: scripts/distill-layerwise.py
 method: grid
 metric:
@@ -17,21 +18,21 @@ parameters:
       - 2
       - 3
   teacher:
-    value: cifar100-resnet18-v1
+    value: celeba-resnet18-pretrained
   layers:
     value: layer3:layer3,layer4:layer4
   student:
-    value: student-cifar-resnet18-32
+    value: student-resnet18-32
   dataset:
-    value: cifar100-people-vs-others
+    value: celeba-attr31
   layer-policy:
      values: 
-        # - basis-bn:prcaposdef
-        # - attention-transfer
+        - basis-bn:prcaposdef
+        - basis-bn:prcaposdef-with-weight-p1
+        - attention-transfer
         # - vid
         # - vkd
-        - spkd
-        - basis-bn:prcaposdef-with-weight-p1
+        # - spkd
   lambda-task:
       value:  0.0
   lambda-kd:
@@ -44,10 +45,9 @@ parameters:
         - 1
         - 10
         - 100
-        - 1000
   training-size:
     values:
-      - 1.0
-      - 0.5
-      - 0.1
+      # - 1.0
+      # - 0.5
+      # - 0.1
       - 0.01
