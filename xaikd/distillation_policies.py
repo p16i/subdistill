@@ -1024,11 +1024,11 @@ class OrthogonalBasisRotationPolicy(OrthogonalBasisIdentityPolicy):
                         in_features=student_dims, out_features=student_dims, bias=False
                     )
                 )
-                self.scaling = nn.Parameter(torch.tensor(1.0))
+                self.bias = nn.Parameter(torch.tensor([0.0] * student_dims))
 
             def forward(self, x):
                 x = utils.convolve_feature_map_with_linear(x, self.rotation)
-                x = x * self.scaling
+                x = x + self.bias
 
                 return x
 
