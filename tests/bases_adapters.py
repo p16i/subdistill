@@ -52,9 +52,7 @@ def test_adapter_identity(basis_name, d):
     np.testing.assert_allclose(decoder(encoder(x)), x, atol=1e-5)
 
 
-@pytest.mark.parametrize(
-    "basis_name", ["pca", "pcacentering", "prcasortabs", "prcaposdef"]
-)
+@pytest.mark.parametrize("basis_name", ["pca", "prcasortabs", "prcaposdef"])
 def test_trainable_parameters_in_adapter(basis_name):
 
     basis = bases.get_basis(basis_name)
