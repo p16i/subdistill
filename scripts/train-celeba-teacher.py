@@ -125,11 +125,11 @@ def model_generator(arch: str) -> typing.Optional[nn.Module]:
 
 @click.command()
 @click.option("--arch", type=str)
-@click.option("--data-dir", type=str, default="/datasets")
 @click.option("--epochs", type=int, default=100)
 @click.option("--batch-size", type=int, default=64)
 @click.option("--num-workers", type=int, default=12)
-def main(arch, data_dir, epochs, batch_size, num_workers):
+@click.option("--wandb-experiment-group", default=WANDB_GROUP)
+def main(arch, epochs, batch_size, num_workers, wandb_experiment_group):
     arguments = locals()
     start_time = datetime.now()
 
@@ -154,7 +154,7 @@ def main(arch, data_dir, epochs, batch_size, num_workers):
         save_dir="/tmp",
         project=WANDB_PROJECT,
         log_model=True,
-        group=WANDB_GROUP,
+        group=wandb_experiment_group,
         config=arguments,
     )
 
