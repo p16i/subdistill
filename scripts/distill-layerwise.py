@@ -48,12 +48,6 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
 @click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--layer-policy", type=str, required=True)
-@click.option(
-    "--last-layer-policy",
-    default="binkd",
-    type=click.Choice(["binkd", "kd", "dkd"]),
-    required=True,
-)
 @click.option("--layers", default=None, type=str)
 @click.option("--lambda-task", default=0.0, type=float)
 @click.option("--lambda-kd", default=1.0, type=float)
@@ -70,7 +64,6 @@ def main(
     student,
     dataset,
     training_size,
-    last_layer_policy,
     layer_policy,
     layers,
     lambda_task,
@@ -223,7 +216,7 @@ def main(
         project=WANDB_PROJECT,
         group=wanddb_experiment_group,
         job_type="distillation",
-        name=f"{student}-{last_layer_policy}-{layer_policy}-seed{seed}",
+        name=f"{student}-{layer_policy}-seed{seed}",
         notes=f"commit:{utils.get_git_hash()}",
         config={
             **arguments,
@@ -235,9 +228,7 @@ def main(
 
     distillator.distill(
         student=student_model,
-        last_layer_policy=distillation_policies.get_last_layer_policy(
-            last_layer_policy
-        ),
+        last_layer_policy=distillation_policies.kd.BinaryKLPolicy(device=device),
         layer_policies=distillation_policies.interface.LayerPolicyCollection(
             teacher_layers=arr_teacher_layers,
             student_layers=arr_student_layers,
