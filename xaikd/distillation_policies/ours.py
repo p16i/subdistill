@@ -11,6 +11,18 @@ from .register import register_policy
 from .interface import LayerPolicy
 
 
+@register_policy("nothing")
+class NothingPolicy(LayerPolicy):
+    def __init__(self, teacher_dims: int, student_dims: int, device: str) -> None:
+        super().__init__()
+
+        self.transformer_teacher_feats = nn.Identity()
+        self.transformer_student_feats = nn.Identity()
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        return torch.tensor(0.0).to(transformed_teacher_feats.device)
+
+
 @register_policy("basis-with-bias-and-scale")
 class OrthogonalBasisIdentityBiasAndScalePolicy(LayerPolicy):
     def __init__(
