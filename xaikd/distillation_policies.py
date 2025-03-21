@@ -935,9 +935,11 @@ class OrthogonalBasisIdentityBatchNormPolicy(LayerPolicy):
         )
 
         scaling_factors = self.basis.get_scale_factors_for_k(student_dims)
+        sqrt_tr = np.sum(scaling_factors) ** 0.5
         print(
-            f"basis-bn (teacher_dim={teacher_dims}); scaling factor: max={scaling_factors.max()}, first={scaling_factors[0]}"
+            f"basis-bn (teacher_dim={teacher_dims}); scaling factor: max={scaling_factors.max():.4e}, first={scaling_factors[0]:4e}, sqrt(sum_k lambda_k)={sqrt_tr:.4e}"
         )
+        self.scaling = sqrt_tr
 
         self.transformer_student_feats = nn.BatchNorm2d(
             num_features=k, track_running_stats=True, affine=True
@@ -953,7 +955,7 @@ class OrthogonalBasisIdentityBatchNormPolicy(LayerPolicy):
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
-        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
+        loss_mse = loss_mse / self.scaling
 
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)

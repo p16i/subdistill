@@ -66,8 +66,6 @@ class OrthogonalBasis(ABC):
         # todo: check that for PCA this is equal to eigenvalue
         output = np.mean((arr_act_on_U) ** 2, axis=0)
 
-        output = np.sqrt(output)
-
         return output
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
