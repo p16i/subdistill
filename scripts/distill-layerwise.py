@@ -158,7 +158,7 @@ def main(
     ).to(device)
 
     dict_student_layer_dim = utils.get_dimensions_at_layers(
-        student_model,
+        deepcopy(student_model).eval(),
         train_loader,
         layers=arr_student_layers,
         device=device,
