@@ -27,12 +27,10 @@ WANDB_GROUP = "celeba"
 
 
 class ModelWrapper(pl.LightningModule):
-    def __init__(self, encoder, lr=1e-4):
+    def __init__(self, encoder: nn.Module):
         super().__init__()
 
         self.encoder = encoder
-
-        self.lr = lr
 
         self.arr_metrics = dict(train=[], val=[])
         for tix in range(datasets.celeba.NUM_CELEBA_ATTRIBUTES):
@@ -44,8 +42,8 @@ class ModelWrapper(pl.LightningModule):
         return embedding
 
     def configure_optimizers(self):
-
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        # ref: https://d2l.ai/chapter_computer-vision/fine-tuning.html
+        optimizer = torch.optim.SGD(self.parameters(), lr=5e-5, weight_decay=0.001)
 
         return optimizer
 
