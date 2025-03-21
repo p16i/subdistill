@@ -44,6 +44,7 @@ class CelebABase(DatasetConfiguration):
             split="train" if train_split else "valid",
             transform=self.input_transformation,
             target_transform=self.target_transform,
+            target_type="attr",
         )
 
     @property
