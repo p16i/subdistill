@@ -7,35 +7,29 @@ import numpy.typing as npt
 
 from .orthogonal import *
 from .orthogonal_weighting import *
-from .register import BASES
+from .register import get_basis
+from .helpers import learn_basis
 
 
-# todo: remove this
-# from . import pcalookahead
-# from xaikd.bases import pcalookahead
-# from xaikd.bases.learners import (
-#     PRCAGreedyLearner,
-#     PRCAReconGreedy,
-#     PRCASignAlignGreedy,
-#     PRCASignAlignGreedyV2,
-# )
+# fixme: remove all this code below
+
+# # from . import pcalookahead
+# # from xaikd.bases import pcalookahead
+# # from xaikd.bases.learners import (
+# #     PRCAGreedyLearner,
+# #     PRCAReconGreedy,
+# #     PRCASignAlignGreedy,
+# #     PRCASignAlignGreedyV2,
+# # )
+
+# def _add_centering_variants():
+
+#     for base_variant_cls in [PCA]:
+#         base_variant_slug = base_variant_cls.slug()
+#         slug = f"{base_variant_slug}centering"
+
+#         assert not (slug in BASES)
+#         BASES[slug] = partial(base_variant_cls, centering=True)
 
 
-def get_basis(basis_name, **kwargs) -> OrthogonalBasis:
-
-    basis = BASES[basis_name](**kwargs)
-
-    return basis
-
-
-def _add_centering_variants():
-
-    for base_variant_cls in [PCA]:
-        base_variant_slug = base_variant_cls.slug()
-        slug = f"{base_variant_slug}centering"
-
-        assert not (slug in BASES)
-        BASES[slug] = partial(base_variant_cls, centering=True)
-
-
-_add_centering_variants()
+# _add_centering_variants()
