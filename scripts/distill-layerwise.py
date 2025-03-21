@@ -151,7 +151,13 @@ def main(
     ).to(device)
 
     dict_student_layer_dim = utils.get_dimensions_at_layers(
-        deepcopy(student_model).eval(),
+        models.get_untrained_model(
+            student,
+            num_classes=dataset.num_classes,
+            class_indices=dataset.selected_classes,
+        )
+        .to(device)
+        .eval(),
         train_loader,
         layers=arr_student_layers,
         device=device,
@@ -169,6 +175,10 @@ def main(
     logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
 
     print(f"[policy={layer_policy}] with lambda-layer={lambda_layer}")
+
+    student_model = models.get_untrained_model(
+        student, num_classes=dataset.num_classes, class_indices=dataset.selected_classes
+    ).to(device)
 
     arr_layer_policies = []
     for teacher_layer, student_layer in zip(arr_teacher_layers, arr_student_layers):
