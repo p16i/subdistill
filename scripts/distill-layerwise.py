@@ -185,7 +185,6 @@ def main(
         kwargs = dict(
             teacher_dims=teacher_layer_dims,
             student_dims=student_layer_dims,
-            device=device,
         )
 
         if "basis" in layer_policy:
