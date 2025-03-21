@@ -1,3 +1,4 @@
+import os
 import typing
 
 import numpy as np
@@ -21,7 +22,7 @@ from pytorch_lightning.loggers.wandb import WandbLogger
 from xaikd import datasets, utils
 
 
-WANDB_PROJECT = "xaikd-training-teacher-models"
+WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-training-teacher-models")
 WANDB_GROUP = "celeba"
 
 
