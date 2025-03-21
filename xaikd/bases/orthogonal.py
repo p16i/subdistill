@@ -60,7 +60,13 @@ class OrthogonalBasis(ABC):
 
         # we do this to make sure that it compatible with the basis
         arr_act = utils.flatten_3d_tensor(arr_act)
-        output = np.array([np.mean((arr_act @ u1) ** 2)])
+
+        arr_act_on_U = arr_act @ U
+
+        # todo: check that for PCA this is equal to eigenvalue
+        output = np.mean((arr_act_on_U) ** 2, axis=0)
+
+        output = np.sqrt(output)
 
         return output
 
