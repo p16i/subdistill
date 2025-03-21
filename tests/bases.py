@@ -310,11 +310,10 @@ def test_correct_scale_orthogoal_bases(basis_name):
     )
 
     U = basis.U
-    scale = basis.scale_factors
+    actual = basis.scale_factors
 
-    np.testing.assert_allclose(
-        scale, [np.mean((utils.flatten_3d_tensor(arr_act) @ U[:, 0]) ** 2)]
-    )
+    expected = np.mean((utils.flatten_3d_tensor(arr_act) @ U) ** 2, axis=0)
+    np.testing.assert_allclose(actual, expected)
 
 
 @pytest.mark.parametrize(
