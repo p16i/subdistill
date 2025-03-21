@@ -27,7 +27,7 @@ from xaikd import (
 )
 
 from xaikd import datasets, metrics
-from xaikd.distillation_policies import LayerPolicyCollection
+from xaikd.distillation_policies.interface import LayerPolicyCollection
 
 
 def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.Tensor]:
@@ -63,9 +63,8 @@ def test_distillation_runnable_and_correct(
     layers,
 ):
 
-    last_layer_policy = "binkd"
+    last_layer_policy = distillation_policies.get_last_layer_policy("last-layer:binkd")
 
-    ignore_layer_loss_fullupdate = False
     epochs = 1
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
@@ -237,6 +236,8 @@ def test_get_parameters(layers):
 
     layer = "layer3"
 
+    last_layer_policy = distillation_policies.get_last_layer_policy("last-layer:binkd")
+
     teacher_model = models.get_trained_model("cifar100-resnet18-v1")
     student = models.get_untrained_model(
         constants.STUDENT_MODEL_FOR_TESTING, num_classes=dataset.num_classes
@@ -271,15 +272,15 @@ def test_get_parameters(layers):
             )
         )
 
-    layer_policy_colleciton = LayerPolicyCollection(
+    layer_policy_collection = LayerPolicyCollection(
         teacher_layers=layers, student_layers=layers, policies=adapters
     )
 
     model_training_wrapper = distillators.LayerwiseKDModelWrapper(
         teacher=teacher_model,
         student=student,
-        last_layer_policy="binkd",
-        layerwise_policies=layer_policy_colleciton,
+        last_layer_policy=last_layer_policy,
+        layerwise_policies=layer_policy_collection,
         lambda_kd=1,
         lambda_layer=1,
         lambda_task=1,

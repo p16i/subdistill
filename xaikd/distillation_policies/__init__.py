@@ -1,6 +1,8 @@
 import typing
 
-from .register import get_policy
+from .interface import LayerPolicy, LastLayerPolicy
+
+from .register import get_policy, get_last_layer_policy
 from .previous_works import *
 from .ours import *
 

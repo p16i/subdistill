@@ -19,3 +19,7 @@ def register_policy(name):
 
 def get_policy(name: str, device: str, **kwargs) -> Policy:
     return LAYER_POLICY[name](device=device, **kwargs)
+
+
+def get_last_layer_policy(name: str, **kwargs) -> LastLayerPolicy:
+    return LAYER_POLICY[name](device=None, **kwargs)

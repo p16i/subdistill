@@ -1,7 +1,8 @@
 from .kd import KLPolicy
 from .dkd import DKDPolicy
 
-from .vid import VIDPolicy
+from .fitnet import FitNet, FitNetTwoLayers
 from .attention_transfer import AttentionTransferPolicy
-from .vkd import VkDPolicy
+from .vid import VIDPolicy
 from .spkd import SimilarityPreserveKnowledgeDistillationPolicy
+from .vkd import VkDPolicy
