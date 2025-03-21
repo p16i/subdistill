@@ -4,6 +4,20 @@ import torch
 
 from torch import nn
 
+from xaikd import datasets
+
+
+def resolve_teacher_last_layer(dataset: datasets.DatasetConfiguration) -> nn.Module:
+
+    if isinstance(dataset, datasets.celeba.CelebAAttribute):
+        return TaskLogitSelection(task_id=dataset.attr_ix)
+    elif isinstance(
+        dataset, datasets.cifar100.some_vs_others.CIFAR100SuperclassVsOthers
+    ):
+        return LayerLogOddSelectedClasses(selected_classes=dataset.selected_classes)
+    else:
+        raise
+
 
 # todo: add test
 class LayerLogOddSelectedClasses(nn.Module):
