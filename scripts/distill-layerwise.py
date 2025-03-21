@@ -146,10 +146,6 @@ def main(
         teacher_model, train_loader, layers=arr_teacher_layers, device=device
     )
 
-    student_model = models.get_untrained_model(
-        student, num_classes=dataset.num_classes, class_indices=dataset.selected_classes
-    ).to(device)
-
     dict_student_layer_dim = utils.get_dimensions_at_layers(
         models.get_untrained_model(
             student,
@@ -157,7 +153,7 @@ def main(
             class_indices=dataset.selected_classes,
         )
         .to(device)
-        .eval(),
+        .eval(),  # fixme
         train_loader,
         layers=arr_student_layers,
         device=device,
