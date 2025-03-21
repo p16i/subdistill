@@ -934,6 +934,10 @@ class OrthogonalBasisIdentityBatchNormPolicy(LayerPolicy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
+        print(
+            f"basis-bn (teacher_dim={teacher_dims}); scaling factor: {self.basis.get_scale_factors_for_k(student_dims).max(())}"
+        )
+
         self.transformer_student_feats = nn.BatchNorm2d(
             num_features=k, track_running_stats=True, affine=True
         ).to(device)
