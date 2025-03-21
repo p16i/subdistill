@@ -166,7 +166,6 @@ def main(arch, data_dir, epochs, batch_size, num_workers):
                 save_last=True,
             )
         ],
-        fast_dev_run=True,  # fixme
     )
 
     trainer.fit(
