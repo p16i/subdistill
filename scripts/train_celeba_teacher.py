@@ -27,7 +27,7 @@ WANDB_GROUP = "celeba"
 
 
 class ModelWrapper(pl.LightningModule):
-    def __init__(self, encoder, lr=1e-3):
+    def __init__(self, encoder, lr=1e-4):
         super().__init__()
 
         self.encoder = encoder
@@ -144,7 +144,7 @@ def main(arch, data_dir, epochs, batch_size, num_workers):
         ds_train, batch_size=batch_size, num_workers=num_workers, shuffle=True
     )
     dl_val = datasets.build_dataloader(
-        ds_val, batch_size=batch_size, num_workers=num_workers, shuffle=True
+        ds_val, batch_size=batch_size, num_workers=num_workers, shuffle=False
     )
 
     model = model_generator(arch)
