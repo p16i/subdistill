@@ -939,7 +939,7 @@ class OrthogonalBasisIdentityBatchNormPolicy(LayerPolicy):
         print(
             f"basis-bn (teacher_dim={teacher_dims}); scaling factor: max={scaling_factors.max():.4e}, first={scaling_factors[0]:4e}, sqrt(sum_k lambda_k)={sqrt_tr:.4e}"
         )
-        self.scaling = sqrt_tr
+        self.scaling = np.max(scaling_factors)
 
         self.transformer_student_feats = nn.BatchNorm2d(
             num_features=k, track_running_stats=True, affine=True
