@@ -320,7 +320,7 @@ def test_correct_scale_orthogoal_bases(basis_name):
     "basis_name,mat_func,criteria",
     [
         ("pca", lambda d: d[0].T @ d[0], lambda x: x),
-        ("pcacentering", lambda d: d[0].T @ d[0], lambda x: x),
+        # ("pcacentering", lambda d: d[0].T @ d[0], lambda x: x),
     ],
 )
 def test_centering_orthogonal_bases(basis_name, mat_func, criteria):

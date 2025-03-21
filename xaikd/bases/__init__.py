@@ -7,21 +7,11 @@ import numpy.typing as npt
 
 from .orthogonal import *
 from .orthogonal_weighting import *
-from .register import get_basis
+from .register import get_basis, BASES
 from .helpers import learn_basis
 
 
-# fixme: remove all this code below
-
-# # from . import pcalookahead
-# # from xaikd.bases import pcalookahead
-# # from xaikd.bases.learners import (
-# #     PRCAGreedyLearner,
-# #     PRCAReconGreedy,
-# #     PRCASignAlignGreedy,
-# #     PRCASignAlignGreedyV2,
-# # )
-
+# todo: do we still need this?
 # def _add_centering_variants():
 
 #     for base_variant_cls in [PCA]:

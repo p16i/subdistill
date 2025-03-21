@@ -1,3 +1,5 @@
+from .interface import OrthogonalBasis
+
 BASES = dict()
 
 
