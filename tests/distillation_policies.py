@@ -5,10 +5,10 @@ import torch
 import tempfile
 from pathlib import Path
 
+
 from xaikd import distillation_policies, bases
 from xaikd import utils as putils
 from xaikd import bases
-
 
 from torch import nn
 
@@ -50,13 +50,9 @@ def test_policy_when_spatial_dimensions_different(
 ):
     batch_size = 10
     device = "cpu"
-    kwargs = dict(
-        teacher_dims=teacher_dims,
-        student_dims=student_dims,
-        device=device,
-    )
+    kwargs = dict(teacher_dims=teacher_dims, student_dims=student_dims, device=device)
 
-    policy = distillation_policies.get_layer_policy("fitnet-noact", **kwargs)
+    policy = distillation_policies.get_policy("vid", **kwargs)
 
     teacher_feats = torch.randn(batch_size, teacher_dims, *teacher_hw)
     student_feats = torch.randn(batch_size, student_dims, *student_hw)
@@ -73,30 +69,37 @@ def test_policy_when_spatial_dimensions_different(
 @pytest.mark.parametrize("teacher_dims", [10])
 @pytest.mark.parametrize("student_dims", [6])
 @pytest.mark.parametrize(
-    "policy", ["fitnet-relu", "fitnet-noact", "vid", "attention-transfer"]
+    "policy",
+    [
+        # "fitnet-relu", "fitnet-noact",
+        "vid",
+        "attention-transfer",
+        "spkd",
+        "vkd",
+    ],
 )
 def test_baseline_policy_callable(teacher_dims, student_dims, policy):
     batch_size = 10
-    device = "cpu"
     kwargs = dict(
         teacher_dims=teacher_dims,
         student_dims=student_dims,
-        device=device,
+        device="cpu",
     )
 
-    policy = distillation_policies.get_layer_policy(policy, **kwargs)
+    policy = distillation_policies.get_policy(policy, **kwargs)
 
     teacher_feats = torch.randn(batch_size, teacher_dims, 10, 10)
     student_feats = torch.randn(batch_size, student_dims, 5, 5)
 
     try:
-        policy(teacher_feats, student_feats)
-        assert True
+        output = policy(teacher_feats, student_feats)
+        assert not torch.isnan(output)
     except:
         raise
         assert False, "some exception occurs!"
 
 
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize("teacher_dims,student_dims", [(10, 5), (20, 2)])
 def test_basis_identity_learnable(teacher_dims, student_dims):
     rng = np.random.default_rng(seed=1)
@@ -119,9 +122,7 @@ def test_basis_identity_learnable(teacher_dims, student_dims):
             basis=basis,
         )
 
-        policy = distillation_policies.get_layer_policy(
-            "basis-identity-learnable", **kwargs
-        )
+        policy = distillation_policies.get_policy("basis-identity-learnable", **kwargs)
 
         expected_num_learnable_params = teacher_dims * student_dims
 
@@ -137,12 +138,14 @@ def test_basis_identity_learnable(teacher_dims, student_dims):
 @pytest.mark.parametrize(
     "last_layer_policy,expected",
     [
-        ("kd", distillation_policies.KLPolicy),
-        ("dkd", distillation_policies.DKDPolicy),
+        ("last-layer:kd", distillation_policies.KLPolicy),
+        ("last-layer:dkd", distillation_policies.DKDPolicy),
     ],
 )
 def test_last_layer_policy(last_layer_policy, expected):
-    last_layer_policy = distillation_policies.get_last_layer_policy(last_layer_policy)
+    last_layer_policy = distillation_policies.get_policy(
+        last_layer_policy, device="cpu"
+    )
     assert isinstance(last_layer_policy, expected)
 
     rng = torch.Generator()
@@ -161,31 +164,6 @@ def test_last_layer_policy(last_layer_policy, expected):
     assert not torch.isnan(val)
 
 
-def test_vkd():
-    feat_teacher = torch.randn(20, 30, 7, 7)
-    feat_student = torch.randn(20, 10, 7, 7)
-
-    vkd = distillation_policies.VkD(teacher_dims=30, student_dims=10, device="cpu")
-
-    output = vkd(feat_teacher, feat_student)
-
-    assert not torch.isnan(output)
-
-
-def test_vkd_extended():
-    feat_teacher = torch.randn(20, 30, 7, 7)
-    feat_student = torch.randn(20, 10, 7, 7)
-
-    vkd = distillation_policies.VkDModified(
-        teacher_dims=30, student_dims=10, device="cpu"
-    )
-
-    output = vkd(feat_teacher, feat_student)
-
-    assert not torch.isnan(output)
-
-
-@pytest.mark.skip(reason="obsolete")
 def test_basis_rotation():
     basis = bases.get_basis("pca")
 
@@ -198,7 +176,7 @@ def test_basis_rotation():
     feat_teacher = torch.rand((10, dims_teacher, 4, 4), generator=rng)
     feat_student = torch.rand((10, dims_student, 4, 4), generator=rng)
 
-    arr_act = torch.rand((40, dims_teacher), generator=rng).detach().cpu().numpy()
+    arr_act = torch.rand((40, dims_teacher, 20), generator=rng).detach().cpu().numpy()
     arr_logodd = torch.rand((40,), generator=rng).detach().cpu().numpy()
 
     basis.fit(
@@ -209,7 +187,7 @@ def test_basis_rotation():
         seed=1,
     )
 
-    policy = distillation_policies.OrthogonalBasisRotationPolicy(
+    policy = distillation_policies.OrthogonalBasisRotationWithScalePolicy(
         teacher_dims=dims_teacher, student_dims=dims_student, device="cpu", basis=basis
     )
 

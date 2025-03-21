@@ -5,7 +5,7 @@ from scipy.stats import norm as norm_gaussian
 
 from xaikd import utils
 
-from .orthogonal import OrthogonalBasis
+from .interface import OrthogonalBasis
 
 from .register import register_basis
 

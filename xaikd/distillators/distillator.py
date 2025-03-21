@@ -61,8 +61,8 @@ class Layerwise:
     def distill(
         self,
         student: nn.Module,
-        last_layer_policy: str,
-        layer_policies: distillation_policies.LayerPolicyCollection,
+        last_layer_policy: distillation_policies.interface.LastLayerPolicy,
+        layer_policies: distillation_policies.interface.LayerPolicyCollection,
         epochs: int,
         device: str,
         lr: float,
