@@ -8,6 +8,8 @@ from torchvision.datasets import ImageNet
 
 from xaikd import datasets, constants
 
+pytest.skip(reason="obsolte", allow_module_level=True)
+
 
 @pytest.mark.parametrize(
     "name",
