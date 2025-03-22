@@ -12,8 +12,15 @@ from torch.nn import functional as F
 import wandb
 
 import torchvision
+
 from torchvision.datasets import CelebA
 from torchmetrics.classification import BinaryAUROC
+from torchvision.models import (
+    ResNet18_Weights,
+    ResNet50_Weights,
+    ViT_B_16_Weights,
+    Wide_ResNet50_2_Weights,
+)
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -104,23 +111,19 @@ def model_generator(arch: str) -> typing.Optional[nn.Module]:
     num_outputs = datasets.celeba.NUM_CELEBA_ATTRIBUTES
     model = None
     if arch == "resnet18":
-        model = torchvision.models.resnet18(
-            weights=torchvision.models.ResNet18_Weights.IMAGENET1K_V1
-        )
+        model = torchvision.models.resnet18(weights=ResNet18_Weights.IMAGENET1K_V1)
         model.fc = nn.Linear(model.fc.in_features, num_outputs)
     elif arch == "resnet50":
-        model = torchvision.models.resnet50(
-            weights=torchvision.models.ResNet50_Weights.IMAGENET1K_V2
-        )
+        model = torchvision.models.resnet50(weights=ResNet50_Weights.IMAGENET1K_V1)
         model.fc = nn.Linear(model.fc.in_features, num_outputs)
     elif arch == "vitb16":
         model = torchvision.models.vit_b_16(
-            weights=torchvision.models.ViT_B_16_Weights.IMAGENET1K_V1
+            weights=ViT_B_16_Weights.IMAGENET1K_V1,
         )
         model.heads.head = nn.Linear(model.hidden_dim, num_outputs)
     elif arch == "wideresnet50-2":
         model = torchvision.models.wide_resnet50_2(
-            weights=torchvision.models.Wide_ResNet50_2_Weights.IMAGENET1K_V1
+            weights=Wide_ResNet50_2_Weights.IMAGENET1K_V1
         )
         model.fc = nn.Linear(model.fc.in_features, num_outputs)
     else:
