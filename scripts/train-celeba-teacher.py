@@ -120,7 +120,7 @@ def model_generator(arch: str) -> typing.Optional[nn.Module]:
         model.heads.head = nn.Linear(model.hidden_dim, num_outputs)
     elif arch == "wideresnet50-2":
         model = torchvision.models.wide_resnet50_2(
-            weights=torchvision.models.WideResNet50_2_Weights.IMAGENET1K_V1
+            weights=torchvision.models.Wide_ResNet50_2_Weights.IMAGENET1K_V1
         )
         model.fc = nn.Linear(model.fc.in_features, num_outputs)
     else:
