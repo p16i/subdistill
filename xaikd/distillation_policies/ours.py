@@ -294,8 +294,8 @@ class OrthogonalBasisCenteringPolicy(LayerPolicy):
         return loss_mse
 
 
-@register_policy("basis-centering-no-scale")
-class OrthogonalBasisCenteringPolicy(LayerPolicy):
+@register_policy("basis-centering-and-scale")
+class OrthogonalBasisCenteringAndScalePolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
     ) -> None:
