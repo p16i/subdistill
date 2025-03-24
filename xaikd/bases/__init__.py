@@ -14,7 +14,7 @@ from .helpers import learn_basis
 # todo: do we still need this?
 def _add_centering_variants():
 
-    for base_variant_cls in [PCA, PRCAPosDef]:
+    for base_variant_cls in [PCA, PRCAPosDef, PRCAPosDefWeightSTDWithP1]:
         base_variant_slug = base_variant_cls.slug()
         slug = f"{base_variant_slug}--centered"
 
