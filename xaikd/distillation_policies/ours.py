@@ -260,6 +260,7 @@ class OrthogonalBasisCenteringPolicy(LayerPolicy):
         k = student_dims
 
         self.basis = basis
+        assert self.basis.centering
         self.transformer_teacher_feats = basis.construct_adapter(
             k=k, mode=AdapterMode.ENCODER, device=device
         )
@@ -303,15 +304,27 @@ class OrthogonalBasisCenteringPolicy(LayerPolicy):
         k = student_dims
 
         self.basis = basis
+
+        assert self.basis.centering
+
         self.transformer_teacher_feats = basis.construct_adapter(
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
+        class StudentTransformer(nn.Module):
+            def __init__(self, d: int):
+                super().__init__()
+                self.centering = utils.modules.Centering2d(
+                    num_features=k,
+                )
+                self.scale = nn.Parameter(torch.tensor(1.0))
+
+            def forward(self, x: torch.Tensor):
+                return self.scale * self.centering(x)
+
         print("Scaling factor:", self.basis.get_scale_factors_for_k(k).max())
 
-        self.transformer_student_feats = utils.modules.Centering2d(
-            num_features=k,
-        ).to(device)
+        self.transformer_student_feats = StudentTransformer(d=k).to(device)
 
     def criterion(self, transformed_teacher_feats, transformed_student_feats):
         b, k, w, h = transformed_teacher_feats.shape
