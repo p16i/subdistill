@@ -161,6 +161,54 @@ class OrthogonalBasisIdentityBiasV2Policy(LayerPolicy):
         return loss_mse
 
 
+@register_policy("basis-with-biasv3")
+class OrthogonalBasisIdentityBiasV2Policy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        class AddBias(nn.Module):
+            def __init__(self, d: int):
+                super().__init__()
+                self.bias = nn.Parameter(torch.zeros(d).reshape(1, d, 1, 1))
+                self.scale = nn.Parameter(torch.tensor(1.0))
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                return self.scale * (x + self.bias)
+
+        self.transformer_student_feats = AddBias(d=k).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k=k).max()
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_policy("basis-bn-only-affine")
 class OrthogonalBasisIdentityBatchNormOnlyAffinePolicy(LayerPolicy):
     def __init__(
