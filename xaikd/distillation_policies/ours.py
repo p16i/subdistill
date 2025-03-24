@@ -264,7 +264,7 @@ class OrthogonalBasisCenteringPolicy(LayerPolicy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-        print("Scaling factor:", self.basis.get_scale_factors_for_k(k))
+        print("Scaling factor:", self.basis.get_scale_factors_for_k(k).max())
 
         self.transformer_student_feats = utils.modules.Centering2d(
             num_features=k,
