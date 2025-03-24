@@ -182,7 +182,7 @@ class OrthogonalBasisIdentityBiasV2Policy(LayerPolicy):
                 self.scale = nn.Parameter(torch.tensor(1.0))
 
             def forward(self, x: torch.Tensor) -> torch.Tensor:
-                return self.scale * (x + self.bias)
+                return self.scale * x + self.bias
 
         self.transformer_student_feats = AddBias(d=k).to(device)
 
