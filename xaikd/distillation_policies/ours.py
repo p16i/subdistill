@@ -336,7 +336,7 @@ class OrthogonalBasisCenteringAndScalePolicy(LayerPolicy):
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
-        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).max()
+        loss_mse = loss_mse / self.basis.get_scale_factors_for_k(k).sum()
 
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
