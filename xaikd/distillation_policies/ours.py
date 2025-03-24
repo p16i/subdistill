@@ -349,6 +349,62 @@ class OrthogonalBasisCenteringAndScalePolicy(LayerPolicy):
         return loss_mse
 
 
+@register_policy("basis-centering-and-scale-learnable")
+class OrthogonalBasisCenteringAndScalePolicy(LayerPolicy):
+    def __init__(
+        self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+
+        assert self.basis.centering
+
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        class StudentTransformer(nn.Module):
+            def __init__(self, d: int, scale: float):
+                super().__init__()
+                self.centering = utils.modules.Centering2d(
+                    num_features=k,
+                )
+                self.scale = nn.Parameter(torch.tensor(scale))
+
+            def forward(self, x: torch.Tensor):
+                return self.scale * self.centering(x)
+
+        print("Scaling factor:", self.basis.get_scale_factors_for_k(k).max())
+
+        self.transformer_student_feats = StudentTransformer(
+            d=k,
+            scale=self.basis.get_scale_factors_for_k(k).max() ** 0.5,
+        ).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats, transformed_teacher_feats, reduction="none"
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_policy("basis-centering-and-scale-constant")
 class OrthogonalBasisCenteringAndScalePolicy(LayerPolicy):
     def __init__(
