@@ -316,14 +316,35 @@ def test_correct_scale_orthogoal_bases(basis_name):
     np.testing.assert_allclose(actual, expected)
 
 
+def _solve_pca(arr_act, arr_ctx):
+    cov = arr_act.T @ arr_act
+    return utils.solve_eigh(cov)
+
+
+def _solve_prca_posdef(arr_act, arr_ctx):
+    cov_a = arr_act.T @ arr_act
+    cov_c = arr_ctx.T @ arr_ctx
+    cov_ac = arr_act.T @ arr_ctx
+    cov_acca = cov_ac + cov_ac.T
+
+    tr_a = np.trace(cov_a)
+    tr_c = np.trace(cov_c)
+
+    cov = (2 / tr_a) * cov_a + (2 / tr_c) * cov_c + cov_acca / np.sqrt(tr_a * tr_c)
+
+    return utils.solve_eigh(cov)
+
+
 @pytest.mark.parametrize(
-    "basis_name,mat_func,criteria",
+    "basis_name,solve_func",
     [
-        ("pca", lambda d: d[0].T @ d[0], lambda x: x),
-        ("pcacentering", lambda d: d[0].T @ d[0], lambda x: x),
+        ("pca", _solve_pca),
+        ("pca--centered", _solve_pca),
+        ("prcaposdef", _solve_prca_posdef),
+        ("prcaposdef--centered", _solve_prca_posdef),
     ],
 )
-def test_centering_orthogonal_bases(basis_name, mat_func, criteria):
+def test_centering_orthogonal_bases(basis_name, solve_func):
     np.random.seed(1)
     n, d, num_locations = 10, 5, 20
     basis = bases.get_basis(basis_name)
@@ -337,23 +358,16 @@ def test_centering_orthogonal_bases(basis_name, mat_func, criteria):
 
     mean = np.mean(utils.flatten_3d_tensor(activation), axis=0)
 
-    assert ("centering" in basis_name) == basis.centering
+    assert ("centered" in basis_name) == basis.centering
 
     modified_activation = (
         activation - mean[None, :, None] if basis.centering else activation
     )
 
-    expected_eigvals, expected_eigvecs = np.linalg.eigh(
-        mat_func(
-            (
-                utils.flatten_3d_tensor(modified_activation),
-                utils.flatten_3d_tensor(context),
-            )
-        )
+    expected_eigvals, expected_U = solve_func(
+        utils.flatten_3d_tensor(modified_activation),
+        utils.flatten_3d_tensor(context),
     )
-
-    expected_U = expected_eigvecs[:, np.argsort(-criteria(expected_eigvals))]
-
     basis.fit(
         arr_act=activation,
         arr_ctx=context,
@@ -365,8 +379,6 @@ def test_centering_orthogonal_bases(basis_name, mat_func, criteria):
     actual_U = basis.U
 
     np.testing.assert_allclose(actual_U, expected_U)
-
-    assert basis.centering == ("centering" in basis_name)
 
     if basis.centering:
         assert basis.mean.shape == (d,)
