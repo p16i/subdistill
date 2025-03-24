@@ -264,8 +264,8 @@ class OrthogonalBasisCenteringPolicy(LayerPolicy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-        self.transformer_student_feats = utils.modules.BatchNormOnlyMean(
-            num_features=k, track_running_stats=True, affine=False
+        self.transformer_student_feats = utils.modules.Centering2d(
+            num_features=k,
         ).to(device)
 
     def criterion(self, transformed_teacher_feats, transformed_student_feats):
