@@ -335,11 +335,13 @@ def test_centering_orthogonal_bases(basis_name, mat_func, criteria):
     )
     threshold = 0
 
-    mean = np.mean(activation, axis=0)
+    mean = np.mean(utils.flatten_3d_tensor(activation), axis=0)
 
     assert ("centering" in basis_name) == basis.centering
 
-    modified_activation = activation - mean if basis.centering else activation
+    modified_activation = (
+        activation - mean[None, :, None] if basis.centering else activation
+    )
 
     expected_eigvals, expected_eigvecs = np.linalg.eigh(
         mat_func(
@@ -367,6 +369,7 @@ def test_centering_orthogonal_bases(basis_name, mat_func, criteria):
     assert basis.centering == ("centering" in basis_name)
 
     if basis.centering:
+        assert basis.mean.shape == (d,)
         np.testing.assert_allclose(basis.mean, mean)
     else:
         np.testing.assert_allclose(basis.mean, np.zeros(d))

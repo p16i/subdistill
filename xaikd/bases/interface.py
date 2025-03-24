@@ -83,12 +83,11 @@ class OrthogonalBasis(ABC):
         _, d, _ = arr_act.shape
 
         if self.centering:
-            mean = np.mean(arr_act, axis=0)
-            arr_centered_arr = arr_act - mean
+            mean = np.mean(utils.flatten_3d_tensor(arr_act), axis=0)
         else:
             mean = np.zeros(d)
-            # remark: the name might be a bit confusing
-            arr_centered_arr = arr_act
+        assert mean.shape == (d,)
+        arr_centered_arr = arr_act - mean[None, :, None]
 
         self._U = self._solve(
             arr_act=arr_centered_arr,
