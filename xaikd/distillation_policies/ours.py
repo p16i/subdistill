@@ -178,7 +178,7 @@ class OrthogonalBasisIdentityBiasV2Policy(LayerPolicy):
         class AddBias(nn.Module):
             def __init__(self, d: int):
                 super().__init__()
-                self.bias = nn.Parameter(torch.tensor(0.0))
+                self.bias = nn.Parameter(torch.zeros(d).reshape(1, d, 1, 1))
                 self.scale = nn.Parameter(torch.tensor(1.0))
 
             def forward(self, x: torch.Tensor) -> torch.Tensor:
