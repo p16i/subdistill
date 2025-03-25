@@ -40,6 +40,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         layerwise_policies: distillation_policies.interface.LayerPolicyCollection,
         last_layer_policy: distillation_policies.interface.LastLayerPolicy,
         lr: float,
+        weight_decay: float,
         lambda_layer: float,
         lambda_task: float,
         lambda_kd: float,
@@ -56,22 +57,20 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.last_layer_policy = last_layer_policy
 
         self.lr = lr
+        self.weight_decay = weight_decay
 
         self.lambda_layer = lambda_layer
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
 
         print(
-            f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} )"
+            f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
         )
-
-        # todo: perhaps, torchvision has some functionality for tihs
         self.metric = dict(
             train_auroc=BinaryAUROC(thresholds=100),
             val_auroc=BinaryAUROC(thresholds=100),
         )
 
-        # fixme: remove this
         self.arr_metrics = dict(
             train_auroc=[],
             val_auroc=[],
@@ -88,7 +87,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def configure_optimizers(self):
         parameters = self._get_parameters()
 
-        optimizer = torch.optim.Adam(parameters, lr=self.lr, weight_decay=0.0)
+        optimizer = torch.optim.Adam(
+            parameters, lr=self.lr, weight_decay=self.weight_decay
+        )
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
         return [optimizer], [scheduler]
 
