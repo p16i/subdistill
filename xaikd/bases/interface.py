@@ -61,9 +61,18 @@ class OrthogonalBasis(ABC):
         # we do this to make sure that it compatible with the basis
         arr_act = utils.flatten_3d_tensor(arr_act)
 
-        arr_act_on_U = arr_act @ U
+        arr_scale_factors = []
 
-        arr_scale_factors = np.mean(np.power(arr_act_on_U, 2), axis=0)
+        for i in tqdm(
+            range(d),
+            desc=f"[basis={self.__class__.slug()}] estimating scale factors",
+        ):
+            ui = U[:, i]
+            arr_act_on_ui = arr_act @ ui
+            scale_i = np.power(arr_act_on_ui, 2).mean()
+            arr_scale_factors.append(scale_i)
+
+        arr_scale_factors = np.array(arr_scale_factors)
 
         return arr_scale_factors
 
