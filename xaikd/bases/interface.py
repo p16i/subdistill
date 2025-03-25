@@ -6,6 +6,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from tqdm import tqdm
+
 from abc import ABC, abstractmethod
 from xaikd import utils
 from .adapter import AdapterMode, Adapter
@@ -50,21 +52,29 @@ class OrthogonalBasis(ABC):
     def estimate_scale_factors(
         self, arr_act: npt.NDArray, U: npt.NDArray
     ) -> npt.NDArray:
+
+        d, _ = U.shape
+
         # remark: if centering (i.e., `mean(activation)=0`), then
         # this expresssion is `standard deviation`
-
-        u1 = U[:, 0]
 
         # we do this to make sure that it compatible with the basis
         arr_act = utils.flatten_3d_tensor(arr_act)
 
-        # fixme: this might be very slow for large arr_act
-        arr_act_on_U = arr_act @ U
+        arr_scale_factors = []
 
-        # fixme: check that for PCA this is equal to eigenvalue
-        output = np.mean((arr_act_on_U) ** 2, axis=0)
+        for i in tqdm(
+            range(d),
+            desc="Estimating scale factors",
+        ):
+            ui = U[:, i]
+            arr_act_on_ui = arr_act @ ui
+            scale_i = np.power(arr_act_on_ui, 2).mean()
+            arr_scale_factors.append(scale_i)
 
-        return output
+        arr_scale_factors = np.array(arr_scale_factors)
+
+        return arr_scale_factors
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         U = torch.from_numpy(self.U[:, :k]).float()
