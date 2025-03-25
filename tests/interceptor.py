@@ -164,9 +164,6 @@ def test_vgg_layer_interception(model_name, layers, input_size):
             hook.remove()
 
 
-# fixme: test nfnet interceptors
-
-
 @pytest.mark.parametrize("detach_output", [True, False])
 def test_forward_hook_partition_parameter_update(detach_output):
     torch.manual_seed(1)
@@ -203,7 +200,7 @@ def test_forward_hook_partition_parameter_update(detach_output):
 
 
 @pytest.mark.parametrize("detach_output", [True, False])
-def test_forward_and_intercept_withpartition_parameter_update(detach_output):
+def test_forward_and_intercept_with_partition_parameter_update(detach_output):
     torch.manual_seed(1)
 
     x = torch.randn(10, 2)
@@ -243,3 +240,7 @@ def test_forward_and_intercept_withpartition_parameter_update(detach_output):
     else:
         assert not model.layer1.weight.grad is None
         assert not model.layer1.bias.grad is None
+
+
+# todo test nfnet interceptors
+# todo test vitb interceptors
