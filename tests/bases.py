@@ -318,12 +318,54 @@ def test_correct_scale_orthogoal_bases(basis_name):
         np.testing.assert_allclose(actual, eigvals)
 
 
-def _solve_pca(arr_act, arr_ctx):
+def _solve_pca(arr_logodd, arr_act, arr_ctx):
+    arr_act = utils.flatten_3d_tensor(arr_act)
+
     cov = arr_act.T @ arr_act
     return utils.solve_eigh(cov)
 
 
-def _solve_prca_posdef(arr_act, arr_ctx):
+def _solve_gradpca(arr_logodd, arr_act, arr_ctx):
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+
+    cov = arr_ctx.T @ arr_ctx
+    return utils.solve_eigh(cov)
+
+
+def _solve_prca_posdef(arr_logodd, arr_act, arr_ctx):
+    arr_act = utils.flatten_3d_tensor(arr_act)
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+
+    cov_a = arr_act.T @ arr_act
+    cov_c = arr_ctx.T @ arr_ctx
+    cov_ac = arr_act.T @ arr_ctx
+    cov_acca = cov_ac + cov_ac.T
+
+    tr_a = np.trace(cov_a)
+    tr_c = np.trace(cov_c)
+
+    cov = (2 / tr_a) * cov_a + (2 / tr_c) * cov_c + cov_acca / np.sqrt(tr_a * tr_c)
+
+    return utils.solve_eigh(cov)
+
+
+def _solve_prca_posdef_threshold_0_entropy_0_95(arr_logodd, arr_act, arr_ctx):
+
+    std = bases.orthogonal_weighting.estimate_std_wrt_ratio_maxent(
+        arr_logits=arr_logodd, threshold=0, ratio=0.95
+    )
+    weights = norm_gaussian.pdf(
+        arr_logodd,
+        loc=0,
+        scale=std,
+    )
+    weights = weights / np.sum(weights)
+
+    arr_ctx = arr_ctx * weights.reshape((-1, 1, 1))
+
+    arr_act = utils.flatten_3d_tensor(arr_act)
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+
     cov_a = arr_act.T @ arr_act
     cov_c = arr_ctx.T @ arr_ctx
     cov_ac = arr_act.T @ arr_ctx
@@ -342,8 +384,14 @@ def _solve_prca_posdef(arr_act, arr_ctx):
     [
         ("pca", _solve_pca),
         ("pca--centered", _solve_pca),
+        ("gradpca", _solve_gradpca),
         ("prcaposdef", _solve_prca_posdef),
         ("prcaposdef--centered", _solve_prca_posdef),
+        ("prcaposdef-entropy0.95", _solve_prca_posdef_threshold_0_entropy_0_95),
+        (
+            "prcaposdef-entropy0.95--centered",
+            _solve_prca_posdef_threshold_0_entropy_0_95,
+        ),
     ],
 )
 def test_centering_orthogonal_bases(basis_name, solve_func):
@@ -358,17 +406,19 @@ def test_centering_orthogonal_bases(basis_name, solve_func):
     )
     threshold = 0
 
-    mean = np.mean(utils.flatten_3d_tensor(activation), axis=0)
+    if basis.centering:
+        mean = np.mean(utils.flatten_3d_tensor(activation), axis=0)
+    else:
+        mean = np.zeros(d)
 
     assert ("centered" in basis_name) == basis.centering
 
-    modified_activation = (
-        activation - mean[None, :, None] if basis.centering else activation
-    )
+    modified_activation = activation - mean[None, :, None]
 
     expected_eigvals, expected_U = solve_func(
-        utils.flatten_3d_tensor(modified_activation),
-        utils.flatten_3d_tensor(context),
+        arr_logodd,
+        modified_activation,
+        context,
     )
     basis.fit(
         arr_act=activation,
@@ -377,6 +427,8 @@ def test_centering_orthogonal_bases(basis_name, solve_func):
         logodd_threshold=threshold,
         device="cpu",
     )
+
+    np.testing.assert_allclose(basis.mean, mean)
 
     actual_U = basis.U
 
