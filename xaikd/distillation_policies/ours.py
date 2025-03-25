@@ -22,8 +22,8 @@ class NothingPolicy(LayerPolicy):
         self.transformer_teacher_feats = nn.Identity()
         self.transformer_student_feats = nn.Identity()
 
-    def criterion(self, transformed_teacher_feats, transformed_student_feats):
-        return torch.tensor(0.0).to(transformed_teacher_feats.device)
+    def forward(self, teacher_feats, student_feats):
+        return torch.tensor(0.0).to(teacher_feats.device)
 
 
 @register_policy("basis-bn-max-normalized")
