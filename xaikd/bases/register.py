@@ -1,3 +1,5 @@
+from .interface import OrthogonalBasis
+
 BASES = dict()
 
 
@@ -9,10 +11,17 @@ def register_basis():
 
         slug = cls.slug()
 
-        assert not (slug in BASES)
+        assert not (slug in BASES), slug
 
         BASES[slug] = cls
 
         return cls
 
     return wrapped
+
+
+def get_basis(basis_name, **kwargs) -> OrthogonalBasis:
+
+    basis = BASES[basis_name](**kwargs)
+
+    return basis

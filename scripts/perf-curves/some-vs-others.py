@@ -73,6 +73,10 @@ def main(
 
     dataset = datasets.construct(dataset_name)
 
+    assert isinstance(
+        dataset, datasets.cifar100.some_vs_others.CIFAR100SuperclassVsOthers
+    )
+
     layer_logodd_selected_classes = models.layers.LayerLogOddSelectedClasses(
         selected_classes=dataset.selected_classes
     )

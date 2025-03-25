@@ -135,12 +135,21 @@ def test_extract_activation_context_with_same_seed_different_run(seed):
     np.testing.assert_allclose(arr_ctx, expected_arr_ctx, atol=1e-6)
 
 
-def test_extract_act_grad():
+@pytest.mark.parametrize(
+    "num_data_points,batch_size",
+    [
+        (10, 10),
+        (10, 5),
+        (100, 5),
+        (100, 20),
+    ],
+)
+def test_extract_activation_grad(num_data_points, batch_size):
     seed = 1
     torch.manual_seed(seed)
 
-    X = torch.randn(10, 3, 32, 32)
-    y = torch.randint(0, 10, size=(10,))
+    X = torch.randn(num_data_points, 3, 32, 32)
+    y = torch.randint(0, 10, size=(num_data_points,))
 
     model_part1 = nn.Sequential(
         nn.Conv2d(3, 16, kernel_size=3),
@@ -187,7 +196,7 @@ def test_extract_act_grad():
     dl = DataLoader(
         TensorDataset(X, y),
         shuffle=False,
-        batch_size=10,
+        batch_size=batch_size,
     )
 
     arr_actual_logodd, arr_actual_acts, arr_actual_grads = (

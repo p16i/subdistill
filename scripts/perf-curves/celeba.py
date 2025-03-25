@@ -39,8 +39,6 @@ from xaikd.utils import click_types
     type=click_types.List(),
 )
 @click.option("--attr-ix", required=True, type=int)
-# todo: we need to implement this
-# @click.option("--sample-selection-criteria", type=str)
 @click.option("--output-dir", default="./tmp", type=click_types.Path())
 @click.option("--num-steps", default=20)
 @click.option("--max-k", default=None, type=int)
@@ -192,7 +190,6 @@ def main(
 
             df = pd.DataFrame(arr_stat_rows)
 
-            # todo: parameterize also `sample-selection-criteria`
             dest_path = (
                 output_dir
                 / arch

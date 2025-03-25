@@ -3,6 +3,7 @@ import torch
 from torchvision.models import (
     mobilenetv3,
     mobilenet_v3_small,
+    mobilenet_v3_large,
     MobileNet_V3_Small_Weights,
 )
 from torchvision.ops import Conv2dNormActivation
@@ -10,7 +11,7 @@ from torchvision.ops import Conv2dNormActivation
 from torch import nn
 from functools import partial
 
-from . import MODEL_GENERATORS
+from . import MODEL_GENERATORS, add_model_to_registry
 
 
 def _student_s_trained(num_classes, class_indices) -> nn.Module:
@@ -29,6 +30,10 @@ def _student_s_trained(num_classes, class_indices) -> nn.Module:
 
 def _student_s(num_classes, **kwargs) -> nn.Module:
     return mobilenet_v3_small(num_classes=num_classes)
+
+
+def _student_l(num_classes, **kwargs) -> nn.Module:
+    return mobilenet_v3_large(num_classes=num_classes)
 
 
 def _student_very_small(num_classes, dim1, dim2, dim3, **kwargs) -> nn.Module:
@@ -356,41 +361,8 @@ def _student_very_small_cifarv2(num_classes, dim1, dim2, dim3, **kwargs) -> nn.M
 
 def _generate_model_function():
 
-    # fixme: use register function
-    MODEL_GENERATORS[f"student-mobilenets"] = _student_s
-    MODEL_GENERATORS[f"student-mobilenets-lastd25"] = partial(
-        _student_very_small_bottleneck,
-        dim1=48,
-        dim2=30,
-        dim3=40,
-        last_output_channels=25,
-        dim4=16,
-    )
-
-    MODEL_GENERATORS[f"student-mobilenetxs"] = partial(
-        _student_very_small, dim1=24, dim2=144, dim3=128
-    )
-
-    MODEL_GENERATORS[f"student-mobilenetxxs"] = partial(
-        _student_very_small, dim1=12, dim2=72, dim3=64
-    )
-
-    MODEL_GENERATORS[f"student-mobilenetxs-cifar"] = partial(
-        _student_very_small_cifar, dim1=24, dim2=144, dim3=128
-    )
-
-    MODEL_GENERATORS[f"student-mobilenetxs-cifarv2"] = partial(
-        _student_very_small_cifarv2, dim1=24, dim2=144, dim3=128
-    )
-
-    MODEL_GENERATORS[f"student-mobilenetxxs-cifar"] = partial(
-        _student_very_small_cifar, dim1=12, dim2=72, dim3=64
-    )
-    MODEL_GENERATORS[f"student-mobilenetxxs-cifarv2"] = partial(
-        _student_very_small_cifarv2, dim1=12, dim2=72, dim3=64
-    )
-
-    MODEL_GENERATORS[f"student-mobilenets-trained"] = _student_s_trained
+    add_model_to_registry(f"student-mobilenets", _student_s)
+    add_model_to_registry(f"student-mobilenetl", _student_l)
 
 
 _generate_model_function()

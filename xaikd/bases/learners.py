@@ -40,7 +40,7 @@ class PRCAGreedyLearner:
         context: npt.NDArray,
         epochs=1000,
         seed=1,
-        eps=1e-5,  # todo: this parameter seem to be very important!
+        eps=1e-5,  # remark: this parameter seem to be very important!
         device="cpu",
         beta=0.0,
     ) -> npt.NDArray:

@@ -17,8 +17,7 @@ from xaikd.utils.modules import (
 
 
 from . import (
-    register_model,
-    MODEL_GENERATORS,
+    add_model_to_registry,
     vit_students,
     students_mobilenet,
 )
@@ -235,13 +234,16 @@ class LeNetXL(nn.Module):
 
 def _generate_model_function():
 
-    MODEL_GENERATORS["student-lenet"] = LeNet
-    MODEL_GENERATORS["student-lenetxl"] = LeNetXL
+    add_model_to_registry("student-lenet", LeNet)
+    add_model_to_registry("student-lenetxl", LeNetXL)
 
     for arr_dims in constants.ARR_STUDENT_DIMENSIONS:
 
         slug = "-".join(np.array(arr_dims).astype(str).tolist())
-        MODEL_GENERATORS[f"student-{slug}"] = partial(StudentModel, arr_dims=arr_dims)
+
+        add_model_to_registry(
+            f"student-{slug}", partial(StudentModel, arr_dims=arr_dims)
+        )
 
 
 _generate_model_function()

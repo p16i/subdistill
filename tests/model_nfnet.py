@@ -8,6 +8,8 @@ import models as test_models
 
 from xaikd import models, utils
 
+pytest.skip(reason="obsolete", allow_module_level=True)
+
 
 @pytest.mark.parametrize(
     "slug",

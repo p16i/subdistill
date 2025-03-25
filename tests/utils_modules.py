@@ -6,6 +6,7 @@ import pytest
 
 from xaikd import models
 from xaikd.utils.modules import (
+    Centering2d,
     has_batchnorm,
     convert_bn_to_conv,
     merge_conv_and_bn,
@@ -142,3 +143,33 @@ def test_has_batchnorm(arch, expected):
     actual = has_batchnorm(models.get_trained_model(arch))
 
     assert actual == expected
+
+
+def test_centering2d():
+    torch.manual_seed(1)
+    x = torch.randn(100, 20, 7, 7)
+
+    mean = x.mean(dim=(0, 2, 3))
+
+    centering = Centering2d(20)
+    centering.train()
+
+    actual = centering(x)
+
+    expected = x - mean.reshape(1, -1, 1, 1)
+
+    assert isinstance(centering.running_mean, torch.Tensor)
+
+    # check training mode
+    np.testing.assert_allclose(
+        centering.running_mean.numpy(), mean.squeeze().numpy(), atol=0.1
+    )
+    np.testing.assert_allclose(actual.numpy(), expected.numpy(), atol=0.1)
+
+    # check eval mode
+    centering.eval()
+    centering(torch.randn(100, 20, 7, 7) + 10)
+
+    np.testing.assert_allclose(
+        centering.running_mean.numpy(), mean.squeeze().numpy(), atol=0.1
+    )

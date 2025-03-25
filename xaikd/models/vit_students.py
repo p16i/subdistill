@@ -12,7 +12,7 @@ from torchvision.models.vision_transformer import _vision_transformer
 
 from xaikd import constants
 
-from . import MODEL_GENERATORS
+from . import add_model_to_registry
 from . import vit
 
 
@@ -38,12 +38,14 @@ def _generate_model_function():
 
     for hidden_dim in constants.ARR_VIT_STUDENT_HIDDEN_DIMENSIONS:
 
-        MODEL_GENERATORS[f"vitstudent-{hidden_dim}"] = partial(
-            _generate_vit_student, hidden_dim=hidden_dim, num_layers=4
+        add_model_to_registry(
+            f"vitstudent-{hidden_dim}",
+            partial(_generate_vit_student, hidden_dim=hidden_dim, num_layers=4),
         )
 
-        MODEL_GENERATORS[f"vitstudent6l-{hidden_dim}"] = partial(
-            _generate_vit_student, hidden_dim=hidden_dim, num_layers=6
+        add_model_to_registry(
+            f"vitstudent6l-{hidden_dim}",
+            partial(_generate_vit_student, hidden_dim=hidden_dim, num_layers=6),
         )
 
 

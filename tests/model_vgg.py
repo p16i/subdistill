@@ -8,6 +8,8 @@ import numpy as np
 
 import models as test_models
 
+pytest.skip(reason="obsolte", allow_module_level=True)
+
 
 @pytest.mark.parametrize(
     "slug",

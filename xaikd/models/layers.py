@@ -4,8 +4,21 @@ import torch
 
 from torch import nn
 
+from xaikd import datasets
 
-# todo: add test
+
+def resolve_teacher_last_layer(dataset: datasets.DatasetConfiguration) -> nn.Module:
+
+    if isinstance(dataset, datasets.celeba.CelebAAttribute):
+        return TaskLogitSelection(task_id=dataset.attr_ix)
+    elif isinstance(
+        dataset, datasets.cifar100.some_vs_others.CIFAR100SuperclassVsOthers
+    ):
+        return LayerLogOddSelectedClasses(selected_classes=dataset.selected_classes)
+    else:
+        raise
+
+
 class LayerLogOddSelectedClasses(nn.Module):
     def __init__(self, selected_classes: typing.List[int]) -> None:
         super().__init__()
@@ -31,7 +44,6 @@ class LayerLogOddSelectedClasses(nn.Module):
         return logodd
 
 
-# todo: add test
 class SubclassSelection(nn.Module):
     def __init__(self, selected_classes: typing.List[int]) -> None:
         super().__init__()

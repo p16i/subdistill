@@ -2,7 +2,7 @@ import pytest
 import numpy as np
 from xaikd.utils import count_params_in_model
 
-from xaikd import bases
+from xaikd import bases, utils
 
 import torch
 
@@ -25,16 +25,17 @@ def test_adapter():
     np.testing.assert_allclose(decoder(encoder(x)), x, atol=1e-5)
 
 
-@pytest.mark.parametrize("basis_name", ["pca", "prcasortabs", "prcaposdef"])
+@pytest.mark.parametrize("basis_name", ["pca", "prcaposdef", "prcaposdef-entropy0.95"])
 @pytest.mark.parametrize("d", [5, 10, 20])
-def test_adapter_identity(basis_name, d):
+@pytest.mark.parametrize("suffix", ["", "--centered"])
+def test_adapter_identity(basis_name, d, suffix):
 
     rng = np.random.default_rng(seed=1)
     arr_act = rng.random(size=(32, d, 10))
     arr_ctx = rng.random(size=(32, d, 10))
     arr_logodd = rng.random(size=(32,))
 
-    basis = bases.get_basis(basis_name)
+    basis = bases.get_basis(f"{basis_name}{suffix}")
 
     basis.fit(
         arr_act=arr_act,
@@ -51,11 +52,29 @@ def test_adapter_identity(basis_name, d):
 
     np.testing.assert_allclose(decoder(encoder(x)), x, atol=1e-5)
 
+    if basis.centering:
+        np.testing.assert_allclose(
+            encoder.mean.numpy(),
+            utils.flatten_3d_tensor(arr_act).mean(axis=0)[None, :, None, None],
+        )
+
+    else:
+        np.testing.assert_allclose(
+            encoder.mean.numpy(), np.zeros(d)[None, :, None, None]
+        )
+
 
 @pytest.mark.parametrize(
-    "basis_name", ["pca", "pcacentering", "prcasortabs", "prcaposdef"]
+    "basis_name",
+    [
+        "pca",
+        "prcasortabs",
+        "prcaposdef",
+        "prcaposdef--centered",
+        "prcaposdef-entropy0.95",
+    ],
 )
-def test_trainable_parameters_in_adapter(basis_name):
+def test_no_trainable_parameters_in_adapter(basis_name):
 
     basis = bases.get_basis(basis_name)
 

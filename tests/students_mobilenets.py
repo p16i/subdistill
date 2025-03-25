@@ -9,10 +9,7 @@ from xaikd import models, utils
     "student_name,class_indices",
     [
         ("student-mobilenets", np.arange(10)),
-        ("student-mobilenets-lastd25", np.arange(10)),
-        ("student-mobilenetxs", np.arange(10)),
-        ("student-mobilenetxxs", np.arange(10)),
-        ("student-mobilenets-trained", np.arange(10)),
+        ("student-mobilenetl", np.arange(10)),
     ],
 )
 @pytest.mark.parametrize(
@@ -56,6 +53,7 @@ def test_student_callable(student_name, class_indices, layer):
         hook.remove()
 
 
+@pytest.mark.skip(reason="obsolete")
 @torch.no_grad()
 def test_get_trained_student_has_correct_layer_layer():
     class_indices = [10, 20, 50, 20]
@@ -74,6 +72,7 @@ def test_get_trained_student_has_correct_layer_layer():
     np.testing.assert_allclose(actual_bias, expected_bias)
 
 
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize(
     "arch",
     [
