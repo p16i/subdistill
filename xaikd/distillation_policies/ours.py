@@ -25,6 +25,13 @@ class NothingPolicy(LayerPolicy):
     def forward(self, teacher_feats, student_feats):
         return torch.tensor(0.0).to(teacher_feats.device)
 
+    def criterion(
+        self,
+        transformed_teacher_feats: torch.Tensor,
+        transformed_student_feats: torch.Tensor,
+    ) -> torch.Tensor:
+        return torch.tensor(0.0).to(transformed_teacher_feats.device)
+
 
 @register_policy("basis-bn-max-normalized")
 class OrthogonalBasisBatchNormMaxNormalizedPolicy(LayerPolicy):
