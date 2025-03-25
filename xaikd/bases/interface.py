@@ -34,6 +34,7 @@ class OrthogonalBasis(ABC):
         self,
         arr_act: npt.NDArray,
         arr_ctx: npt.NDArray,
+        mean_act: npt.NDArray,
         arr_logodd: npt.NDArray,
         logodd_threshold: float,
     ) -> npt.NDArray:
@@ -50,7 +51,7 @@ class OrthogonalBasis(ABC):
         return fh
 
     def estimate_scale_factors(
-        self, arr_act: npt.NDArray, U: npt.NDArray
+        self, arr_act: npt.NDArray, mean_act: npt.NDArray, U: npt.NDArray
     ) -> npt.NDArray:
 
         d, _ = U.shape
@@ -64,11 +65,11 @@ class OrthogonalBasis(ABC):
 
         arr_scale_factors = []
 
-        print("Estimating scale factors")
-
-        # the code below is equivalent to the following:
+        # Assume that arr_act is already centered.
+        # The code below is equivalent to the following:
         # > arr_scale_factors = np.mean((arr_act @ U) ** 2, axis=0)
-        outer = (arr_act.T @ arr_act) / N
+        outer = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
+
         arr_scale_factors = np.diag(U.T @ outer @ U)
 
         return arr_scale_factors
@@ -95,21 +96,17 @@ class OrthogonalBasis(ABC):
         else:
             mean = np.zeros(d)
 
-        print("copying arr_act")
-        arr_act_centered = np.copy(arr_act)
-
-        print("centering arr_act")
-        arr_act_centered -= mean[None, :, None]
-
-        print("solve for U")
         self._U = self._solve(
-            arr_act=arr_act_centered,
+            arr_act=arr_act,
             arr_ctx=arr_ctx,
+            mean_act=mean,
             arr_logodd=arr_logodd,
             logodd_threshold=logodd_threshold,
         )
 
-        self._scale_factors = self.estimate_scale_factors(arr_act_centered, self._U)
+        self._scale_factors = self.estimate_scale_factors(
+            arr_act=arr_act, mean_act=mean, U=self._U
+        )
 
         self._mean = mean
 

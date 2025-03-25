@@ -205,26 +205,32 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         assert student_logits.shape == (n, 1)
 
         student_logits = student_logits.squeeze(1)
-
-        loss_task = self._compute_loss_task(student_logits=student_logits, target=y)
-        loss_kd = self._compute_loss_kd(
-            teacher_logits=teacher_logits, student_logits=student_logits, target=y
-        )
-        loss_layer = self._compute_loss_layer(
-            teacher_arr_intermediate_feats=teacher_arr_intermediate_feats,
-            student_arr_intermediate_feats=student_arr_intermediate_feats,
-            prefix=prefix,
-        )
-
         loss = torch.tensor(0.0).to(teacher_logits.device)
 
-        for loss_label, loss_value, loss_coeff in [
-            ("task", loss_task, self.lambda_task),
-            ("kd", loss_kd, self.lambda_kd),
-            ("layer", loss_layer, self.lambda_layer),
+        for loss_label, loss_coeff in [
+            ("task", self.lambda_task),
+            ("kd", self.lambda_kd),
+            ("layer", self.lambda_layer),
         ]:
             if loss_coeff == 0:
                 continue
+
+            if loss_label == "task":
+                loss_value = self._compute_loss_task(
+                    student_logits=student_logits, target=y
+                )
+            elif loss_label == "kd":
+                loss_value = self._compute_loss_kd(
+                    teacher_logits=teacher_logits,
+                    student_logits=student_logits,
+                    target=y,
+                )
+            elif loss_label == "layer":
+                loss_value = self._compute_loss_layer(
+                    teacher_arr_intermediate_feats=teacher_arr_intermediate_feats,
+                    student_arr_intermediate_feats=student_arr_intermediate_feats,
+                    prefix=prefix,
+                )
 
             assert torch.isfinite(loss_value)
 
