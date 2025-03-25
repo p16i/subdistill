@@ -271,10 +271,12 @@ def test_analytic_gradpca_weighting(entropy_ratio):
     "basis_name",
     [
         "pca",
+        "pca--centered",
         "gradpca",
-        "prcasortabs",
         "prcaposdef",
+        "prcaposdef--centered",
         "prcaposdef-entropy0.95",
+        "prcaposdef-entropy0.95--centered",
         "gradpca-entropy0.95",
         "prca-ablation-a-ac",
         "prca-ablation-c-ac",
@@ -289,7 +291,7 @@ def test_correct_scale_orthogoal_bases(basis_name):
     arr_logodd = np.random.randn(n)
     logodd_threshold = 0.0
 
-    basis = bases.get_basis(basis_name)
+    basis = bases.get_basis(f"{basis_name}")
 
     basis.fit(
         arr_act=arr_act,
@@ -303,6 +305,9 @@ def test_correct_scale_orthogoal_bases(basis_name):
     actual = basis.scale_factors
 
     arr_flattened_act = utils.flatten_3d_tensor(arr_act)
+    if basis.centering:
+        arr_flattened_act -= np.mean(arr_flattened_act, axis=0)
+
     expected = np.mean((arr_flattened_act @ U) ** 2, axis=0)
     np.testing.assert_allclose(actual, expected)
 
