@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import typing as npt
 
-from scipy.stats import norm as norm_gaussian
+from scipy.stats import norm as norm_gaussian, entropy
 
 from xaikd import utils
 
@@ -10,21 +10,52 @@ from .interface import OrthogonalBasis
 from .register import register_basis
 
 
-class PRCAPosDefWeightSTDWithPercentile(OrthogonalBasis):
-    percentile = None
+def estimate_std_wrt_ratio_maxent(
+    arr_logits: npt.NDArray, threshold: float, ratio: float
+) -> float:
+
+    (N,) = arr_logits.shape
+
+    # uniform distribution over all datapoints
+    target_entropy = ratio * np.log(N)
+
+    arr_std = []
+    arr_percentile_entropies = []
+    arr_percentile_candidates = np.arange(1, 99 + 1) / 100
+
+    vmin = np.min(arr_logits)
+    vmax = np.max(arr_logits)
+
+    for pth in arr_percentile_candidates:
+        std = pth * (vmax - vmin) / 2
+
+        weights = norm_gaussian.pdf(arr_logits, loc=threshold, scale=std)
+        weights = weights / np.sum(weights)
+        arr_std.append(std)
+        arr_percentile_entropies.append(entropy(weights))
+
+    arr_percentile_entropies = np.array(arr_percentile_entropies)
+
+    best_ix = np.argmin(np.abs(arr_percentile_entropies - target_entropy))
+    best_std = arr_std[best_ix]
+
+    return best_std
+
+
+class PRCAPosDefWeightSTDFromEntropy(OrthogonalBasis):
+    entropy_ratio = None
 
     def _compute_sample_weight(
         self, arr_logodd: npt.NDArray, logodd_threshold: float
     ) -> npt.NDArray:
-        y_pred = arr_logodd > logodd_threshold
-        assert self.percentile is not None
 
-        perc_pos = np.percentile(arr_logodd[y_pred == 1], self.percentile)
-        perc_neg = np.percentile(arr_logodd[y_pred == 0], 100 - self.percentile)
+        assert self.entropy_ratio is not None
 
-        assert perc_pos > perc_neg
-
-        std = 0.5 * (perc_pos - perc_neg)
+        std = estimate_std_wrt_ratio_maxent(
+            arr_logits=arr_logodd,
+            threshold=logodd_threshold,
+            ratio=self.entropy_ratio,
+        )
 
         weights = norm_gaussian.pdf(
             arr_logodd,
@@ -69,50 +100,60 @@ class PRCAPosDefWeightSTDWithPercentile(OrthogonalBasis):
 
     @classmethod
     def slug(cls):
-        return f"prcaposdef-with-weight-p{cls.percentile}"
+        assert cls.entropy_ratio is not None
+
+        return f"prcaposdef-entropy{cls.entropy_ratio}"
 
 
 @register_basis()
-class PRCAPosDefWeightSTDWithP0_1(PRCAPosDefWeightSTDWithPercentile):
-    percentile = 0.1
+class PRCAPosDefWeightSTDWithH0_5(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 0.5
 
 
 @register_basis()
-class PRCAPosDefWeightSTDWithP1(PRCAPosDefWeightSTDWithPercentile):
-    percentile = 1
+class PRCAPosDefWeightSTDWithH0_6(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 0.6
 
 
 @register_basis()
-class PRCAPosDefWeightSTDWithP10(PRCAPosDefWeightSTDWithPercentile):
-    percentile = 10
+class PRCAPosDefWeightSTDWithH0_7(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 0.7
 
 
 @register_basis()
-class PRCAPosDefWeightSTDWithP50(PRCAPosDefWeightSTDWithPercentile):
-    percentile = 50
+class PRCAPosDefWeightSTDWithH0_8(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 0.8
 
 
 @register_basis()
-class PRCAPosDefWeightSTDWithP95(PRCAPosDefWeightSTDWithPercentile):
-    percentile = 95
+class PRCAPosDefWeightSTDWithH0_9(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 0.9
 
 
 @register_basis()
-class GradPCAWeightSTDWithPercentile(OrthogonalBasis):
-    percentile = 1
+class PRCAPosDefWeightSTDWithH0_95(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 0.95
+
+
+@register_basis()
+class PRCAPosDefWeightSTDWithH1(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 1.0
+
+
+@register_basis()
+class GradPCAWeightSTDWithEntropy(OrthogonalBasis):
+    entropy_ratio = 0.95
 
     def _compute_sample_weight(
         self, arr_logodd: npt.NDArray, logodd_threshold: float
     ) -> npt.NDArray:
-        y_pred = arr_logodd > logodd_threshold
-        assert self.percentile is not None
+        assert self.entropy_ratio is not None
 
-        perc_pos = np.percentile(arr_logodd[y_pred == 1], self.percentile)
-        perc_neg = np.percentile(arr_logodd[y_pred == 0], 100 - self.percentile)
-
-        assert perc_pos > perc_neg
-
-        std = 0.5 * (perc_pos - perc_neg)
+        std = estimate_std_wrt_ratio_maxent(
+            arr_logits=arr_logodd,
+            threshold=logodd_threshold,
+            ratio=self.entropy_ratio,
+        )
 
         weights = norm_gaussian.pdf(
             arr_logodd,
@@ -143,4 +184,7 @@ class GradPCAWeightSTDWithPercentile(OrthogonalBasis):
 
     @classmethod
     def slug(cls):
-        return f"gradpca-with-weight-p{cls.percentile}"
+
+        assert cls.entropy_ratio is not None
+
+        return f"gradpca-entropy{cls.entropy_ratio}"

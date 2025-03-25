@@ -174,8 +174,8 @@ def test_analytic_prcaposdef():
     _test_analytic_basis("prcaposdef", Expected())
 
 
-@pytest.mark.parametrize("percentile", [0.1, 1, 10, 50, 95])
-def test_analytic_prcaposdef_weighting(percentile):
+@pytest.mark.parametrize("entropy_ratio", [0.5, 0.95, 1.0])
+def test_analytic_prcaposdef_weighting(entropy_ratio):
 
     class Expected(ExpectedU):
         @classmethod
@@ -187,14 +187,9 @@ def test_analytic_prcaposdef_weighting(percentile):
             logodd_threshold: float,
         ):
 
-            y_pred = arr_logodd > logodd_threshold
-
-            perc_pos = np.percentile(arr_logodd[y_pred == 1], percentile)
-            perc_neg = np.percentile(arr_logodd[y_pred == 0], 100 - percentile)
-
-            assert perc_pos > perc_neg
-
-            std = 0.5 * (perc_pos - perc_neg)
+            std = bases.orthogonal_weighting.estimate_std_wrt_ratio_maxent(
+                arr_logits=arr_logodd, threshold=logodd_threshold, ratio=entropy_ratio
+            )
 
             weights = norm_gaussian.pdf(
                 arr_logodd,
@@ -230,11 +225,11 @@ def test_analytic_prcaposdef_weighting(percentile):
 
             return eigvecs
 
-    _test_analytic_basis(f"prcaposdef-with-weight-p{percentile}", Expected())
+    _test_analytic_basis(f"prcaposdef-entropy{entropy_ratio}", Expected())
 
 
-@pytest.mark.parametrize("percentile", [1])
-def test_analytic_gradpca_weighting(percentile):
+@pytest.mark.parametrize("entropy_ratio", [0.95])
+def test_analytic_gradpca_weighting(entropy_ratio):
     class Expected(ExpectedU):
         @classmethod
         def compute(
@@ -245,14 +240,9 @@ def test_analytic_gradpca_weighting(percentile):
             logodd_threshold: float,
         ):
 
-            y_pred = arr_logodd > logodd_threshold
-
-            perc_pos = np.percentile(arr_logodd[y_pred == 1], percentile)
-            perc_neg = np.percentile(arr_logodd[y_pred == 0], 100 - percentile)
-
-            assert perc_pos > perc_neg
-
-            std = 0.5 * (perc_pos - perc_neg)
+            std = bases.orthogonal_weighting.estimate_std_wrt_ratio_maxent(
+                arr_logits=arr_logodd, threshold=logodd_threshold, ratio=entropy_ratio
+            )
 
             weights = norm_gaussian.pdf(
                 arr_logodd,
@@ -274,7 +264,7 @@ def test_analytic_gradpca_weighting(percentile):
 
             return eigvecs
 
-    _test_analytic_basis(f"gradpca-with-weight-p{percentile}", Expected())
+    _test_analytic_basis(f"gradpca-entropy{entropy_ratio}", Expected())
 
 
 @pytest.mark.parametrize(
@@ -284,8 +274,8 @@ def test_analytic_gradpca_weighting(percentile):
         "gradpca",
         "prcasortabs",
         "prcaposdef",
-        "prcaposdef-with-weight-p1",
-        "gradpca-with-weight-p1",
+        "prcaposdef-entropy0.95",
+        "gradpca-entropy0.95",
         "prca-ablation-a-ac",
         "prca-ablation-c-ac",
         "prca-ablation-a-c",

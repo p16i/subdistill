@@ -11,7 +11,7 @@ def register_basis():
 
         slug = cls.slug()
 
-        assert not (slug in BASES)
+        assert not (slug in BASES), slug
 
         BASES[slug] = cls
 
