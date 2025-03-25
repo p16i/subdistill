@@ -8,10 +8,64 @@ from xaikd import models, utils, interceptor
 
 from collections import OrderedDict
 
+from copy import deepcopy
 import numpy as np
 
 
 DEVICE = utils.get_device()
+
+
+def test_intercept_intermediate_outputs():
+    class DummyModel(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.lin1 = nn.Conv2d(3, 8, 3, 1)
+            self.act1 = nn.ReLU()
+            self.lin2 = nn.Conv2d(8, 16, 2, 1)
+            self.act2 = nn.ReLU()
+            self.lin3 = nn.Conv2d(16, 32, 3, 1)
+            self.act3 = nn.ReLU()
+            self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
+            self.fc = nn.Linear(32, 10)
+
+        def forward(self, x):
+            a1 = self.act1(self.lin1(x))
+
+            a2 = self.act2(self.lin2(a1))
+
+            a3 = self.act3(self.lin3(a2))
+
+            out = self.avgpool(a3)
+
+            out = torch.flatten(out, 1)
+
+            out = self.fc(out)
+            return out, (a1, a2, a3)
+
+    trng = torch.Generator()
+    trng.manual_seed(1)
+
+    x = torch.randn(6, 3, 28, 28, generator=trng)
+
+    ref_model = DummyModel()
+    model = deepcopy(ref_model)
+
+    expected_output, expected_intermediate_outputs = ref_model(x)
+
+    actual_output, actual_intermediate_outputs = (
+        utils.interceptor.forward_and_intercept_intermediate_layers(
+            model=model, inp=x, layers=["act1", "act2", "act3"], detach_output=False
+        )
+    )
+
+    np.testing.assert_allclose(
+        actual_output[0].detach().numpy(), expected_output.detach().numpy()
+    )
+
+    for actual, expected in zip(
+        actual_intermediate_outputs, expected_intermediate_outputs
+    ):
+        np.testing.assert_allclose(actual.detach().numpy(), expected.detach().numpy())
 
 
 # resnet18
