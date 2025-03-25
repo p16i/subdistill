@@ -96,6 +96,7 @@ class OrthogonalBasis(ABC):
         assert mean.shape == (d,)
         arr_centered_arr = arr_act - mean[None, :, None]
 
+        print("Solve for U")
         self._U = self._solve(
             arr_act=arr_centered_arr,
             arr_ctx=arr_ctx,
