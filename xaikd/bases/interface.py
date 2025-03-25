@@ -5,12 +5,15 @@ from numpy import typing as npt
 import torch
 from torch import nn
 from torch.nn import functional as F
+from torch.utils.data import DataLoader, TensorDataset
 
 from tqdm import tqdm
 
 from abc import ABC, abstractmethod
 from xaikd import utils
 from .adapter import AdapterMode, Adapter
+
+from torchmetrics import MeanMetric
 
 
 class OrthogonalBasis(ABC):
@@ -49,8 +52,9 @@ class OrthogonalBasis(ABC):
 
         return fh
 
+    @torch.no_grad()
     def estimate_scale_factors(
-        self, arr_act: npt.NDArray, U: npt.NDArray
+        self, arr_act: npt.NDArray, U: npt.NDArray, device=utils.get_device()
     ) -> npt.NDArray:
 
         d, _ = U.shape
@@ -61,16 +65,33 @@ class OrthogonalBasis(ABC):
         # we do this to make sure that it compatible with the basis
         arr_act = utils.flatten_3d_tensor(arr_act)
 
-        arr_scale_factors = []
+        dl = DataLoader(
+            TensorDataset(torch.from_numpy(arr_act).float()),
+            batch_size=1024,
+            shuffle=False,
+            persistent_workers=True,
+        )
 
+        ts_U = torch.from_numpy(U).float().to(device)
+
+        arr_scale_factors = []
         for i in tqdm(
             range(d),
             desc=f"[basis={self.__class__.slug()}] estimating scale factors",
         ):
-            ui = U[:, i]
-            arr_act_on_ui = arr_act @ ui
-            scale_i = np.power(arr_act_on_ui, 2).mean()
-            arr_scale_factors.append(scale_i)
+
+            ui = ts_U[:, i]
+
+            scale = MeanMetric()
+
+            for bx in dl:
+                bx = bx[0].to(device)
+                bx_on_ui = bx @ ui
+                b_scale = (bx_on_ui**2).cpu().numpy()
+                scale.update(b_scale)
+
+            scale = scale.compute()
+            arr_scale_factors.append(scale)
 
         arr_scale_factors = np.array(arr_scale_factors)
 
