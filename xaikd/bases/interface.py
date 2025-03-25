@@ -95,9 +95,10 @@ class OrthogonalBasis(ABC):
         else:
             mean = np.zeros(d)
 
-        print("centering U")
+        print("copying arr_act")
         arr_act_centered = np.copy(arr_act)
 
+        print("centering arr_act")
         arr_act_centered -= mean[None, :, None]
 
         print("solve for U")
