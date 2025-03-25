@@ -113,7 +113,3 @@ class LayerPolicyCollection(nn.ModuleList):
         self.teacher_layers = teacher_layers
         self.student_layers = student_layers
         self.policies = policies
-
-    def forward(self, x):
-        # fixme
-        raise NotImplementedError("what is that?; do we actuall ned this?")

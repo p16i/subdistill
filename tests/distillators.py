@@ -164,6 +164,7 @@ def test_distillation_runnable_and_correct(
             lambda_layer=1.0,
             device=device,
             lr=1e-4,
+            weight_decay=0,
             logger=logger,
             seed=1,
             upload_best_checkpoint=False,
@@ -284,6 +285,7 @@ def test_get_parameters(layers):
         lambda_kd=1,
         lambda_layer=1,
         lambda_task=1,
+        weight_decay=0,
         lr=1e-5,
     )
 

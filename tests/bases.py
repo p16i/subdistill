@@ -174,8 +174,8 @@ def test_analytic_prcaposdef():
     _test_analytic_basis("prcaposdef", Expected())
 
 
-@pytest.mark.parametrize("percentile", [0.1, 1, 10, 50, 95])
-def test_analytic_prcaposdef_weighting(percentile):
+@pytest.mark.parametrize("entropy_ratio", [0.5, 0.95, 1.0])
+def test_analytic_prcaposdef_weighting(entropy_ratio):
 
     class Expected(ExpectedU):
         @classmethod
@@ -187,14 +187,9 @@ def test_analytic_prcaposdef_weighting(percentile):
             logodd_threshold: float,
         ):
 
-            y_pred = arr_logodd > logodd_threshold
-
-            perc_pos = np.percentile(arr_logodd[y_pred == 1], percentile)
-            perc_neg = np.percentile(arr_logodd[y_pred == 0], 100 - percentile)
-
-            assert perc_pos > perc_neg
-
-            std = 0.5 * (perc_pos - perc_neg)
+            std = bases.orthogonal_weighting.estimate_std_wrt_ratio_maxent(
+                arr_logits=arr_logodd, threshold=logodd_threshold, ratio=entropy_ratio
+            )
 
             weights = norm_gaussian.pdf(
                 arr_logodd,
@@ -230,11 +225,11 @@ def test_analytic_prcaposdef_weighting(percentile):
 
             return eigvecs
 
-    _test_analytic_basis(f"prcaposdef-with-weight-p{percentile}", Expected())
+    _test_analytic_basis(f"prcaposdef-entropy{entropy_ratio}", Expected())
 
 
-@pytest.mark.parametrize("percentile", [1])
-def test_analytic_gradpca_weighting(percentile):
+@pytest.mark.parametrize("entropy_ratio", [0.95])
+def test_analytic_gradpca_weighting(entropy_ratio):
     class Expected(ExpectedU):
         @classmethod
         def compute(
@@ -245,14 +240,9 @@ def test_analytic_gradpca_weighting(percentile):
             logodd_threshold: float,
         ):
 
-            y_pred = arr_logodd > logodd_threshold
-
-            perc_pos = np.percentile(arr_logodd[y_pred == 1], percentile)
-            perc_neg = np.percentile(arr_logodd[y_pred == 0], 100 - percentile)
-
-            assert perc_pos > perc_neg
-
-            std = 0.5 * (perc_pos - perc_neg)
+            std = bases.orthogonal_weighting.estimate_std_wrt_ratio_maxent(
+                arr_logits=arr_logodd, threshold=logodd_threshold, ratio=entropy_ratio
+            )
 
             weights = norm_gaussian.pdf(
                 arr_logodd,
@@ -274,18 +264,20 @@ def test_analytic_gradpca_weighting(percentile):
 
             return eigvecs
 
-    _test_analytic_basis(f"gradpca-with-weight-p{percentile}", Expected())
+    _test_analytic_basis(f"gradpca-entropy{entropy_ratio}", Expected())
 
 
 @pytest.mark.parametrize(
     "basis_name",
     [
         "pca",
+        "pca--centered",
         "gradpca",
-        "prcasortabs",
         "prcaposdef",
-        "prcaposdef-with-weight-p1",
-        "gradpca-with-weight-p1",
+        "prcaposdef--centered",
+        "prcaposdef-entropy0.95",
+        "prcaposdef-entropy0.95--centered",
+        "gradpca-entropy0.95",
         "prca-ablation-a-ac",
         "prca-ablation-c-ac",
         "prca-ablation-a-c",
@@ -299,7 +291,7 @@ def test_correct_scale_orthogoal_bases(basis_name):
     arr_logodd = np.random.randn(n)
     logodd_threshold = 0.0
 
-    basis = bases.get_basis(basis_name)
+    basis = bases.get_basis(f"{basis_name}")
 
     basis.fit(
         arr_act=arr_act,
@@ -312,16 +304,85 @@ def test_correct_scale_orthogoal_bases(basis_name):
     U = basis.U
     actual = basis.scale_factors
 
-    expected = np.mean((utils.flatten_3d_tensor(arr_act) @ U) ** 2, axis=0)
+    arr_flattened_act = utils.flatten_3d_tensor(arr_act)
+    if basis.centering:
+        arr_flattened_act -= np.mean(arr_flattened_act, axis=0)
+
+    expected = np.mean((arr_flattened_act @ U) ** 2, axis=0)
     np.testing.assert_allclose(actual, expected)
 
+    if basis_name == "pca":
+        eigvals, _ = utils.solve_eigh(
+            arr_flattened_act.T @ arr_flattened_act / (n * num_locations)
+        )
+        np.testing.assert_allclose(actual, eigvals)
 
-def _solve_pca(arr_act, arr_ctx):
+
+def _solve_pca(arr_logodd, arr_act, arr_ctx):
+    arr_act = utils.flatten_3d_tensor(arr_act)
+
     cov = arr_act.T @ arr_act
     return utils.solve_eigh(cov)
 
 
-def _solve_prca_posdef(arr_act, arr_ctx):
+def _solve_gradpca(arr_logodd, arr_act, arr_ctx):
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+
+    cov = arr_ctx.T @ arr_ctx
+    return utils.solve_eigh(cov)
+
+
+def _solve_gradpca_threshold_0_entropy_0_95(arr_logodd, arr_act, arr_ctx):
+    std = bases.orthogonal_weighting.estimate_std_wrt_ratio_maxent(
+        arr_logits=arr_logodd, threshold=0, ratio=0.95
+    )
+    weights = norm_gaussian.pdf(
+        arr_logodd,
+        loc=0,
+        scale=std,
+    )
+    weights = weights / np.sum(weights)
+    arr_ctx = arr_ctx * weights.reshape((-1, 1, 1))
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+
+    cov = arr_ctx.T @ arr_ctx
+    return utils.solve_eigh(cov)
+
+
+def _solve_prca_posdef(arr_logodd, arr_act, arr_ctx):
+    arr_act = utils.flatten_3d_tensor(arr_act)
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+
+    cov_a = arr_act.T @ arr_act
+    cov_c = arr_ctx.T @ arr_ctx
+    cov_ac = arr_act.T @ arr_ctx
+    cov_acca = cov_ac + cov_ac.T
+
+    tr_a = np.trace(cov_a)
+    tr_c = np.trace(cov_c)
+
+    cov = (2 / tr_a) * cov_a + (2 / tr_c) * cov_c + cov_acca / np.sqrt(tr_a * tr_c)
+
+    return utils.solve_eigh(cov)
+
+
+def _solve_prca_posdef_threshold_0_entropy_0_95(arr_logodd, arr_act, arr_ctx):
+
+    std = bases.orthogonal_weighting.estimate_std_wrt_ratio_maxent(
+        arr_logits=arr_logodd, threshold=0, ratio=0.95
+    )
+    weights = norm_gaussian.pdf(
+        arr_logodd,
+        loc=0,
+        scale=std,
+    )
+    weights = weights / np.sum(weights)
+
+    arr_ctx = arr_ctx * weights.reshape((-1, 1, 1))
+
+    arr_act = utils.flatten_3d_tensor(arr_act)
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+
     cov_a = arr_act.T @ arr_act
     cov_c = arr_ctx.T @ arr_ctx
     cov_ac = arr_act.T @ arr_ctx
@@ -340,8 +401,15 @@ def _solve_prca_posdef(arr_act, arr_ctx):
     [
         ("pca", _solve_pca),
         ("pca--centered", _solve_pca),
+        ("gradpca", _solve_gradpca),
         ("prcaposdef", _solve_prca_posdef),
         ("prcaposdef--centered", _solve_prca_posdef),
+        ("prcaposdef-entropy0.95", _solve_prca_posdef_threshold_0_entropy_0_95),
+        (
+            "prcaposdef-entropy0.95--centered",
+            _solve_prca_posdef_threshold_0_entropy_0_95,
+        ),
+        ("gradpca-entropy0.95", _solve_gradpca_threshold_0_entropy_0_95),
     ],
 )
 def test_centering_orthogonal_bases(basis_name, solve_func):
@@ -356,17 +424,19 @@ def test_centering_orthogonal_bases(basis_name, solve_func):
     )
     threshold = 0
 
-    mean = np.mean(utils.flatten_3d_tensor(activation), axis=0)
+    if basis.centering:
+        mean = np.mean(utils.flatten_3d_tensor(activation), axis=0)
+    else:
+        mean = np.zeros(d)
 
     assert ("centered" in basis_name) == basis.centering
 
-    modified_activation = (
-        activation - mean[None, :, None] if basis.centering else activation
-    )
+    modified_activation = activation - mean[None, :, None]
 
     expected_eigvals, expected_U = solve_func(
-        utils.flatten_3d_tensor(modified_activation),
-        utils.flatten_3d_tensor(context),
+        arr_logodd,
+        modified_activation,
+        context,
     )
     basis.fit(
         arr_act=activation,
@@ -375,6 +445,8 @@ def test_centering_orthogonal_bases(basis_name, solve_func):
         logodd_threshold=threshold,
         device="cpu",
     )
+
+    np.testing.assert_allclose(basis.mean, mean)
 
     actual_U = basis.U
 

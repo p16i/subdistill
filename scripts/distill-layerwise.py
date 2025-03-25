@@ -55,6 +55,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
 @click.option("--default-lambda-layer-config", default=None, type=str)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--lr", type=float, default=0.0005, required=True)
+@click.option("--weight-decay", type=float, default=0, required=True)
 @click.option("--upload-best-checkpoint", type=bool, default=False, is_flag=True)
 @click.option("--wandb-experiment-group", type=str, default=None)
 @click.option("--seed", type=int, default=1)
@@ -72,6 +73,7 @@ def main(
     default_lambda_layer_config,
     epochs,
     lr,
+    weight_decay,
     upload_best_checkpoint,
     seed,
     output_dir,
@@ -240,6 +242,7 @@ def main(
         lambda_layer=lambda_layer,
         device=device,
         lr=lr,
+        weight_decay=weight_decay,
         logger=logger,
         seed=seed,
         upload_best_checkpoint=upload_best_checkpoint,

@@ -21,14 +21,7 @@ from torchvision import transforms
 from dataclasses import dataclass
 
 
-from xaikd import constants, utils
-
-# todo: obsolte
-# from .multitask_mnist_fmnist import (
-#     MultiTaskMNISTFashionMNIST,
-#     MultiTaskEMNISTFashionMNIST,
-# )
-
+from xaikd import constants
 
 DATADIR = Path(os.getenv("DATASET_ROOT", "./datasets"))
 TORCHVISION_DATASET_DOWNLOAD = bool(int(os.getenv("TORCHVISION_DATASET_DOWNLOAD", "0")))
@@ -64,7 +57,6 @@ def subsample_dataset(dataset: tvd.VisionDataset, ratio: float, seed: int) -> Su
     assert isinstance(dataset, tvd.VisionDataset)
 
     if ratio == 1:
-        # todo: add test for this
         # remark: we simply return the original dataset but wrap it in Subset.
         return Subset(dataset=dataset, indices=list(range(len(dataset))))
 

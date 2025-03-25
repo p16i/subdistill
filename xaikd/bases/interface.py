@@ -6,6 +6,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from tqdm import tqdm
+
 from abc import ABC, abstractmethod
 from xaikd import utils
 from .adapter import AdapterMode, Adapter
@@ -32,6 +34,7 @@ class OrthogonalBasis(ABC):
         self,
         arr_act: npt.NDArray,
         arr_ctx: npt.NDArray,
+        mean_act: npt.NDArray,
         arr_logodd: npt.NDArray,
         logodd_threshold: float,
     ) -> npt.NDArray:
@@ -48,23 +51,28 @@ class OrthogonalBasis(ABC):
         return fh
 
     def estimate_scale_factors(
-        self, arr_act: npt.NDArray, U: npt.NDArray
+        self, arr_act: npt.NDArray, mean_act: npt.NDArray, U: npt.NDArray
     ) -> npt.NDArray:
+
+        d, _ = U.shape
+
         # remark: if centering (i.e., `mean(activation)=0`), then
         # this expresssion is `standard deviation`
 
-        u1 = U[:, 0]
-
         # we do this to make sure that it compatible with the basis
         arr_act = utils.flatten_3d_tensor(arr_act)
+        N, _ = arr_act.shape
 
-        # todo: this might be very slow for large arr_act
-        arr_act_on_U = arr_act @ U
+        arr_scale_factors = []
 
-        # todo: check that for PCA this is equal to eigenvalue
-        output = np.mean((arr_act_on_U) ** 2, axis=0)
+        # Assume that arr_act is already centered.
+        # The code below is equivalent to the following:
+        # > arr_scale_factors = np.mean((arr_act @ U) ** 2, axis=0)
+        outer = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
 
-        return output
+        arr_scale_factors = np.diag(U.T @ outer @ U)
+
+        return arr_scale_factors
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         U = torch.from_numpy(self.U[:, :k]).float()
@@ -80,23 +88,25 @@ class OrthogonalBasis(ABC):
         logodd_threshold: float,
         **kwargs,
     ):
+        print("fit start")
         _, d, _ = arr_act.shape
 
         if self.centering:
             mean = np.mean(utils.flatten_3d_tensor(arr_act), axis=0)
         else:
             mean = np.zeros(d)
-        assert mean.shape == (d,)
-        arr_centered_arr = arr_act - mean[None, :, None]
 
         self._U = self._solve(
-            arr_act=arr_centered_arr,
+            arr_act=arr_act,
             arr_ctx=arr_ctx,
+            mean_act=mean,
             arr_logodd=arr_logodd,
             logodd_threshold=logodd_threshold,
         )
 
-        self._scale_factors = self.estimate_scale_factors(arr_centered_arr, self._U)
+        self._scale_factors = self.estimate_scale_factors(
+            arr_act=arr_act, mean_act=mean, U=self._U
+        )
 
         self._mean = mean
 
@@ -107,5 +117,5 @@ class OrthogonalBasis(ABC):
         return self.scale_factors[:k]
 
     @classmethod
-    def slug(cls):
+    def slug(cls) -> str:
         return cls.__name__.lower()

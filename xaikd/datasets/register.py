@@ -1,6 +1,5 @@
 from . import DatasetConfiguration
 
-# todo: write a function that add class to this dict with a pre-step that check name collistion
 DATASET_REGISTRY = dict()
 
 

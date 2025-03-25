@@ -50,6 +50,7 @@ class VIDPolicy(LayerPolicy):
         num_input_channels = student_dims
         num_mid_channel = num_target_channels = teacher_dims
 
+        # ref: https://github.com/HobbitLong/RepDistiller/blob/master/distiller_zoo/VID.py#L26
         self.regressor = nn.Sequential(
             conv1x1(num_input_channels, num_mid_channel),
             nn.ReLU(),
@@ -57,7 +58,7 @@ class VIDPolicy(LayerPolicy):
             nn.ReLU(),
             conv1x1(num_mid_channel, num_target_channels),
         )
-
+        # ref: https://github.com/HobbitLong/RepDistiller/blob/master/distiller_zoo/VID.py#L33
         self.log_scale = torch.nn.Parameter(
             np.log(np.exp(self.init_pred_var - self.eps) - 1.0)
             * torch.ones(num_target_channels)
@@ -77,8 +78,11 @@ class VIDPolicy(LayerPolicy):
         pred_var = pred_var.view(1, -1, 1, 1)
 
         # cf. eq. (6)
+        # ref: https://github.com/HobbitLong/RepDistiller/blob/master/distiller_zoo/VID.py#L50
+        # remark: pred_var = std^2. Therefore, we have torch.log(pred_var) = 2 * log(std).
+        # But, in eq 6, we have log(std) instead of 2 * log(std), hence having 0.5 * torch.log(pred_var).
         neg_log_prob = 0.5 * (
-            (pred_mean - target) ** 2 / pred_var + torch.log(pred_var)
+            ((pred_mean - target) ** 2) / pred_var + torch.log(pred_var)
         )
 
         # cf. https://github.com/HobbitLong/RepDistiller/blob/master/distiller_zoo/VID.py#L53

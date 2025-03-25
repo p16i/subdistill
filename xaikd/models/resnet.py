@@ -15,7 +15,7 @@ import torchvision
 from torchvision.models import resnet
 
 from . import interfaces
-from . import register_model, MODEL_GENERATORS
+from . import register_model, add_model_to_registry
 
 
 def split_model_at(
@@ -208,11 +208,14 @@ def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
 def _register_student_resnet18():
 
     for in_planes in [16, 32, 64]:
-        MODEL_GENERATORS[f"student-cifar-resnet18-{in_planes}"] = partial(
-            construct_student_cifar_resnet18, in_planes=in_planes
+
+        add_model_to_registry(
+            f"student-cifar-resnet18-{in_planes}",
+            partial(construct_student_cifar_resnet18, in_planes=in_planes),
         )
-        MODEL_GENERATORS[f"student-resnet18-{in_planes}"] = partial(
-            construct_student_resnet18, in_planes=in_planes
+        add_model_to_registry(
+            f"student-resnet18-{in_planes}",
+            partial(construct_student_resnet18, in_planes=in_planes),
         )
 
 

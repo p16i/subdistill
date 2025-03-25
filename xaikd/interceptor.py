@@ -50,6 +50,10 @@ def attach_hook_intercept_module(
     def fh(mod, input, output):
         assert isinstance(output, torch.Tensor)
 
+        assert not hasattr(
+            mod, ATTRIBUTE_INTERCEPTED_OUTPUT
+        ), f"The attribute `{ATTRIBUTE_INTERCEPTED_OUTPUT}` already exists!"
+
         setattr(mod, ATTRIBUTE_INTERCEPTED_OUTPUT, output)
         if should_retain_grad:
             output.retain_grad()
@@ -73,8 +77,6 @@ def get_output(module: nn.Module) -> torch.Tensor:
 def forward_and_intercept_intermediate_layers(
     model: nn.Module, inp: torch.Tensor, layers: typing.List[str], detach_output: bool
 ) -> typing.Tuple[torch.Tensor, typing.List[torch.Tensor]]:
-    # todo: add unit tests
-    # - all outputs we get are correct
     arr_hooks: typing.List[hooks.RemovableHandle] = []
     arr_modules = []
 

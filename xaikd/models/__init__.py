@@ -35,12 +35,19 @@ MODEL_CHECKPOINT_MAPPING = {
 }
 
 
+def add_model_to_registry(name: str, fn: Callable):
+    assert name not in MODEL_GENERATORS
+
+    MODEL_GENERATORS[name] = fn
+
+
 def register_model(name):
     """Decorator to register a data modality provider."""
 
     def wrapped(fn):
         """Wrapped function to register a data modality provider with name `name`"""
-        MODEL_GENERATORS[name] = fn
+
+        add_model_to_registry(name, fn)
 
         return fn
 
@@ -116,9 +123,6 @@ def get_trained_model(name: str) -> nn.Module:
     model.eval()
 
     assert getattr(model, "num_classes")
-
-    # todo: disable grad
-    # perhaps, check whether disable grad improve inference speed?
 
     return model
 
