@@ -99,9 +99,22 @@ def test_baseline_policy_callable(teacher_dims, student_dims, policy):
         assert False, "some exception occurs!"
 
 
-@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize("teacher_dims,student_dims", [(10, 5), (20, 2)])
-def test_basis_identity_learnable(teacher_dims, student_dims):
+@pytest.mark.parametrize(
+    "basis_name",
+    [
+        "pca",
+        "pca--centered",
+        "prcaposdef",
+        "prcaposdef--centered",
+    ],
+)
+@pytest.mark.parametrize(
+    "parameterization", ["basis-bn-max-normalized", "basis-bn-sum-normalized"]
+)
+def test_our_policies_callable(
+    parameterization, basis_name, teacher_dims, student_dims
+):
     rng = np.random.default_rng(seed=1)
     batch_size = 8
     device = "cpu"
@@ -109,7 +122,7 @@ def test_basis_identity_learnable(teacher_dims, student_dims):
     with tempfile.TemporaryDirectory() as tmpdirname:
         act = rng.random((batch_size, teacher_dims, 5))
         logodd = 2 * rng.random((batch_size,)) - 1
-        basis = bases.get_basis("pca")
+        basis = bases.get_basis(basis_name)
 
         basis.fit(
             arr_act=act, arr_ctx=act, arr_logodd=logodd, logodd_threshold=0, seed=1
@@ -122,9 +135,16 @@ def test_basis_identity_learnable(teacher_dims, student_dims):
             basis=basis,
         )
 
-        policy = distillation_policies.get_policy("basis-identity-learnable", **kwargs)
+        policy = distillation_policies.get_policy(parameterization, **kwargs)
 
-        expected_num_learnable_params = teacher_dims * student_dims
+        # check that this is callable
+        policy(
+            torch.randn(5, teacher_dims, 5, 5),
+            torch.randn(5, student_dims, 5, 5),
+        )
+
+        # from batchnorm
+        expected_num_learnable_params = 2 * student_dims
 
         _, actual_num_learnable_params = putils.count_params_in_list_params(
             policy.parameters()
@@ -133,6 +153,66 @@ def test_basis_identity_learnable(teacher_dims, student_dims):
         np.testing.assert_allclose(
             actual_num_learnable_params, expected_num_learnable_params
         )
+
+        assert True
+
+
+@pytest.mark.parametrize("teacher_dims,student_dims", [(10, 5), (20, 2)])
+@pytest.mark.parametrize(
+    "basis_name",
+    [
+        "pca",
+        "pca--centered",
+    ],
+)
+def test_basis_bn_sum_normalized_learnable(basis_name, teacher_dims, student_dims):
+    rng = np.random.default_rng(seed=1)
+    batch_size = 8
+    device = "cpu"
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        act = rng.random((batch_size, teacher_dims, 5))
+        logodd = 2 * rng.random((batch_size,)) - 1
+        basis = bases.get_basis(basis_name)
+
+        basis.fit(
+            arr_act=act, arr_ctx=act, arr_logodd=logodd, logodd_threshold=0, seed=1
+        )
+
+        kwargs = dict(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+
+        policy = distillation_policies.get_policy(
+            "basis-bn-sum-normalized-learnable", **kwargs
+        )
+
+        # check that this is callable
+        policy(
+            torch.randn(5, teacher_dims, 5, 5),
+            torch.randn(5, student_dims, 5, 5),
+        )
+
+        expected_num_learnable_params = teacher_dims if basis.centering else 0
+
+        # from the weight matrix
+        expected_num_learnable_params += teacher_dims * student_dims
+
+        # from batchnorm
+        expected_num_learnable_params += 2 * student_dims
+
+        _, actual_num_learnable_params = putils.count_params_in_list_params(
+            policy.parameters()
+        )
+
+        np.testing.assert_allclose(
+            actual_num_learnable_params, expected_num_learnable_params
+        )
+
+        assert True
 
 
 @pytest.mark.parametrize(
@@ -164,6 +244,7 @@ def test_last_layer_policy(last_layer_policy, expected):
     assert not torch.isnan(val)
 
 
+@pytest.mark.skip(reason="not implemented")
 def test_basis_rotation():
     basis = bases.get_basis("pca")
 
