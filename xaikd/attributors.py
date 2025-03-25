@@ -167,7 +167,6 @@ def extract_activation_grad(
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
             model, layer, should_retain_grad=True, detach_output=False
         )
-        # fixme: is the order between hook and forward matter?
         for batch in tqdm(dataloader, desc=f"extract act-grad at layer={layer}"):
             x, y = batch
             x = x.to(device)
