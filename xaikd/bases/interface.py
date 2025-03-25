@@ -87,6 +87,7 @@ class OrthogonalBasis(ABC):
         logodd_threshold: float,
         **kwargs,
     ):
+        print("fit start")
         _, d, _ = arr_act.shape
 
         if self.centering:
@@ -94,9 +95,10 @@ class OrthogonalBasis(ABC):
         else:
             mean = np.zeros(d)
         assert mean.shape == (d,)
+        print("centering")
         arr_centered_arr = arr_act - mean[None, :, None]
 
-        print("Solve for U")
+        print("solve for U")
         self._U = self._solve(
             arr_act=arr_centered_arr,
             arr_ctx=arr_ctx,
