@@ -172,7 +172,9 @@ class GradPCAWeightSTDWithEntropy(OrthogonalBasis):
 
         return weights
 
-    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+    def _solve(
+        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
+    ):
 
         weights = self._compute_sample_weight(
             arr_logodd=arr_logodd, logodd_threshold=logodd_threshold

@@ -65,8 +65,6 @@ class OrthogonalBasis(ABC):
 
         arr_scale_factors = []
 
-        print("Estimating scale factors")
-
         # Assume that arr_act is already centered.
         # The code below is equivalent to the following:
         # > arr_scale_factors = np.mean((arr_act @ U) ** 2, axis=0)
@@ -98,7 +96,6 @@ class OrthogonalBasis(ABC):
         else:
             mean = np.zeros(d)
 
-        print("solve for U")
         self._U = self._solve(
             arr_act=arr_act,
             arr_ctx=arr_ctx,

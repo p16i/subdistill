@@ -332,6 +332,23 @@ def _solve_gradpca(arr_logodd, arr_act, arr_ctx):
     return utils.solve_eigh(cov)
 
 
+def _solve_gradpca_threshold_0_entropy_0_95(arr_logodd, arr_act, arr_ctx):
+    std = bases.orthogonal_weighting.estimate_std_wrt_ratio_maxent(
+        arr_logits=arr_logodd, threshold=0, ratio=0.95
+    )
+    weights = norm_gaussian.pdf(
+        arr_logodd,
+        loc=0,
+        scale=std,
+    )
+    weights = weights / np.sum(weights)
+    arr_ctx = arr_ctx * weights.reshape((-1, 1, 1))
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+
+    cov = arr_ctx.T @ arr_ctx
+    return utils.solve_eigh(cov)
+
+
 def _solve_prca_posdef(arr_logodd, arr_act, arr_ctx):
     arr_act = utils.flatten_3d_tensor(arr_act)
     arr_ctx = utils.flatten_3d_tensor(arr_ctx)
@@ -392,6 +409,7 @@ def _solve_prca_posdef_threshold_0_entropy_0_95(arr_logodd, arr_act, arr_ctx):
             "prcaposdef-entropy0.95--centered",
             _solve_prca_posdef_threshold_0_entropy_0_95,
         ),
+        ("gradpca-entropy0.95", _solve_gradpca_threshold_0_entropy_0_95),
     ],
 )
 def test_centering_orthogonal_bases(basis_name, solve_func):
