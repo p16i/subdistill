@@ -231,6 +231,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     student_arr_intermediate_feats=student_arr_intermediate_feats,
                     prefix=prefix,
                 )
+            else:
+                raise ValueError("Unknown loss label")
 
             assert torch.isfinite(loss_value)
 
