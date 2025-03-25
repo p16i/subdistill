@@ -37,8 +37,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self,
         teacher: nn.Module,
         student: nn.Module,
-        layerwise_policies: distillation_policies.LayerPolicyCollection,
-        last_layer_policy: str,
+        layerwise_policies: distillation_policies.interface.LayerPolicyCollection,
+        last_layer_policy: distillation_policies.interface.LastLayerPolicy,
         lr: float,
         lambda_layer: float,
         lambda_task: float,
@@ -53,9 +53,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.student = student
         self.layer_policy_collection = layerwise_policies
 
-        self.last_layer_policy: distillation_policies.LastLayerPolicy = (
-            distillation_policies.get_last_layer_policy(last_layer_policy)
-        )
+        self.last_layer_policy = last_layer_policy
+
         self.lr = lr
 
         self.lambda_layer = lambda_layer
