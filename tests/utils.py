@@ -222,7 +222,7 @@ def test_solve_eigh():
 @pytest.mark.slow()
 def test_modify_last_layer_for_subclasses():
     device = utils.get_device()
-    model = models.get_trained_model("cifar100-resnet18-v1")
+    model = models.get_trained_model("cifar100-resnet18-v1").to(device)
     data = torch.randn(5, 3, 32, 32).to(device)
 
     with torch.no_grad():
