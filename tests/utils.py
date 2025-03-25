@@ -217,3 +217,15 @@ def test_solve_eigh():
 
     np.testing.assert_allclose(actual_ccov_abs_eigvals, expected_ccov_abs_eigvals)
     np.testing.assert_allclose(actual_ccov_abs_eigvecs, expected_ccov_abs_eigvecs)
+
+
+@pytest.mark.slow()
+def test_modify_last_layer_for_subclasses():
+    device = utils.get_device()
+    model = models.get_trained_model("cifar100-resnet18-v1")
+    data = torch.randn(5, 3, 32, 32).to(device)
+
+    with torch.no_grad():
+        utils.modify_last_layer_for_subclasses(model, list(range(8)))
+        output = model(data).cpu().numpy()
+        assert output.shape == (5, 8)

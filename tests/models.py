@@ -29,13 +29,6 @@ def _test_get_model(slug):
     # model is forwardable
     _ = model(data)
 
-    # verify that modify output work
-    # fixme: this should be with utils.tests
-    with torch.no_grad():
-        utils.modify_last_layer_for_subclasses(model, list(range(8)))
-        output = model(data).cpu().numpy()
-        assert output.shape == (5, 8)
-
 
 @torch.no_grad()
 def _test_split_model(slug, layer, split_func, atol=1e-6):
