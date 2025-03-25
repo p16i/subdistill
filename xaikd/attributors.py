@@ -89,12 +89,15 @@ def extract_activation_context(
     arr_act = []
     arr_ctx = []
 
+    hook = None
+    output_dimensions = None
+
     try:
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
             model, layer, should_retain_grad=True, detach_output=False
         )
 
-        with make_attributor_for(model, dataset.input_statistics) as attributor:
+        with make_attributor_for(model, dataset.input_statistics) as attributor:  # type: ignore
             for batch in tqdm(data_loader):
                 x, y = batch
                 x = x.to(device)
@@ -132,7 +135,9 @@ def extract_activation_context(
                 arr_ctx.append(selected_ctx)
 
     finally:
-        hook.remove()
+
+        if hook is not None:
+            hook.remove()
 
     print(f"{layer}: output-dims={output_dimensions}")
 
@@ -162,7 +167,7 @@ def extract_activation_grad(
         module, hook = utils.interceptor.attach_hook_intercept_layer_output(
             model, layer, should_retain_grad=True, detach_output=False
         )
-        # todo: is the order between hook and forward matter?
+        # fixme: is the order between hook and forward matter?
         for batch in tqdm(dataloader, desc=f"extract act-grad at layer={layer}"):
             x, y = batch
             x = x.to(device)
@@ -215,47 +220,3 @@ def extract_activation_grad(
     print(f"> shape(arr_act)={arr_act.shape}; shape(arr_logits)={arr_logit.shape}")
 
     return arr_logit, arr_act, arr_ctx
-
-
-def extract_activation(
-    model: nn.Module,
-    layer: str,
-    dataset: datasets.DatasetConfiguration,
-    data_loader: DataLoader,
-    rng: np.random.Generator,
-    device="cpu",
-    number_of_selected_spatial_locations=20,
-) -> typing.Tuple[npt.NDArray, npt.NDArray]:
-    arr_act = []
-
-    try:
-        module, hook = utils.interceptor.attach_hook_intercept_layer_output(
-            model, layer, should_retain_grad=False
-        )
-
-        # todo(important): we don't need this composite context right?
-        with make_attributor_for(model, dataset.input_statistics) as attributor:
-            for batch in tqdm(data_loader):
-                x, y = batch
-                x = x.to(device)
-
-                _ = model(x)
-
-                act = utils.interceptor.get_output(module)
-
-                act = act.detach().cpu().numpy()
-
-                selected_act, _ = utils.subsample_tensors(
-                    act,
-                    act,
-                    num_locations=number_of_selected_spatial_locations,
-                    rng=rng,
-                )
-                arr_act.append(selected_act)
-
-    finally:
-        hook.remove()
-
-    arr_act = np.vstack(arr_act)
-
-    return arr_act

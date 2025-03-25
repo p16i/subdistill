@@ -19,7 +19,7 @@ def resolve_teacher_last_layer(dataset: datasets.DatasetConfiguration) -> nn.Mod
         raise
 
 
-# todo: add test
+# fixme: add test
 class LayerLogOddSelectedClasses(nn.Module):
     def __init__(self, selected_classes: typing.List[int]) -> None:
         super().__init__()
@@ -45,7 +45,7 @@ class LayerLogOddSelectedClasses(nn.Module):
         return logodd
 
 
-# todo: add test
+# fixme: add test
 class SubclassSelection(nn.Module):
     def __init__(self, selected_classes: typing.List[int]) -> None:
         super().__init__()

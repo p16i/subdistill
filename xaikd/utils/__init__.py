@@ -228,8 +228,6 @@ def modify_last_layer_for_subclasses(
 def get_dimensions_at_layers(
     model: nn.Module, dataloader: DataLoader, layers: typing.List[str], device="cpu"
 ) -> typing.Dict[str, int]:
-    # todo: this should be part of interceptor
-    # todo: add test that the function doesn't cause any statistics of the original model to change
     assert not model.training
 
     hooks = []

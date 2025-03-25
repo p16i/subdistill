@@ -117,9 +117,6 @@ def get_trained_model(name: str) -> nn.Module:
 
     assert getattr(model, "num_classes")
 
-    # todo: disable grad
-    # perhaps, check whether disable grad improve inference speed?
-
     return model
 
 

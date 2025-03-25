@@ -11,9 +11,9 @@ from .register import get_basis, BASES
 from .helpers import learn_basis
 
 
-# todo: do we still need this?
 def _add_centering_variants():
 
+    # fixme: add all variants of with entropy
     for base_variant_cls in [PCA, PRCAPosDef, PRCAPosDefWeightSTDWithH0_95]:
         base_variant_slug = base_variant_cls.slug()
         slug = f"{base_variant_slug}--centered"

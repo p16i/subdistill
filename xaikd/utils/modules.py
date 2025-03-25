@@ -172,7 +172,6 @@ def load_model_from_checkpoint(
     model_key: str,
     device="cpu",
 ) -> nn.Module:
-    # todo: add test
     ckpt = torch.load(
         checkpoint_path,
         map_location=torch.device(device),
@@ -200,7 +199,6 @@ def load_model_from_wandb_artifact(
     wandb_artifact_suffix: str,
     device="cpu",
 ):
-    # todo: add test
     agent = wandb.Api()
 
     slugs = run_path.split("/")

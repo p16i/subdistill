@@ -30,7 +30,7 @@ def _test_get_model(slug):
     _ = model(data)
 
     # verify that modify output work
-    # todo: this should be with utils.tests
+    # fixme: this should be with utils.tests
     with torch.no_grad():
         utils.modify_last_layer_for_subclasses(model, list(range(8)))
         output = model(data).cpu().numpy()

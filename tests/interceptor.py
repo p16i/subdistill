@@ -110,7 +110,7 @@ def test_vgg_layer_interception(model_name, layers, input_size):
             hook.remove()
 
 
-# todo: test nfnet interceptors
+# fixme: test nfnet interceptors
 
 
 @pytest.mark.parametrize("detach_output", [True, False])
