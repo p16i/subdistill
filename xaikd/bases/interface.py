@@ -65,7 +65,7 @@ class OrthogonalBasis(ABC):
 
         for i in tqdm(
             range(d),
-            desc=f"[basis={self.__class__.slug}] estimating scale factors",
+            desc=f"[basis={self.__class__.slug()}] estimating scale factors",
         ):
             ui = U[:, i]
             arr_act_on_ui = arr_act @ ui
@@ -117,5 +117,5 @@ class OrthogonalBasis(ABC):
         return self.scale_factors[:k]
 
     @classmethod
-    def slug(cls):
+    def slug(cls) -> str:
         return cls.__name__.lower()
