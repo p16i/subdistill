@@ -42,69 +42,12 @@ WANDB_DIR = os.getenv("WANDB_DIR", ".")
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
 
 
-# todo: abstract this into the policy
-def learn_basis(
-    teacher_model: nn.Module,
-    dataset: datasets.DatasetConfiguration,
-    train_loader: DataLoader,
-    logit_mod: logit_modifiers.BinaryLogOddWinning,
-    layers: typing.List[str],
-    layer_policy: str,
-    device: str,
-    output_dir: Path,
-    seed: int,
-) -> typing.Dict[str, bases.OrthogonalBasis]:
-    # prepare bases
-    arr_learned_bases = dict()
-
-    if "basis" not in layer_policy:
-        return arr_learned_bases
-
-    _, basis_name = layer_policy.split(":")
-
-    assert isinstance(logit_mod, logit_modifiers.BinaryLogOddWinning)
-
-    rng = np.random.default_rng(seed=seed)
-
-    for layer in layers:
-        layer_output_dir = output_dir / f"layer-{layer}"
-
-        os.makedirs(layer_output_dir, exist_ok=True)
-        arr_logodd, arr_act, arr_ctx = attributors.extract_activation_grad(
-            model=teacher_model,
-            layer=layer,
-            dataloader=train_loader,
-            logit_modifier=logit_mod,
-            device=device,
-            rng=rng,
-        )
-
-        click.echo(f"[layer={layer}] fitting basis={basis_name}")
-        basis = bases.get_basis(basis_name)
-        basis.fit(
-            arr_act=arr_act,
-            arr_ctx=arr_ctx,
-            arr_logodd=arr_logodd,
-            logodd_threshold=logit_mod.threshold,
-        )
-
-        arr_learned_bases[f"{layer}"] = basis
-
-    return arr_learned_bases
-
-
 @click.command()
 @click.option("--teacher", default="cifar100-resnet18-v1", required=True)
 @click.option("--student", default="student-32-24-16-8", required=True)
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
 @click.option("--training-size", type=float, default=1.0, required=True)
 @click.option("--layer-policy", type=str, required=True)
-@click.option(
-    "--last-layer-policy",
-    default="binkd",
-    type=click.Choice(["binkd", "kd", "dkd"]),
-    required=True,
-)
 @click.option("--layers", default=None, type=str)
 @click.option("--lambda-task", default=0.0, type=float)
 @click.option("--lambda-kd", default=1.0, type=float)
@@ -121,7 +64,6 @@ def main(
     student,
     dataset,
     training_size,
-    last_layer_policy,
     layer_policy,
     layers,
     lambda_task,
@@ -174,17 +116,6 @@ def main(
     # prepare dataset
     dataset = datasets.construct(dataset)
 
-    if isinstance(dataset, datasets.celeba.CelebAAttribute):
-        teacher_last_layer = models.layers.TaskLogitSelection(task_id=dataset.attr_ix)
-    elif isinstance(
-        dataset, datasets.cifar100.some_vs_others.CIFAR100SuperclassVsOthers
-    ):
-        teacher_last_layer = models.layers.LayerLogOddSelectedClasses(
-            selected_classes=dataset.selected_classes
-        )
-    else:
-        raise
-
     train_loader, train_loader_with_aug, val_loader, test_loader = (
         datasets.construct_dataloaders(
             dataset=dataset,
@@ -199,7 +130,10 @@ def main(
         OrderedDict(
             [
                 ("base", models.get_trained_model(teacher).to(device)),
-                ("last_layer", teacher_last_layer),
+                (
+                    "last_layer",
+                    models.layers.resolve_teacher_last_layer(dataset=dataset),
+                ),
             ]
         )
     )
@@ -212,16 +146,12 @@ def main(
         teacher_model, train_loader, layers=arr_teacher_layers, device=device
     )
 
+    student_model = models.get_untrained_model(
+        student, num_classes=dataset.num_classes, class_indices=dataset.selected_classes
+    ).to(device)
+
     dict_student_layer_dim = utils.get_dimensions_at_layers(
-        # todo: abstract this inside the function and use deepcopy also add test
-        # we do this to prevent the inference with stats of the models
-        models.get_untrained_model(
-            student,
-            num_classes=dataset.num_classes,
-            class_indices=dataset.selected_classes,
-        )
-        .eval()
-        .to(device),
+        deepcopy(student_model).eval(),
         train_loader,
         layers=arr_student_layers,
         device=device,
@@ -237,23 +167,8 @@ def main(
         )
 
     logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
-    arr_learned_bases = learn_basis(
-        teacher_model=teacher_model,
-        dataset=dataset,
-        train_loader=train_loader,
-        logit_mod=logit_mod,
-        layers=arr_teacher_layers,
-        layer_policy=layer_policy,
-        device=device,
-        output_dir=output_dir,
-        seed=seed,
-    )
 
     print(f"[policy={layer_policy}] with lambda-layer={lambda_layer}")
-
-    student_model = models.get_untrained_model(
-        student, num_classes=dataset.num_classes, class_indices=dataset.selected_classes
-    )
 
     arr_layer_policies = []
     for teacher_layer, student_layer in zip(arr_teacher_layers, arr_student_layers):
@@ -263,19 +178,27 @@ def main(
         kwargs = dict(
             teacher_dims=teacher_layer_dims,
             student_dims=student_layer_dims,
-            device=device,
         )
 
         if "basis" in layer_policy:
-            # todo: add comment here
-            kwargs["basis"] = arr_learned_bases[f"{teacher_layer}"]
 
-            policy_name, _ = layer_policy.split(":")
+            policy_name, basis_name = layer_policy.split(":")
+            basis = bases.helpers.learn_basis(
+                teacher_model=teacher_model,
+                train_loader=train_loader,
+                logit_mod=logit_mod,
+                layer=teacher_layer,
+                basis_name=basis_name,
+                device=device,
+                seed=seed,
+            )
+            policy = distillation_policies.get_policy(
+                policy_name, device=device, basis=basis, **kwargs
+            )
         else:
-            policy_name = layer_policy
-        # todo: perhaps, we can just abstract these kwargs into get_layer_policy
-        # todo: bring the basis_estimatino here?
-        policy = distillation_policies.get_layer_policy(policy_name, **kwargs)
+            policy = distillation_policies.get_policy(
+                layer_policy, device=device, **kwargs
+            )
 
         arr_layer_policies.append(policy)
 
@@ -288,20 +211,12 @@ def main(
         device=device,
     )
 
-    student_slug = "--".join(
-        [
-            student,
-            layer_policy,
-            f"lmd_task{lambda_task}-lmd_kd{lambda_kd}-lmd_layer{lambda_layer}",
-        ]
-    )
-
     logger = WandbLogger(
         save_dir=WANDB_DIR,
         project=WANDB_PROJECT,
         group=wanddb_experiment_group,
         job_type="distillation",
-        name=f"{student}-{last_layer_policy}-{layer_policy}-seed{seed}",
+        name=f"{student}-{layer_policy}-seed{seed}",
         notes=f"commit:{utils.get_git_hash()}",
         config={
             **arguments,
@@ -313,8 +228,8 @@ def main(
 
     distillator.distill(
         student=student_model,
-        last_layer_policy=last_layer_policy,
-        layer_policies=distillation_policies.LayerPolicyCollection(
+        last_layer_policy=distillation_policies.kd.BinaryKLPolicy(device=device),
+        layer_policies=distillation_policies.interface.LayerPolicyCollection(
             teacher_layers=arr_teacher_layers,
             student_layers=arr_student_layers,
             policies=arr_layer_policies,

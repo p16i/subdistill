@@ -1,3 +1,5 @@
+from .interface import OrthogonalBasis
+
 BASES = dict()
 
 
@@ -16,3 +18,10 @@ def register_basis():
         return cls
 
     return wrapped
+
+
+def get_basis(basis_name, **kwargs) -> OrthogonalBasis:
+
+    basis = BASES[basis_name](**kwargs)
+
+    return basis

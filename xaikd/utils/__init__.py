@@ -17,7 +17,7 @@ from pathlib import Path
 from . import spurious_feature_generator, pixelflipping, ndarray_sampling, modules
 
 
-from xaikd import constants, interceptor
+from xaikd import interceptor
 
 
 T = typing.TypeVar("T")
@@ -101,7 +101,6 @@ def flatten_3d_tensor(x: npt.NDArray) -> npt.NDArray:
     """
     bs, nc, num_spatial_locations = x.shape
 
-
     x = np.transpose(x, [1, 0, 2])
 
     x = x.reshape((nc, bs * num_spatial_locations))
@@ -115,8 +114,10 @@ def count_params_in_model(model: torch.nn.Module) -> typing.Tuple[int, int]:
 
 
 def convolve_feature_map_with_linear(
-    feature_map: torch.Tensor, linear_layer: nn.Linear
+    feature_map: torch.Tensor, linear_layer: nn.Module
 ):
+    assert isinstance(linear_layer, (nn.Linear))
+
     b, d, h, w = feature_map.shape
 
     out_dims, in_dims = linear_layer.weight.shape

@@ -28,6 +28,10 @@ MODEL_CHECKPOINT_MAPPING = {
     "cifar100-vgg11-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-vgg11-v1--model-rm0pe4r0:best.pth",
     "celeba-resnet18-scratch": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba&files=celeba--scratch--n8r0q2vb.pth",
     "celeba-resnet18-pretrained": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba&files=celeba--imagenet-pretrained--6oj5aaxl.pth",
+    "celeba-resnet18-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=resnet18--p16i-xaikd-training-teacher-models-zbgow8eu.pth",
+    "celeba-resnet50-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=resnet50--p16i-xaikd-training-teacher-models-cuoynabf.pth",
+    "celeba-wideresnet50_2-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=wideresnet50-2--p16i-xaikd-training-teacher-models-t0sg5wcp.pth",
+    "celeba-vitb16-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=vitb16--p16i-xaikd-training-teacher-models-6ttr2icx.pth",
 }
 
 
@@ -55,11 +59,25 @@ def get_trained_model(name: str) -> nn.Module:
 
             model = MODEL_GENERATORS[f"cifar-{arch}"](num_classes=num_classes)
         elif dataset == "celeba":
-            assert arch == "resnet18"
             CELEBA_NUM_ATTRIBUTES = 40
-            model = torchvision.models.resnet18(
-                weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
-            )
+            if arch == "resnet18":
+                model = torchvision.models.resnet18(
+                    weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
+                )
+            elif arch == "resnet50":
+                model = torchvision.models.resnet50(
+                    weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
+                )
+            elif arch == "wideresnet50_2":
+                model = torchvision.models.wide_resnet50_2(
+                    weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
+                )
+            elif arch == "vitb16":
+                model = torchvision.models.vit_b_16(
+                    weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
+                )
+            else:
+                raise ValueError(f"`arhc={name}` doesn't exist")
             setattr(model, "num_classes", CELEBA_NUM_ATTRIBUTES)
         else:
             raise ValueError(f"`{name}` doesn't exist")
