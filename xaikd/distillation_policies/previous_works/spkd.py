@@ -12,11 +12,16 @@ class SimilarityMatrixConstructor(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         b, c, w, h = x.shape
 
-        # eq 2
-        x = x.reshape((b, c * w * h))
-        x = F.normalize(x, dim=-1)
+        # eq 2.
+        Q = x.reshape((b, c * w * h))
 
-        return x @ x.T
+        # eq.2 before semi-colon
+        G = Q @ Q.T
+
+        # eq.2 after semi-colon
+        G = G / torch.linalg.norm(G, axis=1, ord=2, keepdim=True)
+
+        return G
 
 
 @register_policy("spkd")

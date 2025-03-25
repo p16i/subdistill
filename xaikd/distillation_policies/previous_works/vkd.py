@@ -21,6 +21,7 @@ class StudentTransformer(nn.Module):
     def __init__(self, in_dims: int, out_dims: int):
         super().__init__()
 
+        # ref: https://github.com/roymiles/VkD/blob/6f8a5072447a1c5bb6043cdc035cf7b78d3854d8/train.py#L201
         self.orthogonal_transform = nn.utils.parametrizations.orthogonal(
             nn.Linear(in_features=in_dims, out_features=out_dims, bias=False)
         )
@@ -29,7 +30,7 @@ class StudentTransformer(nn.Module):
         b, d, h, w = feat.shape
 
         # cf. https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L94
-        # remark: there, the mean of the student  feature is over sequence of tokens
+        # remark: there, the mean of the student feature is over sequence of tokens
         # which is last dimensions in our case
         # and it is similar to https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L96
         feat = feat.reshape((b, d, h * w))
@@ -71,23 +72,10 @@ class VkDPolicy(LayerPolicy):
         transformed_student_feats: torch.Tensor,
     ) -> torch.Tensor:
 
-        (
-            b,
-            _,
-        ) = transformed_student_feats.shape
-
         assert transformed_teacher_feats.shape == transformed_student_feats.shape
 
-        # remark: they use smooth_l1_loss(...) but why?
+        # remark: they use `smooth_l1_loss` in the code.
         # cf. https://github.com/roymiles/vkd/blob/4b480506d10bad9bfaf27b144f5929ad4007472d/engine.py#L100
-        loss_mse = (transformed_student_feats - transformed_teacher_feats) ** 2
-        loss_mse = loss_mse.sum(dim=1)
+        loss = F.smooth_l1_loss(transformed_student_feats, transformed_teacher_feats)
 
-        assert loss_mse.shape == (
-            b,
-        ), f"shape: {loss_mse.shape}, student: {transformed_student_feats.shape}; teacher: {transformed_teacher_feats.shape}"
-
-        # average over all samples
-        loss_mse = loss_mse.mean()
-
-        return loss_mse
+        return loss
