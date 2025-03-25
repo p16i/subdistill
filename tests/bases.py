@@ -304,13 +304,13 @@ def test_correct_scale_orthogoal_bases(basis_name):
 
     arr_flattened_act = utils.flatten_3d_tensor(arr_act)
     expected = np.mean((arr_flattened_act @ U) ** 2, axis=0)
-    np.testing.assert_allclose(actual, expected, atol=1e-6)
+    np.testing.assert_allclose(actual, expected)
 
     if basis_name == "pca":
         eigvals, _ = utils.solve_eigh(
             arr_flattened_act.T @ arr_flattened_act / (n * num_locations)
         )
-        np.testing.assert_allclose(actual, eigvals, atol=1e-6)
+        np.testing.assert_allclose(actual, eigvals)
 
 
 def _solve_pca(arr_act, arr_ctx):

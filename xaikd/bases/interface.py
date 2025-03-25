@@ -69,7 +69,6 @@ class OrthogonalBasis(ABC):
             TensorDataset(torch.from_numpy(arr_act).float()),
             batch_size=1024,
             shuffle=False,
-            num_workers=12,
             persistent_workers=True,
         )
 
