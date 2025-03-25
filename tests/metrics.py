@@ -4,7 +4,7 @@ import numpy as np
 from torch import nn
 from torch.nn import functional as F
 from torch.utils.data import TensorDataset, DataLoader
-from xaikd import metrics
+from xaikd import metrics, utils, models, datasets
 
 
 @pytest.mark.skip
@@ -77,17 +77,42 @@ def test_unexplained_relevance(order, expected):
     np.testing.assert_allclose(stats, [total**2] + expected, atol=1e-6)
 
 
-def test_metric_auroc_callable():
-    metric = metrics.MetricAUROC()
-
-    # todo: add call with mock data
-
-
+@pytest.mark.slow
 def test_metric_aurocbinxent_callable():
     metric = metrics.MetricAUROCBinaryCrossEntropy()
-    # todo: add call with mock data
+    device = utils.get_device()
+    dataset = datasets.construct("cifar100-people-vs-others")
+
+    model = nn.Sequential(
+        models.get_trained_model("cifar100-resnet18-v1"),
+        models.layers.LayerLogOddSelectedClasses(
+            selected_classes=dataset.selected_classes
+        ),
+    ).to(device)
+    model.eval()
+
+    ds = dataset.create_subset(train_split=False)
+    ds = datasets.subsample_dataset(ds, ratio=0.01, seed=1)
+    dl = datasets.build_dataloader(ds, batch_size=128, shuffle=False)
+
+    auroc, loss = metric(model, dl, device, verbose=True)
+    assert 0.5 <= auroc <= 1.0
+    assert loss >= 0.0
 
 
+@pytest.mark.slow
 def test_metric_accuracy_callable():
+
+    device = utils.get_device()
+    dataset = datasets.construct("cifar100-people")
+
+    model = models.get_trained_model("cifar100-resnet18-v1").to(device)
+    model.eval()
+
+    ds = dataset.create_subset(train_split=False)
+    ds = datasets.subsample_dataset(ds, ratio=0.01, seed=1)
+    dl = datasets.build_dataloader(ds, batch_size=128, shuffle=False)
+
     metric = metrics.MetricAccuracy(100)
-    # todo: add call with mock data
+    (acc,) = metric(model, dl, device, verbose=True)
+    assert 0.0 <= acc <= 1.0
