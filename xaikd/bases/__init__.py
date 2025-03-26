@@ -22,6 +22,7 @@ def _add_centering_variants():
         PRCAPosDefWeightSTDWithH0_8,
         PRCAPosDefWeightSTDWithH0_9,
         PRCAPosDefWeightSTDWithH0_95,
+        PRCAPosDefWeightSTDWithH1,
         GradPCAWeightSTDWithEntropy,
     ]:
         base_variant_slug = base_variant_cls.slug()
