@@ -93,110 +93,21 @@ class PRCAPosDef(OrthogonalBasis):
         mean_ctx = np.mean(arr_ctx, axis=0)
 
         cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
-        tr_cov_a = np.trace(cov_a)
+        tr_a = np.trace(cov_a)
 
         cov_c = (arr_ctx.T @ arr_ctx) / N
-        tr_cov_c = np.trace(cov_c)
+        tr_c = np.trace(cov_c)
 
         cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
         cov_acca = cov_ac + cov_ac.T
 
         cov_pos_def = (
-            (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
-            + (2 / tr_cov_a) * cov_a
-            + (2 / tr_cov_c) * cov_c
+            cov_acca
+            + (2 * np.sqrt(tr_c / tr_a)) * cov_a
+            + (2 * np.sqrt(tr_a / tr_c)) * cov_c
         )
-
         eigvals, eigvecs = utils.solve_eigh(cov_pos_def)
 
         assert (eigvals >= 0).all()
-
-        return eigvecs
-
-
-@register_basis()
-class PRCAPosDefSigmaASigmaC(OrthogonalBasis):
-    @classmethod
-    def slug(cls):
-        return "prca-ablation-a-c"
-
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
-        arr_act = utils.flatten_3d_tensor(arr_act)
-        N, _ = arr_act.shape
-
-        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-
-        cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
-
-        tr_cov_a = np.trace(cov_a)
-
-        cov_c = (arr_ctx.T @ arr_ctx) / N
-        tr_cov_c = np.trace(cov_c)
-
-        cov = (2 / tr_cov_a) * cov_a + (2 / tr_cov_c) * cov_c
-        eigvals, eigvecs = utils.solve_eigh(cov)
-
-        assert (eigvals >= 0).all()
-
-        return eigvecs
-
-
-@register_basis()
-class PRCAPosDefAblationSigmaASigmaAC(OrthogonalBasis):
-    @classmethod
-    def slug(cls):
-        return "prca-ablation-a-ac"
-
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
-        arr_act = utils.flatten_3d_tensor(arr_act)
-        N, _ = arr_act.shape
-
-        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-        mean_ctx = np.mean(arr_ctx, axis=0)
-
-        cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
-        tr_cov_a = np.trace(cov_a)
-
-        tr_cov_c = np.trace((arr_ctx.T @ arr_ctx) / N)
-
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
-        cov_acca = cov_ac + cov_ac.T
-
-        cov = (2 / tr_cov_a) * cov_a + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
-        _, eigvecs = utils.solve_eigh(cov)
-
-        return eigvecs
-
-
-@register_basis()
-class PRCAPosDefAblationSigmaCSigmaAC(OrthogonalBasis):
-    @classmethod
-    def slug(cls):
-        return "prca-ablation-c-ac"
-
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
-        arr_act = utils.flatten_3d_tensor(arr_act)
-        N, _ = arr_act.shape
-
-        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-        mean_ctx = np.mean(arr_ctx, axis=0)
-
-        cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
-        tr_cov_a = np.trace(cov_a)
-
-        cov_c = (arr_ctx.T @ arr_ctx) / N
-        tr_cov_c = np.trace(cov_c)
-
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
-        cov_acca = cov_ac + cov_ac.T
-
-        cov = (2 / tr_cov_c) * cov_c + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
-        _, eigvecs = utils.solve_eigh(cov)
 
         return eigvecs

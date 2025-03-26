@@ -278,16 +278,13 @@ def test_analytic_gradpca_weighting(entropy_ratio):
         "prcaposdef-entropy0.95",
         "prcaposdef-entropy0.95--centered",
         "gradpca-entropy0.95",
-        "prca-ablation-a-ac",
-        "prca-ablation-c-ac",
-        "prca-ablation-a-c",
     ],
 )
 def test_correct_scale_orthogoal_bases(basis_name):
     np.random.seed(1)
     n, d, num_locations = 10, 5, 20
     arr_act = np.random.randn(n, d, num_locations)
-    arr_ctx = np.random.randn(n, d, num_locations)
+    arr_ctx = np.random.rand(n, d, num_locations)
     arr_logodd = np.random.randn(n)
     logodd_threshold = 0.0
 
@@ -366,6 +363,23 @@ def _solve_prca_posdef(arr_logodd, arr_act, arr_ctx):
     return utils.solve_eigh(cov)
 
 
+def _solve_prca_posdef_as_defined_in_paper(arr_logodd, arr_act, arr_ctx):
+    arr_act = utils.flatten_3d_tensor(arr_act)
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+
+    cov_a = arr_act.T @ arr_act
+    cov_c = arr_ctx.T @ arr_ctx
+    cov_ac = arr_act.T @ arr_ctx
+    cov_acca = cov_ac + cov_ac.T
+
+    tr_a = np.trace(cov_a)
+    tr_c = np.trace(cov_c)
+
+    cov = cov_acca + 2 * np.sqrt(tr_c / tr_a) * cov_a + 2 * np.sqrt(tr_a / tr_c) * cov_c
+
+    return utils.solve_eigh(cov)
+
+
 def _solve_prca_posdef_threshold_0_entropy_0_95(arr_logodd, arr_act, arr_ctx):
 
     std = bases.orthogonal_weighting.estimate_std_wrt_ratio_maxent(
@@ -403,7 +417,9 @@ def _solve_prca_posdef_threshold_0_entropy_0_95(arr_logodd, arr_act, arr_ctx):
         ("pca--centered", _solve_pca),
         ("gradpca", _solve_gradpca),
         ("prcaposdef", _solve_prca_posdef),
+        ("prcaposdef", _solve_prca_posdef_as_defined_in_paper),
         ("prcaposdef--centered", _solve_prca_posdef),
+        ("prcaposdef--centered", _solve_prca_posdef_as_defined_in_paper),
         ("prcaposdef-entropy0.95", _solve_prca_posdef_threshold_0_entropy_0_95),
         (
             "prcaposdef-entropy0.95--centered",
