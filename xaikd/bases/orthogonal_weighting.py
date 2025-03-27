@@ -70,9 +70,7 @@ class PRCAPosDefWeightSTDFromEntropy(PRCAPosDef):
 
         return weights
 
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
 
         weights = self._compute_sample_weight(
             arr_logodd=arr_logodd, logodd_threshold=logodd_threshold
@@ -82,7 +80,6 @@ class PRCAPosDefWeightSTDFromEntropy(PRCAPosDef):
         return super()._solve(
             arr_act=arr_act,
             arr_ctx=arr_ctx,
-            mean_act=mean_act,
             arr_logodd=arr_logodd,
             logodd_threshold=logodd_threshold,
             **kwargs,
@@ -166,9 +163,7 @@ class GradPCAWeightSTDWithEntropy(OrthogonalBasis):
 
         return weights
 
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
 
         weights = self._compute_sample_weight(
             arr_logodd=arr_logodd, logodd_threshold=logodd_threshold
