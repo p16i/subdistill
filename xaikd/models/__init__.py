@@ -79,10 +79,6 @@ def get_trained_model(name: str) -> nn.Module:
                 model = torchvision.models.wide_resnet50_2(
                     weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
                 )
-            elif arch == "vitb16":
-                model = torchvision.models.vit_b_16(
-                    weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
-                )
             else:
                 raise ValueError(f"`arhc={name}` doesn't exist")
             setattr(model, "num_classes", CELEBA_NUM_ATTRIBUTES)

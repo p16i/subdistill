@@ -6,7 +6,8 @@ from torchvision.models import VisionTransformer, vit_b_16, ViT_B_16_Weights
 
 from collections import OrderedDict
 
-from . import register_model
+from . import register_model, MODEL_CHECKPOINT_MAPPING
+from xaikd.datasets.celeba import NUM_CELEBA_ATTRIBUTES
 
 
 class ConvertTensorfromViTToCNNLikeShape(nn.Module):
@@ -128,6 +129,26 @@ def _imagenet_vitb() -> nn.Module:
 
     setattr(model, "__last_layer", model.heads.head)
     model.num_classes = 1000
+
+    make_encoder_intermediate_output_have_cnn_like_shape_(model)
+
+    return model
+
+
+@register_model("celeba-vitb16-finetunedv1")
+def _celeba_vitb16() -> nn.Module:
+    name = "celeba-vitb16-finetunedv1"
+
+    model = vit_b_16(weights=None, num_classes=NUM_CELEBA_ATTRIBUTES)
+
+    setattr(model, "__last_layer", model.heads.head)
+    model.num_classes = NUM_CELEBA_ATTRIBUTES
+
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
 
     make_encoder_intermediate_output_have_cnn_like_shape_(model)
 
