@@ -94,6 +94,10 @@ class PRCAPosDefWeightSTDFromEntropy(PRCAPosDef):
         cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
         cov_acca = cov_ac + cov_ac.T
 
+        print(
+            f"sqrt(tr_c/tr_a)={np.sqrt(tr_c/tr_a):.4e} ; sqrt(tr_a/tr_c)={np.sqrt(tr_a/tr_c):.4e}"
+        )
+
         cov = (
             cov_acca
             + (2 * np.sqrt(tr_c / tr_a)) * cov_a
