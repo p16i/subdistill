@@ -150,6 +150,7 @@ def main(
             basis.fit(
                 arr_act=arr_act,
                 arr_ctx=arr_grad,
+                mean_act=mean_act,
                 arr_logodd=arr_logit,
                 logodd_threshold=logit_modifier.threshold,
             )

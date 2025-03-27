@@ -138,7 +138,7 @@ def main(
 
         base_layer_name = f"base.{layer}"
 
-        arr_logit, arr_act, arr_grad = attributors.extract_activation_grad(
+        arr_logit, arr_act, arr_grad, mean_act = attributors.extract_activation_grad(
             model=model,
             layer=base_layer_name,
             dataloader=dl_train,
@@ -155,6 +155,7 @@ def main(
             basis.fit(
                 arr_act=arr_act,
                 arr_ctx=arr_grad,
+                mean_act=mean_act,
                 arr_logodd=arr_logit,
                 logodd_threshold=logit_modifier.threshold,
             )
