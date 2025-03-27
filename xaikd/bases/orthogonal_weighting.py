@@ -86,18 +86,18 @@ class PRCAPosDefWeightSTDFromEntropy(PRCAPosDef):
         mean_ctx = np.mean(arr_ctx, axis=0)
 
         cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
-        tr_cov_a = np.trace(cov_a)
+        tr_a = np.trace(cov_a)
 
         cov_c = (arr_ctx.T @ arr_ctx) / N
-        tr_cov_c = np.trace(cov_c)
+        tr_c = np.trace(cov_c)
 
         cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
         cov_acca = cov_ac + cov_ac.T
 
         cov = (
-            (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
-            + (2 / tr_cov_a) * cov_a
-            + (2 / tr_cov_c) * cov_c
+            cov_acca
+            + (2 * np.sqrt(tr_c / tr_a)) * cov_a
+            + (2 * np.sqrt(tr_a / tr_c)) * cov_c
         )
 
         _, eigvecs = utils.solve_eigh(cov)
@@ -109,6 +109,15 @@ class PRCAPosDefWeightSTDFromEntropy(PRCAPosDef):
         assert cls.entropy_ratio is not None
 
         return f"prcaposdef-entropy{cls.entropy_ratio}"
+
+
+class PRCAPosDefUniformWeight(PRCAPosDefWeightSTDFromEntropy):
+    # this class is for testing purpose
+    def _compute_sample_weight(
+        self, arr_logodd: npt.NDArray, logodd_threshold: float
+    ) -> npt.NDArray:
+        (N,) = arr_logodd.shape
+        return np.ones(N) / N
 
 
 @register_basis()
