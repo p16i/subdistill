@@ -22,12 +22,12 @@ def estimate_std_wrt_ratio_maxent(
 
     arr_std = []
     arr_percentile_entropies = []
-    arr_percentile_candidates = np.arange(1, 99 + 1) / 100
+    arr_candidates = np.arange(1, 99 + 1) / 100
 
     vmin = np.min(arr_logits)
     vmax = np.max(arr_logits)
 
-    for pth in arr_percentile_candidates:
+    for pth in arr_candidates:
         std = pth * (vmax - vmin) / 2
 
         weights = norm_gaussian.pdf(arr_logits, loc=threshold, scale=std)
@@ -93,6 +93,15 @@ class PRCAPosDefWeightSTDFromEntropy(PRCAPosDef):
         assert cls.entropy_ratio is not None
 
         return f"prcaposdef-entropy{cls.entropy_ratio}"
+
+
+class PRCAPosDefUniformWeight(PRCAPosDefWeightSTDFromEntropy):
+    # this class is for testing purpose
+    def _compute_sample_weight(
+        self, arr_logodd: npt.NDArray, logodd_threshold: float
+    ) -> npt.NDArray:
+        (N,) = arr_logodd.shape
+        return np.ones(N) / N
 
 
 @register_basis()

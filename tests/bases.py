@@ -433,8 +433,8 @@ def test_centering_orthogonal_bases(basis_name, solve_func):
     n, d, num_locations = 10, 5, 20
     basis = bases.get_basis(basis_name)
 
-    activation = np.random.randn(n, d, num_locations)
-    context = np.random.randn(n, d, num_locations)
+    activation = np.random.rand(n, d, num_locations)
+    context = np.random.rand(n, d, num_locations)
     arr_logodd = np.random.randn(
         n,
     )
@@ -473,3 +473,40 @@ def test_centering_orthogonal_bases(basis_name, solve_func):
         np.testing.assert_allclose(basis.mean, mean)
     else:
         np.testing.assert_allclose(basis.mean, np.zeros(d))
+
+
+def test_equivalence_between_prcaposdef_and_prcposdef_uniform():
+    np.random.seed(1)
+    n, d, num_locations = 10, 5, 20
+
+    activation = np.random.rand(n, d, num_locations)
+    context = np.random.rand(n, d, num_locations)
+    arr_logodd = np.random.randn(
+        n,
+    )
+    threshold = 0
+
+    prcaposdef = bases.PRCAPosDef()
+    prcaposdef.fit(
+        arr_act=activation,
+        arr_ctx=context,
+        arr_logodd=arr_logodd,
+        logodd_threshold=threshold,
+    )
+
+    prcaposdef_uniform = bases.PRCAPosDefUniformWeight()
+    prcaposdef_uniform.fit(
+        arr_act=activation,
+        arr_ctx=context,
+        arr_logodd=arr_logodd,
+        logodd_threshold=threshold,
+    )
+
+    np.testing.assert_allclose(
+        prcaposdef.U,
+        prcaposdef_uniform.U,
+    )
+
+    np.testing.assert_allclose(
+        prcaposdef.scale_factors, prcaposdef_uniform.scale_factors
+    )
