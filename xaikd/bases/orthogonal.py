@@ -101,11 +101,18 @@ class PRCAPosDef(OrthogonalBasis):
         cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
         cov_acca = cov_ac + cov_ac.T
 
-        cov_pos_def = (
-            cov_acca
-            + (2 * np.sqrt(tr_c / tr_a)) * cov_a
-            + (2 * np.sqrt(tr_a / tr_c)) * cov_c
+        # Remark: these coefficients are more stable than the one written in the paper.
+        # They are the ones in the paper devided by 1/sqrt(tr_a*tr_c).
+        coef_acca = 1 / np.sqrt(tr_a * tr_c)
+        coef_a = 2 / tr_a
+        coef_c = 2 / tr_c
+
+        print(
+            f"Coefficients: coeff_acca: {coef_acca:.4e}, coeff_a: {coef_a:.4e}, coeff_c: {coef_c:.4e}"
         )
+
+        cov_pos_def = coef_acca * cov_acca + coef_a * cov_a + coef_c * cov_c
+
         eigvals, eigvecs = utils.solve_eigh(cov_pos_def)
 
         assert (eigvals >= 0).all()

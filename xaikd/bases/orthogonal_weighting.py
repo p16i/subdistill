@@ -74,39 +74,19 @@ class PRCAPosDefWeightSTDFromEntropy(PRCAPosDef):
         self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
     ):
 
-        arr_act = utils.flatten_3d_tensor(arr_act)
-        N, _ = arr_act.shape
-
         weights = self._compute_sample_weight(
             arr_logodd=arr_logodd, logodd_threshold=logodd_threshold
         )
         arr_ctx = arr_ctx * weights.reshape((-1, 1, 1))
 
-        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-        mean_ctx = np.mean(arr_ctx, axis=0)
-
-        cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
-        tr_a = np.trace(cov_a)
-
-        cov_c = (arr_ctx.T @ arr_ctx) / N
-        tr_c = np.trace(cov_c)
-
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
-        cov_acca = cov_ac + cov_ac.T
-
-        print(
-            f"sqrt(tr_c/tr_a)={np.sqrt(tr_c/tr_a):.4e} ; sqrt(tr_a/tr_c)={np.sqrt(tr_a/tr_c):.4e}"
+        return super()._solve(
+            arr_act=arr_act,
+            arr_ctx=arr_ctx,
+            mean_act=mean_act,
+            arr_logodd=arr_logodd,
+            logodd_threshold=logodd_threshold,
+            **kwargs,
         )
-
-        cov = (
-            cov_acca
-            + (2 * np.sqrt(tr_c / tr_a)) * cov_a
-            + (2 * np.sqrt(tr_a / tr_c)) * cov_c
-        )
-
-        _, eigvecs = utils.solve_eigh(cov)
-
-        return eigvecs
 
     @classmethod
     def slug(cls):
