@@ -103,9 +103,8 @@ class PRCAPosDef(OrthogonalBasis):
         cov_pos_def = coef_acca * cov_acca + coef_a * cov_a + coef_c * cov_c
 
         eigvals, eigvecs = utils.solve_eigh(cov_pos_def)
+        print(f"range(eigvals)=[{np.min(eigvals):.4e}, {np.max(eigvals):.4e}]")
 
-        assert (
-            eigvals >= 0
-        ).all(), f"range(eigvals)=[{np.min(eigvals):.4e}, {np.max(eigvals):.4e}]"
+        assert (eigvals >= 0).all()
 
         return eigvecs
