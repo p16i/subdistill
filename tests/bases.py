@@ -433,7 +433,7 @@ def test_centering_orthogonal_bases(basis_name, solve_func):
     n, d, num_locations = 10, 5, 20
     basis = bases.get_basis(basis_name)
 
-    activation = np.random.randn(n, d, num_locations)
+    activation = np.random.rand(n, d, num_locations)
     context = np.random.randn(n, d, num_locations)
     arr_logodd = np.random.randn(
         n,
