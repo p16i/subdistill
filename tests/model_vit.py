@@ -35,7 +35,7 @@ def test_vit_with_pre_post_transform():
 )
 @pytest.mark.parametrize("layer", [f"encoders.layers.{i}" for i in range(12)])
 @pytest.mark.slow
-def test_split_resnet_model(model_name, layer):
+def test_split_model(model_name, layer):
 
     test_models._test_split_model(
         model_name, layer, models.vit.split_model_at, atol=1e-5
@@ -51,9 +51,17 @@ def test_get_model(slug):
     test_models._test_get_model(slug)
 
 
-def test_get_layer_dimensions():
+@pytest.mark.parametrize(
+    "model_name",
+    [
+        "imagenet-vitb-tv",
+        "celeba-vitb16-finetunedv1",
+    ],
+)
+@pytest.mark.slow
+def test_get_layer_dimensions(model_name):
     arr_layers = [f"encoder.layers.{i}" for i in [8, 11]]
-    model = models.get_trained_model("imagenet-vitb-tv")
+    model = models.get_trained_model(model_name)
     x = torch.randn((7, 3, 224, 224))
     y = torch.randint(low=0, high=20, size=(7,))
 

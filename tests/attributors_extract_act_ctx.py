@@ -22,7 +22,10 @@ class CIFAR100VerySmall(datasets.cifar100.original.CIFAR100):
 
         return DataLoader(
             Subset(
-                ds, np.random.permutation(ds.data.shape[0])[:NUMBER_OF_SMALL_DATASET]
+                ds,
+                np.random.permutation(ds.data.shape[0])[
+                    :NUMBER_OF_SMALL_DATASET
+                ].tolist(),
             ),
             num_workers=num_workers,
             batch_size=batch_size,
@@ -188,6 +191,8 @@ def test_extract_activation_grad(num_data_points, batch_size):
         num_locations=num_spatial_locations,
         rng=np.random.default_rng(seed=seed),
     )
+    expected_mean = utils.flatten_3d_tensor(arr_expected_acts).mean(axis=0)
+    arr_expected_acts -= expected_mean[None, :, None]
 
     model = nn.Sequential(
         OrderedDict([("layer1", model_part1), ("layer2", model_part2)])
@@ -199,7 +204,7 @@ def test_extract_activation_grad(num_data_points, batch_size):
         batch_size=batch_size,
     )
 
-    arr_actual_logodd, arr_actual_acts, arr_actual_grads = (
+    arr_actual_logodd, arr_actual_acts, arr_actual_grads, mean_act = (
         attributors.extract_activation_grad(
             model=model,
             layer="layer1",
@@ -211,6 +216,7 @@ def test_extract_activation_grad(num_data_points, batch_size):
         )
     )
 
+    np.testing.assert_allclose(mean_act, expected_mean)
     np.testing.assert_allclose(
         arr_actual_acts,
         arr_expected_acts,

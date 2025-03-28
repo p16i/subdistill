@@ -10,20 +10,17 @@ import torch
 
 from .interface import OrthogonalBasis
 from .register import register_basis
-from .adapter import Adapter, AdapterMode
 
 from xaikd import utils
 
 
 @register_basis()
 class PCA(OrthogonalBasis):
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
         arr_act = utils.flatten_3d_tensor(arr_act)
         N, _ = arr_act.shape
 
-        cov = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
+        cov = (arr_act.T @ arr_act) / N
 
         _, eigvecs = utils.solve_eigh(cov)
 
@@ -32,9 +29,7 @@ class PCA(OrthogonalBasis):
 
 @register_basis()
 class GradPCA(OrthogonalBasis):
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
 
         arr_ctx = utils.flatten_3d_tensor(arr_ctx)
         N, _ = arr_ctx.shape
@@ -48,16 +43,14 @@ class GradPCA(OrthogonalBasis):
 
 @register_basis()
 class PRCASortAbs(OrthogonalBasis):
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
         arr_act = utils.flatten_3d_tensor(arr_act)
         N, _ = arr_act.shape
 
         arr_ctx = utils.flatten_3d_tensor(arr_ctx)
         mean_ctx = np.mean(arr_ctx, axis=0)
 
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
+        cov_ac = (arr_act.T @ arr_ctx) / N
         cov_acca = cov_ac + cov_ac.T
 
         _, eigvecs = utils.solve_eigh(cov_acca, sort_with_abs_eigvals=True)
@@ -66,15 +59,13 @@ class PRCASortAbs(OrthogonalBasis):
 
 @register_basis()
 class PRCA(OrthogonalBasis):
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
         arr_act = utils.flatten_3d_tensor(arr_act)
         arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-        mean_ctx = np.mean(arr_ctx, axis=0)
+
         N, _ = arr_act.shape
 
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
+        cov_ac = (arr_act.T @ arr_ctx) / N
         cov_acca = cov_ac + cov_ac.T
 
         _, eigvecs = utils.solve_eigh(cov_acca, sort_with_abs_eigvals=False)
@@ -83,37 +74,34 @@ class PRCA(OrthogonalBasis):
 
 @register_basis()
 class PRCAPosDef(OrthogonalBasis):
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
         arr_act = utils.flatten_3d_tensor(arr_act)
         N, _ = arr_act.shape
 
         arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-        mean_ctx = np.mean(arr_ctx, axis=0)
 
-        cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
+        cov_a = (arr_act.T @ arr_act) / N
         tr_a = np.trace(cov_a)
 
         cov_c = (arr_ctx.T @ arr_ctx) / N
         tr_c = np.trace(cov_c)
 
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
+        cov_ac = (arr_act.T @ arr_ctx) / N
         cov_acca = cov_ac + cov_ac.T
 
-        # Remark: these coefficients are more stable than the one written in the paper.
-        # They are the ones in the paper devided by 1/sqrt(tr_a*tr_c).
-        coef_acca = 1 / np.sqrt(tr_a * tr_c)
-        coef_a = 2 / tr_a
-        coef_c = 2 / tr_c
+        coef_acca = 1
+        coef_a = 2 * np.sqrt(tr_c / tr_a)
+        coef_c = 2 * np.sqrt(tr_a / tr_c)
 
         print(
-            f"Coefficients: coeff_acca: {coef_acca:.4e}, coeff_a: {coef_a:.4e}, coeff_c: {coef_c:.4e}"
+            f"Coefficients: coeff_acca={coef_acca:.4e}, coeff_a={coef_a:.4e}, coeff_c={coef_c:.4e} "
+            + f"tr_a={tr_a:.4e}, tr_c={tr_c:.4e}"
         )
 
         cov_pos_def = coef_acca * cov_acca + coef_a * cov_a + coef_c * cov_c
 
         eigvals, eigvecs = utils.solve_eigh(cov_pos_def)
+        print(f"range(eigvals)=[{np.min(eigvals):.4e}, {np.max(eigvals):.4e}]")
 
         assert (eigvals >= 0).all()
 

@@ -14,7 +14,8 @@ from .adapter import AdapterMode, Adapter
 
 
 class OrthogonalBasis(ABC):
-    def __init__(self, centering: bool = False):
+    def __init__(self, centering: bool = True):
+        assert centering
         self.centering = centering
 
     @property
@@ -34,7 +35,6 @@ class OrthogonalBasis(ABC):
         self,
         arr_act: npt.NDArray,
         arr_ctx: npt.NDArray,
-        mean_act: npt.NDArray,
         arr_logodd: npt.NDArray,
         logodd_threshold: float,
     ) -> npt.NDArray:
@@ -51,7 +51,7 @@ class OrthogonalBasis(ABC):
         return fh
 
     def estimate_scale_factors(
-        self, arr_act: npt.NDArray, mean_act: npt.NDArray, U: npt.NDArray
+        self, arr_act: npt.NDArray, U: npt.NDArray
     ) -> npt.NDArray:
 
         d, _ = U.shape
@@ -68,7 +68,7 @@ class OrthogonalBasis(ABC):
         # Assume that arr_act is already centered.
         # The code below is equivalent to the following:
         # > arr_scale_factors = np.mean((arr_act @ U) ** 2, axis=0)
-        outer = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
+        outer = (arr_act.T @ arr_act) / N
 
         arr_scale_factors = np.diag(U.T @ outer @ U)
 
@@ -84,31 +84,34 @@ class OrthogonalBasis(ABC):
         self,
         arr_act: npt.NDArray,
         arr_ctx: npt.NDArray,
+        mean_act: npt.NDArray,
         arr_logodd: npt.NDArray,
         logodd_threshold: float,
+        strict_mode=False,
         **kwargs,
     ):
-        print("fit start")
+
         _, d, _ = arr_act.shape
 
-        if self.centering:
-            mean = np.mean(utils.flatten_3d_tensor(arr_act), axis=0)
-        else:
-            mean = np.zeros(d)
+        # we assume that E[a] = 0. Only check when expicitly asked.
+        if strict_mode:
+            np.testing.assert_allclose(
+                np.mean(utils.flatten_3d_tensor(arr_act), axis=0),
+                np.zeros(d),
+                atol=1e-6,
+                err_msg="mean should be zero!",
+            )
 
         self._U = self._solve(
             arr_act=arr_act,
             arr_ctx=arr_ctx,
-            mean_act=mean,
             arr_logodd=arr_logodd,
             logodd_threshold=logodd_threshold,
         )
 
-        self._scale_factors = self.estimate_scale_factors(
-            arr_act=arr_act, mean_act=mean, U=self._U
-        )
+        self._scale_factors = self.estimate_scale_factors(arr_act=arr_act, U=self._U)
 
-        self._mean = mean
+        self._mean = mean_act
 
     def get_Uk(self, k: int) -> npt.NDArray[np.float32]:
         return self.U[:, :k]

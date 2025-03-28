@@ -14,8 +14,10 @@ from torch import nn
 import torchvision
 from torchvision.models import resnet
 
+from xaikd.datasets.celeba import NUM_CELEBA_ATTRIBUTES
+
 from . import interfaces
-from . import register_model, add_model_to_registry
+from . import register_model, add_model_to_registry, MODEL_CHECKPOINT_MAPPING
 
 
 def split_model_at(
@@ -43,30 +45,44 @@ def split_model_at(
     return head, classifier
 
 
-@register_model("cifar-resnet18")
-def _resnet18_cifar(num_classes: int) -> nn.Module:
+def _construct_resnet18_cifar(num_classes: int) -> nn.Module:
     model = torchvision.models.resnet18(weights=None, num_classes=num_classes)
 
     # Refs:
     # - SimCLR, Appendix B.9 CIFAR10
     # - https://github.com/p3i0t/SimCLR-CIFAR10/blob/master/models.py#L12
     model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
-    model.maxpool = nn.Identity()
+    model.maxpool = nn.Identity()  # type: ignore
 
-    model.num_classes = num_classes
+    model.num_classes = num_classes  # type: ignore
 
     return model
 
 
-@register_model("cifar-resnet50")
-def _resnet50_cifar(num_classes: int) -> nn.Module:
-    model = torchvision.models.resnet50(weights=None, num_classes=num_classes)
+@register_model("cifar100-resnet18-v1")
+def _resnet18_cifar100_v1() -> nn.Module:
+    name = "cifar100-resnet18-v1"
+    model = _construct_resnet18_cifar(num_classes=100)
 
-    # why we use this? (ask Florian?)
-    model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
-    model.maxpool = nn.Identity()
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
 
-    model.num_classes = num_classes
+    return model
+
+
+@register_model("cifar100-resnet18-v2")
+def _resnet18_cifar100_v2() -> nn.Module:
+    name = "cifar100-resnet18-v2"
+    model = _construct_resnet18_cifar(num_classes=100)
+
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
 
     return model
 
@@ -74,7 +90,7 @@ def _resnet50_cifar(num_classes: int) -> nn.Module:
 @register_model("imagenet-resnet18-tv")
 def _resnet18_imagenet() -> nn.Module:
     model = torchvision.models.resnet18(weights=resnet.ResNet18_Weights.IMAGENET1K_V1)
-    model.num_classes = 1000
+    model.num_classes = 1000  # type: ignore
 
     return model
 
@@ -82,7 +98,7 @@ def _resnet18_imagenet() -> nn.Module:
 @register_model("imagenet-resnet34-tv")
 def _resnet34_imagenet() -> nn.Module:
     model = torchvision.models.resnet34(weights=resnet.ResNet34_Weights.IMAGENET1K_V1)
-    model.num_classes = 1000
+    model.num_classes = 1000  # type: ignore
 
     return model
 
@@ -90,7 +106,7 @@ def _resnet34_imagenet() -> nn.Module:
 @register_model("imagenet-resnet50-tv")
 def _resnet50_imagenet() -> nn.Module:
     model = torchvision.models.resnet50(weights=resnet.ResNet50_Weights.IMAGENET1K_V1)
-    model.num_classes = 1000
+    model.num_classes = 1000  # type: ignore
 
     return model
 
@@ -98,7 +114,7 @@ def _resnet50_imagenet() -> nn.Module:
 @register_model("imagenet-resnet101-tv")
 def _resnet101_imagenet() -> nn.Module:
     model = torchvision.models.resnet101(weights=resnet.ResNet101_Weights.IMAGENET1K_V1)
-    model.num_classes = 1000
+    model.num_classes = 1000  # type: ignore
 
     return model
 
@@ -106,8 +122,52 @@ def _resnet101_imagenet() -> nn.Module:
 @register_model("imagenet-resnet152-tv")
 def _resnet152_imagenet() -> nn.Module:
     model = torchvision.models.resnet152(weights=resnet.ResNet152_Weights.IMAGENET1K_V1)
-    model.num_classes = 1000
+    model.num_classes = 1000  # type: ignore
 
+    return model
+
+
+@register_model("celeba-resnet18-finetunedv1")
+def _resnet18_celeba() -> nn.Module:
+
+    name = "celeba-resnet18-finetunedv1"
+    model = torchvision.models.resnet18(weights=None, num_classes=NUM_CELEBA_ATTRIBUTES)
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
+    model.num_classes = NUM_CELEBA_ATTRIBUTES  # type: ignore
+    return model
+
+
+@register_model("celeba-resnet50-finetunedv1")
+def _resnet50_celeba() -> nn.Module:
+
+    name = "celeba-resnet50-finetunedv1"
+    model = torchvision.models.resnet50(weights=None, num_classes=NUM_CELEBA_ATTRIBUTES)
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
+    model.num_classes = NUM_CELEBA_ATTRIBUTES  # type: ignore
+    return model
+
+
+@register_model("celeba-wideresnet50_2-finetunedv1")
+def _wideresnet50_2_celeba() -> nn.Module:
+
+    name = "celeba-wideresnet50_2-finetunedv1"
+    model = torchvision.models.wide_resnet50_2(
+        weights=None, num_classes=NUM_CELEBA_ATTRIBUTES
+    )
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
+    model.num_classes = NUM_CELEBA_ATTRIBUTES  # type: ignore
     return model
 
 
@@ -125,7 +185,7 @@ def construct_student_cifar_resnet18(in_planes: int, num_classes: int, **kwargs)
     # Similar to _resnet18_cifar(..)
     model.conv1 = nn.Conv2d(3, in_planes, 3, 1, 1, bias=False)
     model.bn1 = nn.BatchNorm2d(in_planes)
-    model.maxpool = nn.Identity()
+    model.maxpool = nn.Identity()  # type: ignore
 
     # The following code mimics the original code's _make_layer(..)
     # Ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L225

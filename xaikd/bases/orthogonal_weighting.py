@@ -70,19 +70,22 @@ class PRCAPosDefWeightSTDFromEntropy(PRCAPosDef):
 
         return weights
 
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
 
         weights = self._compute_sample_weight(
             arr_logodd=arr_logodd, logodd_threshold=logodd_threshold
         )
+
+        # Remark: when arr_ctx is large, this leads to OOM.
+        # The reason is that it creates a new array for the result.
+        # One way to mitigate the issue is to perform inline assignment.
+        # Consequently, one should make sure that the side effect is not
+        # propagated to other parts.
         arr_ctx = arr_ctx * weights.reshape((-1, 1, 1))
 
         return super()._solve(
             arr_act=arr_act,
             arr_ctx=arr_ctx,
-            mean_act=mean_act,
             arr_logodd=arr_logodd,
             logodd_threshold=logodd_threshold,
             **kwargs,
@@ -166,9 +169,7 @@ class GradPCAWeightSTDWithEntropy(OrthogonalBasis):
 
         return weights
 
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
 
         weights = self._compute_sample_weight(
             arr_logodd=arr_logodd, logodd_threshold=logodd_threshold

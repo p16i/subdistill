@@ -27,7 +27,7 @@ def learn_basis(
 
     rng = np.random.default_rng(seed=seed)
 
-    arr_logodd, arr_act, arr_ctx = attributors.extract_activation_grad(
+    arr_logodd, arr_act, arr_ctx, mean_act = attributors.extract_activation_grad(
         model=teacher_model,
         layer=layer,
         dataloader=train_loader,
@@ -41,6 +41,7 @@ def learn_basis(
     basis.fit(
         arr_act=arr_act,
         arr_ctx=arr_ctx,
+        mean_act=mean_act,
         arr_logodd=arr_logodd,
         logodd_threshold=logit_mod.threshold,
     )
