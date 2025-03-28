@@ -52,9 +52,9 @@ def _construct_resnet18_cifar(num_classes: int) -> nn.Module:
     # - SimCLR, Appendix B.9 CIFAR10
     # - https://github.com/p3i0t/SimCLR-CIFAR10/blob/master/models.py#L12
     model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
-    model.maxpool = nn.Identity()
+    model.maxpool = nn.Identity()  # type: ignore
 
-    model.num_classes = num_classes
+    model.num_classes = num_classes  # type: ignore
 
     return model
 
@@ -90,7 +90,7 @@ def _resnet18_cifar100_v2() -> nn.Module:
 @register_model("imagenet-resnet18-tv")
 def _resnet18_imagenet() -> nn.Module:
     model = torchvision.models.resnet18(weights=resnet.ResNet18_Weights.IMAGENET1K_V1)
-    model.num_classes = 1000
+    model.num_classes = 1000  # type: ignore
 
     return model
 
@@ -98,7 +98,7 @@ def _resnet18_imagenet() -> nn.Module:
 @register_model("imagenet-resnet34-tv")
 def _resnet34_imagenet() -> nn.Module:
     model = torchvision.models.resnet34(weights=resnet.ResNet34_Weights.IMAGENET1K_V1)
-    model.num_classes = 1000
+    model.num_classes = 1000  # type: ignore
 
     return model
 
@@ -106,7 +106,7 @@ def _resnet34_imagenet() -> nn.Module:
 @register_model("imagenet-resnet50-tv")
 def _resnet50_imagenet() -> nn.Module:
     model = torchvision.models.resnet50(weights=resnet.ResNet50_Weights.IMAGENET1K_V1)
-    model.num_classes = 1000
+    model.num_classes = 1000  # type: ignore
 
     return model
 
@@ -114,7 +114,7 @@ def _resnet50_imagenet() -> nn.Module:
 @register_model("imagenet-resnet101-tv")
 def _resnet101_imagenet() -> nn.Module:
     model = torchvision.models.resnet101(weights=resnet.ResNet101_Weights.IMAGENET1K_V1)
-    model.num_classes = 1000
+    model.num_classes = 1000  # type: ignore
 
     return model
 
@@ -122,7 +122,7 @@ def _resnet101_imagenet() -> nn.Module:
 @register_model("imagenet-resnet152-tv")
 def _resnet152_imagenet() -> nn.Module:
     model = torchvision.models.resnet152(weights=resnet.ResNet152_Weights.IMAGENET1K_V1)
-    model.num_classes = 1000
+    model.num_classes = 1000  # type: ignore
 
     return model
 
@@ -137,7 +137,7 @@ def _resnet18_celeba() -> nn.Module:
             MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
         )
     )
-    model.num_classes = NUM_CELEBA_ATTRIBUTES
+    model.num_classes = NUM_CELEBA_ATTRIBUTES  # type: ignore
     return model
 
 
@@ -151,7 +151,7 @@ def _resnet50_celeba() -> nn.Module:
             MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
         )
     )
-    model.num_classes = NUM_CELEBA_ATTRIBUTES
+    model.num_classes = NUM_CELEBA_ATTRIBUTES  # type: ignore
     return model
 
 
@@ -167,7 +167,7 @@ def _wideresnet50_2_celeba() -> nn.Module:
             MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
         )
     )
-    model.num_classes = NUM_CELEBA_ATTRIBUTES
+    model.num_classes = NUM_CELEBA_ATTRIBUTES  # type: ignore
     return model
 
 
@@ -185,7 +185,7 @@ def construct_student_cifar_resnet18(in_planes: int, num_classes: int, **kwargs)
     # Similar to _resnet18_cifar(..)
     model.conv1 = nn.Conv2d(3, in_planes, 3, 1, 1, bias=False)
     model.bn1 = nn.BatchNorm2d(in_planes)
-    model.maxpool = nn.Identity()
+    model.maxpool = nn.Identity()  # type: ignore
 
     # The following code mimics the original code's _make_layer(..)
     # Ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L225
