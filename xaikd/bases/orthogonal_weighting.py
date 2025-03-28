@@ -75,6 +75,12 @@ class PRCAPosDefWeightSTDFromEntropy(PRCAPosDef):
         weights = self._compute_sample_weight(
             arr_logodd=arr_logodd, logodd_threshold=logodd_threshold
         )
+
+        # Remark: when arr_ctx is large, this leads to OOM.
+        # The reason is that it creates a new array for the result.
+        # One way to mitigate the issue is to perform inline assignment.
+        # Consequently, one should make sure that the side effect is not
+        # propagated to other parts.
         arr_ctx = arr_ctx * weights.reshape((-1, 1, 1))
 
         return super()._solve(
