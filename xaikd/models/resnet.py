@@ -14,8 +14,10 @@ from torch import nn
 import torchvision
 from torchvision.models import resnet
 
+from xaikd.datasets.celeba import NUM_CELEBA_ATTRIBUTES
+
 from . import interfaces
-from . import register_model, add_model_to_registry
+from . import register_model, add_model_to_registry, MODEL_CHECKPOINT_MAPPING
 
 
 def split_model_at(
@@ -43,8 +45,7 @@ def split_model_at(
     return head, classifier
 
 
-@register_model("cifar-resnet18")
-def _resnet18_cifar(num_classes: int) -> nn.Module:
+def _construct_resnet18_cifar(num_classes: int) -> nn.Module:
     model = torchvision.models.resnet18(weights=None, num_classes=num_classes)
 
     # Refs:
@@ -58,15 +59,30 @@ def _resnet18_cifar(num_classes: int) -> nn.Module:
     return model
 
 
-@register_model("cifar-resnet50")
-def _resnet50_cifar(num_classes: int) -> nn.Module:
-    model = torchvision.models.resnet50(weights=None, num_classes=num_classes)
+@register_model("cifar100-resnet18-v1")
+def _resnet18_cifar100_v1() -> nn.Module:
+    name = "cifar100-resnet18-v1"
+    model = _construct_resnet18_cifar(num_classes=100)
 
-    # why we use this? (ask Florian?)
-    model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
-    model.maxpool = nn.Identity()
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
 
-    model.num_classes = num_classes
+    return model
+
+
+@register_model("cifar100-resnet18-v2")
+def _resnet18_cifar100_v2() -> nn.Module:
+    name = "cifar100-resnet18-v2"
+    model = _construct_resnet18_cifar(num_classes=100)
+
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
 
     return model
 
@@ -108,6 +124,50 @@ def _resnet152_imagenet() -> nn.Module:
     model = torchvision.models.resnet152(weights=resnet.ResNet152_Weights.IMAGENET1K_V1)
     model.num_classes = 1000
 
+    return model
+
+
+@register_model("celeba-resnet18-finetunedv1")
+def _resnet18_celeba() -> nn.Module:
+
+    name = "celeba-resnet18-finetunedv1"
+    model = torchvision.models.resnet18(weights=None, num_classes=NUM_CELEBA_ATTRIBUTES)
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
+    model.num_classes = NUM_CELEBA_ATTRIBUTES
+    return model
+
+
+@register_model("celeba-resnet50-finetunedv1")
+def _resnet50_celeba() -> nn.Module:
+
+    name = "celeba-resnet50-finetunedv1"
+    model = torchvision.models.resnet50(weights=None, num_classes=NUM_CELEBA_ATTRIBUTES)
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
+    model.num_classes = NUM_CELEBA_ATTRIBUTES
+    return model
+
+
+@register_model("celeba-wideresnet50_2-finetunedv1")
+def _wideresnet50_2_celeba() -> nn.Module:
+
+    name = "celeba-wideresnet50_2-finetunedv1"
+    model = torchvision.models.wide_resnet50_2(
+        weights=None, num_classes=NUM_CELEBA_ATTRIBUTES
+    )
+    model.load_state_dict(
+        torch.hub.load_state_dict_from_url(
+            MODEL_CHECKPOINT_MAPPING[name], file_name=f"{name}.pth"
+        )
+    )
+    model.num_classes = NUM_CELEBA_ATTRIBUTES
     return model
 
 

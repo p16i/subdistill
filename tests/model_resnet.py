@@ -12,6 +12,17 @@ import models as test_models
     "slug",
     [
         "cifar100-resnet18-v1",
+    ],
+)
+@pytest.mark.slow
+def test_get_cifar100_model(slug):
+    test_models._test_get_model(slug)
+
+
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "cifar100-resnet18-v1",
         "imagenet-resnet18-tv",
         "imagenet-resnet34-tv",
         "imagenet-resnet50-tv",
@@ -27,8 +38,9 @@ def test_get_imagenet_model(slug):
 @pytest.mark.parametrize(
     "slug",
     [
-        "celeba-resnet18-scratch",
-        "celeba-resnet18-pretrained",
+        "celeba-resnet18-finetunedv1",
+        "celeba-resnet50-finetunedv1",
+        "celeba-wideresnet50_2-finetunedv1",
     ],
 )
 @pytest.mark.slow
