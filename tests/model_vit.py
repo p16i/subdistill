@@ -58,6 +58,7 @@ def test_get_model(slug):
         "celeba-vitb16-finetunedv1",
     ],
 )
+@pytest.mark.slow
 def test_get_layer_dimensions(model_name):
     arr_layers = [f"encoder.layers.{i}" for i in [8, 11]]
     model = models.get_trained_model(model_name)
