@@ -101,8 +101,17 @@ class PRCAPosDef(OrthogonalBasis):
         cov_pos_def = coef_acca * cov_acca + coef_a * cov_a + coef_c * cov_c
 
         eigvals, eigvecs = utils.solve_eigh(cov_pos_def)
-        print(f"range(eigvals)=[{np.min(eigvals):.4e}, {np.max(eigvals):.4e}]")
 
-        assert (eigvals >= 0).all()
+        min_eigval = np.min(eigvals)
+        max_eigval = np.max(eigvals)
+        print(f"range(eigvals)=[{min_eigval:.4e}, {max_eigval:.4e}]")
+
+        # Mathematically, the eigenvalues should be non-negative.
+        # Due to numerical stablity, there are situations that we have negative values.
+        # In such cases, we tolerate and raise an error if the smallest value is relatetive large.
+        if min_eigval < 0 and (np.abs(min_eigval) / max_eigval) > 1e-16:
+            raise ValueError(
+                f"We have {np.sum(eigvals < 0)} negative eigvals (the smallest one is {min_eigval:.4e})"
+            )
 
         return eigvecs
