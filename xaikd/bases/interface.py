@@ -99,6 +99,7 @@ class OrthogonalBasis(ABC):
                 np.mean(utils.flatten_3d_tensor(arr_act), axis=0),
                 np.zeros(d),
                 atol=1e-6,
+                err_msg="mean should be zero!",
             )
 
         self._U = self._solve(

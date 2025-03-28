@@ -104,9 +104,8 @@ def test_baseline_policy_callable(teacher_dims, student_dims, policy):
     "basis_name",
     [
         "pca",
-        "pca--centered",
         "prcaposdef",
-        "prcaposdef--centered",
+        "prcaposdef-entropy0.95",
     ],
 )
 @pytest.mark.parametrize(
@@ -120,12 +119,20 @@ def test_our_policies_callable(
     device = "cpu"
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        act = rng.random((batch_size, teacher_dims, 5))
+        act = rng.random((batch_size, teacher_dims, 5)) + 2
+        mean_act = putils.flatten_3d_tensor(act).mean(axis=0)
+        act -= mean_act[None, :, None]
         logodd = 2 * rng.random((batch_size,)) - 1
         basis = bases.get_basis(basis_name)
 
         basis.fit(
-            arr_act=act, arr_ctx=act, arr_logodd=logodd, logodd_threshold=0, seed=1
+            arr_act=act,
+            arr_ctx=act,
+            mean_act=mean_act,
+            arr_logodd=logodd,
+            logodd_threshold=0,
+            seed=1,
+            strict_mode=True,
         )
 
         kwargs = dict(
@@ -162,7 +169,8 @@ def test_our_policies_callable(
     "basis_name",
     [
         "pca",
-        "pca--centered",
+        "prcaposdef",
+        "prcaposdef-entropy0.95",
     ],
 )
 def test_basis_bn_sum_normalized_learnable(basis_name, teacher_dims, student_dims):
@@ -171,12 +179,20 @@ def test_basis_bn_sum_normalized_learnable(basis_name, teacher_dims, student_dim
     device = "cpu"
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        act = rng.random((batch_size, teacher_dims, 5))
+        act = rng.random((batch_size, teacher_dims, 5)) + 4
+        mean_act = putils.flatten_3d_tensor(act).mean(axis=0)
+        act -= mean_act[None, :, None]
         logodd = 2 * rng.random((batch_size,)) - 1
         basis = bases.get_basis(basis_name)
 
         basis.fit(
-            arr_act=act, arr_ctx=act, arr_logodd=logodd, logodd_threshold=0, seed=1
+            arr_act=act,
+            arr_ctx=act,
+            mean_act=mean_act,
+            arr_logodd=logodd,
+            logodd_threshold=0,
+            seed=1,
+            strict_mode=True,
         )
 
         kwargs = dict(
@@ -242,61 +258,3 @@ def test_last_layer_policy(last_layer_policy, expected):
     )
 
     assert not torch.isnan(val)
-
-
-@pytest.mark.skip(reason="not implemented")
-def test_basis_rotation():
-    basis = bases.get_basis("pca")
-
-    rng = torch.Generator()
-    rng.manual_seed(1)
-
-    dims_teacher = 20
-    dims_student = 10
-
-    feat_teacher = torch.rand((10, dims_teacher, 4, 4), generator=rng)
-    feat_student = torch.rand((10, dims_student, 4, 4), generator=rng)
-
-    arr_act = torch.rand((40, dims_teacher, 20), generator=rng).detach().cpu().numpy()
-    arr_logodd = torch.rand((40,), generator=rng).detach().cpu().numpy()
-
-    basis.fit(
-        arr_act=arr_act,
-        arr_ctx=arr_act,
-        arr_logodd=arr_logodd,
-        logodd_threshold=0.0,
-        seed=1,
-    )
-
-    policy = distillation_policies.OrthogonalBasisRotationWithScalePolicy(
-        teacher_dims=dims_teacher, student_dims=dims_student, device="cpu", basis=basis
-    )
-
-    num_params, num_trainable_params = putils.count_params_in_model(policy)
-
-    assert num_params == num_trainable_params == (dims_student**2) + 1
-
-    # simulate update
-
-    student_feat_transform = policy.transformer_student_feats
-    w_before = student_feat_transform.rotation.weight.detach().numpy()  # type: ignore
-    scaling_before = policy.transformer_student_feats.scaling.detach().numpy()  # type: ignore
-    np.testing.assert_allclose(scaling_before, 1)
-
-    np.testing.assert_allclose(w_before @ w_before.T, np.eye(dims_student), atol=1e-6)
-    np.testing.assert_allclose(w_before.T @ w_before, np.eye(dims_student), atol=1e-6)
-
-    optim = torch.optim.SGD(policy.parameters(), lr=1e-3)
-
-    loss = policy(feat_teacher, feat_student)
-
-    loss.backward()
-
-    optim.step()
-
-    w_after = policy.transformer_student_feats.rotation.weight.detach().numpy()  # type: ignore
-    np.testing.assert_allclose(w_after @ w_after.T, np.eye(dims_student), atol=1e-6)
-    np.testing.assert_allclose(w_after.T @ w_after, np.eye(dims_student), atol=1e-6)
-    scaling_after = policy.transformer_student_feats.scaling.detach().numpy()  # type: ignore
-
-    assert scaling_after != 1
