@@ -83,11 +83,6 @@ def get_untrained_model(name: str, num_classes: int, **kwargs) -> nn.Module:
     return MODEL_GENERATORS[name](num_classes=num_classes, **kwargs)
 
 
-def get_layer_output_dimensions(model: nn.Module, layer: str) -> int:
-    raise
-    return getattr(model, "__layer_dimension")[layer]
-
-
 from . import resnet, vgg, nfnet, vit, mobilenets, students, layers
 
 
