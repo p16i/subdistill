@@ -1,0 +1,62 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+parameters:
+  output-dir:
+    value: sweep-output/2-main-experiment
+  teacher:
+    value: cifar100-resnet18-v1
+  student:
+    values:
+      - student-32-24-16-8
+      - student-48-40-32-24
+  dataset:
+    values: 
+      - cifar100-aquatic_mammals
+      - cifar100-fish
+      - cifar100-flowers
+      - cifar100-food_containers
+      - cifar100-fruit_and_vegetables
+      - cifar100-household_electrical_devices
+      - cifar100-household_furniture
+      - cifar100-insects
+      - cifar100-large_carnivores
+      - cifar100-large_man_made_outdoor_things
+      - cifar100-large_natural_outdoor_scenes
+      - cifar100-large_omnivores_and_herbivores
+      - cifar100-medium_mammals
+      - cifar100-non_insect_invertebrates
+      - cifar100-people
+      - cifar100-reptiles
+      - cifar100-small_mammals
+      - cifar100-trees
+      - cifar100-vehicles_1
+      - cifar100-vehicles_2
+  dataset-variant:
+    value: ""
+  training-size:
+    values: 
+      - 0.25
+      - 0.1
+  layer-policy:
+    values:
+      - nothing
+      - basis-identity:pca--uncentered
+      - basis-identity:prca-sortabs--uncentered
+      - vid
+      - fitnet-relu
+      - attention-transfer
+      # - basis-identity:pcalookahead--uncentered
+  lambda-task:
+      value: 0.0
+  lambda-kd:
+      value: 1.0
+  default-lambda-layer-config:
+    value: cifar100-small

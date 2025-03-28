@@ -1,0 +1,51 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --enable-checkpointing
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+parameters:
+  output-dir:
+    value: sweep-output/4-ablation-other-imagenet-superclasses
+  teacher:
+    value: imagenet-resnet18-tv
+  student:
+    values:
+      - student-32-24-16-8
+      - student-48-40-32-24
+  dataset:
+    values: 
+      - imagenet-boat
+      - imagenet-car
+      - imagenet-cat
+      - imagenet-edible_fruit
+      - imagenet-fungus
+      - imagenet-truck
+  dataset-variant:
+    value: ""
+  training-size:
+    value: 0.25
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  layer-policy:
+    values:
+      - nothing
+      - basis-identity:pca--uncentered
+      - basis-identity:prca-sortabs--uncentered
+      - vid
+      - fitnet-relu
+      - attention-transfer
+  lambda-task:
+      value: 0.0
+  lambda-kd:
+      value: 1.0
+  default-lambda-layer-config:
+    value: imagenet-small

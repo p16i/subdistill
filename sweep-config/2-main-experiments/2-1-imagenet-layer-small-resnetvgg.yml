@@ -1,0 +1,51 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --enable-checkpointing
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+parameters:
+  output-dir:
+    value: sweep-output/2-main-experiment
+  teacher:
+    values: 
+      - imagenet-resnet18-tv
+      - imagenet-resnet50-tv
+      - imagenet-vgg16-tv
+  student:
+    values:
+      - student-32-24-16-8
+      - student-48-40-32-24
+  dataset:
+    value: imagenet-butterfly
+  dataset-variant:
+    value: ""
+  training-size:
+    values:
+      - 0.25
+      - 0.1
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  layer-policy:
+    values:
+      - nothing
+      - basis-identity:pca--uncentered
+      - basis-identity:prca-sortabs--uncentered
+      - basis-identity:pcalookahead--uncentered
+      - vid
+      - fitnet-relu
+      - attention-transfer
+  lambda-task:
+      value: 0.0
+  lambda-kd:
+      value: 1.0
+  default-lambda-layer-config:
+    value: imagenet-small
