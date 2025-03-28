@@ -91,7 +91,6 @@ class PRCAPosDef(OrthogonalBasis):
 
         # Remark: these coefficients are more stable than the one written in the paper.
         # They are the ones in the paper devided by 1/sqrt(tr_a*tr_c).
-
         coef_acca = 1 / np.sqrt(tr_a * tr_c)
         coef_a = 2 / tr_a
         coef_c = 2 / tr_c
