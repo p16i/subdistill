@@ -89,11 +89,9 @@ class PRCAPosDef(OrthogonalBasis):
         cov_ac = (arr_act.T @ arr_ctx) / N
         cov_acca = cov_ac + cov_ac.T
 
-        # Remark: these coefficients are more stable than the one written in the paper.
-        # They are the ones in the paper devided by 1/sqrt(tr_a*tr_c).
-        coef_acca = 1 / np.sqrt(tr_a * tr_c)
-        coef_a = 2 / tr_a
-        coef_c = 2 / tr_c
+        coef_acca = 1
+        coef_a = 2 * np.sqrt(tr_c / tr_a)
+        coef_c = 2 / np.sqrt(tr_a / tr_c)
 
         print(
             f"Coefficients: coeff_acca={coef_acca:.4e}, coeff_a={coef_a:.4e}, coeff_c={coef_c:.4e} "
