@@ -91,7 +91,7 @@ class PRCAPosDef(OrthogonalBasis):
 
         coef_acca = 1
         coef_a = 2 * np.sqrt(tr_c / tr_a)
-        coef_c = 2 / np.sqrt(tr_a / tr_c)
+        coef_c = 2 * np.sqrt(tr_a / tr_c)
 
         print(
             f"Coefficients: coeff_acca={coef_acca:.4e}, coeff_a={coef_a:.4e}, coeff_c={coef_c:.4e} "
