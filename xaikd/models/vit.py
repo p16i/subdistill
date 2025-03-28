@@ -96,25 +96,23 @@ def make_encoder_intermediate_output_have_cnn_like_shape_(model: VisionTransform
         # remark: we have to recreate these convertors for each layer
         # because output hooks are attached.
 
-        # convert from cnn-like to native shapes
-        transform_to_native_shape = ConvertTensorfromCNNLikeToViTShape()
-
-        # convert from native to cnn-like shape
-        transform_to_cnnlike_shape = ConvertTensorfromViTToCNNLikeShape()
-
         layer = model.encoder.layers[lix]
 
         if lix == 0:
-            steps = [layer, transform_to_cnnlike_shape]
+            steps = [layer, ConvertTensorfromViTToCNNLikeShape()]
         else:
-            steps = [transform_to_native_shape, layer, transform_to_cnnlike_shape]
+            steps = [
+                ConvertTensorfromCNNLikeToViTShape(),
+                layer,
+                ConvertTensorfromViTToCNNLikeShape(),
+            ]
 
         model.encoder.layers[lix] = nn.Sequential(*steps)
 
     model.encoder.ln = nn.Sequential(
         OrderedDict(
             [
-                ("_transform_to_native", transform_to_native_shape),
+                ("_transform_to_native", ConvertTensorfromCNNLikeToViTShape()),
                 ("ln", model.encoder.ln),
             ]
         )
