@@ -21,5 +21,14 @@ def get_policy(name: str, device: str, **kwargs) -> Policy:
     return LAYER_POLICY[name](device=device, **kwargs)
 
 
+def policy_exists(name: str) -> bool:
+    # for our policy, `name=basis-bn-sum-normalized:<basis_name>`
+    slugs = name.split(":")
+
+    actual_policy_name = slugs[0]
+
+    return actual_policy_name in LAYER_POLICY
+
+
 def get_last_layer_policy(name: str, **kwargs) -> LastLayerPolicy:
     return LAYER_POLICY[name](device=None, **kwargs)
