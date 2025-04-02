@@ -168,7 +168,9 @@ def main(
 
     logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
 
-    print(f"[policy={layer_policy}] with lambda-layer={lambda_collection.lambda_layer}")
+    print(
+        f"[distillation_policy={distillation_policy} layer_policy={layer_policy}] with {lambda_collection}"
+    )
 
     arr_layer_policies = []
     for teacher_layer, student_layer in zip(arr_teacher_layers, arr_student_layers):
