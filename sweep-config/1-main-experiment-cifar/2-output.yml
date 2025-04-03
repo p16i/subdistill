@@ -12,10 +12,12 @@ parameters:
   output-dir:
     value: sweep-output/1-main-experiment
   dataset:
-    value: cifar100-people-vs-others
+    values: 
+      - cifar100-large_man_made_outdoor_things-vs-others
+      - cifar100-aquatic_mammals-vs-others
   training-size:
     values:
-      - 1.0
+      - 0.8
       - 0.1
       - 0.01
   seed:
@@ -28,20 +30,16 @@ parameters:
   student:
     value: student-cifar-resnet18-32
   layers:
-    value: layer3:layer3,layer4:layer4
-  lambda-task:
-    value: 1.0
-  lambda-kd:
-    value: 0.0
+    value: layer1:layer1,layer2:layer2,layer3:layer3,layer4:layer4
   weight-decay:
     values:
+      - 0.0
+      - 0.000001
+      - 0.00001
       - 0.0001
       - 0.001
       - 0.01
-      - 0.1
-      - 0.0
-      - 1.0
-  lambda-layer:
-    value: 0.0
-  layer-policy:
-    value: nothing
+  distillation-policy:
+    values: 
+      - student-only
+      - kd-only
