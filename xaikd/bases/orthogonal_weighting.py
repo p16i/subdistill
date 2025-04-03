@@ -22,7 +22,7 @@ def estimate_std_wrt_ratio_maxent(
 
     arr_std = []
     arr_percentile_entropies = []
-    # todo: more intuitive if we use np.linspace
+    # fixme: change to linkspace [1, 100]
     arr_candidates = np.arange(1, 99 + 1) / 100
 
     vmin = np.min(arr_logits)
@@ -40,7 +40,9 @@ def estimate_std_wrt_ratio_maxent(
 
     best_ix = np.argmin(np.abs(arr_percentile_entropies - target_entropy))
     best_std = arr_std[best_ix]
-    print(f"[entropy_ratio={ratio}]: best_ix={best_ix} best_std={best_std}")
+    print(
+        f"[entropy_ratio={ratio}]: best_ix={best_ix} best_std={best_std:.4e} best_candidate={arr_candidates[best_ix]}"
+    )
 
     return best_std
 
