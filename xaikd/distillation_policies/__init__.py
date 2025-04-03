@@ -17,8 +17,9 @@ class LambdaCollection:
     lambda_layer: float
 
 
-# todo: move this to utils
-def parse_layer_string(txt: str) -> typing.Tuple[typing.List[str], typing.List[str]]:
+def parse_layer_string(
+    txt: typing.Optional[str],
+) -> typing.Tuple[typing.List[str], typing.List[str]]:
     """_summary_
 
     Args:
@@ -31,6 +32,9 @@ def parse_layer_string(txt: str) -> typing.Tuple[typing.List[str], typing.List[s
         teacher_layers : typing.List[str]
         student_layers : typing.List[str]
     """
+    if txt is None:
+        return [], []
+
     teacher_layers = []
     student_layers = []
 
