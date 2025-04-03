@@ -157,7 +157,16 @@ def main(
         device=device,
     )
 
-    print("Layerwise Distillation with the following layers:")
+
+    logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
+
+    print(
+        f"[distillation_policy={distillation_policy} layer_policy={layer_policy}] with {lambda_collection}"
+    )
+
+    if len(arr_teacher_layers) > 0:
+        print(f"We attach `layer_policy={layer_policy}` at the following layers:")
+
     for (teacher_layer, teacher_dim), (student_layer, student_dim) in zip(
         dict_teacher_layer_dim.items(),
         dict_student_layer_dim.items(),
@@ -165,12 +174,6 @@ def main(
         print(
             f"> mapping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim})"
         )
-
-    logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
-
-    print(
-        f"[distillation_policy={distillation_policy} layer_policy={layer_policy}] with {lambda_collection}"
-    )
 
     arr_layer_policies = []
     for teacher_layer, student_layer in zip(arr_teacher_layers, arr_student_layers):
