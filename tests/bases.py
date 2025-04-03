@@ -203,7 +203,7 @@ def test_analytic_prcaposdef():
     _test_analytic_basis("prcaposdef", Expected())
 
 
-@pytest.mark.parametrize("entropy_ratio", [0.5, 0.95, 1.0])
+@pytest.mark.parametrize("entropy_ratio", [0.5, 0.95, 0.975, 0.99])
 def test_analytic_prcaposdef_weighting(entropy_ratio):
 
     class Expected(ExpectedU):
