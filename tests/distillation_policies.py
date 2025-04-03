@@ -258,3 +258,70 @@ def test_last_layer_policy(last_layer_policy, expected):
     )
 
     assert not torch.isnan(val)
+
+
+@pytest.mark.parametrize(
+    "policy_name,lambda_layer,expected_layer_policy,expected_collection",
+    [
+        (
+            "student-only",
+            00,
+            "nothing",
+            distillation_policies.LambdaCollection(
+                lambda_task=1, lambda_kd=0, lambda_layer=0
+            ),
+        ),
+        (
+            "kd-only",
+            100,
+            "nothing",
+            distillation_policies.LambdaCollection(
+                lambda_task=0, lambda_kd=1, lambda_layer=0
+            ),
+        ),
+        (
+            "vid",
+            10,
+            "vid",
+            distillation_policies.LambdaCollection(
+                lambda_task=0, lambda_kd=1, lambda_layer=10
+            ),
+        ),
+        (
+            "attention-transfer",
+            0.1,
+            "attention-transfer",
+            distillation_policies.LambdaCollection(
+                lambda_task=0, lambda_kd=1, lambda_layer=0.1
+            ),
+        ),
+        (
+            "basis-bn-sum-normalized:prcaposdef-entropy0.95",
+            0.1,
+            "basis-bn-sum-normalized:prcaposdef-entropy0.95",
+            distillation_policies.LambdaCollection(
+                lambda_task=0, lambda_kd=1, lambda_layer=0.1
+            ),
+        ),
+    ],
+)
+def test_resolve_lambdas_and_layer_policy(
+    policy_name,
+    lambda_layer,
+    expected_layer_policy,
+    expected_collection,
+):
+    teacher = "cifar100-resnet18-v1"
+    default_lambda_layer_config = None
+
+    actual_collection, actual_layer_policy = (
+        distillation_policies.resolve_lambdas_and_layer_policy(
+            teacher=teacher,
+            policy_name=policy_name,
+            lambda_layer=lambda_layer,
+            default_lambda_layer_config=default_lambda_layer_config,
+        )
+    )
+
+    np.testing.assert_equal(actual_layer_policy, expected_layer_policy)
+    np.testing.assert_equal(actual_collection, expected_collection)
