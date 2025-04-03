@@ -141,8 +141,13 @@ class PRCAPosDefWeightSTDWithH0_95(PRCAPosDefWeightSTDFromEntropy):
 
 
 @register_basis()
-class PRCAPosDefWeightSTDWithH1(PRCAPosDefWeightSTDFromEntropy):
-    entropy_ratio = 1.0
+class PRCAPosDefWeightSTDWithH0_975(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 0.975
+
+
+@register_basis()
+class PRCAPosDefWeightSTDWithH0_99(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 0.99
 
 
 @register_basis()
