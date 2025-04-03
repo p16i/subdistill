@@ -40,6 +40,7 @@ def estimate_std_wrt_ratio_maxent(
 
     best_ix = np.argmin(np.abs(arr_percentile_entropies - target_entropy))
     best_std = arr_std[best_ix]
+    print(f"[entropy_ratio={ratio}]: best_ix={best_ix} best_std={best_std}")
 
     return best_std
 
