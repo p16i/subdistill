@@ -22,8 +22,7 @@ def estimate_std_wrt_ratio_maxent(
 
     arr_std = []
     arr_percentile_entropies = []
-    # fixme: change to linkspace [1, 100]
-    arr_candidates = np.arange(1, 99 + 1) / 100
+    arr_candidates = np.linspace(1, 100, num=100) / 100
 
     vmin = np.min(arr_logits)
     vmax = np.max(arr_logits)
