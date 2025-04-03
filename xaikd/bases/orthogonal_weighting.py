@@ -22,8 +22,7 @@ def estimate_std_wrt_ratio_maxent(
 
     arr_std = []
     arr_percentile_entropies = []
-    # todo: more intuitive if we use np.linspace
-    arr_candidates = np.arange(1, 99 + 1) / 100
+    arr_candidates = np.linspace(1, 100, num=100) / 100
 
     vmin = np.min(arr_logits)
     vmax = np.max(arr_logits)
@@ -40,6 +39,9 @@ def estimate_std_wrt_ratio_maxent(
 
     best_ix = np.argmin(np.abs(arr_percentile_entropies - target_entropy))
     best_std = arr_std[best_ix]
+    print(
+        f"[entropy_ratio={ratio}]: best_ix={best_ix} best_std={best_std:.4e} best_candidate={arr_candidates[best_ix]}"
+    )
 
     return best_std
 
@@ -139,8 +141,13 @@ class PRCAPosDefWeightSTDWithH0_95(PRCAPosDefWeightSTDFromEntropy):
 
 
 @register_basis()
-class PRCAPosDefWeightSTDWithH1(PRCAPosDefWeightSTDFromEntropy):
-    entropy_ratio = 1.0
+class PRCAPosDefWeightSTDWithH0_975(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 0.975
+
+
+@register_basis()
+class PRCAPosDefWeightSTDWithH0_99(PRCAPosDefWeightSTDFromEntropy):
+    entropy_ratio = 0.99
 
 
 @register_basis()
