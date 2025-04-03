@@ -64,8 +64,6 @@ def resolve_lambdas_and_layer_policy(
     lambda_layer: typing.Optional[float],
     default_lambda_layer_config: typing.Optional[str],
 ) -> typing.Tuple[LambdaCollection, str]:
-    # fixme: add test
-
     if policy_name == "student-only":
         lambda_collection = LambdaCollection(lambda_task=1, lambda_kd=0, lambda_layer=0)
         layer_policy = "nothing"
