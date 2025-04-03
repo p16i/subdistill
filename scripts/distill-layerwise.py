@@ -95,10 +95,10 @@ def main(
 
     start_time = datetime.now()
 
-    if layers is None:
-        click.echo("layers is not specified. We fall back to the default values")
-        layers = constants.DEFAULT_TEACHER_STUDENT_LAYER_MAPPING[teacher]
-        click.echo(f"> {layers}")
+    # if layers is None:
+    #     click.echo("layers is not specified. We fall back to the default values")
+    #     layers = constants.DEFAULT_TEACHER_STUDENT_LAYER_MAPPING[teacher]
+    #     click.echo(f"> {layers}")
 
     arr_teacher_layers, arr_student_layers = distillation_policies.parse_layer_string(
         layers
