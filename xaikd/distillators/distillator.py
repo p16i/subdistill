@@ -128,7 +128,6 @@ class Layerwise:
             accelerator=device,
             max_epochs=epochs,
             logger=logger,
-            log_every_n_steps=1,
             deterministic="warn",
             callbacks=[
                 LearningRateMonitor(logging_interval="step"),
