@@ -87,7 +87,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def configure_optimizers(self):
         parameters = self._get_parameters()
 
-        optimizer = torch.optim.Adam(
+        optimizer = torch.optim.AdamW(
             parameters, lr=self.lr, weight_decay=self.weight_decay
         )
         scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)

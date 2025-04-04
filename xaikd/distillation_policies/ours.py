@@ -7,7 +7,8 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd.bases import OrthogonalBasis, AdapterMode, Adapter
+from xaikd.bases import OrthogonalBasis
+from xaikd.bases.adapter import Adapter, AdapterMode
 from xaikd import utils
 
 from .register import register_policy

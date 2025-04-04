@@ -10,20 +10,17 @@ import torch
 
 from .interface import OrthogonalBasis
 from .register import register_basis
-from .adapter import Adapter, AdapterMode
 
 from xaikd import utils
 
 
 @register_basis()
 class PCA(OrthogonalBasis):
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
         arr_act = utils.flatten_3d_tensor(arr_act)
         N, _ = arr_act.shape
 
-        cov = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
+        cov = (arr_act.T @ arr_act) / N
 
         _, eigvecs = utils.solve_eigh(cov)
 
@@ -32,9 +29,7 @@ class PCA(OrthogonalBasis):
 
 @register_basis()
 class GradPCA(OrthogonalBasis):
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
 
         arr_ctx = utils.flatten_3d_tensor(arr_ctx)
         N, _ = arr_ctx.shape
@@ -48,16 +43,14 @@ class GradPCA(OrthogonalBasis):
 
 @register_basis()
 class PRCASortAbs(OrthogonalBasis):
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
         arr_act = utils.flatten_3d_tensor(arr_act)
         N, _ = arr_act.shape
 
         arr_ctx = utils.flatten_3d_tensor(arr_ctx)
         mean_ctx = np.mean(arr_ctx, axis=0)
 
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
+        cov_ac = (arr_act.T @ arr_ctx) / N
         cov_acca = cov_ac + cov_ac.T
 
         _, eigvecs = utils.solve_eigh(cov_acca, sort_with_abs_eigvals=True)
@@ -66,15 +59,13 @@ class PRCASortAbs(OrthogonalBasis):
 
 @register_basis()
 class PRCA(OrthogonalBasis):
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
         arr_act = utils.flatten_3d_tensor(arr_act)
         arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-        mean_ctx = np.mean(arr_ctx, axis=0)
+
         N, _ = arr_act.shape
 
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
+        cov_ac = (arr_act.T @ arr_ctx) / N
         cov_acca = cov_ac + cov_ac.T
 
         _, eigvecs = utils.solve_eigh(cov_acca, sort_with_abs_eigvals=False)
@@ -83,120 +74,44 @@ class PRCA(OrthogonalBasis):
 
 @register_basis()
 class PRCAPosDef(OrthogonalBasis):
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
         arr_act = utils.flatten_3d_tensor(arr_act)
         N, _ = arr_act.shape
 
         arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-        mean_ctx = np.mean(arr_ctx, axis=0)
 
-        cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
-        tr_cov_a = np.trace(cov_a)
+        cov_a = (arr_act.T @ arr_act) / N
+        tr_a = np.trace(cov_a)
 
         cov_c = (arr_ctx.T @ arr_ctx) / N
-        tr_cov_c = np.trace(cov_c)
+        tr_c = np.trace(cov_c)
 
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
+        cov_ac = (arr_act.T @ arr_ctx) / N
         cov_acca = cov_ac + cov_ac.T
 
-        cov_pos_def = (
-            (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
-            + (2 / tr_cov_a) * cov_a
-            + (2 / tr_cov_c) * cov_c
+        coef_acca = 1
+        coef_a = 2 * np.sqrt(tr_c / tr_a)
+        coef_c = 2 * np.sqrt(tr_a / tr_c)
+
+        print(
+            f"Coefficients: coeff_acca={coef_acca:.4e}, coeff_a={coef_a:.4e}, coeff_c={coef_c:.4e} "
+            + f"tr_a={tr_a:.4e}, tr_c={tr_c:.4e}"
         )
+
+        cov_pos_def = coef_acca * cov_acca + coef_a * cov_a + coef_c * cov_c
 
         eigvals, eigvecs = utils.solve_eigh(cov_pos_def)
 
-        assert (eigvals >= 0).all()
+        min_eigval = np.min(eigvals)
+        max_eigval = np.max(eigvals)
+        print(f"range(eigvals)=[{min_eigval:.4e}, {max_eigval:.4e}]")
 
-        return eigvecs
-
-
-@register_basis()
-class PRCAPosDefSigmaASigmaC(OrthogonalBasis):
-    @classmethod
-    def slug(cls):
-        return "prca-ablation-a-c"
-
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
-        arr_act = utils.flatten_3d_tensor(arr_act)
-        N, _ = arr_act.shape
-
-        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-
-        cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
-
-        tr_cov_a = np.trace(cov_a)
-
-        cov_c = (arr_ctx.T @ arr_ctx) / N
-        tr_cov_c = np.trace(cov_c)
-
-        cov = (2 / tr_cov_a) * cov_a + (2 / tr_cov_c) * cov_c
-        eigvals, eigvecs = utils.solve_eigh(cov)
-
-        assert (eigvals >= 0).all()
-
-        return eigvecs
-
-
-@register_basis()
-class PRCAPosDefAblationSigmaASigmaAC(OrthogonalBasis):
-    @classmethod
-    def slug(cls):
-        return "prca-ablation-a-ac"
-
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
-        arr_act = utils.flatten_3d_tensor(arr_act)
-        N, _ = arr_act.shape
-
-        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-        mean_ctx = np.mean(arr_ctx, axis=0)
-
-        cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
-        tr_cov_a = np.trace(cov_a)
-
-        tr_cov_c = np.trace((arr_ctx.T @ arr_ctx) / N)
-
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
-        cov_acca = cov_ac + cov_ac.T
-
-        cov = (2 / tr_cov_a) * cov_a + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
-        _, eigvecs = utils.solve_eigh(cov)
-
-        return eigvecs
-
-
-@register_basis()
-class PRCAPosDefAblationSigmaCSigmaAC(OrthogonalBasis):
-    @classmethod
-    def slug(cls):
-        return "prca-ablation-c-ac"
-
-    def _solve(
-        self, arr_act, arr_ctx, mean_act, arr_logodd, logodd_threshold, **kwargs
-    ):
-        arr_act = utils.flatten_3d_tensor(arr_act)
-        N, _ = arr_act.shape
-
-        arr_ctx = utils.flatten_3d_tensor(arr_ctx)
-        mean_ctx = np.mean(arr_ctx, axis=0)
-
-        cov_a = (arr_act.T @ arr_act) / N - np.outer(mean_act, mean_act)
-        tr_cov_a = np.trace(cov_a)
-
-        cov_c = (arr_ctx.T @ arr_ctx) / N
-        tr_cov_c = np.trace(cov_c)
-
-        cov_ac = (arr_act.T @ arr_ctx) / N - np.outer(mean_act, mean_ctx)
-        cov_acca = cov_ac + cov_ac.T
-
-        cov = (2 / tr_cov_c) * cov_c + (1 / np.sqrt(tr_cov_a * tr_cov_c)) * cov_acca
-        _, eigvecs = utils.solve_eigh(cov)
+        # Mathematically, the eigenvalues should be non-negative.
+        # Due to numerical stablity, there are situations that we have negative values.
+        # In such cases, we tolerate and raise an error if the smallest value is relatetive large.
+        if min_eigval < 0 and (np.abs(min_eigval) / max_eigval) > 1e-16:
+            raise ValueError(
+                f"We have {np.sum(eigvals < 0)} negative eigvals (the smallest one is {min_eigval:.4e})"
+            )
 
         return eigvecs

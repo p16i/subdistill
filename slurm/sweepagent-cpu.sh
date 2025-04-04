@@ -10,4 +10,4 @@ export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 export CUBLAS_WORKSPACE_CONFIG=:4096:8
 export WANDB__SERVICE_WAIT=300
 
-./runpy wandb agent "$@"
+./runpy wandb agent --count 1 "$@"

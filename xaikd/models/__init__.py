@@ -24,10 +24,10 @@ MODEL_GENERATORS = dict()
 MODEL_CHECKPOINT_MAPPING = {
     "cifar100-resnet18-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-resnet18-v1--model-sszu9jtz:best.pth",
     "cifar100-resnet18-v2": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-resnet18-v2--model-8no232l1:best.pth",
-    "cifar100-resnet50-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-resnet50-v1--model-dxngvotm:best.pth",
-    "cifar100-vgg11-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-vgg11-v1--model-rm0pe4r0:best.pth",
-    "celeba-resnet18-scratch": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba&files=celeba--scratch--n8r0q2vb.pth",
-    "celeba-resnet18-pretrained": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba&files=celeba--imagenet-pretrained--6oj5aaxl.pth",
+    # "cifar100-resnet50-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-resnet50-v1--model-dxngvotm:best.pth",
+    # "cifar100-vgg11-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-vgg11-v1--model-rm0pe4r0:best.pth",
+    # "celeba-resnet18-scratch": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba&files=celeba--scratch--n8r0q2vb.pth",
+    # "celeba-resnet18-pretrained": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba&files=celeba--imagenet-pretrained--6oj5aaxl.pth",
     "celeba-resnet18-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=resnet18--p16i-xaikd-training-teacher-models-zbgow8eu.pth",
     "celeba-resnet50-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=resnet50--p16i-xaikd-training-teacher-models-cuoynabf.pth",
     "celeba-wideresnet50_2-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=wideresnet50-2--p16i-xaikd-training-teacher-models-t0sg5wcp.pth",
@@ -57,56 +57,7 @@ def register_model(name):
 def get_trained_model(name: str) -> nn.Module:
     dataset, arch, variant = name.split("-")
 
-    # todo: better organizing these if-else structures
-    if name in MODEL_CHECKPOINT_MAPPING.keys():
-        url = MODEL_CHECKPOINT_MAPPING[name]
-
-        if "cifar" in dataset:
-            num_classes = 10 if dataset == "cifar10" else 100
-
-            model = MODEL_GENERATORS[f"cifar-{arch}"](num_classes=num_classes)
-        elif dataset == "celeba":
-            CELEBA_NUM_ATTRIBUTES = 40
-            if arch == "resnet18":
-                model = torchvision.models.resnet18(
-                    weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
-                )
-            elif arch == "resnet50":
-                model = torchvision.models.resnet50(
-                    weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
-                )
-            elif arch == "wideresnet50_2":
-                model = torchvision.models.wide_resnet50_2(
-                    weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
-                )
-            elif arch == "vitb16":
-                model = torchvision.models.vit_b_16(
-                    weights=None, num_classes=CELEBA_NUM_ATTRIBUTES
-                )
-            else:
-                raise ValueError(f"`arhc={name}` doesn't exist")
-            setattr(model, "num_classes", CELEBA_NUM_ATTRIBUTES)
-        else:
-            raise ValueError(f"`{name}` doesn't exist")
-
-        model.load_state_dict(
-            torch.hub.load_state_dict_from_url(url, file_name=f"{name}.pth")
-        )
-    elif name in MODEL_GENERATORS.keys():
-        model = MODEL_GENERATORS[name]()
-    elif "imagenet-resnet18-random" in name:
-        # use regex to parse the number
-        seed = int(name.split("-")[-1].replace("random", ""))
-        print(f"Using Random `resnet18(seed={seed})` Model")
-        torch.manual_seed(seed)
-        model = torchvision.models.resnet18()
-    elif "imagenet-vgg16-random" in name:
-        seed = int(name.split("-")[-1].replace("random", ""))
-        print(f"Using Random `vgg16(seed={seed})` Model")
-        torch.manual_seed(seed)
-        model = models.vgg16()
-    else:
-        raise ValueError(f"Unfortunately, we do NOT have a `{name}` model")
+    model = MODEL_GENERATORS[name]()
 
     num_classes = model.num_classes
 
@@ -130,11 +81,6 @@ def get_trained_model(name: str) -> nn.Module:
 def get_untrained_model(name: str, num_classes: int, **kwargs) -> nn.Module:
     print(f"Constructing untrain-model={name} with ( {num_classes} outputs)")
     return MODEL_GENERATORS[name](num_classes=num_classes, **kwargs)
-
-
-def get_layer_output_dimensions(model: nn.Module, layer: str) -> int:
-    raise
-    return getattr(model, "__layer_dimension")[layer]
 
 
 from . import resnet, vgg, nfnet, vit, mobilenets, students, layers

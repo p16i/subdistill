@@ -11,12 +11,29 @@ import numpy.typing as npt
 from xaikd import bases, utils
 
 
+def _generate_dummy_act_ctx(
+    num_datapoints: int, num_channels: int, num_spatials: int, seed: int
+) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+
+    rng = np.random.default_rng(seed=seed)
+    activation = rng.random(
+        size=(num_datapoints, num_channels, num_spatials)
+    ) + rng.random(size=(1,))
+    context = rng.random(size=(num_datapoints, num_channels, num_spatials))
+
+    mean = np.mean(utils.flatten_3d_tensor(activation), axis=0)
+    activation -= mean[None, :, None]
+
+    return activation, context, mean
+
+
 class ExpectedU:
     @classmethod
     def compute(
         cls,
         arr_act: npt.NDArray,
         arr_ctx: npt.NDArray,
+        mean_act: npt.NDArray,
         arr_logodd: npt.NDArray,
         logodd_threshold: float,
     ):
@@ -30,6 +47,10 @@ def _test_analytic_basis(basis_name: str, compute_expected_U: ExpectedU):
 
     arr_act = rng.normal(size=(n, d, num_locations)) + 2
     arr_ctx = rng.normal(size=(n, d, num_locations)) + 2
+
+    mean_act = np.mean(utils.flatten_3d_tensor(arr_act), axis=0)
+    arr_act -= mean_act[None, :, None]
+
     arr_logodd = rng.normal(size=(n,))
     logodd_threshold = 0.0
 
@@ -38,13 +59,16 @@ def _test_analytic_basis(basis_name: str, compute_expected_U: ExpectedU):
     basis.fit(
         arr_act=arr_act,
         arr_ctx=arr_ctx,
+        mean_act=mean_act,
         arr_logodd=arr_logodd,
         logodd_threshold=logodd_threshold,
+        strict_mode=True,
     )
 
     expected_U = compute_expected_U.compute(
         arr_act=arr_act,
         arr_ctx=arr_ctx,
+        mean_act=mean_act,
         arr_logodd=arr_logodd,
         logodd_threshold=logodd_threshold,
     )
@@ -59,6 +83,7 @@ def test_analytic_pca():
             cls,
             arr_act: np.ndarray[typing.Any, np.dtype],
             arr_ctx: np.ndarray[typing.Any, np.dtype],
+            mean_act: npt.NDArray,
             arr_logodd: np.ndarray[typing.Any, np.dtype],
             logodd_threshold: float,
         ):
@@ -77,6 +102,7 @@ def test_analytic_gpca():
             cls,
             arr_act: np.ndarray[typing.Any, np.dtype],
             arr_ctx: np.ndarray[typing.Any, np.dtype],
+            mean_act: npt.NDArray,
             arr_logodd: np.ndarray[typing.Any, np.dtype],
             logodd_threshold: float,
         ):
@@ -95,6 +121,7 @@ def test_analytic_prcasortabs():
             cls,
             arr_act: np.ndarray[typing.Any, np.dtype],
             arr_ctx: np.ndarray[typing.Any, np.dtype],
+            mean_act: npt.NDArray,
             arr_logodd: np.ndarray[typing.Any, np.dtype],
             logodd_threshold: float,
         ):
@@ -119,6 +146,7 @@ def test_analytic_prca():
             cls,
             arr_act: np.ndarray[typing.Any, np.dtype],
             arr_ctx: np.ndarray[typing.Any, np.dtype],
+            mean_act: npt.NDArray,
             arr_logodd: np.ndarray[typing.Any, np.dtype],
             logodd_threshold: float,
         ):
@@ -144,6 +172,7 @@ def test_analytic_prcaposdef():
             cls,
             arr_act: np.ndarray[typing.Any, np.dtype],
             arr_ctx: np.ndarray[typing.Any, np.dtype],
+            mean_act: npt.NDArray,
             arr_logodd: np.ndarray[typing.Any, np.dtype],
             logodd_threshold: float,
         ):
@@ -174,7 +203,7 @@ def test_analytic_prcaposdef():
     _test_analytic_basis("prcaposdef", Expected())
 
 
-@pytest.mark.parametrize("entropy_ratio", [0.5, 0.95, 1.0])
+@pytest.mark.parametrize("entropy_ratio", [0.5, 0.95, 0.975, 0.99])
 def test_analytic_prcaposdef_weighting(entropy_ratio):
 
     class Expected(ExpectedU):
@@ -183,6 +212,7 @@ def test_analytic_prcaposdef_weighting(entropy_ratio):
             cls,
             arr_act: np.ndarray[typing.Any, np.dtype],
             arr_ctx: np.ndarray[typing.Any, np.dtype],
+            mean_act: npt.NDArray,
             arr_logodd: np.ndarray[typing.Any, np.dtype],
             logodd_threshold: float,
         ):
@@ -236,6 +266,7 @@ def test_analytic_gradpca_weighting(entropy_ratio):
             cls,
             arr_act: np.ndarray[typing.Any, np.dtype],
             arr_ctx: np.ndarray[typing.Any, np.dtype],
+            mean_act: npt.NDArray,
             arr_logodd: np.ndarray[typing.Any, np.dtype],
             logodd_threshold: float,
         ):
@@ -271,23 +302,19 @@ def test_analytic_gradpca_weighting(entropy_ratio):
     "basis_name",
     [
         "pca",
-        "pca--centered",
         "gradpca",
         "prcaposdef",
-        "prcaposdef--centered",
         "prcaposdef-entropy0.95",
-        "prcaposdef-entropy0.95--centered",
         "gradpca-entropy0.95",
-        "prca-ablation-a-ac",
-        "prca-ablation-c-ac",
-        "prca-ablation-a-c",
     ],
 )
 def test_correct_scale_orthogoal_bases(basis_name):
     np.random.seed(1)
     n, d, num_locations = 10, 5, 20
-    arr_act = np.random.randn(n, d, num_locations)
-    arr_ctx = np.random.randn(n, d, num_locations)
+    arr_act, arr_ctx, mean_act = _generate_dummy_act_ctx(
+        num_datapoints=n, num_channels=d, num_spatials=num_locations, seed=1
+    )
+
     arr_logodd = np.random.randn(n)
     logodd_threshold = 0.0
 
@@ -296,9 +323,11 @@ def test_correct_scale_orthogoal_bases(basis_name):
     basis.fit(
         arr_act=arr_act,
         arr_ctx=arr_ctx,
+        mean_act=mean_act,
         arr_logodd=arr_logodd,
         logodd_threshold=logodd_threshold,
         seed=1,
+        strict_mode=True,
     )
 
     U = basis.U
@@ -366,6 +395,23 @@ def _solve_prca_posdef(arr_logodd, arr_act, arr_ctx):
     return utils.solve_eigh(cov)
 
 
+def _solve_prca_posdef_as_defined_in_paper(arr_logodd, arr_act, arr_ctx):
+    arr_act = utils.flatten_3d_tensor(arr_act)
+    arr_ctx = utils.flatten_3d_tensor(arr_ctx)
+
+    cov_a = arr_act.T @ arr_act
+    cov_c = arr_ctx.T @ arr_ctx
+    cov_ac = arr_act.T @ arr_ctx
+    cov_acca = cov_ac + cov_ac.T
+
+    tr_a = np.trace(cov_a)
+    tr_c = np.trace(cov_c)
+
+    cov = cov_acca + 2 * np.sqrt(tr_c / tr_a) * cov_a + 2 * np.sqrt(tr_a / tr_c) * cov_c
+
+    return utils.solve_eigh(cov)
+
+
 def _solve_prca_posdef_threshold_0_entropy_0_95(arr_logodd, arr_act, arr_ctx):
 
     std = bases.orthogonal_weighting.estimate_std_wrt_ratio_maxent(
@@ -400,15 +446,10 @@ def _solve_prca_posdef_threshold_0_entropy_0_95(arr_logodd, arr_act, arr_ctx):
     "basis_name,solve_func",
     [
         ("pca", _solve_pca),
-        ("pca--centered", _solve_pca),
         ("gradpca", _solve_gradpca),
         ("prcaposdef", _solve_prca_posdef),
-        ("prcaposdef--centered", _solve_prca_posdef),
+        ("prcaposdef", _solve_prca_posdef_as_defined_in_paper),
         ("prcaposdef-entropy0.95", _solve_prca_posdef_threshold_0_entropy_0_95),
-        (
-            "prcaposdef-entropy0.95--centered",
-            _solve_prca_posdef_threshold_0_entropy_0_95,
-        ),
         ("gradpca-entropy0.95", _solve_gradpca_threshold_0_entropy_0_95),
     ],
 )
@@ -417,36 +458,33 @@ def test_centering_orthogonal_bases(basis_name, solve_func):
     n, d, num_locations = 10, 5, 20
     basis = bases.get_basis(basis_name)
 
-    activation = np.random.randn(n, d, num_locations)
-    context = np.random.randn(n, d, num_locations)
+    activation, context, mean_act = _generate_dummy_act_ctx(
+        num_datapoints=n, num_channels=d, num_spatials=num_locations, seed=1
+    )
+
     arr_logodd = np.random.randn(
         n,
     )
     threshold = 0
 
-    if basis.centering:
-        mean = np.mean(utils.flatten_3d_tensor(activation), axis=0)
-    else:
-        mean = np.zeros(d)
-
-    assert ("centered" in basis_name) == basis.centering
-
-    modified_activation = activation - mean[None, :, None]
+    assert basis.centering
 
     expected_eigvals, expected_U = solve_func(
         arr_logodd,
-        modified_activation,
+        activation,
         context,
     )
     basis.fit(
         arr_act=activation,
         arr_ctx=context,
+        mean_act=mean_act,
         arr_logodd=arr_logodd,
         logodd_threshold=threshold,
         device="cpu",
+        strict_mode=True,
     )
 
-    np.testing.assert_allclose(basis.mean, mean)
+    np.testing.assert_allclose(basis.mean, mean_act)
 
     actual_U = basis.U
 
@@ -454,6 +492,47 @@ def test_centering_orthogonal_bases(basis_name, solve_func):
 
     if basis.centering:
         assert basis.mean.shape == (d,)
-        np.testing.assert_allclose(basis.mean, mean)
+        np.testing.assert_allclose(basis.mean, mean_act)
     else:
         np.testing.assert_allclose(basis.mean, np.zeros(d))
+
+
+def test_equivalence_between_prcaposdef_and_prcposdef_uniform():
+    n, d, num_locations = 10, 5, 20
+
+    activation = np.random.rand(n, d, num_locations)
+    context = np.random.rand(n, d, num_locations)
+    activation, context, mean_act = _generate_dummy_act_ctx(
+        num_datapoints=n, num_channels=d, num_spatials=num_locations, seed=1
+    )
+    arr_logodd = np.random.randn(
+        n,
+    )
+    threshold = 0
+
+    prcaposdef = bases.PRCAPosDef()
+    prcaposdef.fit(
+        arr_act=activation,
+        arr_ctx=context,
+        mean_act=mean_act,
+        arr_logodd=arr_logodd,
+        logodd_threshold=threshold,
+    )
+
+    prcaposdef_uniform = bases.PRCAPosDefUniformWeight()
+    prcaposdef_uniform.fit(
+        arr_act=activation,
+        arr_ctx=context,
+        mean_act=mean_act,
+        arr_logodd=arr_logodd,
+        logodd_threshold=threshold,
+    )
+
+    np.testing.assert_allclose(
+        prcaposdef.U,
+        prcaposdef_uniform.U,
+    )
+
+    np.testing.assert_allclose(
+        prcaposdef.scale_factors, prcaposdef_uniform.scale_factors
+    )

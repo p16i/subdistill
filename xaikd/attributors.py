@@ -156,7 +156,7 @@ def extract_activation_grad(
     device="cpu",
     number_of_selected_spatial_locations=20,
     verbose=False,
-) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray]:
+) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
     arr_act = []
     arr_ctx = []
     arr_logit = []
@@ -209,6 +209,12 @@ def extract_activation_grad(
     nc, w, h = output_dimensions
 
     arr_act = np.vstack(arr_act)
+    mean_act = np.mean(utils.flatten_3d_tensor(arr_act), axis=0)
+
+    assert mean_act.shape == (nc,)
+
+    arr_act -= mean_act[None, :, None]
+
     arr_ctx = np.vstack(arr_ctx)
     arr_logit = np.array(arr_logit)
     assert len(arr_logit.shape) == 1
@@ -218,4 +224,4 @@ def extract_activation_grad(
 
     print(f"> shape(arr_act)={arr_act.shape}; shape(arr_logits)={arr_logit.shape}")
 
-    return arr_logit, arr_act, arr_ctx
+    return arr_logit, arr_act, arr_ctx, mean_act

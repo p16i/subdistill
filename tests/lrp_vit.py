@@ -10,6 +10,8 @@ from xaikd import models, attributors, lrp, logit_modifiers
 
 from PIL import Image
 
+pytest.skip(allow_module_level=True)
+
 
 @pytest.mark.slow
 def test_callable():

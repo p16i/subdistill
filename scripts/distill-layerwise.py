@@ -47,10 +47,8 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
 @click.option("--student", default="student-32-24-16-8", required=True)
 @click.option("--dataset", default="cifar100-people", type=str, required=True)
 @click.option("--training-size", type=float, default=1.0, required=True)
-@click.option("--layer-policy", type=str, required=True)
+@click.option("--distillation-policy", type=str, required=True)
 @click.option("--layers", default=None, type=str)
-@click.option("--lambda-task", default=0.0, type=float)
-@click.option("--lambda-kd", default=1.0, type=float)
 @click.option("--lambda-layer", default=None, type=float)
 @click.option("--default-lambda-layer-config", default=None, type=str)
 @click.option("--epochs", type=int, default=100, required=True)
@@ -65,10 +63,8 @@ def main(
     student,
     dataset,
     training_size,
-    layer_policy,
+    distillation_policy,
     layers,
-    lambda_task,
-    lambda_kd,
     lambda_layer,
     default_lambda_layer_config,
     epochs,
@@ -80,11 +76,13 @@ def main(
     wandb_experiment_group,
 ):
 
-    lambda_layer = constants.resolve_lambda_layer(
-        teacher_model_name=teacher,
-        policy_name=layer_policy,
-        lambda_layer=lambda_layer,
-        default_config_key=default_lambda_layer_config,
+    lambda_collection, layer_policy = (
+        distillation_policies.resolve_lambdas_and_layer_policy(
+            teacher=teacher,
+            policy_name=distillation_policy,
+            lambda_layer=lambda_layer,
+            default_lambda_layer_config=default_lambda_layer_config,
+        )
     )
 
     wanddb_experiment_group = (
@@ -96,11 +94,6 @@ def main(
     pl.seed_everything(seed)
 
     start_time = datetime.now()
-
-    if layers is None:
-        click.echo("layers is not specified. We fall back to the default values")
-        layers = constants.DEFAULT_TEACHER_STUDENT_LAYER_MAPPING[teacher]
-        click.echo(f"> {layers}")
 
     arr_teacher_layers, arr_student_layers = distillation_policies.parse_layer_string(
         layers
@@ -159,7 +152,16 @@ def main(
         device=device,
     )
 
-    print("Layerwise Distillation with the following layers:")
+
+    logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
+
+    print(
+        f"[distillation_policy={distillation_policy} layer_policy={layer_policy}] with {lambda_collection}"
+    )
+
+    if len(arr_teacher_layers) > 0:
+        print(f"We attach `layer_policy={layer_policy}` at the following layers:")
+
     for (teacher_layer, teacher_dim), (student_layer, student_dim) in zip(
         dict_teacher_layer_dim.items(),
         dict_student_layer_dim.items(),
@@ -167,10 +169,6 @@ def main(
         print(
             f"> mapping `{teacher_layer}` (d={teacher_dim}) to `{student_layer}` (d={student_dim})"
         )
-
-    logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
-
-    print(f"[policy={layer_policy}] with lambda-layer={lambda_layer}")
 
     arr_layer_policies = []
     for teacher_layer, student_layer in zip(arr_teacher_layers, arr_student_layers):
@@ -218,12 +216,13 @@ def main(
         project=WANDB_PROJECT,
         group=wanddb_experiment_group,
         job_type="distillation",
-        name=f"{student}-{layer_policy}-seed{seed}",
+        name=f"{student}-{distillation_policy}-seed{seed}",
         notes=f"commit:{utils.get_git_hash()}",
         config={
             **arguments,
-            "policy": layer_policy,
-            "lambda_layer": lambda_layer,
+            "distillation_policy": distillation_policy,
+            "layer_policy": layer_policy,
+            "lambda_layer": lambda_collection.lambda_layer,
             "output_dir": output_dir,
         },
     )
@@ -237,9 +236,9 @@ def main(
             policies=arr_layer_policies,
         ),
         epochs=epochs,
-        lambda_task=lambda_task,
-        lambda_kd=lambda_kd,
-        lambda_layer=lambda_layer,
+        lambda_task=lambda_collection.lambda_task,
+        lambda_kd=lambda_collection.lambda_kd,
+        lambda_layer=lambda_collection.lambda_layer,
         device=device,
         lr=lr,
         weight_decay=weight_decay,

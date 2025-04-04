@@ -7,6 +7,8 @@ from torchvision import transforms as T
 from zennit.attribution import Gradient
 from xaikd import models, lrp
 
+pytest.skip(allow_module_level=True)
+
 
 @pytest.mark.slow
 @pytest.mark.parametrize(

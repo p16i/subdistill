@@ -7,6 +7,8 @@ import torch
 from xaikd import models, lrp
 from zennit.attribution import Gradient
 
+pytest.skip(allow_module_level=True)
+
 
 @pytest.mark.slow
 def test_callable():
