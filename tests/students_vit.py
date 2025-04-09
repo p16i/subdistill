@@ -5,7 +5,6 @@ import torch
 from xaikd import constants, models, utils
 
 
-# fixme : skip this modules
 pytest.skip(reason="obsolete", allow_module_level=True)
 
 
