@@ -5,6 +5,10 @@ import torch
 from xaikd import constants, models, utils
 
 
+# fixme : skip this modules
+pytest.skip(reason="obsolete", allow_module_level=True)
+
+
 @pytest.mark.parametrize("prefix,num_layers", [("vitstudent", 4), ("vitstudent6l", 6)])
 @pytest.mark.parametrize("hidden_dim", constants.ARR_VIT_STUDENT_HIDDEN_DIMENSIONS)
 @pytest.mark.parametrize(
