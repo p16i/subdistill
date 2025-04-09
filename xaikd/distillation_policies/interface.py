@@ -1,5 +1,6 @@
 import typing
 
+import numpy as np
 from abc import ABC, abstractmethod
 
 import torch
@@ -70,13 +71,35 @@ class LastLayerPolicy(Policy, ABC):
 class LayerPolicy(Policy):
     def align_spatial_dimensions(self, teacher_feats, student_feats):
 
-        _, _, teacher_height, teacher_width = teacher_feats.shape
+        nb, teacher_dim, teacher_height, teacher_width = teacher_feats.shape
         _, _, student_height, student_width = student_feats.shape
 
         if (student_height == teacher_height) and (student_width == teacher_width == 1):
-            # for ViT
+            # this is the case that both teacher and student are ViTs.
             pass
         else:
+            if (
+                teacher_width == 1
+                and teacher_height != teacher_width
+                and student_height == student_width
+            ):
+                # this is the case that the only teacher is TorchVision's VIT,
+                # and the student has CNN-like feature maps.
+                possible_teacher_height = (teacher_height - 1) ** 0.5
+
+                assert (
+                    np.mod(possible_teacher_height, 1) == 0
+                ), "the possible teacher height should be whole number"
+
+                teacher_height = teacher_width = int(possible_teacher_height)
+
+                # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/vision_transformer.py#L296
+                teacher_feats_wo_class_token = teacher_feats[:, :, 1:, :]
+
+                teacher_feats = teacher_feats_wo_class_token.reshape(
+                    (nb, teacher_dim, teacher_height, teacher_width)
+                )
+
             # for CNN
             assert teacher_height == teacher_width
             assert student_height == student_width
