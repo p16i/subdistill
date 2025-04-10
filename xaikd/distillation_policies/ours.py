@@ -199,7 +199,7 @@ class OrthogonalBasisBatchNormSumNormalizedLearnablePolicy(
             )
 
 
-@register_policy("basis-bn-no-normalized")
+@register_policy("basis-bn")
 class OrthogonalBasisBatchNormNoNormalizedPolicy(LayerPolicy):
     def __init__(
         self, teacher_dims: int, student_dims: int, device: str, basis: OrthogonalBasis
@@ -211,12 +211,6 @@ class OrthogonalBasisBatchNormNoNormalizedPolicy(LayerPolicy):
         self.basis = basis
         self.transformer_teacher_feats = basis.construct_adapter(
             k=k, mode=AdapterMode.ENCODER, device=device
-        )
-
-        self.scaling_factor = 1
-
-        print(
-            f"basis-bn (teacher_dim={teacher_dims}); scaling factor={self.scaling_factor} "
         )
 
         self.transformer_student_feats = nn.BatchNorm2d(
@@ -232,8 +226,6 @@ class OrthogonalBasisBatchNormNoNormalizedPolicy(LayerPolicy):
             transformed_student_feats, transformed_teacher_feats, reduction="none"
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
-
-        loss_mse = loss_mse / self.scaling_factor
 
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
