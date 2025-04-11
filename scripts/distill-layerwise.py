@@ -52,6 +52,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "test")
 @click.option("--layers", default=None, type=str)
 @click.option("--lambda-layer", default=None, type=float)
 @click.option("--default-lambda-layer-config", default=None, type=str)
+@click.option("--batch-size", default=64)
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--weight-decay", type=float, default=0, required=True)
@@ -75,6 +76,7 @@ def main(
     seed,
     output_dir,
     wandb_experiment_group,
+    batch_size,
 ):
 
     lambda_collection, layer_policy = (
@@ -118,6 +120,7 @@ def main(
             training_data_ratio=training_size,
             seed=seed,
             use_validation_set=True,
+            training_batch_size=batch_size,
         )
     )
 

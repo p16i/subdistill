@@ -135,6 +135,7 @@ def construct_dataloaders(
     dataset: DatasetConfiguration,
     training_data_ratio: float,
     seed: int,
+    training_batch_size: int,
     use_validation_set: bool,
 ) -> typing.Tuple[
     DataLoader[Subset[tvd.VisionDataset]],
@@ -207,10 +208,7 @@ def construct_dataloaders(
     dl_train_with_aug = build_dataloader(
         ds_train_with_aug,
         shuffle=True,
-        # cf. Ahn et al. (2017), VID, in Supplement Sec. A.3.
-        # we scale batch_size such that when training_size < 1.0,
-        # we get the same number of update steps.
-        batch_size=int(np.ceil(constants.DEFAULT_BATCH_SIZE * training_data_ratio)),
+        batch_size=training_batch_size,
         drop_last=True,
     )
 
