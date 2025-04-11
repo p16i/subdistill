@@ -205,3 +205,6 @@ devenv.local.nix
 
 
 sweep-output-v*
+
+
+sweep-config
