@@ -42,7 +42,10 @@ def accuracy(
     metric_xent = MeanMetric()
 
     for x, y in tqdm(
-        dataloader, desc="computing accuracy for selected claseses", disable=not verbose
+        dataloader,
+        desc="computing accuracy for selected claseses",
+        disable=not verbose,
+        miniters=10,
     ):
         logits = model(x.to(device)).cpu()
         metric_acc.update(logits, y)
@@ -127,7 +130,7 @@ class MetricAUROCBinaryCrossEntropy(MetricFunction):
         if prefix is not None:
             desc = f"[{prefix}] {desc}"
 
-        for x, y in tqdm(dataloader, desc=desc, disable=not verbose):
+        for x, y in tqdm(dataloader, desc=desc, disable=not verbose, miniters=10):
             n = x.shape[0]
             logodd = model(x.to(device)).cpu()
 
@@ -177,7 +180,9 @@ class MetricAccuracy(MetricFunction):
         assert not model.training
 
         metric = Accuracy(task="multiclass", num_classes=self.num_classes)
-        for x, y in tqdm(dataloader, desc="Computing ACC", disable=not verbose):
+        for x, y in tqdm(
+            dataloader, desc="Computing ACC", disable=not verbose, miniters=10
+        ):
             logits = model(x.to(device)).cpu()
 
             assert len(logits.shape) == 2, f"{logits.shape}"

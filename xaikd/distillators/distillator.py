@@ -22,7 +22,11 @@ from xaikd import distillation_policies, utils
 from xaikd import datasets
 from xaikd import metrics
 
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.callbacks import (
+    LearningRateMonitor,
+    ModelCheckpoint,
+    TQDMProgressBar,
+)
 
 
 from .trainer_wrapper import LayerwiseKDModelWrapper
@@ -130,6 +134,7 @@ class Layerwise:
             logger=logger,
             deterministic="warn",
             callbacks=[
+                TQDMProgressBar(refresh_rate=100),
                 LearningRateMonitor(logging_interval="step"),
                 callback_checkpoint,
             ],
