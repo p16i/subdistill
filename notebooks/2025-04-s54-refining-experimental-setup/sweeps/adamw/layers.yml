@@ -1,0 +1,36 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: val_acc
+parameters:
+  output-dir:
+    value: /tmp/adamw
+  dataset:
+    value: cifar100-people-vs-others
+  training-size:
+    value: 0.01
+  seed:
+    value: 1
+  teacher:
+    value: cifar100-resnet18-v1
+  student:
+    value: student-cifar-resnet18-32
+  layers:
+    value: layer3:layer3,layer4:layer4
+  weight-decay:
+    value: 0
+  lambda-layer:
+    value:  1
+  distillation-policy:
+    values:
+      - basis-bn-sum-normalized:prcaposdef-entropy0.95
+      - attention-transfer
+      - vid
+      - spkd
+      - vkd
