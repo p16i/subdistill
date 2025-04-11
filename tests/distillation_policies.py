@@ -6,7 +6,7 @@ import tempfile
 from pathlib import Path
 
 
-from xaikd import distillation_policies, bases
+from xaikd import distillation_policies, bases, models, interceptor
 from xaikd import utils as putils
 from xaikd import bases
 
@@ -325,3 +325,73 @@ def test_resolve_lambdas_and_layer_policy(
 
     np.testing.assert_equal(actual_layer_policy, expected_layer_policy)
     np.testing.assert_equal(actual_collection, expected_collection)
+
+
+@pytest.mark.slow
+@pytest.mark.parametrize(
+    "teacher,student,layer_str",
+    [
+        (
+            "celeba-resnet18-finetunedv1",
+            "student-resnet18-16",
+            "layer1:layer1,layer2:layer2,layer3:layer3,layer4:layer4",
+        ),
+        (
+            "celeba-resnet18-finetunedv1",
+            "student-mobilenets",
+            "layer1:features.3,layer2:features.6,layer3:features.9,layer4:features.12",
+        ),
+        (
+            "celeba-resnet50-finetunedv1",
+            "student-mobilenets",
+            "layer1:features.3,layer2:features.6,layer3:features.9,layer4:features.12",
+        ),
+        (
+            "celeba-wideresnet50_2-finetunedv1",
+            "student-mobilenets",
+            "layer1:features.3,layer2:features.6,layer3:features.9,layer4:features.12",
+        ),
+        (
+            "celeba-vitb16-finetunedv1",
+            "student-efficientformerv2_s0",
+            "encoder.layers.2:stages.0,encoder.layers.5:stages.1,encoder.layers.8:stages.2,encoder.layers.11:stages.3",
+        ),
+    ],
+)
+def test_aligning_teacher_and_student_features_possible(
+    teacher: str, student: str, layer_str
+):
+    arr_teacher_layers, arr_student_layers = distillation_policies.parse_layer_string(
+        layer_str
+    )
+
+    device = putils.get_device()
+    trng = torch.Generator()
+    trng.manual_seed(1)
+
+    x = torch.randn(5, 3, 224, 224, generator=trng)
+
+    teacher_model = models.get_trained_model(teacher).to(device)
+
+    _, arr_feat_teacher = interceptor.forward_and_intercept_intermediate_layers(
+        model=teacher_model, inp=x, layers=arr_teacher_layers, detach_output=False
+    )
+
+    student_model = models.get_untrained_model(student, num_classes=10).to(device)
+
+    _, arr_feat_student = interceptor.forward_and_intercept_intermediate_layers(
+        model=student_model, inp=x, layers=arr_student_layers, detach_output=False
+    )
+
+    for feat_teacher, feat_student in zip(arr_feat_teacher, arr_feat_student):
+
+        _, teacher_dims, _, _ = feat_teacher.shape
+        _, student_dims, _, _ = feat_student.shape
+
+        policy = distillation_policies.get_policy(
+            "vid", teacher_dims=teacher_dims, student_dims=student_dims, device=device
+        )
+
+        loss = policy(feat_teacher, feat_student)
+
+        assert loss is not None and torch.isfinite(loss)

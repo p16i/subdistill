@@ -83,7 +83,7 @@ def get_untrained_model(name: str, num_classes: int, **kwargs) -> nn.Module:
     return MODEL_GENERATORS[name](num_classes=num_classes, **kwargs)
 
 
-from . import resnet, vgg, nfnet, vit, mobilenets, students, layers
+from . import resnet, vgg, nfnet, vit, efficientformer, mobilenets, students, layers
 
 
 def split_model_at_layer(model, layer: str) -> typing.Tuple[nn.Module, nn.Module]:
