@@ -70,8 +70,7 @@ class OrthogonalBasis(ABC):
         # > arr_scale_factors = np.mean((arr_act @ U) ** 2, axis=0)
         outer = (arr_act.T @ arr_act) / N
 
-        eigvals, _ = utils.solve_eigh(outer)
-        arr_scale_factors = eigvals
+        arr_scale_factors = np.diag(U.T @ outer @ U)
 
         return arr_scale_factors
 
