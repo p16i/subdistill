@@ -28,10 +28,10 @@ MODEL_CHECKPOINT_MAPPING = {
     # "cifar100-vgg11-v1": "https://tubcloud.tu-berlin.de/s/YXQWsGmz4kRnfLL/download?path=%2F&files=cifar100-vgg11-v1--model-rm0pe4r0:best.pth",
     # "celeba-resnet18-scratch": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba&files=celeba--scratch--n8r0q2vb.pth",
     # "celeba-resnet18-pretrained": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba&files=celeba--imagenet-pretrained--6oj5aaxl.pth",
-    "celeba-resnet18-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=resnet18--p16i-xaikd-training-teacher-models-zbgow8eu.pth",
-    "celeba-resnet50-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=resnet50--p16i-xaikd-training-teacher-models-cuoynabf.pth",
-    "celeba-wideresnet50_2-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=wideresnet50-2--p16i-xaikd-training-teacher-models-t0sg5wcp.pth",
-    "celeba-vitb16-finetunedv1": "https://tubcloud.tu-berlin.de/s/Ej2KoCpTtpZ3g6r/download?path=%2Fceleba%2F/finetuned-from-imagenet&files=vitb16--p16i-xaikd-training-teacher-models-6ttr2icx.pth",
+    "celeba-resnet18-finetunedv1": "https://tubcloud.tu-berlin.de/s/x3XbNGqwTdeindM/download?path=%2F&files=resnet18--p16i-xaikd-training-teacher-models-zbgow8eu.pth",
+    "celeba-resnet50-finetunedv1": "https://tubcloud.tu-berlin.de/s/x3XbNGqwTdeindM/download?path=%2F&files=resnet50--p16i-xaikd-training-teacher-models-cuoynabf.pth",
+    "celeba-wideresnet50_2-finetunedv1": "https://tubcloud.tu-berlin.de/s/x3XbNGqwTdeindM/download?path=%2F&files=wideresnet50-2--p16i-xaikd-training-teacher-models-t0sg5wcp.pth",
+    "celeba-vitb16-finetunedv1": "https://tubcloud.tu-berlin.de/s/x3XbNGqwTdeindM/download?path=%2F&files=vitb16--p16i-xaikd-training-teacher-models-6ttr2icx.pth",
 }
 
 
