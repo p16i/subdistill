@@ -29,6 +29,7 @@ def test_ds_val_set_same_as_ds_test_when_use_validation_set_disabled(
         training_data_ratio=training_data_ratio,
         seed=1,
         use_validation_set=use_validation_set,
+        training_batch_size=16
     )
 
     np.testing.assert_allclose(
@@ -47,6 +48,7 @@ def test_train_transform_cifar100():
         training_data_ratio=1.0,
         seed=1,
         use_validation_set=use_validation_set,
+        training_batch_size=16
     )
 
     for actual, expected_class in zip(
@@ -72,6 +74,7 @@ def test_train_transform_imagenet():
         training_data_ratio=1.0,
         seed=1,
         use_validation_set=use_validation_set,
+        training_batch_size=16
     )
 
     assert isinstance(
@@ -100,6 +103,7 @@ def test_data_size_when_val_split(training_data_ratio, use_validation_set):
         training_data_ratio=training_data_ratio,
         seed=1,
         use_validation_set=use_validation_set,
+        training_batch_size=16
     )
 
     np.testing.assert_allclose(len(dl_train.dataset), len(dl_train_with_aug.dataset))  # type: ignore
