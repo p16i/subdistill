@@ -1,15 +1,11 @@
 #!/bin/bash
 
-##SBATCH --mem=32B
+#SBATCH --mem=16GB
 #SBATCH --cpus-per-task=12
-#SBATCH --gpus=1
-##SBATCH --constraint="40gb|80gb"
 #SBATCH -o ./logs/array/%A_%a.out
 #SBATCH --mail-type=FAIL,END
 #SBATCH --mail-user=p.chormai@tu-berlin.de
-#SBATCH --exclude=head[073-076]
-
-nvidia-smi
+#SBATCH --exclude=head070
 
 export PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
 export CUBLAS_WORKSPACE_CONFIG=:4096:8

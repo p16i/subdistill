@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #SBATCH --gpus=1
-#SBATCH --mem=32GB
+#SBATCH --mem=64GB
 #SBATCH --cpus-per-task=12
 #SBATCH -o ./logs/%j.out
 #SBATCH --mail-type=FAIL,END
