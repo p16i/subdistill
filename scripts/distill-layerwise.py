@@ -38,8 +38,9 @@ from xaikd import (
 from pytorch_lightning.loggers.wandb import WandbLogger
 
 
-WANDB_DIR = os.getenv("WANDB_DIR", ".")
-WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
+WANDB_ENTITY = os.getenv("WANDB_ENTITY", "xaikd")
+WANDB_DIR = os.getenv("WANDB_DIR", "/tmp")
+WANDB_PROJECT = os.getenv("WANDB_PROJECT", "test")
 
 
 @click.command()
@@ -57,7 +58,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "xaikd-distillation-layerwise-ep3")
 @click.option("--upload-best-checkpoint", type=bool, default=False, is_flag=True)
 @click.option("--wandb-experiment-group", type=str, default=None)
 @click.option("--seed", type=int, default=1)
-@click.option("--output-dir", type=str, required=True)
+@click.option("--output-dir", type=str, default="/tmp")
 def main(
     teacher,
     student,
@@ -152,7 +153,6 @@ def main(
         device=device,
     )
 
-
     logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
 
     print(
@@ -212,6 +212,7 @@ def main(
     )
 
     logger = WandbLogger(
+        entity=WANDB_ENTITY,
         save_dir=WANDB_DIR,
         project=WANDB_PROJECT,
         group=wanddb_experiment_group,
