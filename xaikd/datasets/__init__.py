@@ -210,7 +210,8 @@ def construct_dataloaders(
         # cf. Ahn et al. (2017), VID, in Supplement Sec. A.3.
         # we scale batch_size such that when training_size < 1.0,
         # we get the same number of update steps.
-        batch_size=int(np.ceil(constants.DEFAULT_BATCH_SIZE * training_data_ratio)),
+        batch_size=32,
+        # batch_size=int(np.ceil(constants.DEFAULT_BATCH_SIZE * training_data_ratio)),
         drop_last=True,
     )
 
