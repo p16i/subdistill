@@ -8,15 +8,15 @@ import yaml
 
 import wandb
 
-WANDB_USERNAME = "p16i"
-WANDB_SWEEP_URL = f"https://wandb.ai/{WANDB_USERNAME}/<PROJECT>/sweeps/<SWEEP_ID>"
+WANDB_SWEEP_URL = f"https://wandb.ai/<ENTITY>/<PROJECT>/sweeps/<SWEEP_ID>"
 
 
 @click.command()
+@click.option("--wandb-entity", type=str, default="xaikd")
 @click.option("--wandb-project", type=str, required=True)
 @click.option("--dry-run", type=bool, is_flag=True)
 @click.option("--config-files", type=str, required=True)
-def main(wandb_project, dry_run, config_files):
+def main(wandb_entity, wandb_project, dry_run, config_files):
 
     if dry_run:
         click.echo(f"--- [dry-run={dry_run}] ----")
@@ -55,6 +55,7 @@ def main(wandb_project, dry_run, config_files):
 
                 print("====== output from wandb.sdk ======")
                 sweep_id = wandb.sweep(
+                    entity=wandb_entity,
                     project=wandb_project,
                     sweep=sweep_config,
                 )
@@ -63,13 +64,15 @@ def main(wandb_project, dry_run, config_files):
             else:
                 sweep_id = "dry-run-dummy-id"
 
-        url = WANDB_SWEEP_URL.replace("<PROJECT>", wandb_project).replace(
-            "<SWEEP_ID>", sweep_id
+        url = (
+            WANDB_SWEEP_URL.replace("<ENTITY>", wandb_entity)
+            .replace("<PROJECT>", wandb_project)
+            .replace("<SWEEP_ID>", sweep_id)
         )
 
         click.echo(f"- Sweep from `{folder_name}/{filename}`")
         click.echo(
-            f"\t- {WANDB_USERNAME}/{wandb_project}/{sweep_id} (total {total_runs} runs) ({url})"
+            f"\t- {wandb_entity}/{wandb_project}/{sweep_id} (total {total_runs} runs) ({url})"
         )
 
 
