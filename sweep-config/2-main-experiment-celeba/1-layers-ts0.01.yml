@@ -1,0 +1,54 @@
+command:
+  - ${env}
+  - python
+  - ${program}
+  - ${args}
+  - --upload-best-checkpoint
+program: scripts/distill-layerwise.py
+method: grid
+metric:
+  goal: minimize
+  name: best_val_auroc
+parameters:
+  output-dir:
+    value: sweep-output/1-main-experiment
+  dataset:
+    values: 
+      - celeba-attr20 # best
+      - celeba-attr25
+  training-size:
+    values:
+      # - 0.1
+      - 0.01
+  seed:
+    values:
+      - 1
+      - 2
+      - 3
+  teacher:
+    value: celeba-resnet18-finetunedv1
+  student:
+    value: student-resnet18-32
+  epochs:
+    value: 50
+  layers:
+    value: layer1:layer1,layer2:layer2,layer3:layer3,layer4:layer4
+  weight-decay:
+    value: 0
+  lambda-layer:
+    values: 
+      - 0.001
+      - 0.01
+      - 0.1
+      - 1.0
+      - 10
+      - 100
+  distillation-policy:
+    values:
+      - basis-bn-sum-normalized:prcaposdef-entropy0.95
+      - attention-transfer
+      - vid
+      - basis-bn-sum-normalized-learnable:prcaposdef-entropy0.95
+      - basis-bn-sum-normalized:pca
+      # - vkd
+      # - spkd # should we run it?
