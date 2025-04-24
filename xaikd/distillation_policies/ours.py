@@ -344,7 +344,7 @@ class OrthogonalBasisRotationPolicy(LayerPolicy):
         return loss_mse
 
 
-@register_policy("basis-rotation-sum-normalization")
+@register_policy("basis-rotation-sum-normalized")
 class OrthogonalBasisRotationPolicy(LayerPolicy):
     def __init__(
         self,
