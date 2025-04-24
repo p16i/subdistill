@@ -96,6 +96,8 @@ class DiagonalScaling(nn.Module):
 class Conv2dRotation(nn.Module):
     def __init__(self, dims: int) -> None:
         super().__init__()
+        raise NotImplementedError("the implemtnation is not correct")
+        # fixme: this is not correct implementation
 
         self.weight = nn.Parameter(torch.from_numpy(ortho_group.rvs(dim=dims)).float())
 
