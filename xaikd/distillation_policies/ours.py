@@ -464,7 +464,87 @@ class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
         return loss_mse
 
 
-@register_policy("basis-center-rotation--teacher-feat-and-normalized-scale-one-init")
+class BasisOrthoNoScaleStudenTransform(nn.Module):
+    # fixme: add test
+    def __init__(self, k: int):
+        super().__init__()
+
+        self.rotation = nn.utils.parametrizations.orthogonal(
+            nn.Linear(in_features=k, out_features=k, bias=False)
+        )
+
+    def forward(self, feat: torch.Tensor):
+
+        b, d, h, w = feat.shape
+
+        feat = feat.reshape((b, d, h * w))
+
+        feat = feat.permute(1, 0, 2)
+        feat = feat.flatten(start_dim=1)
+        # shape: [b*h*w, d]
+        feat = feat.T
+        feat = self.rotation(feat)
+
+        # reshape back
+        # shape: [d, b*h*w]
+        feat = feat.T
+        feat = feat.reshape(d, b, h * w)
+
+        feat = feat.permute(1, 0, 2)
+        feat = feat.reshape((b, d, h, w))
+
+        return feat
+
+
+@register_policy("basis-center-rotation--no-scale")
+class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k).to(device),
+            BasisOrthoNoScaleStudenTransform(k=k),
+        ).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats,
+            transformed_teacher_feats,
+            reduction="none",
+        ) / (w * h)
+
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
+@register_policy("basis-center-rotation--teacher-feat-and-scale-one-init")
 class OrthogonalBasisCenterRotationTeacherFeatNormalizedPolicy(LayerPolicy):
     def __init__(
         self,
