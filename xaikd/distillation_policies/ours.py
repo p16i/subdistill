@@ -513,7 +513,11 @@ class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
         loss_mse = loss_mse.sum(dim=2)
         assert loss_mse.shape == (b, k), loss_mse.shape
 
+        # weight each dimensions
         loss_mse = loss_mse * self.weights
+
+        loss_mse = loss_mse.sum(dim=1)
+        assert loss_mse.shape == (b,), loss_mse.shape
 
         # average over all samples
         loss_mse = loss_mse.mean()
