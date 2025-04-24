@@ -267,7 +267,7 @@ def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
 
 def _register_student_resnet18():
 
-    for in_planes in [16, 32, 64]:
+    for in_planes in [4, 8, 16, 32, 64]:
 
         add_model_to_registry(
             f"student-cifar-resnet18-{in_planes}",
