@@ -63,16 +63,12 @@ class OrthogonalBasis(ABC):
         arr_act = utils.flatten_3d_tensor(arr_act)
         N, _ = arr_act.shape
 
-        arr_scale_factors = []
-
-        # Assume that arr_act is already centered.
-        # The code below is equivalent to the following:
-        # > arr_scale_factors = np.mean((arr_act @ U) ** 2, axis=0)
         outer = (arr_act.T @ arr_act) / N
 
-        arr_scale_factors = np.diag(U.T @ outer @ U)
+        # todo: refactor signature not to take U
+        eigvals, _ = utils.solve_eigh(outer)
 
-        return arr_scale_factors
+        return eigvals
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         U = torch.from_numpy(self.U[:, :k]).float()
