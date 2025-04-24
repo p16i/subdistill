@@ -464,6 +464,63 @@ class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
         return loss_mse
 
 
+@register_policy("basis-center-rotation--scale-one-init-with-dimension-wise-weighting")
+class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.weights = (
+            torch.from_numpy(self.basis.get_scale_factors_for_k(k=k) ** 0.5)
+            .float()
+            .to(device)
+        )
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k).to(device),
+            BasisOrthoStudenTransform(k=k, init_scale=1.0),
+        ).to(device)
+
+    def criterion(self, transformed_teacher_feats, transformed_student_feats):
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats,
+            transformed_teacher_feats,
+            reduction="none",
+        ) / (w * h)
+
+        # shape: (b, k)
+        loss_mse = loss_mse.flatten(start_dim=2)
+        assert loss_mse.shape == (b, k, w * h), loss_mse.shape
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=2)
+        assert loss_mse.shape == (b, k), loss_mse.shape
+
+        loss_mse = loss_mse * self.weights
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 class BasisOrthoNoScaleStudenTransform(nn.Module):
     # fixme: add test
     def __init__(self, k: int):
