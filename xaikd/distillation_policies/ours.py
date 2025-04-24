@@ -185,7 +185,7 @@ class BasisOrthoStudenTransform(nn.Module):
     def __init__(self, k: int, init_scale: float):
         super().__init__()
 
-        self.scale = torch.tensor(init_scale)
+        self.scale = torch.nn.Parameter(torch.tensor(init_scale))
         self.rotation = utils.modules.Conv2dRotation(dims=k)
 
     def forward(self, feat: torch.Tensor):
