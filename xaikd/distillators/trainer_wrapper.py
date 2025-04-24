@@ -44,6 +44,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_layer: float,
         lambda_task: float,
         lambda_kd: float,
+        layerwise_training: bool,
     ):
         super().__init__()
 
@@ -63,8 +64,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
 
+        self.layerwise_training = layerwise_training
+
         print(
-            f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
+            f"Layerwise-Training={self.layerwise_training} | Lambda(task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
         )
         self.metric = dict(
             train_auroc=BinaryAUROC(thresholds=100),
@@ -199,7 +202,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.student,
             x,
             layers=self.layer_policy_collection.student_layers,
-            detach_output=False,
+            detach_output=self.layerwise_training,  # fixme : add tests
         )
 
         assert student_logits.shape == (n, 1)
@@ -226,6 +229,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     target=y,
                 )
             elif loss_label == "layer":
+                # fixme: force lambda-layer 0 1
+                # fixme: add tests
                 loss_value = self._compute_loss_layer(
                     teacher_arr_intermediate_feats=teacher_arr_intermediate_feats,
                     student_arr_intermediate_feats=student_arr_intermediate_feats,
