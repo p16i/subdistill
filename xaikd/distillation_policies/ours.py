@@ -1212,9 +1212,11 @@ class OrthogonalBasisRotationPolicy(LayerPolicy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-        constant_shift = torch.from_numpy(
-            self.basis.get_Uk(k=k).T @ self.basis.mean
-        ).to(device)
+        constant_shift = (
+            torch.from_numpy(self.basis.get_Uk(k=k).T @ self.basis.mean)
+            .float()
+            .to(device)
+        )
 
         self.transformer_student_feats = ConstantShiftRotationScaleTransform(
             k=k, constant_shift=constant_shift
