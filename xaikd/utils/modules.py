@@ -272,7 +272,7 @@ class Centering2d(batchnorm.BatchNorm2d):
 
 
 class RotateAndScale(nn.Module):
-    # fixme: add test
+    # fixme: add test for reshaping
     def __init__(self, k: int, init_scale=1.0):
         super().__init__()
 
@@ -284,16 +284,19 @@ class RotateAndScale(nn.Module):
     def forward(self, feat: torch.Tensor):
 
         b, d, h, w = feat.shape
-
         feat = feat.reshape((b, d, h * w))
 
+        # reshape for rotation
         feat = feat.permute(1, 0, 2)
         feat = feat.flatten(start_dim=1)
-
         # shape: [b*h*w, d]
         feat = feat.T
-        feat = feat.reshape(d, b, h * w)
+        feat = self.rotation(feat)
 
+        # reshape back
+        # shape: [d, b*h*w]
+        feat = feat.T
+        feat = feat.reshape(d, b, h * w)
         feat = feat.permute(1, 0, 2)
         feat = feat.reshape((b, d, h, w))
 
