@@ -16,6 +16,26 @@ from torchmetrics import MeanMetric
 from torchmetrics.classification import BinaryAUROC
 
 
+def resolve_detach_layer_output_and_lambda_layer(
+    training_strategy: str,
+    current_epoch: int,
+    lambda_layer: float,
+) -> typing.Tuple[bool, float]:
+    if training_strategy == "n2n":
+        return False, lambda_layer
+    elif training_strategy == "layerwise":
+        return True, 1
+    elif training_strategy[:4] == "n2n@":
+        transition_epoch = int(training_strategy.split("n2n@")[1])
+        if current_epoch < transition_epoch:
+            return True, 1
+        else:
+            # here, we traing with kd loss only
+            return False, 0
+    else:
+        raise ValueError(f"training_strategy={training_strategy} is not available!")
+
+
 class Teacher(object):
     """The class is a wrapper to a PyTorch model.
     Its purpose is to prevent Lightning to set the wrapped model to training mode.
@@ -44,7 +64,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_layer: float,
         lambda_task: float,
         lambda_kd: float,
-        layerwise_training: bool,
+        training_strategy: str,
     ):
         super().__init__()
 
@@ -64,11 +84,17 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
 
-        self.layerwise_training = layerwise_training
+        self.training_strategy = training_strategy
+
+        if self.training_strategy != "n2n":
+            print(
+                f"[warning] when training-strategy={self.training_strategy}, setting lambda-layer has no effect"
+            )
 
         print(
-            f"Layerwise-Training={self.layerwise_training} | Lambda(task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
+            f"Trianing Strategy={self.training_strategy} | Lambda(task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
         )
+
         self.metric = dict(
             train_auroc=BinaryAUROC(thresholds=100),
             val_auroc=BinaryAUROC(thresholds=100),
@@ -135,43 +161,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             loss_layer = loss_layer + _loss_layer
 
-            layer_name = self.layer_policy_collection.student_layers[lix]
-
-            self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
-            if prefix == "val":
-                for label, act in (
-                    ("student", student_arr_intermediate_feats[lix]),
-                    (
-                        "teacher",
-                        policy.transformer_teacher_feats(
-                            teacher_arr_intermediate_feats[lix]
-                        ),
-                    ),
-                ):
-                    norm = torch.linalg.norm(act, dim=1)
-                    layer = self.layer_policy_collection.student_layers[lix]
-
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_min",
-                        norm.min(),
-                        on_epoch=True,
-                    )
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_max",
-                        norm.max(),
-                        on_epoch=True,
-                    )
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_mean",
-                        norm.mean(),
-                        on_epoch=True,
-                    )
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_median",
-                        norm.median(),
-                        on_epoch=True,
-                    )
-
         assert torch.isfinite(loss_layer)
 
         return loss_layer
@@ -184,6 +173,14 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         if prefix == "val":
             assert not self.student.training
+
+        is_layer_output_detached, lambda_layer = (
+            resolve_detach_layer_output_and_lambda_layer(
+                training_strategy=self.training_strategy,
+                current_epoch=self.current_epoch,
+                lambda_layer=self.lambda_layer,
+            )
+        )
 
         with torch.no_grad():
             (
@@ -202,7 +199,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.student,
             x,
             layers=self.layer_policy_collection.student_layers,
-            detach_output=self.layerwise_training,  # fixme : add tests
+            detach_output=is_layer_output_detached,
         )
 
         assert student_logits.shape == (n, 1)
@@ -213,7 +210,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         for loss_label, loss_coeff in [
             ("task", self.lambda_task),
             ("kd", self.lambda_kd),
-            ("layer", self.lambda_layer),
+            ("layer", lambda_layer),
         ]:
             if loss_coeff == 0:
                 continue
@@ -229,8 +226,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     target=y,
                 )
             elif loss_label == "layer":
-                # fixme: force lambda-layer 0 1
-                # fixme: add tests
                 loss_value = self._compute_loss_layer(
                     teacher_arr_intermediate_feats=teacher_arr_intermediate_feats,
                     student_arr_intermediate_feats=student_arr_intermediate_feats,
