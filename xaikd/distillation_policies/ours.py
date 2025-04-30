@@ -168,8 +168,41 @@ class OrthogonalBasisCenterRotationSumNormalizedPolicy(
 # fixme: implement learnable for basis-center-rotation
 
 
+class BasisOrthoStudenTransform(nn.Module):
+    # fixme: add test
+    def __init__(self, k: int, init_scale: float):
+        super().__init__()
+
+        self.scale = torch.nn.Parameter(torch.tensor(init_scale))
+        self.rotation = nn.utils.parametrizations.orthogonal(
+            nn.Linear(in_features=k, out_features=k, bias=False)
+        )
+
+    def forward(self, feat: torch.Tensor):
+
+        b, d, h, w = feat.shape
+
+        feat = feat.reshape((b, d, h * w))
+
+        feat = feat.permute(1, 0, 2)
+        feat = feat.flatten(start_dim=1)
+        # shape: [b*h*w, d]
+        feat = feat.T
+        feat = self.rotation(feat)
+
+        # reshape back
+        # shape: [d, b*h*w]
+        feat = feat.T
+        feat = feat.reshape(d, b, h * w)
+
+        feat = feat.permute(1, 0, 2)
+        feat = feat.reshape((b, d, h, w))
+
+        return self.scale * feat
+
+
 @register_policy("basis-center-rotation--scale-one-init-sum-normalized")
-class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
+class OrthogonalBasisCenterRotationSumNormalizedPolicy(LayerPolicy):
     def __init__(
         self,
         teacher_dims: int,
@@ -190,7 +223,7 @@ class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
 
         self.transformer_student_feats = nn.Sequential(
             utils.modules.Centering2D(num_features=k).to(device),
-            utils.modules.RotateAndScale(k=k),
+            BasisOrthoStudenTransform(k=k, init_scale=1.0),
         ).to(device)
 
     def criterion(self, transformed_teacher_feats, transformed_student_feats):
