@@ -138,39 +138,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             layer_name = self.layer_policy_collection.student_layers[lix]
 
             self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
-            if prefix == "val":
-                for label, act in (
-                    ("student", student_arr_intermediate_feats[lix]),
-                    (
-                        "teacher",
-                        policy.transformer_teacher_feats(
-                            teacher_arr_intermediate_feats[lix]
-                        ),
-                    ),
-                ):
-                    norm = torch.linalg.norm(act, dim=1)
-                    layer = self.layer_policy_collection.student_layers[lix]
-
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_min",
-                        norm.min(),
-                        on_epoch=True,
-                    )
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_max",
-                        norm.max(),
-                        on_epoch=True,
-                    )
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_mean",
-                        norm.mean(),
-                        on_epoch=True,
-                    )
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_median",
-                        norm.median(),
-                        on_epoch=True,
-                    )
 
         assert torch.isfinite(loss_layer)
 
