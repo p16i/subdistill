@@ -58,9 +58,9 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
         # ),
     ],
 )
+@pytest.mark.parametrize("layerwise_training", [True, False])
 def test_distillation_runnable_and_correct(
-    teacher_model_name,
-    layers,
+    teacher_model_name, layers, layerwise_training
 ):
 
     last_layer_policy = distillation_policies.get_last_layer_policy("last-layer:binkd")
@@ -167,6 +167,7 @@ def test_distillation_runnable_and_correct(
             weight_decay=0,
             logger=logger,
             seed=1,
+            layerwise_training=layerwise_training,
             upload_best_checkpoint=False,
         )
 
@@ -287,6 +288,7 @@ def test_get_parameters(layers):
         lambda_task=1,
         weight_decay=0,
         lr=1e-5,
+        layerwise_training=False,
     )
 
     actual_num_params = utils.count_params_in_list_params(
