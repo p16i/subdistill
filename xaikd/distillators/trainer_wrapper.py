@@ -30,8 +30,8 @@ def resolve_detach_layer_output_and_lambda_layer(
         if current_epoch < transition_epoch:
             return True, 1
         else:
-            # here, we traing with kd loss with layerwise only
-            return False, 1
+            # here, we traing with kd loss only
+            return False, 0
     else:
         raise ValueError(f"training_strategy={training_strategy} is not available!")
 
