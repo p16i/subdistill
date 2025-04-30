@@ -74,16 +74,16 @@ def resolve_lambdas_and_layer_policy(
     else:
         layer_policy = policy_name
 
-        lambda_layer = constants.resolve_lambda_layer(
-            teacher_model_name=teacher,
-            policy_name=layer_policy,
-            lambda_layer=lambda_layer,
-            default_config_key=default_lambda_layer_config,
-        )
-
         if training_strategy != "n2n":
             print(f"[training-strategy={training_strategy}]: we force lambda_layer=1")
             lambda_layer = 1
+        else:
+            lambda_layer = constants.resolve_lambda_layer(
+                teacher_model_name=teacher,
+                policy_name=layer_policy,
+                lambda_layer=lambda_layer,
+                default_config_key=default_lambda_layer_config,
+            )
 
         lambda_collection = LambdaCollection(
             lambda_task=0, lambda_kd=1, lambda_layer=lambda_layer
