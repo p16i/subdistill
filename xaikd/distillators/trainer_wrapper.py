@@ -161,6 +161,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             loss_layer = loss_layer + _loss_layer
 
+            layer_name = self.layer_policy_collection.student_layers[lix]
+
+            self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
+
         assert torch.isfinite(loss_layer)
 
         return loss_layer
