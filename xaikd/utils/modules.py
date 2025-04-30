@@ -291,6 +291,7 @@ class RotateAndScale(nn.Module):
         feat = feat.flatten(start_dim=1)
         # shape: [b*h*w, d]
         feat = feat.T
+
         feat = self.rotation(feat)
 
         # reshape back
