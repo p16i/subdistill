@@ -276,7 +276,7 @@ class RotateAndScale(nn.Module):
     def __init__(self, k: int, init_scale=1.0):
         super().__init__()
 
-        self.scale = torch.nn.Parameter(torch.tensor(init_scale))
+        self.scale = torch.nn.Parameter(torch.tensor(init_scale * 0.0))
         self.rotation = nn.utils.parametrizations.orthogonal(
             nn.Linear(in_features=k, out_features=k, bias=False)
         )
@@ -301,4 +301,4 @@ class RotateAndScale(nn.Module):
         feat = feat.permute(1, 0, 2)
         feat = feat.reshape((b, d, h, w))
 
-        return self.scale * feat
+        return torch.exp(self.scale) * feat
