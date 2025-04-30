@@ -165,6 +165,13 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
 
+            if prefix == "val":
+                self.log(
+                    f"{prefix}_scale_{layer_name}",
+                    policy.transformer_student_feats.scale,
+                    on_epoch=True,
+                )
+
         assert torch.isfinite(loss_layer)
 
         return loss_layer
