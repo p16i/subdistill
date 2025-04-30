@@ -168,7 +168,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             if prefix == "val":
                 self.log(
                     f"{prefix}_scale_{layer_name}",
-                    policy.transformer_student_feats.scale,
+                    policy.transformer_student_feats[1].scale,
                     on_epoch=True,
                 )
 
