@@ -11,6 +11,8 @@ from xaikd.utils.modules import (
     convert_bn_to_conv,
     merge_conv_and_bn,
     merge_convKxK_and_conv1x1,
+    torch_flatten_3d_tensor,
+    torch_deflatten_2d_tensor,
 )
 
 
@@ -173,3 +175,15 @@ def test_centering2d():
     np.testing.assert_allclose(
         centering.running_mean.numpy(), mean.squeeze().numpy(), atol=0.1
     )
+
+
+def test_torch_flatten():
+    expected = x = torch.randn(7, 5, 3, 3)
+
+    original_shape = x.shape
+
+    actual = torch_deflatten_2d_tensor(
+        torch_flatten_3d_tensor(x), target_shape=original_shape
+    )
+
+    np.testing.assert_allclose(actual, expected)

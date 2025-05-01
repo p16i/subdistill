@@ -54,7 +54,6 @@ class OrthogonalBasisBatchNormSumNormalizedPolicy(LayerPolicy):
         )
 
         if layerwise_training:
-            # fixme: add tests
             self.scaling_factor = 1
         else:
             self.scaling_factor = np.sum(

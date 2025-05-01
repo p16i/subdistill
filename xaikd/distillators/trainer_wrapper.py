@@ -169,7 +169,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.student,
             x,
             layers=self.layer_policy_collection.student_layers,
-            detach_output=self.layerwise_training,  # fixme : add tests
+            detach_output=self.layerwise_training,
         )
 
         assert student_logits.shape == (n, 1)
@@ -196,8 +196,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     target=y,
                 )
             elif loss_label == "layer":
-                # fixme: force lambda-layer 0 1
-                # fixme: add tests
                 loss_value = self._compute_loss_layer(
                     teacher_arr_intermediate_feats=teacher_arr_intermediate_feats,
                     student_arr_intermediate_feats=student_arr_intermediate_feats,
