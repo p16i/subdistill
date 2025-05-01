@@ -75,6 +75,7 @@ class Layerwise:
         lambda_task: float,
         lambda_kd: float,
         lambda_layer: float,
+        layerwise_training: bool,
         seed: int,
         upload_best_checkpoint: bool,
     ) -> nn.Module:
@@ -121,6 +122,7 @@ class Layerwise:
             lambda_task=lambda_task,
             lambda_kd=lambda_kd,
             lambda_layer=lambda_layer,
+            layerwise_training=layerwise_training,
         )
 
         callback_checkpoint = ModelCheckpoint(

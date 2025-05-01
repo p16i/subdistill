@@ -140,7 +140,7 @@ def construct_dataloaders(
 ) -> typing.Tuple[
     DataLoader[Subset[tvd.VisionDataset]],
     DataLoader[Subset[tvd.VisionDataset]],
-    DataLoader[tvd.VisionDataset],
+    DataLoader[Subset[tvd.VisionDataset]],
     DataLoader[tvd.VisionDataset],
 ]:
 

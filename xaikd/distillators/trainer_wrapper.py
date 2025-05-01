@@ -44,6 +44,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_layer: float,
         lambda_task: float,
         lambda_kd: float,
+        layerwise_training: bool,
     ):
         super().__init__()
 
@@ -63,8 +64,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self.lambda_task = lambda_task
         self.lambda_kd = lambda_kd
 
+        self.layerwise_training = layerwise_training
+
         print(
-            f"Lambda (task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
+            f"Layerwise-Training={self.layerwise_training} | Lambda(task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
         )
         self.metric = dict(
             train_auroc=BinaryAUROC(thresholds=100),
@@ -135,39 +138,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             layer_name = self.layer_policy_collection.student_layers[lix]
 
             self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
-            if prefix == "val":
-                for label, act in (
-                    ("student", student_arr_intermediate_feats[lix]),
-                    (
-                        "teacher",
-                        policy.transformer_teacher_feats(
-                            teacher_arr_intermediate_feats[lix]
-                        ),
-                    ),
-                ):
-                    norm = torch.linalg.norm(act, dim=1)
-                    layer = self.layer_policy_collection.student_layers[lix]
-
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_min",
-                        norm.min(),
-                        on_epoch=True,
-                    )
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_max",
-                        norm.max(),
-                        on_epoch=True,
-                    )
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_mean",
-                        norm.mean(),
-                        on_epoch=True,
-                    )
-                    self.log(
-                        f"{prefix}_actnorm_{label}_{layer}_median",
-                        norm.median(),
-                        on_epoch=True,
-                    )
 
         assert torch.isfinite(loss_layer)
 
@@ -199,7 +169,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.student,
             x,
             layers=self.layer_policy_collection.student_layers,
-            detach_output=False,
+            detach_output=self.layerwise_training,
         )
 
         assert student_logits.shape == (n, 1)

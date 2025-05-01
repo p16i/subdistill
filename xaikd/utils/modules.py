@@ -8,7 +8,33 @@ from copy import deepcopy
 
 import tempfile
 import wandb
-from scipy.stats import ortho_group
+
+
+def torch_flatten_3d_tensor(x: torch.Tensor) -> torch.Tensor:
+    b, d, h, w = x.shape
+    x = x.reshape((b, d, h * w))
+
+    x = x.permute(1, 0, 2)
+    x = x.flatten(start_dim=1)
+    x = x.T
+
+    assert x.shape == (b * h * w, d), x.shape
+
+    return x
+
+
+def torch_deflatten_2d_tensor(x: torch.Tensor, target_shape: tuple) -> torch.Tensor:
+    b, d, h, w = target_shape
+    assert x.shape == (b * h * w, d)
+
+    # reshape back
+    # shape: [d, b*h*w]
+    x = x.T
+    x = x.reshape(d, b, h * w)
+    x = x.permute(1, 0, 2)
+    x = x.reshape((b, d, h, w))
+
+    return x
 
 
 def has_batchnorm(model: nn.Module) -> bool:
@@ -91,16 +117,6 @@ class DiagonalScaling(nn.Module):
 
     def forward(self, x):
         return self.scale * x + self.bias
-
-
-class Conv2dRotation(nn.Module):
-    def __init__(self, dims: int) -> None:
-        super().__init__()
-
-        self.weight = nn.Parameter(torch.from_numpy(ortho_group.rvs(dim=dims)).float())
-
-    def forward(self, x):
-        return F.conv2d(x, self.weight.unsqueeze(2).unsqueeze(3))
 
 
 def convert_bn_to_conv(bn: nn.BatchNorm2d) -> nn.Conv2d:
@@ -267,3 +283,23 @@ class Centering2d(batchnorm.BatchNorm2d):
             running_var=unit_variance,
             training=bn_training,
         )
+
+
+class RotateAndScale(nn.Module):
+    def __init__(self, k: int, init_scale=1.0):
+        super().__init__()
+
+        self.scale = torch.nn.Parameter(torch.tensor(init_scale))
+        self.rotation = nn.utils.parametrizations.orthogonal(
+            nn.Linear(in_features=k, out_features=k, bias=False)
+        )
+
+    def forward(self, x: torch.Tensor):
+
+        b, d, h, w = x.shape
+
+        x = torch_flatten_3d_tensor(x)
+        x = self.rotation(x)
+        x = torch_deflatten_2d_tensor(x, target_shape=(b, d, h, w))
+
+        return self.scale * x

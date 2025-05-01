@@ -6,6 +6,8 @@ import tempfile
 from pathlib import Path
 
 
+from copy import deepcopy
+
 from xaikd import distillation_policies, bases, models, interceptor
 from xaikd import utils as putils
 from xaikd import bases
@@ -96,7 +98,6 @@ def test_baseline_policy_callable(teacher_dims, student_dims, policy):
         assert not torch.isnan(output)
     except:
         raise
-        assert False, "some exception occurs!"
 
 
 @pytest.mark.parametrize("teacher_dims,student_dims", [(10, 5), (20, 2)])
@@ -109,10 +110,21 @@ def test_baseline_policy_callable(teacher_dims, student_dims, policy):
     ],
 )
 @pytest.mark.parametrize(
-    "parameterization", ["basis-bn-max-normalized", "basis-bn-sum-normalized"]
+    "parameterization",
+    [
+        "basis-center-rotation",
+        "basis-bn-sum-normalized",
+    ],
+)
+@pytest.mark.parametrize(
+    "layerwise_training",
+    [
+        False,
+        True,
+    ],
 )
 def test_our_policies_callable(
-    parameterization, basis_name, teacher_dims, student_dims
+    parameterization, basis_name, teacher_dims, student_dims, layerwise_training
 ):
     rng = np.random.default_rng(seed=1)
     batch_size = 8
@@ -142,7 +154,25 @@ def test_our_policies_callable(
             basis=basis,
         )
 
-        policy = distillation_policies.get_policy(parameterization, **kwargs)
+        policy = distillation_policies.get_policy(
+            parameterization, layerwise_training=layerwise_training, **kwargs
+        )
+
+        assert isinstance(
+            policy,
+            (
+                distillation_policies.ours.OrthogonalBasisBatchNormSumNormalizedPolicy,
+                distillation_policies.ours.OrthogonalBasisCenterRotationPolicy,
+            ),
+        )
+
+        if layerwise_training:
+            np.testing.assert_allclose(policy.scaling_factor, 1)
+        else:
+            np.testing.assert_allclose(
+                policy.scaling_factor,
+                basis.get_scale_factors_for_k(k=student_dims).sum(),
+            )
 
         # check that this is callable
         policy(
@@ -151,7 +181,18 @@ def test_our_policies_callable(
         )
 
         # from batchnorm
-        expected_num_learnable_params = 2 * student_dims
+        if isinstance(
+            policy,
+            distillation_policies.ours.OrthogonalBasisBatchNormSumNormalizedPolicy,
+        ):
+            expected_num_learnable_params = 2 * student_dims
+        elif isinstance(
+            policy,
+            distillation_policies.ours.OrthogonalBasisCenterRotationPolicy,
+        ):
+            expected_num_learnable_params = student_dims * student_dims + 1
+        else:
+            raise
 
         _, actual_num_learnable_params = putils.count_params_in_list_params(
             policy.parameters()
@@ -164,6 +205,7 @@ def test_our_policies_callable(
         assert True
 
 
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize("teacher_dims,student_dims", [(10, 5), (20, 2)])
 @pytest.mark.parametrize(
     "basis_name",
@@ -305,11 +347,13 @@ def test_last_layer_policy(last_layer_policy, expected):
         ),
     ],
 )
+@pytest.mark.parametrize("layerwise_training", [True, False])
 def test_resolve_lambdas_and_layer_policy(
     policy_name,
     lambda_layer,
     expected_layer_policy,
     expected_collection,
+    layerwise_training,
 ):
     teacher = "cifar100-resnet18-v1"
     default_lambda_layer_config = None
@@ -320,8 +364,14 @@ def test_resolve_lambdas_and_layer_policy(
             policy_name=policy_name,
             lambda_layer=lambda_layer,
             default_lambda_layer_config=default_lambda_layer_config,
+            layerwise_training=layerwise_training,
         )
     )
+
+    expected_collection = deepcopy(expected_collection)
+
+    if layerwise_training and not policy_name in ["student-only", "kd-only"]:
+        expected_collection.lambda_layer = 1
 
     np.testing.assert_equal(actual_layer_policy, expected_layer_policy)
     np.testing.assert_equal(actual_collection, expected_collection)
@@ -369,7 +419,7 @@ def test_aligning_teacher_and_student_features_possible(
     trng = torch.Generator()
     trng.manual_seed(1)
 
-    x = torch.randn(5, 3, 224, 224, generator=trng)
+    x = torch.randn(5, 3, 224, 224, generator=trng).to(device)
 
     teacher_model = models.get_trained_model(teacher).to(device)
 

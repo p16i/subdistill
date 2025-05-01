@@ -56,6 +56,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "test")
 @click.option("--epochs", type=int, default=100, required=True)
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--weight-decay", type=float, default=0, required=True)
+@click.option("--layerwise-training", type=bool, default=False)
 @click.option("--upload-best-checkpoint", type=bool, default=False, is_flag=True)
 @click.option("--wandb-experiment-group", type=str, default=None)
 @click.option("--seed", type=int, default=1)
@@ -77,6 +78,7 @@ def main(
     output_dir,
     wandb_experiment_group,
     batch_size,
+    layerwise_training,
 ):
 
     lambda_collection, layer_policy = (
@@ -85,6 +87,7 @@ def main(
             policy_name=distillation_policy,
             lambda_layer=lambda_layer,
             default_lambda_layer_config=default_lambda_layer_config,
+            layerwise_training=layerwise_training,
         )
     )
 
@@ -196,7 +199,11 @@ def main(
                 seed=seed,
             )
             policy = distillation_policies.get_policy(
-                policy_name, device=device, basis=basis, **kwargs
+                policy_name,
+                device=device,
+                basis=basis,
+                layerwise_training=layerwise_training,
+                **kwargs,
             )
         else:
             policy = distillation_policies.get_policy(
@@ -243,6 +250,7 @@ def main(
         lambda_task=lambda_collection.lambda_task,
         lambda_kd=lambda_collection.lambda_kd,
         lambda_layer=lambda_collection.lambda_layer,
+        layerwise_training=layerwise_training,
         device=device,
         lr=lr,
         weight_decay=weight_decay,

@@ -57,12 +57,13 @@ class VIDPolicy(LayerPolicy):
             conv1x1(num_mid_channel, num_mid_channel),
             nn.ReLU(),
             conv1x1(num_mid_channel, num_target_channels),
-        )
+        ).to(device)
+
         # ref: https://github.com/HobbitLong/RepDistiller/blob/master/distiller_zoo/VID.py#L33
         self.log_scale = torch.nn.Parameter(
             np.log(np.exp(self.init_pred_var - self.eps) - 1.0)
             * torch.ones(num_target_channels)
-        )
+        ).to(device)
 
         self.eps = self.eps
 
