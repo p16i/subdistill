@@ -16,6 +16,22 @@ from torchmetrics import MeanMetric
 from torchmetrics.classification import BinaryAUROC
 
 
+def resolve_lambda_layer_for_layer(
+    current_epoch: int, layer_ix: typing.Optional[int]
+) -> float:
+
+    if (
+        (layer_ix == 0 and (0 <= current_epoch < 20))
+        or (layer_ix == 1 and (20 <= current_epoch < 40))
+        or (layer_ix == 2 and (40 <= current_epoch < 60))
+        or (layer_ix == 3 and (60 <= current_epoch < 80))
+        or (layer_ix is None and (current_epoch > 80))
+    ):
+        return 1.0
+    else:
+        return 0.0
+
+
 class Teacher(object):
     """The class is a wrapper to a PyTorch model.
     Its purpose is to prevent Lightning to set the wrapped model to training mode.
@@ -133,6 +149,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
 
+            _lambda_layer = resolve_lambda_layer_for_layer(self.current_epoch, layer_ix=lix))
+
+            _loss_layer = _lambda_layer * _loss_layer
+
             loss_layer = loss_layer + _loss_layer
 
             layer_name = self.layer_policy_collection.student_layers[lix]
@@ -177,10 +197,13 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         student_logits = student_logits.squeeze(1)
         loss = torch.tensor(0.0).to(teacher_logits.device)
 
+        lambda_kd = resolve_lambda_layer_for_layer(self.current_epoch, layer_ix=None)
+        lambda_layer = 1
+
         for loss_label, loss_coeff in [
             ("task", self.lambda_task),
-            ("kd", self.lambda_kd),
-            ("layer", self.lambda_layer),
+            ("kd", lambda_kd),
+            ("layer", lambda_layer),
         ]:
             if loss_coeff == 0:
                 continue
