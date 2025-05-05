@@ -149,7 +149,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
 
-            _lambda_layer = resolve_lambda_layer_for_layer(self.current_epoch, layer_ix=lix))
+            _lambda_layer = resolve_lambda_layer_for_layer(
+                self.current_epoch, layer_ix=lix
+            )
 
             _loss_layer = _lambda_layer * _loss_layer
 
