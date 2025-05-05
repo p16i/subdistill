@@ -331,10 +331,10 @@ def _register_student_resnet18():
         )
 
     for arr_in_planes in [
-        (32, 32, 32, 16),
-        (32, 32, 16, 8),
-        (32, 32, 8, 4),
-        (32, 32, 4, 2),
+        (32, 32, 32, 32),
+        (32, 32, 16, 16),
+        (32, 32, 8, 8),
+        (32, 32, 4, 4),
     ]:
 
         slug = "-".join(np.array(arr_in_planes).astype(str))
