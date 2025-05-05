@@ -14,6 +14,9 @@ from .register import register_basis
 from xaikd import utils
 
 
+from scipy.stats import ortho_group
+
+
 @register_basis()
 class PCA(OrthogonalBasis):
     def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
@@ -25,6 +28,20 @@ class PCA(OrthogonalBasis):
         _, eigvecs = utils.solve_eigh(cov)
 
         return eigvecs
+
+
+@register_basis()
+class Random(OrthogonalBasis):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+
+        rng = np.random.default_rng(seed=1)
+
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        N, d = arr_act.shape
+
+        U = ortho_group.rvs(dim=d, random_state=rng)
+
+        return U
 
 
 @register_basis()
