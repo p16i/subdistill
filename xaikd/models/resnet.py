@@ -217,6 +217,57 @@ def construct_student_cifar_resnet18(in_planes: int, num_classes: int, **kwargs)
     return model
 
 
+def construct_student_cifar_resnet18_arr_inplanes(
+    arr_in_planes: typing.Tuple, num_classes: int, **kwargs
+):
+    model = resnet._resnet(
+        resnet.BasicBlock,
+        [2, 2, 2, 2],
+        weights=None,
+        progress=False,
+        num_classes=num_classes,
+    )
+
+    in_plane_1, in_plane_2, in_plane_3, in_plane_4 = arr_in_planes
+
+    model.inplanes = in_plane_1
+
+    # Similar to _resnet18_cifar(..)
+    model.conv1 = nn.Conv2d(3, in_plane_1, 3, 1, 1, bias=False)
+    model.bn1 = nn.BatchNorm2d(in_plane_1)
+    model.maxpool = nn.Identity()  # type: ignore
+
+    # The following code mimics the original code's _make_layer(..)
+    # Ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L225
+
+    # We only change in planes
+    model.inplanes = in_plane_1
+    model.layer1 = model._make_layer(
+        block=resnet.BasicBlock,
+        planes=in_plane_1,
+        blocks=2,
+    )
+    model.inplanes = in_plane_1
+
+    model.layer2 = model._make_layer(
+        block=resnet.BasicBlock, planes=in_plane_2, blocks=2, stride=2, dilate=False
+    )
+    model.inplanes = in_plane_2
+
+    model.layer3 = model._make_layer(
+        block=resnet.BasicBlock, planes=in_plane_3, blocks=2, stride=2, dilate=False
+    )
+    model.inplanes = in_plane_3
+
+    model.layer4 = model._make_layer(
+        block=resnet.BasicBlock, planes=in_plane_4, blocks=2, stride=2, dilate=False
+    )
+
+    model.fc = nn.Linear(in_plane_4, num_classes)
+
+    return model
+
+
 def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
     model = resnet._resnet(
         resnet.BasicBlock,
@@ -273,9 +324,27 @@ def _register_student_resnet18():
             f"student-cifar-resnet18-{in_planes}",
             partial(construct_student_cifar_resnet18, in_planes=in_planes),
         )
+
         add_model_to_registry(
             f"student-resnet18-{in_planes}",
             partial(construct_student_resnet18, in_planes=in_planes),
+        )
+
+    for arr_in_planes in [
+        (32, 32, 16, 16),
+        (32, 32, 8, 8),
+        (32, 32, 4, 4),
+        (32, 32, 2, 2),
+    ]:
+
+        slug = "-".join(np.array(arr_in_planes).astype(str))
+
+        add_model_to_registry(
+            f"student-cifar-resnet18-d{slug}",
+            partial(
+                construct_student_cifar_resnet18_arr_inplanes,
+                arr_in_planes=arr_in_planes,
+            ),
         )
 
 
