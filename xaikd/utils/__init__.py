@@ -308,3 +308,26 @@ def solve_eigh(
     eigvecs = eigvecs[:, indices]
 
     return eigvals, eigvecs
+
+
+def adjust_basis_vectors_to_positive_direction(
+    U: npt.NDArray,
+    x: npt.NDArray,
+    strict=False,
+):
+    # remark: for operatation with U@U.T, this sign correction cancels out,
+    # hence having no effect.
+
+    n, d = x.shape
+
+    # fixme: add test
+    is_majority_pos_sign = ((x @ U) > 0).mean(axis=0) > 0.5
+
+    assert is_majority_pos_sign.shape == (d,)
+
+    Up = U @ np.diag(is_majority_pos_sign) + U @ np.diag((is_majority_pos_sign - 1))
+
+    if strict:
+        np.testing.assert_allclose(Up.T @ Up, np.eye(d), atol=1e-6)
+
+    return Up
