@@ -114,9 +114,10 @@ class OrthogonalBasis(ABC):
             axis=0
         ) > 0.5
 
-        arr_majority_pos_sign = np.diag(arr_majority_pos_sign)
-
-        U = arr_majority_pos_sign @ U + (1 - arr_majority_pos_sign) @ U
+        U = U @ np.diag(arr_majority_pos_sign) + U @ np.diag(
+            (arr_majority_pos_sign - 1)
+        )
+        np.testing.assert_allclose(U.T @ U, np.eye(d), atol=1e-6)
 
         self._U = U
 
