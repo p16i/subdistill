@@ -27,6 +27,19 @@ def _generate_dummy_act_ctx(
     return activation, context, mean
 
 
+def _assert_basis_similar_upto_direction(actual, expected):
+    d, d = actual.shape
+
+    assert expected.shape == (d, d)
+
+    for dix in range(d):
+        actual_u = actual[:, dix]
+        expected_u = expected[:, dix]
+        cosine_sim = np.dot(actual_u, expected_u)
+
+        np.testing.assert_allclose(np.abs(cosine_sim), 1.0)
+
+
 class ExpectedU:
     @classmethod
     def compute(
@@ -73,7 +86,7 @@ def _test_analytic_basis(basis_name: str, compute_expected_U: ExpectedU):
         logodd_threshold=logodd_threshold,
     )
 
-    np.testing.assert_allclose(basis.U, expected_U)
+    _assert_basis_similar_upto_direction(basis.U, expected_U)
 
 
 def test_analytic_pca():
@@ -488,7 +501,7 @@ def test_centering_orthogonal_bases(basis_name, solve_func):
 
     actual_U = basis.U
 
-    np.testing.assert_allclose(actual_U, expected_U)
+    _assert_basis_similar_upto_direction(actual_U, expected_U)
 
     if basis.centering:
         assert basis.mean.shape == (d,)
