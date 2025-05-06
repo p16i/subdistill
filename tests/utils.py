@@ -229,3 +229,34 @@ def test_modify_last_layer_for_subclasses():
         utils.modify_last_layer_for_subclasses(model, list(range(8)))
         output = model(data).cpu().numpy()
         assert output.shape == (5, 8)
+
+
+@pytest.mark.parametrize(
+    "n,d,num_neg_dim",
+    [
+        (5, 2, 0),
+        (5, 2, 1),
+        (5, 2, 2),
+        (10, 5, 0),
+        (10, 5, 3),
+        (10, 5, 5),
+    ],
+)
+def test_sign_correction(n, d, num_neg_dim):
+    rng = np.random.default_rng(seed=1)
+
+    x = rng.random(size=(n, d))
+
+    dims = [1] * d
+    for ix in rng.permutation(d)[:num_neg_dim]:
+        dims[ix] = -1
+
+    U = np.diag(dims)
+
+    Up = utils.adjust_basis_vectors_to_positive_direction(
+        U=U,
+        x=x,
+        strict=True,
+    )
+
+    np.testing.assert_allclose(Up, np.eye(d))

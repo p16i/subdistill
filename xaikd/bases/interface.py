@@ -102,12 +102,19 @@ class OrthogonalBasis(ABC):
                 err_msg="mean should be zero!",
             )
 
-        self._U = self._solve(
+        U = self._solve(
             arr_act=arr_act,
             arr_ctx=arr_ctx,
             arr_logodd=arr_logodd,
             logodd_threshold=logodd_threshold,
         )
+
+        self._U = utils.adjust_basis_vectors_to_positive_direction(
+            U=U, x=utils.flatten_3d_tensor(arr_act)
+        )
+
+        if strict_mode:
+            np.testing.assert_allclose(U @ U.T, np.eye(d), atol=1e-6)
 
         self._scale_factors = self.estimate_scale_factors(arr_act=arr_act, U=self._U)
 
