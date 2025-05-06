@@ -340,7 +340,7 @@ def _register_student_resnet18():
         slug = "-".join(np.array(arr_in_planes).astype(str))
 
         add_model_to_registry(
-            f"student-cifar-resnet18-dims--{slug}",
+            f"student-cifar-resnet18--{slug}",
             partial(
                 construct_student_cifar_resnet18_arr_inplanes,
                 arr_in_planes=arr_in_planes,
