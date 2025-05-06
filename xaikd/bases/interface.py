@@ -102,12 +102,23 @@ class OrthogonalBasis(ABC):
                 err_msg="mean should be zero!",
             )
 
-        self._U = self._solve(
+        U = self._solve(
             arr_act=arr_act,
             arr_ctx=arr_ctx,
             arr_logodd=arr_logodd,
             logodd_threshold=logodd_threshold,
         )
+
+        # fixme: add test
+        arr_majority_pos_sign = ((utils.flatten_3d_tensor(arr_act) @ U) > 0).mean(
+            axis=0
+        ) > 0.5
+
+        arr_majority_pos_sign = np.diag(arr_majority_pos_sign)
+
+        U = arr_majority_pos_sign @ U + (1 - arr_majority_pos_sign) @ U
+
+        self._U = U
 
         self._scale_factors = self.estimate_scale_factors(arr_act=arr_act, U=self._U)
 
