@@ -171,6 +171,7 @@ class AblationOrthogonalBasisCenterRotationPolicy(LayerPolicy):
         assert not layerwise_training
 
         self.scaling_factor = np.sum(self.basis.get_scale_factors_for_k(student_dims))
+        print(f"scale factor: {self.scaling_factor:.4e}")
 
         self.transformer_teacher_feats = basis.construct_adapter(
             k=k, mode=AdapterMode.ENCODER, device=device
