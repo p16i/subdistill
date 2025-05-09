@@ -536,3 +536,37 @@ def test_equivalence_between_prcaposdef_and_prcposdef_uniform():
     np.testing.assert_allclose(
         prcaposdef.scale_factors, prcaposdef_uniform.scale_factors
     )
+
+
+@pytest.mark.parametrize(
+    "slug,layer,expected",
+    [
+        ("pca", "layer1", "pca"),
+        ("pca", "layer2", "pca"),
+        (
+            "layer1@pca,layer2@pca,layer3@prcaposdef-entropy0.95,layer4@prcaposdef-entropy0.95",
+            "layer1",
+            "pca",
+        ),
+        (
+            "layer1@pca,layer2@pca,layer3@prcaposdef-entropy0.95,layer4@prcaposdef-entropy0.95",
+            "layer2",
+            "pca",
+        ),
+        (
+            "layer1@pca,layer2@pca,layer3@prcaposdef-entropy0.95,layer4@prcaposdef-entropy0.95",
+            "layer3",
+            "prcaposdef-entropy0.95",
+        ),
+        (
+            "layer1@pca,layer2@pca,layer3@prcaposdef-entropy0.95,layer4@prcaposdef-entropy0.95",
+            "layer4",
+            "prcaposdef-entropy0.95",
+        ),
+    ],
+)
+def test_resolve_basis_name_for_layer(slug, layer, expected):
+
+    actual = bases.resolve_basis_name_for_layer(slug=slug, layer=layer)
+
+    np.testing.assert_equal(actual, expected)
