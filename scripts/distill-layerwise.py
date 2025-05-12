@@ -38,6 +38,9 @@ from xaikd import (
 from pytorch_lightning.loggers.wandb import WandbLogger
 
 
+TEACHER_LAYER_PREFIX = "base"
+
+
 WANDB_ENTITY = os.getenv("WANDB_ENTITY", "xaikd")
 WANDB_DIR = os.getenv("WANDB_DIR", "/tmp")
 WANDB_PROJECT = os.getenv("WANDB_PROJECT", "test")
@@ -131,7 +134,7 @@ def main(
     teacher_model = nn.Sequential(
         OrderedDict(
             [
-                ("base", models.get_trained_model(teacher).to(device)),
+                (TEACHER_LAYER_PREFIX, models.get_trained_model(teacher).to(device)),
                 (
                     "last_layer",
                     models.layers.resolve_teacher_last_layer(dataset=dataset),
@@ -142,7 +145,9 @@ def main(
     teacher_model.eval()
     teacher_model.to(device)
 
-    arr_teacher_layers = list(map(lambda t: f"base.{t}", arr_teacher_layers))
+    arr_teacher_layers = list(
+        map(lambda t: f"{TEACHER_LAYER_PREFIX}.{t}", arr_teacher_layers)
+    )
 
     dict_teacher_layer_dim = utils.get_dimensions_at_layers(
         teacher_model, train_loader, layers=arr_teacher_layers, device=device
@@ -188,7 +193,11 @@ def main(
 
         if "basis" in layer_policy:
 
-            policy_name, basis_name = layer_policy.split(":")
+            policy_name, basis_slug = layer_policy.split(":")
+            basis_name = bases.resolve_basis_name_for_layer(
+                slug=basis_slug,
+                layer=teacher_layer.replace(f"{TEACHER_LAYER_PREFIX}.", ""),
+            )
             basis = bases.helpers.learn_basis(
                 teacher_model=teacher_model,
                 train_loader=train_loader,
