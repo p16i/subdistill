@@ -10,6 +10,7 @@ from torchvision.ops import Conv2dNormActivation
 
 from torch import nn
 from functools import partial
+import timm
 
 from . import MODEL_GENERATORS, add_model_to_registry
 
@@ -360,7 +361,12 @@ def _student_very_small_cifarv2(num_classes, dim1, dim2, dim3, **kwargs) -> nn.M
 
 
 def _generate_model_function():
+    add_model_to_registry(
+        "student-mobilenetv4-small",
+        partial(timm.create_model, model_name="mobilenetv4_conv_small"),
+    )
 
+    # fixme: remove all this things
     add_model_to_registry(f"student-mobilenets", _student_s)
     add_model_to_registry(f"student-mobilenetl", _student_l)
 

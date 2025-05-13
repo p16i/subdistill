@@ -20,7 +20,6 @@ from . import (
     add_model_to_registry,
     vit_students,
     students_mobilenet,
-    students_mobilenetv4,
 )
 
 
