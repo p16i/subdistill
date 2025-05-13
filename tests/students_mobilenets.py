@@ -21,7 +21,7 @@ def test_student_v4_callable(student_name, layer):
     bs = 7
     nc = 10
     inp = torch.rand((bs, 3, 224, 224), generator=trng)
-    model = models.get_untrained_model(student_name, num_classes=nc, class_indices=None)
+    model = models.get_untrained_model(student_name, num_classes=nc)
 
     assert model.training
 
