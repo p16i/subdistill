@@ -12,6 +12,7 @@ from torch import nn
 from functools import partial
 import timm
 
+import math
 from . import MODEL_GENERATORS, add_model_to_registry
 
 
@@ -364,7 +365,21 @@ def __mobilenetv4_small_linear_normal_init(**kwargs):
 
     model = timm.create_model("mobilenetv4_conv_small", **kwargs)
 
-    model.classifier.weight.data.normal_(0, 0.01)
+    # https://github.com/d-li14/mobilenetv4.pytorch/blob/main/mobilenetv4.py#L155C19-L155C47
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            m.weight.data.normal_(0, math.sqrt(2.0 / n))
+            if m.bias is not None:
+                m.bias.data.zero_()
+        elif isinstance(m, nn.BatchNorm2d):
+            m.weight.data.fill_(1)
+            m.bias.data.zero_()
+        elif isinstance(m, nn.Linear):
+            m.weight.data.normal_(0, 0.01)
+            m.bias.data.zero_()
+
+    # model.classifier.weight.data.normal_(0, 0.01)
 
     return model
 
