@@ -364,5 +364,11 @@ def _generate_model_function():
     add_model_to_registry(f"student-mobilenets", _student_s)
     add_model_to_registry(f"student-mobilenetl", _student_l)
 
+    for dim in [32, 64, 128]:
+        add_model_to_registry(
+            f"student-patmobilenet-{dim}",
+            partial(_student_very_small, dim1=dim, dim2=dim, dim3=dim),
+        )
+
 
 _generate_model_function()
