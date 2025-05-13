@@ -361,11 +361,17 @@ def _student_very_small_cifarv2(num_classes, dim1, dim2, dim3, **kwargs) -> nn.M
     )
 
 
-def __mobilenetv4_small_linear_normal_init(**kwargs):
+def __mobilenetv4_small_timm_better_initialization(**kwargs):
 
     model = timm.create_model("mobilenetv4_conv_small", **kwargs)
 
-    # https://github.com/d-li14/mobilenetv4.pytorch/blob/main/mobilenetv4.py#L155C19-L155C47
+    # remark: it seems that the initiliazation from timm doesn't seem to work well with small data.
+    # From Pat's preliminary invesgiation, the problem might be related to 
+    # the correction of the `fan_out` value when groups > 1 [1].
+    # To the issue, we use the initalization scheme in [2].
+    # Refs:
+    #   [1] https://github.com/rwightman/timm/blob/main/timm/models/_efficientnet_builder.py#L551
+    #   [2] https://github.com/d-li14/mobilenetv4.pytorch/blob/main/mobilenetv4.py#L155C19-L155C47
     for m in model.modules():
         if isinstance(m, nn.Conv2d):
             n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -379,20 +385,13 @@ def __mobilenetv4_small_linear_normal_init(**kwargs):
             m.weight.data.normal_(0, 0.01)
             m.bias.data.zero_()
 
-    # model.classifier.weight.data.normal_(0, 0.01)
-
     return model
 
 
 def _generate_model_function():
     add_model_to_registry(
         "student-mobilenetv4-small",
-        partial(timm.create_model, model_name="mobilenetv4_conv_small"),
-    )
-
-    add_model_to_registry(
-        "student-mobilenetv4-small-linear-normal-init",
-        __mobilenetv4_small_linear_normal_init,
+        __mobilenetv4_small_timm_better_initialization,
     )
 
     # fixme: remove all this things
