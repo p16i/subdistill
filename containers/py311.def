@@ -2,7 +2,7 @@ BootStrap: docker
 From: python:3.11.8
 
 %labels
-    Version v0.0.1
+    Version v0.0.2
 
 %environment
     export PYTHONPATH=.
@@ -25,7 +25,7 @@ From: python:3.11.8
 	pytest==7.3.1 \
 	black==23.3.0 \
 	wandb==0.15.8 \
-	timm==1.0.3 \
+	timm==1.0.15 \
  	tensorboard==2.13.0 \
 	zennit==0.5.1  \
 	opencv-python==4.10.0.84
