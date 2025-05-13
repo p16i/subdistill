@@ -137,7 +137,7 @@ class UniversalInvertedBottleneck(nn.Module):
 
 
 class MobileNetV4(nn.Module):
-    def __init__(self, block_specs, num_classes=1000):
+    def __init__(self, block_specs, num_classes=1000, **kwargs):
         super(MobileNetV4, self).__init__()
 
         c = 3
