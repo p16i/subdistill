@@ -6,7 +6,8 @@ from xaikd import models, utils
 
 
 @pytest.mark.parametrize(
-    "student_name", ["student-mobilenetv4-small", "student-mobilenetv4-small-v2"]
+    "student_name",
+    ["student-mobilenetv4-small", "student-mobilenetv4-small-linear-normal-init"],
 )
 @pytest.mark.parametrize(
     "layer",

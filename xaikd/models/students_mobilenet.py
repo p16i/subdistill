@@ -376,7 +376,8 @@ def _generate_model_function():
     )
 
     add_model_to_registry(
-        "student-mobilenetv4-small-v2", __mobilenetv4_small_linear_normal_init
+        "student-mobilenetv4-small-linear-normal-init",
+        __mobilenetv4_small_linear_normal_init,
     )
 
     # fixme: remove all this things
