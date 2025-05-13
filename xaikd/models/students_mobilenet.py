@@ -1,368 +1,42 @@
-import typing
-import torch
-from torchvision.models import (
-    mobilenetv3,
-    mobilenet_v3_small,
-    mobilenet_v3_large,
-    MobileNet_V3_Small_Weights,
-)
-from torchvision.ops import Conv2dNormActivation
-
 from torch import nn
-from functools import partial
+import timm
 
-from . import MODEL_GENERATORS, add_model_to_registry
+import math
+from . import add_model_to_registry
 
 
-def _student_s_trained(num_classes, class_indices) -> nn.Module:
+def __mobilenetv4_small_timm_better_initialization(**kwargs):
 
-    assert class_indices is not None
+    model = timm.create_model("mobilenetv4_conv_small", **kwargs)
 
-    model = mobilenet_v3_small(weights=MobileNet_V3_Small_Weights.IMAGENET1K_V1)
-
-    fc: nn.Linear = model.classifier[3]
-
-    fc.weight = nn.Parameter(fc.weight[class_indices, :])
-    fc.bias = nn.Parameter(fc.bias[class_indices])
+    # remark: it seems that the initiliazation from timm doesn't seem to work well with small data.
+    # From Pat's preliminary invesgiation, the problem might be related to
+    # the correction of the `fan_out` value when groups > 1 [1].
+    # To the issue, we use the initalization scheme in [2].
+    # Refs:
+    #   [1] https://github.com/rwightman/timm/blob/main/timm/models/_efficientnet_builder.py#L551
+    #   [2] https://github.com/d-li14/mobilenetv4.pytorch/blob/main/mobilenetv4.py#L155C19-L155C47
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+            m.weight.data.normal_(0, math.sqrt(2.0 / n))
+            if m.bias is not None:
+                m.bias.data.zero_()
+        elif isinstance(m, nn.BatchNorm2d):
+            m.weight.data.fill_(1)
+            m.bias.data.zero_()
+        elif isinstance(m, nn.Linear):
+            m.weight.data.normal_(0, 0.01)
+            m.bias.data.zero_()
 
     return model
 
 
-def _student_s(num_classes, **kwargs) -> nn.Module:
-    return mobilenet_v3_small(num_classes=num_classes)
-
-
-def _student_l(num_classes, **kwargs) -> nn.Module:
-    return mobilenet_v3_large(num_classes=num_classes)
-
-
-def _student_very_small(num_classes, dim1, dim2, dim3, **kwargs) -> nn.Module:
-    dilation = 1
-
-    width_mult = 1
-    bneck_conf = partial(mobilenetv3.InvertedResidualConfig, width_mult=width_mult)
-    adjust_channels = partial(
-        mobilenetv3.InvertedResidualConfig.adjust_channels, width_mult=width_mult
-    )
-
-    inverted_residual_setting = [
-        # same conf as mobiletnet-s
-        bneck_conf(16, 3, 16, 16, True, "RE", 2, 1),  # C1
-        bneck_conf(16, 3, 72, 24, False, "RE", 2, 1),  # C2
-        bneck_conf(24, 3, 88, 24, False, "RE", 1, 1),
-        bneck_conf(24, 5, 96, 40, True, "HS", 2, 1),  # C3
-        bneck_conf(40, 5, 240, 40, True, "HS", 1, 1),
-        bneck_conf(40, 5, 240, 40, True, "HS", 1, 1),
-        # modified conf
-        bneck_conf(40, 5, 120, dim1, True, "HS", 1, 1),
-        bneck_conf(dim1, 5, dim2, dim1, True, "HS", 1, 1),
-        bneck_conf(dim1, 5, dim2 * 2, dim1 * 2, True, "HS", 2, dilation),  # C4
-        bneck_conf(
-            dim1 * 2,
-            5,
-            dim3,
-            dim1 * 2,
-            True,
-            "HS",
-            1,
-            dilation,
-        ),
-        bneck_conf(
-            dim1 * 2,
-            5,
-            dim3,
-            dim1 * 2,
-            True,
-            "HS",
-            1,
-            dilation,
-        ),
-    ]
-    last_channel = adjust_channels(dim3 * 2)  # C5
-
-    return mobilenetv3._mobilenet_v3(
-        inverted_residual_setting,
-        last_channel,
-        num_classes=num_classes,
-        weights=None,
-        progress=False,
-        **kwargs,
-    )
-
-
-def _student_very_small_bottleneck(
-    num_classes, dim1, dim2, dim3, dim4, last_output_channels, **kwargs
-) -> nn.Module:
-    dilation = 1
-
-    width_mult = 1
-    bneck_conf = partial(mobilenetv3.InvertedResidualConfig, width_mult=width_mult)
-    adjust_channels = partial(
-        mobilenetv3.InvertedResidualConfig.adjust_channels, width_mult=width_mult
-    )
-
-    inverted_residual_setting = [
-        # same conf as mobiletnet-s
-        bneck_conf(16, 3, 16, 16, True, "RE", 2, 1),  # C1
-        bneck_conf(16, 3, 72, 24, False, "RE", 2, 1),  # C2
-        bneck_conf(24, 3, 88, 24, False, "RE", 1, 1),
-        bneck_conf(24, 5, 96, 40, True, "HS", 2, 1),  # C3
-        bneck_conf(40, 5, 240, 40, True, "HS", 1, 1),
-        bneck_conf(40, 5, 240, 40, True, "HS", 1, 1),
-        # modified conf
-        bneck_conf(40, 5, 120, dim1, True, "HS", 1, 1),
-        bneck_conf(dim1, 5, dim2, dim1, True, "HS", 1, 1),
-        bneck_conf(dim1, 5, dim2 * 2, dim1 * 2, True, "HS", 2, dilation),  # C4
-        bneck_conf(
-            dim1 * 2,
-            5,
-            dim3,
-            dim1 * 2,
-            True,
-            "HS",
-            1,
-            dilation,
-        ),
-        bneck_conf(
-            dim1 * 2,
-            5,
-            dim3,
-            dim1 * 2,
-            True,
-            "HS",
-            1,
-            dilation,
-        ),
-    ]
-    last_channel = adjust_channels(dim4)  # C5
-
-    # return mobilenetv3._mobilenet_v3(
-    return PatMobileNetV3(
-        inverted_residual_setting,
-        last_conv_channels=last_output_channels,
-        last_channel=last_channel,
-        num_classes=num_classes,
-        weights=None,
-        progress=False,
-        **kwargs,
-    )
-
-
-class PatMobileNetV3(nn.Module):
-    def __init__(
-        self,
-        inverted_residual_setting: typing.List[mobilenetv3.InvertedResidualConfig],
-        last_conv_channels: int,
-        last_channel: int,
-        num_classes: int = 1000,
-        block=None,
-        norm_layer=None,
-        dropout=0.2,
-        **kwargs,
-    ) -> None:
-
-        super().__init__()
-
-        if not inverted_residual_setting:
-            raise ValueError("The inverted_residual_setting should not be empty")
-        elif not (
-            isinstance(inverted_residual_setting, typing.Sequence)
-            and all(
-                [
-                    isinstance(s, mobilenetv3.InvertedResidualConfig)
-                    for s in inverted_residual_setting
-                ]
-            )
-        ):
-            raise TypeError(
-                "The inverted_residual_setting should be List[InvertedResidualConfig]"
-            )
-
-        if block is None:
-            block = mobilenetv3.InvertedResidual
-
-        if norm_layer is None:
-            norm_layer = partial(nn.BatchNorm2d, eps=0.001, momentum=0.01)
-
-        layers: List[nn.Module] = []
-
-        # building first layer
-        firstconv_output_channels = inverted_residual_setting[0].input_channels
-        layers.append(
-            Conv2dNormActivation(
-                3,
-                firstconv_output_channels,
-                kernel_size=3,
-                stride=2,
-                norm_layer=norm_layer,
-                activation_layer=nn.Hardswish,
-            )
-        )
-
-        # building inverted residual blocks
-        for cnf in inverted_residual_setting:
-            layers.append(block(cnf, norm_layer))
-
-        # building last several layers
-        lastconv_input_channels = inverted_residual_setting[-1].out_channels
-        lastconv_output_channels = last_conv_channels
-        layers.append(
-            Conv2dNormActivation(
-                lastconv_input_channels,
-                lastconv_output_channels,
-                kernel_size=1,
-                norm_layer=norm_layer,
-                activation_layer=nn.Hardswish,
-            )
-        )
-
-        self.features = nn.Sequential(*layers)
-        self.avgpool = nn.AdaptiveAvgPool2d(1)
-        self.classifier = nn.Sequential(
-            nn.Linear(lastconv_output_channels, last_channel),
-            nn.Hardswish(inplace=True),
-            nn.Dropout(p=dropout, inplace=True),
-            nn.Linear(last_channel, num_classes),
-        )
-
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode="fan_out")
-                if m.bias is not None:
-                    nn.init.zeros_(m.bias)
-            elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-                nn.init.ones_(m.weight)
-                nn.init.zeros_(m.bias)
-            elif isinstance(m, nn.Linear):
-                nn.init.normal_(m.weight, 0, 0.01)
-                nn.init.zeros_(m.bias)
-
-    def _forward_impl(self, x: torch.Tensor) -> torch.Tensor:
-        x = self.features(x)
-
-        x = self.avgpool(x)
-        x = torch.flatten(x, 1)
-
-        x = self.classifier(x)
-
-        return x
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self._forward_impl(x)
-
-
-def _student_very_small_cifar(num_classes, dim1, dim2, dim3, **kwargs) -> nn.Module:
-    dilation = 1
-
-    width_mult = 1
-    bneck_conf = partial(mobilenetv3.InvertedResidualConfig, width_mult=width_mult)
-    adjust_channels = partial(
-        mobilenetv3.InvertedResidualConfig.adjust_channels, width_mult=width_mult
-    )
-
-    inverted_residual_setting = [
-        # same conf as mobiletnet-s
-        bneck_conf(16, 3, 16, 16, True, "RE", 2, 1),  # C1
-        bneck_conf(16, 3, 72, 24, False, "RE", 1, 1),  # C2
-        bneck_conf(24, 3, 88, 24, False, "RE", 1, 1),
-        bneck_conf(24, 5, 96, 40, True, "HS", 2, 1),  # C3
-        bneck_conf(40, 5, 240, 40, True, "HS", 1, 1),
-        bneck_conf(40, 5, 240, 40, True, "HS", 1, 1),
-        # modified conf
-        bneck_conf(40, 5, 120, dim1, True, "HS", 1, 1),
-        bneck_conf(dim1, 5, dim2, dim1, True, "HS", 1, 1),
-        bneck_conf(dim1, 5, dim2 * 2, dim1 * 2, True, "HS", 2, dilation),  # C4
-        bneck_conf(
-            dim1 * 2,
-            5,
-            dim3,
-            dim1 * 2,
-            True,
-            "HS",
-            1,
-            dilation,
-        ),
-        bneck_conf(
-            dim1 * 2,
-            5,
-            dim3,
-            dim1 * 2,
-            True,
-            "HS",
-            1,
-            dilation,
-        ),
-    ]
-    last_channel = adjust_channels(dim3 * 2)  # C5
-
-    return mobilenetv3._mobilenet_v3(
-        inverted_residual_setting,
-        last_channel,
-        num_classes=num_classes,
-        weights=None,
-        progress=False,
-        **kwargs,
-    )
-
-
-def _student_very_small_cifarv2(num_classes, dim1, dim2, dim3, **kwargs) -> nn.Module:
-    dilation = 1
-
-    width_mult = 1
-    bneck_conf = partial(mobilenetv3.InvertedResidualConfig, width_mult=width_mult)
-    adjust_channels = partial(
-        mobilenetv3.InvertedResidualConfig.adjust_channels, width_mult=width_mult
-    )
-
-    inverted_residual_setting = [
-        # same conf as mobiletnet-s
-        bneck_conf(16, 3, 16, 16, True, "RE", 1, 1),  # C1
-        bneck_conf(16, 3, 72, 24, False, "RE", 1, 1),  # C2
-        bneck_conf(24, 3, 88, 24, False, "RE", 1, 1),
-        bneck_conf(24, 5, 96, 40, True, "HS", 2, 1),  # C3
-        bneck_conf(40, 5, 240, 40, True, "HS", 1, 1),
-        bneck_conf(40, 5, 240, 40, True, "HS", 1, 1),
-        # modified conf
-        bneck_conf(40, 5, 120, dim1, True, "HS", 1, 1),
-        bneck_conf(dim1, 5, dim2, dim1, True, "HS", 1, 1),
-        bneck_conf(dim1, 5, dim2 * 2, dim1 * 2, True, "HS", 2, dilation),  # C4
-        bneck_conf(
-            dim1 * 2,
-            5,
-            dim3,
-            dim1 * 2,
-            True,
-            "HS",
-            1,
-            dilation,
-        ),
-        bneck_conf(
-            dim1 * 2,
-            5,
-            dim3,
-            dim1 * 2,
-            True,
-            "HS",
-            1,
-            dilation,
-        ),
-    ]
-    last_channel = adjust_channels(dim3 * 2)  # C5
-
-    return mobilenetv3._mobilenet_v3(
-        inverted_residual_setting,
-        last_channel,
-        num_classes=num_classes,
-        weights=None,
-        progress=False,
-        **kwargs,
-    )
-
-
 def _generate_model_function():
-
-    add_model_to_registry(f"student-mobilenets", _student_s)
-    add_model_to_registry(f"student-mobilenetl", _student_l)
+    add_model_to_registry(
+        "student-mobilenetv4-small",
+        __mobilenetv4_small_timm_better_initialization,
+    )
 
 
 _generate_model_function()

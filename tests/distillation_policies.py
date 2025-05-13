@@ -388,18 +388,18 @@ def test_resolve_lambdas_and_layer_policy(
         ),
         (
             "celeba-resnet18-finetunedv1",
-            "student-mobilenets",
-            "layer1:features.3,layer2:features.6,layer3:features.9,layer4:features.12",
+            "student-mobilenetv4-small",
+            "layer1:blocks.2.2,layer2:blocks.2.5,layer3:blocks.3.2,layer4:blocks.3.5",
         ),
         (
             "celeba-resnet50-finetunedv1",
-            "student-mobilenets",
-            "layer1:features.3,layer2:features.6,layer3:features.9,layer4:features.12",
+            "student-mobilenetv4-small",
+            "layer1:blocks.2.2,layer2:blocks.2.5,layer3:blocks.3.2,layer4:blocks.3.5",
         ),
         (
             "celeba-wideresnet50_2-finetunedv1",
-            "student-mobilenets",
-            "layer1:features.3,layer2:features.6,layer3:features.9,layer4:features.12",
+            "student-mobilenetv4-small",
+            "layer1:blocks.2.2,layer2:blocks.2.5,layer3:blocks.3.2,layer4:blocks.3.5",
         ),
         (
             "celeba-vitb16-finetunedv1",

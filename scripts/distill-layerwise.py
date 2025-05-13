@@ -154,7 +154,8 @@ def main(
     )
 
     student_model = models.get_untrained_model(
-        student, num_classes=dataset.num_classes, class_indices=dataset.selected_classes
+        student,
+        num_classes=dataset.num_classes,
     ).to(device)
 
     dict_student_layer_dim = utils.get_dimensions_at_layers(
