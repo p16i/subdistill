@@ -360,10 +360,23 @@ def _student_very_small_cifarv2(num_classes, dim1, dim2, dim3, **kwargs) -> nn.M
     )
 
 
+def __mobilenetv4_small_linear_normal_init(**kwargs):
+
+    model = timm.create_model("mobilenetv4_conv_small", **kwargs)
+
+    model.classifier.weight.data.normal_(0, 0.01)
+
+    return model
+
+
 def _generate_model_function():
     add_model_to_registry(
         "student-mobilenetv4-small",
         partial(timm.create_model, model_name="mobilenetv4_conv_small"),
+    )
+
+    add_model_to_registry(
+        "student-mobilenetv4-small-v2", __mobilenetv4_small_linear_normal_init
     )
 
     # fixme: remove all this things

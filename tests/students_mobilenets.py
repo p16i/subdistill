@@ -5,7 +5,9 @@ import torch
 from xaikd import models, utils
 
 
-@pytest.mark.parametrize("student_name", ["student-mobilenetv4-small"])
+@pytest.mark.parametrize(
+    "student_name", ["student-mobilenetv4-small", "student-mobilenetv4-small-v2"]
+)
 @pytest.mark.parametrize(
     "layer",
     [
