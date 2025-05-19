@@ -37,6 +37,7 @@ class OrthogonalBasis(ABC):
         arr_ctx: npt.NDArray,
         arr_logodd: npt.NDArray,
         logodd_threshold: float,
+        **kwargs,
     ) -> npt.NDArray:
         pass
 
@@ -107,6 +108,7 @@ class OrthogonalBasis(ABC):
             arr_ctx=arr_ctx,
             arr_logodd=arr_logodd,
             logodd_threshold=logodd_threshold,
+            **kwargs,
         )
 
         self._U = utils.adjust_basis_vectors_to_positive_direction(

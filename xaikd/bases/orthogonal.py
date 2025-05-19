@@ -1,12 +1,7 @@
-import typing
-import numpy.typing as npt
-
-from abc import ABC, abstractmethod
-
-
 import numpy as np
-import torch
 
+
+from scipy import stats
 
 from .interface import OrthogonalBasis
 from .register import register_basis
@@ -25,6 +20,20 @@ class PCA(OrthogonalBasis):
         _, eigvecs = utils.solve_eigh(cov)
 
         return eigvecs
+
+
+@register_basis()
+class Random(OrthogonalBasis):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+
+        seed = kwargs["seed"]
+
+        N, d = arr_act.shape
+        rng = np.random.default_rng(seed=seed)
+
+        U = stats.ortho_group(d).rvs(1, random_state=rng)
+
+        return U
 
 
 @register_basis()

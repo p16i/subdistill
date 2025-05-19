@@ -44,5 +44,7 @@ def learn_basis(
         mean_act=mean_act,
         arr_logodd=arr_logodd,
         logodd_threshold=logit_mod.threshold,
+        # remark: this is only used for `Random`
+        seed=seed,
     )
     return basis
