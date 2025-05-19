@@ -28,10 +28,10 @@ class Random(OrthogonalBasis):
 
         seed = kwargs["seed"]
 
-        N, d = arr_act.shape
+        _, d = utils.flatten_3d_tensor(arr_act).shape
         rng = np.random.default_rng(seed=seed)
 
-        U = stats.ortho_group(d).rvs(1, random_state=rng)
+        U = stats.ortho_group(d).rvs(random_state=rng)
 
         return U
 
