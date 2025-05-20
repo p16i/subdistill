@@ -17,6 +17,10 @@ from torch.utils.data import DataLoader
 
 from pathlib import Path
 
+import pandas as pd
+import wandb
+
+from tqdm import tqdm
 
 from xaikd import distillation_policies, utils
 from xaikd import datasets
@@ -171,6 +175,7 @@ class Layerwise:
             callback_checkpoint.best_model_score
         )
         self.log_test_metrics(best_student=best_student, logger=logger, device=device)
+        self.log_prediction(student=best_student, logger=logger, device=device)
 
         if upload_best_checkpoint:
             wandb_run = logger.experiment
@@ -237,6 +242,27 @@ class Layerwise:
         logger.experiment.summary["student_test_loss"] = test_loss
 
         return test_auroc, test_loss
+
+    @torch.no_grad()
+    def log_prediction(self, student: nn.Module, logger: WandbLogger, device: str):
+        prediction_table = wandb.Table(
+            columns=["target", "output_teacher", "output_student"]
+        )
+        for x, y in tqdm(self.dl_test, desc="logging prediction"):
+            x = x.to(device)
+            output_teacher = self.teacher(x).detach().cpu().numpy()
+            output_student = student(x).squeeze(1).detach().cpu().numpy()
+
+            assert len(output_student.shape) == 1, output_student.shape
+
+            np.testing.assert_allclose(output_student.shape, output_teacher.shape)
+
+            for i in range(x.shape[0]):
+                prediction_table.add_data(
+                    int(y[i]), output_teacher[i], output_student[i]
+                )
+
+        logger.experiment.log({"prediction": prediction_table})
 
     def log_model(
         self,
