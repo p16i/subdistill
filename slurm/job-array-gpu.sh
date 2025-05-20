@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH --mem=128GB
+#SBATCH --mem=32GB
 #SBATCH --cpus-per-task=12
 #SBATCH --gpus=1
 #SBATCH -o ./logs/array/%A_%a.out
