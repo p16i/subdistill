@@ -153,6 +153,7 @@ def main(
                 mean_act=mean_act,
                 arr_logodd=arr_logit,
                 logodd_threshold=logit_modifier.threshold,
+                seed=seed
             )
 
             arr_stat_rows = []
