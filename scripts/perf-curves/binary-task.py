@@ -40,7 +40,7 @@ from xaikd.utils import click_types
 )
 @click.option("--dataset-name", required=True, type=str)
 @click.option("--output-dir", default="./tmp", type=click_types.Path())
-@click.option("--max-k", default=512, type=int)
+@click.option("--max-k", default=None, type=int)
 @click.option("--seed", default=1)
 @click.option("--data-size", default=1.0)
 @click.option(
