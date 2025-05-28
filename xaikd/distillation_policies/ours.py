@@ -210,7 +210,7 @@ class OrthogonalBasisCenterRotationNormalizedTeacherPolicy(LayerPolicy):
         return loss_mse
 
 
-register_policy("basis-center-rotation-normalized-teacher-no-scale")
+@register_policy("basis-center-rotation-normalized-teacher-no-scale")
 class OrthogonalBasisCenterRotationNormalizedTeacherPolicy(LayerPolicy):
     def __init__(
         self,
