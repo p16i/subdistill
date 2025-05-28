@@ -271,6 +271,23 @@ class AblationNormalizedTeacherCenterRotationSclae(AblationTemplate):
         ).to(device)
 
 
+@register_policy("basis-ablation--normalized-teacher--bias-scale")
+class AblationNormalizedTeacherCenterRotationSclae(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+        return nn.Sequential(
+            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
+            Normalization(self.scaling_factor),
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+        return nn.Sequential(utils.modules.Bias(k=k), utils.modules.Scale()).to(device)
+
+
 @register_policy(
     "basis-ablation--normalized-teacher--center-rotation--no-spatial-normalization"
 )
