@@ -48,6 +48,10 @@ from xaikd.utils import click_types
     default=0,
 )
 @click.option(
+    "--batch-size",
+    default=64,
+)
+@click.option(
     "--arr-basis-names",
     default=["pca", "gradpca", "prcaposdef", "prcasortabs", "prca"],
     type=click_types.List(),
@@ -62,6 +66,7 @@ def main(
     logodd_threshold: float,
     seed: int,
     max_k: typing.Optional[int],
+    batch_size: int,
 ):
     arguments = locals()
     start_time = datetime.now()
@@ -106,17 +111,11 @@ def main(
         f"Perf Curve for `{dataset_name}` (data_size={data_size}, logit_modifier={logit_modifier})"
     )
 
-    dl_train = datasets.build_dataloader(
-        ds_train,
-        shuffle=False,
-    )
+    dl_train = datasets.build_dataloader(ds_train, shuffle=False, batch_size=batch_size)
 
     ds_test = dataset.create_subset(train_split=False)
 
-    dl_test = datasets.build_dataloader(
-        ds_test,
-        shuffle=False,
-    )
+    dl_test = datasets.build_dataloader(ds_test, shuffle=False, batch_size=batch_size)
 
     dict_layer_dims = utils.get_dimensions_at_layers(
         model=base_model, dataloader=dl_train, layers=arr_layers, device=device
@@ -183,16 +182,17 @@ def main(
                 )
 
                 for prefix, dl in [("test", dl_test)]:
-                    (_auroc, _) = (
-                        interceptor.attach_projection_forward_hook_at_layer_and_evaluate_metrics(
-                            model=model,
-                            layer=base_layer_name,
-                            dataloader=dl,
-                            forward_hook_func=forward_hook_func,
-                            metric=metric,
-                            device=device,
+                    with torch.no_grad():
+                        (_auroc, _) = (
+                            interceptor.attach_projection_forward_hook_at_layer_and_evaluate_metrics(
+                                model=model,
+                                layer=base_layer_name,
+                                dataloader=dl,
+                                forward_hook_func=forward_hook_func,
+                                metric=metric,
+                                device=device,
+                            )
                         )
-                    )
 
                     dict_stats[f"{prefix}_auroc"] = _auroc
 
