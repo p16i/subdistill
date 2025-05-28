@@ -303,3 +303,23 @@ class RotateAndScale(nn.Module):
         x = torch_deflatten_2d_tensor(x, target_shape=(b, d, h, w))
 
         return self.scale * x
+
+
+class RotateWithBiasAndScale(nn.Module):
+    def __init__(self, k: int, init_scale=1.0):
+        super().__init__()
+
+        self.scale = torch.nn.Parameter(torch.tensor(init_scale))
+        self.rotation = nn.utils.parametrizations.orthogonal(
+            nn.Linear(in_features=k, out_features=k, bias=True)
+        )
+
+    def forward(self, x: torch.Tensor):
+
+        b, d, h, w = x.shape
+
+        x = torch_flatten_3d_tensor(x)
+        x = self.rotation(x)
+        x = torch_deflatten_2d_tensor(x, target_shape=(b, d, h, w))
+
+        return self.scale * x
