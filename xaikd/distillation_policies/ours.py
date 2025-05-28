@@ -341,6 +341,26 @@ class AblationNormalizedTeacherCenter(AblationTemplate):
         ).to(device)
 
 
+@register_policy("basis-ablation--normalized-teacher--center-scale")
+class AblationNormalizedTeacherCenter(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+        return nn.Sequential(
+            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
+            Normalization(self.scaling_factor),
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+        return nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            utils.modules.Scale()
+        ).to(device)
+
+
 #######
 
 
