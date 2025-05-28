@@ -173,8 +173,8 @@ class AblationTemplate(LayerPolicy):
         if layerwise_training:
             self.scaling_factor = 1.0
         else:
-            self.scaling_factor = np.sum(
-                self.basis.get_scale_factors_for_k(student_dims)
+            self.scaling_factor = float(
+                np.sum(self.basis.get_scale_factors_for_k(student_dims))
             )
 
         self.transformer_teacher_feats = self._construct_teacher_transformation(
@@ -249,6 +249,37 @@ class AblationNormalizedTeacherCenterRotation(AblationTemplate):
             utils.modules.Centering2D(num_features=k, affine=False).to(device),
             utils.modules.Rotate(k=k),
         ).to(device)
+
+
+@register_policy(
+    "basis-ablation--normalized-teacher--center-rotation--no-spatial-normalization"
+)
+class AblationNormalizedTeacherCenterRotationNoSpatialNormalization(
+    AblationNormalizedTeacherCenterRotation
+):
+    def criterion(
+        self, transformed_teacher_feats, transformed_student_feats
+    ) -> torch.Tensor:
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats,
+            transformed_teacher_feats,
+            reduction="none",
+        )
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
 
 
 #######
