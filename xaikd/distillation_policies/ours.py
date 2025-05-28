@@ -226,6 +226,13 @@ class OrthogonalBasisCenterRotationNormalizedTeacherPolicy(LayerPolicy):
 
         self.basis = basis
 
+        if layerwise_training:
+            self.scaling_factor = 1
+        else:
+            self.scaling_factor = np.sum(
+                self.basis.get_scale_factors_for_k(student_dims)
+            )
+
         self.transformer_teacher_feats = basis.construct_adapter(
             k=k, mode=AdapterMode.ENCODER, device=device
         )
