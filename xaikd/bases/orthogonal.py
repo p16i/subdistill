@@ -28,6 +28,21 @@ class PCA(OrthogonalBasis):
 
 
 @register_basis()
+class PCARev(OrthogonalBasis):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        N, _ = arr_act.shape
+
+        cov = (arr_act.T @ arr_act) / N
+
+        _, eigvecs = utils.solve_eigh(cov)
+
+        eigvecs = np.flip(eigvecs, axis=1)
+
+        return eigvecs
+
+
+@register_basis()
 class GradPCA(OrthogonalBasis):
     def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
 
