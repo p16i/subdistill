@@ -305,6 +305,16 @@ class RotateAndScale(nn.Module):
         return self.scale * x
 
 
+class Bias(nn.Module):
+    def __init__(self, k: int):
+        super().__init__()
+
+        self.bias = torch.nn.Parameter(torch.zeros(k).reshape((1, k, 1, 1)))
+
+    def forward(self, x: torch.Tensor):
+        return x + self.bias
+
+
 class Rotate(nn.Module):
     def __init__(self, k: int):
         super().__init__()
