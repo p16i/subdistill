@@ -289,7 +289,7 @@ class AblationIdentityTeacherCenterLinear(AblationTemplate):
         _, d = self.basis.U.shape
         return nn.Sequential(
             utils.modules.Centering2D(num_features=k, affine=False).to(device),
-            nn.Linear(in_features=k, out_features=d, bias=False),
+            nn.Conv2d(in_channels=k, out_channels=d, bias=False, kernel_size=1),
         ).to(device)
 
 
