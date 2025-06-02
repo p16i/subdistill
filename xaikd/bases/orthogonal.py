@@ -43,6 +43,17 @@ class PCARev(OrthogonalBasis):
 
 
 @register_basis()
+class Identity(OrthogonalBasis):
+    def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
+        arr_act = utils.flatten_3d_tensor(arr_act)
+        _, d = arr_act.shape
+
+        eigvecs = np.eye(d)
+
+        return eigvecs
+
+
+@register_basis()
 class GradPCA(OrthogonalBasis):
     def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
 
