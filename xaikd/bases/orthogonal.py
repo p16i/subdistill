@@ -46,6 +46,9 @@ class Identity(OrthogonalBasis):
         eigvecs = np.eye(d)
 
         return eigvecs
+
+
+@register_basis()
 class Random(OrthogonalBasis):
     def _solve(self, arr_act, arr_ctx, arr_logodd, logodd_threshold, **kwargs):
 
