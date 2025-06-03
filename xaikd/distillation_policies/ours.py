@@ -270,6 +270,52 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         ).to(device)
 
 
+@register_policy("basis-ablation--loss-cosine--no-normalized-teacher--center-rotation")
+class AblationLossCosNoNormalizedTeacherCenterRotation(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+        return nn.Sequential(
+            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+        return nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            utils.modules.Rotate(k=k),
+        ).to(device)
+
+    def criterion(
+        self, transformed_teacher_feats, transformed_student_feats
+    ) -> torch.Tensor:
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        transformed_teacher_feats = F.normalize(transformed_teacher_feats, dim=1)
+        transformed_student_feats = F.normalize(transformed_student_feats, dim=1)
+
+        cosine = (transformed_teacher_feats * transformed_student_feats).sum(dim=1)
+        cosine = cosine / (w * h)
+
+        loss = -cosine
+
+        loss = loss.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss = loss.sum(dim=1)
+
+        assert loss.shape == (b,)
+
+        # average over all samples
+        loss = loss.mean()
+
+        return loss
+
+
 @register_policy("basis-ablation--no-normalized-teacher--center-rotation-scale")
 class AblationNoNormalizedTeacherCenterRotationScale(AblationTemplate):
     def _construct_teacher_transformation(
