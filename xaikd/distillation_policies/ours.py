@@ -399,6 +399,30 @@ class AblationIdentityTeacherCenterLinearOrtho(AblationTemplate):
         ).to(device)
 
 
+@register_policy("basis-ablation--center-normalized-teacher--center-linear-ortho")
+class AblationIdentityTeacherCenterLinearOrtho(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+        _, d = basis.U.shape
+        return nn.Sequential(
+            # we perform only centering and no projection
+            basis.construct_adapter(k=d, mode=AdapterMode.ENCODER, device=device),
+            Normalization(self.scaling_factor),
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+
+        _, d = self.basis.U.shape
+        return nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False),
+            utils.modules.LinearOrtho(in_features=k, out_features=d),
+        ).to(device)
+
+
 @register_policy("basis-ablation--center-normalized-teacher--center-linear")
 class AblationIdentityTeacherCenterLinear(AblationTemplate):
     def _construct_teacher_transformation(
