@@ -363,10 +363,15 @@ class LinearOrtho(nn.Module):
 
         x = torch_flatten_3d_tensor(x)
         x = self.rotation(x)
-        _, dhw = x.shape
+        bhw, d = x.shape
 
-        assert dhw == h * w * self.out_features
-        d = self.out_features
+        np.testing.assert_equal(bhw, b * h * w)
+
+        np.testing.assert_allclose(
+            d,
+            self.out_features,
+            err_msg=f"in_dims={self.in_features}, out_dims={self.out_features}, (b,k,h,w)={b,k,h,w}",
+        )
 
         x = torch_deflatten_2d_tensor(x, target_shape=(b, d, h, w))
 
