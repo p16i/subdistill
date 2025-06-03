@@ -270,6 +270,24 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         ).to(device)
 
 
+@register_policy("basis-ablation--no-normalized-teacher--center")
+class AblationNoNormalizedTeacherCenter(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+        return nn.Sequential(
+            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+        return nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+        ).to(device)
+
+
 @register_policy("basis-ablation--loss-cosine--no-normalized-teacher--center-rotation")
 class AblationLossCosNoNormalizedTeacherCenterRotation(AblationTemplate):
     def _construct_teacher_transformation(
