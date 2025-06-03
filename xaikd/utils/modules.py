@@ -345,6 +345,25 @@ class Rotate(nn.Module):
         return x
 
 
+class LinearOrtho(nn.Module):
+    def __init__(self, in_features: int, out_features: int, bias=False):
+        super().__init__()
+
+        self.rotation = nn.utils.parametrizations.orthogonal(
+            nn.Linear(in_features=in_features, out_features=out_features, bias=bias)
+        )
+
+    def forward(self, x: torch.Tensor):
+
+        b, d, h, w = x.shape
+
+        x = torch_flatten_3d_tensor(x)
+        x = self.rotation(x)
+        x = torch_deflatten_2d_tensor(x, target_shape=(b, d, h, w))
+
+        return x
+
+
 class RotateWithBiasAndScale(nn.Module):
     def __init__(self, k: int, init_scale=1.0):
         super().__init__()

@@ -330,10 +330,8 @@ class AblationIdentityTeacherCenterLinearOrtho(AblationTemplate):
 
         _, d = self.basis.U.shape
         return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-            nn.utils.parametrizations.orthogonal(
-                nn.Linear(in_features=k, out_features=d, bias=False)
-            ),
+            utils.modules.Centering2D(num_features=k, affine=False),
+            utils.modules.LinearOrtho(in_features=k, out_features=d),
         ).to(device)
 
 
