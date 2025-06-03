@@ -349,16 +349,27 @@ class LinearOrtho(nn.Module):
     def __init__(self, in_features: int, out_features: int, bias=False):
         super().__init__()
 
+        self.in_features  = in_features
+        self.out_features  = out_features
         self.rotation = nn.utils.parametrizations.orthogonal(
             nn.Linear(in_features=in_features, out_features=out_features, bias=bias)
         )
 
     def forward(self, x: torch.Tensor):
 
-        b, d, h, w = x.shape
+        b, k, h, w = x.shape
+
+
+        assert k == self.in_features
+        
 
         x = torch_flatten_3d_tensor(x)
         x = self.rotation(x)
+        _, d, h2, w2 = x.shape
+
+        assert (h2==h) and (w2==w)
+        assert d == self.out_features
+
         x = torch_deflatten_2d_tensor(x, target_shape=(b, d, h, w))
 
         return x
