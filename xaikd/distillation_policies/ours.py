@@ -397,10 +397,12 @@ class AblationIdentityTeacherCenterLinear(AblationTemplate):
         device: str,
     ):
         _, d = basis.U.shape
+
+        scaling_factor = float(basis.get_scale_factors_for_k(k=k).sum() ** 0.5)
         return nn.Sequential(
             # we perform only centering and no projection
             basis.construct_adapter(k=d, mode=AdapterMode.ENCODER, device=device),
-            Normalization(float(np.sum(basis.get_scale_factors_for_k(d)))),
+            Normalization(scaling_factor),
         ).to(device)
 
     def _construct_student_transformation(self, k: int, device: str):
