@@ -276,7 +276,8 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
     ):
 
         U = torch.from_numpy(basis.U[:, :k]).float()
-        mean = torch.zeros_like(torch.from_numpy(self.mean))
+        # here, we don't subtract mean.
+        mean = torch.zeros_like(torch.from_numpy(basis.mean))
 
         return nn.Sequential(
             Adapter(U=U, mean=mean, mode=AdapterMode.ENCODER, device=device)
