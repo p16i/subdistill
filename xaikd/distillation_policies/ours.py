@@ -266,6 +266,26 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         ).to(device)
 
 
+@register_policy("basis-ablationv2--l2--teacher-projection--student-identity")
+class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+
+        U = torch.from_numpy(basis.U[:, :k]).float()
+        mean = torch.zeros_like(torch.from_numpy(self.mean))
+
+        return nn.Sequential(
+            Adapter(U=U, mean=mean, mode=AdapterMode.ENCODER, device=device)
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+        return nn.Identity()
+
+
 @register_policy("basis-ablationv2--lcos--teacher-center--student-center-rotation")
 class AblationLossCosNoNormalizedTeacherCenterRotation(AblationTemplate):
     def _construct_teacher_transformation(
@@ -313,6 +333,29 @@ class AblationLossCosNoNormalizedTeacherCenterRotation(AblationTemplate):
 
 
 @register_policy("basis-ablationv2--l2--teacher-center--student-center-linear")
+class AblationIdentityTeacherCenterLinear(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+        _, d = basis.U.shape
+        return nn.Sequential(
+            # we perform only centering and no projection
+            basis.construct_adapter(k=d, mode=AdapterMode.ENCODER, device=device),
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+
+        _, d = self.basis.U.shape
+        return nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            nn.Conv2d(in_channels=k, out_channels=d, bias=False, kernel_size=1),
+        ).to(device)
+
+
+@register_policy("basis-ablationv2--l2--teacher-projected-meanr--student-center-linear")
 class AblationIdentityTeacherCenterLinear(AblationTemplate):
     def _construct_teacher_transformation(
         self,
