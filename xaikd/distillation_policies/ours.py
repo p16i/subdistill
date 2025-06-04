@@ -287,6 +287,57 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         return nn.Identity()
 
 
+@register_policy("basis-ablationv2--l2normalized--teacher-projection--student-identity")
+class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+
+        U = torch.from_numpy(basis.U[:, :k]).float()
+        # here, we don't subtract mean.
+        mean = torch.zeros_like(torch.from_numpy(basis.mean))
+
+        return nn.Sequential(
+            Adapter(U=U, mean=mean, mode=AdapterMode.ENCODER, device=device)
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+        return nn.Identity()
+
+    def criterion(
+        self, transformed_teacher_feats, transformed_student_feats
+    ) -> torch.Tensor:
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        normalization_coeff = np.sum(self.basis.get_scale_factors_for_k(k))
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats,
+            transformed_teacher_feats,
+            reduction="none",
+        ) / (w * h)
+        loss_mse = loss_mse / normalization_coeff
+
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.scaling_factor
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_policy(
     "basis-ablationv2--l2--teacher-projection-normalized--student-identity"
 )
