@@ -325,8 +325,6 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
 
         loss_mse = loss_mse.flatten(start_dim=1)
 
-        loss_mse = loss_mse / self.scaling_factor
-
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
 
