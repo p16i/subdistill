@@ -289,7 +289,7 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         ).to(device)
 
 
-@register_policy("basis-ablationv2--l2normalized--teacher-projection--student-identity")
+@register_policy("basis-ablationv2--l2normalized--teacher-projection--student-rotation")
 class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
     def _construct_teacher_transformation(
         self,
@@ -307,7 +307,9 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         ).to(device)
 
     def _construct_student_transformation(self, k: int, device: str):
-        return nn.Identity()
+        return nn.Sequential(
+            utils.modules.Rotate(k=k),
+        ).to(device)
 
     def criterion(
         self, transformed_teacher_feats, transformed_student_feats
