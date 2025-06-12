@@ -266,6 +266,44 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         ).to(device)
 
 
+@register_policy("basis-ablationv2--l2--teacher-center--student-center")
+class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+        return nn.Sequential(
+            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+        return nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+        ).to(device)
+
+
+@register_policy("basis-ablationv2--l2--teacher-center-normalized--student-center")
+class AblationNormalizedTeacherCenter(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+        scaling_factor = float(basis.get_scale_factors_for_k(k=k).sum() ** 0.5)
+        return nn.Sequential(
+            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
+            Normalization(scaling_factor),
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+        return nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+        ).to(device)
+
+
 @register_policy("basis-ablationv2--l2--teacher-projection--student-rotation")
 class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
     def _construct_teacher_transformation(
