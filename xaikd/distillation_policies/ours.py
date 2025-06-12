@@ -284,6 +284,50 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         ).to(device)
 
 
+@register_policy("basis-ablationv2--l2normalized--teacher-center--student-center")
+class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
+    def _construct_teacher_transformation(
+        self,
+        basis: OrthogonalBasis,
+        k: int,
+        device: str,
+    ):
+        return nn.Sequential(
+            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
+        ).to(device)
+
+    def _construct_student_transformation(self, k: int, device: str):
+        return nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+        ).to(device)
+
+    def criterion(
+        self, transformed_teacher_feats, transformed_student_feats
+    ) -> torch.Tensor:
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats,
+            transformed_teacher_feats,
+            reduction="none",
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / np.sum(self.basis.get_scale_factors_for_k(k))
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_policy("basis-ablationv2--l2--teacher-center-normalized--student-center")
 class AblationNormalizedTeacherCenter(AblationTemplate):
     def _construct_teacher_transformation(
