@@ -339,7 +339,7 @@ class AblationNoNormalizedTeacherCenterLinear(AblationTemplate):
         device: str,
     ):
 
-        (d,) = basis.U.shape
+        (d, _) = basis.U.shape
         # here, we don't perform any projection
         return nn.Sequential(
             basis.construct_adapter(k=d, mode=AdapterMode.ENCODER, device=device),
@@ -356,7 +356,7 @@ class AblationNoNormalizedTeacherCenterLinear(AblationTemplate):
         self, transformed_teacher_feats, transformed_student_feats
     ) -> torch.Tensor:
         b, k, w, h = transformed_teacher_feats.shape
-        (d,) = self.basis.U
+        (d, _) = self.basis.U
 
         loss_scale_factor = np.sum(self.basis.get_scale_factors_for_k(d))
 
