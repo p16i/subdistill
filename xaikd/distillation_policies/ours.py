@@ -356,7 +356,7 @@ class AblationNoNormalizedTeacherCenterLinear(AblationTemplate):
         self, transformed_teacher_feats, transformed_student_feats
     ) -> torch.Tensor:
         b, k, w, h = transformed_teacher_feats.shape
-        (d, _) = self.basis.U
+        (d, _) = self.basis.U.shape
 
         loss_scale_factor = np.sum(self.basis.get_scale_factors_for_k(d))
 
