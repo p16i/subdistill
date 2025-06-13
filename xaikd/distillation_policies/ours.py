@@ -346,7 +346,7 @@ class AblationNoNormalizedTeacherCenterLinear(AblationTemplate):
         ).to(device)
 
     def _construct_student_transformation(self, k: int, device: str):
-        (d,) = self.basis.U.shape
+        (d, _) = self.basis.U.shape
         return nn.Sequential(
             utils.modules.Centering2D(num_features=k, affine=False).to(device),
             nn.Linear(in_features=k, out_features=d, bias=False),
