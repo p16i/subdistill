@@ -331,7 +331,7 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
 @register_policy(
     "basis-ablationv2--l2normalized--teacher-center--student-center-linear"
 )
-class AblationNoNormalizedTeacherCenterLinear(AblationTemplate):
+class AblationNormalizedTeacherCenterLinear(AblationTemplate):
     def _construct_teacher_transformation(
         self,
         basis: OrthogonalBasis,
@@ -380,6 +380,19 @@ class AblationNoNormalizedTeacherCenterLinear(AblationTemplate):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+@register_policy(
+    "basis-ablationv2--l2normalized--teacher-center--student-center-linearortho"
+)
+class AblationNormalizedTeacherCenterLinearOrtho(AblationNormalizedTeacherCenterLinear):
+
+    def _construct_student_transformation(self, k: int, device: str):
+        (d, _) = self.basis.U.shape
+        return nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            utils.modules.LinearOrtho(in_features=k, out_features=d),
+        ).to(device)
 
 
 @register_policy("basis-ablationv2--l2--teacher-center-normalized--student-center")
