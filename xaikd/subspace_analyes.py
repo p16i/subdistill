@@ -47,6 +47,7 @@ def evaluate_low_rank_approximation(
     pt_U = torch.from_numpy(U).float().to(device)
     pt_mean = torch.from_numpy(mean).float().to(device)
 
+    d, _ = pt_U.shape
     module = interceptor.get_module(model, layer)
 
     arr_result = []
@@ -75,6 +76,7 @@ def evaluate_low_rank_approximation(
             assert len(result) == len(metric._metric_names())
             dict_result = dict(zip(metric._metric_names(), result), **ref_result)
             dict_result["k"] = k
+            dict_result["d"] = d
             arr_result.append(dict_result)
         finally:
             if hook is not None:
