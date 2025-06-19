@@ -17,6 +17,8 @@ from tqdm.autonotebook import tqdm
 
 
 def fh_constructor(mean: torch.Tensor, mat_proj: torch.Tensor):
+    mean = mean.reshape(1, -1, 1, 1)
+    mat_proj = mat_proj.unsqueeze(2).unsqueeze(3)
 
     def fh(module, inp, outp):
         assert len(outp.shape) == 4, "we assume that the feature map has 4 axes"
