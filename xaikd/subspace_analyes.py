@@ -62,7 +62,7 @@ def evaluate_low_rank_approximation(
     for k in tqdm(arr_ks, desc="evaluating low-rank approximation"):
 
         pt_Uk = pt_U[:, :k]
-        mat_proj = pt_Uk.T @ pt_Uk
+        mat_proj = pt_Uk @ pt_Uk.T
         forward_hook = fh_constructor(mean=pt_mean, mat_proj=mat_proj)
 
         hook = None
