@@ -75,7 +75,7 @@ def evaluate_low_rank_approximation(
             assert len(result) == len(metric._metric_names())
             dict_result = dict(zip(metric._metric_names(), result), **ref_result)
             dict_result["k"] = k
-            arr_result.append(arr_result)
+            arr_result.append(dict_result)
         finally:
             if hook is not None:
                 hook.remove()
