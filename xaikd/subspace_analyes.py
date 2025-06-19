@@ -19,7 +19,6 @@ from tqdm.autonotebook import tqdm
 def fh_constructor(mean: torch.Tensor, mat_proj: torch.Tensor):
 
     def fh(module, inp, outp):
-        (outp,) = outp
         assert len(outp.shape) == 4, "we assume that the feature map has 4 axes"
 
         outp = outp - mean
