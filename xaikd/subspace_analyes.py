@@ -17,29 +17,13 @@ from xaikd import utils
 from tqdm.autonotebook import tqdm
 
 
-# fixme: add test
-def reshape_tensor_to_cnn_like(x: torch.Tensor) -> torch.Tensor:
-
-    if len(x.shape) == 4:
-        return x
-    elif len(x.shape) == 3:
-        # this is VIT's output
-        return x.permute(0, 2, 1).unsqueeze(3)
-    elif len(x.shape) == 2:
-        return x.unsqueeze(2).unsqueeze(3)
-
-    else:
-        raise ValueError(f"We don't support x.shape={x.shape}")
-
-
 def fh_constructor(mean: torch.Tensor, mat_proj: torch.Tensor):
     mean = mean.reshape(1, -1, 1, 1)
     mat_proj = mat_proj.unsqueeze(2).unsqueeze(3)
 
     def fh(module, inp, outp):
 
-        outp = reshape_tensor_to_cnn_like(outp)
-        # assert len(outp.shape) == 4, "we assume that the feature map has 4 axes"
+        assert len(outp.shape) == 4, "we assume that the feature map has 4 axes"
 
         outp = outp - mean
         outp = F.conv2d(outp, mat_proj)
