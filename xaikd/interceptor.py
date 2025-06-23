@@ -22,7 +22,7 @@ def get_module(model: nn.Module, layer_str: str) -> nn.Module:
         parsed_attr_name = utils.parse_number_if_possible(attr_name)
 
         if parsed_attr_name is not None:
-            assert isinstance(parent_module, nn.Sequential)
+            assert isinstance(parent_module, (nn.Sequential, nn.ModuleList))
             assert isinstance(parsed_attr_name, int)
 
             parent_module = parent_module[parsed_attr_name]
