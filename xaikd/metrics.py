@@ -196,3 +196,38 @@ class MetricAccuracy(MetricFunction):
 
     def _metric_names(self):
         return ("accuracy",)
+
+
+class MetricAccuracyXent(MetricFunction):
+    def __init__(self, num_classes: int):
+        self.num_classes = num_classes
+
+    @torch.no_grad()
+    def __call__(
+        self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
+    ):
+
+        assert not model.training
+
+        metric_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
+        metric_xent = MeanMetric()
+        for x, y in tqdm(
+            dataloader, desc="Computing ACC", disable=not verbose, miniters=10
+        ):
+            logits = model(x.to(device)).cpu()
+
+            assert len(logits.shape) == 2, f"{logits.shape}"
+            assert logits.shape[1] == self.num_classes
+
+            xent = F.cross_entropy(logits, y)
+
+            metric_acc.update(logits, y)
+            metric_xent.update(xent)
+
+        metric_acc = float(metric_acc.compute())
+        metric_xent = float(metric_xent.compute())
+
+        return (metric_acc, metric_xent)
+
+    def _metric_names(self):
+        return ("accuracy", "xent")

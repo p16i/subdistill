@@ -147,8 +147,12 @@ class PRCAPosDef(OrthogonalBasis):
         # Due to numerical stablity, there are situations that we have negative values.
         # In such cases, we tolerate and raise an error if the smallest value is relatetive large.
         if min_eigval < 0 and (np.abs(min_eigval) / max_eigval) > 1e-16:
-            raise ValueError(
-                f"We have {np.sum(eigvals < 0)} negative eigvals (the smallest one is {min_eigval:.4e})"
+            # fixme: this need to be handle properly
+            print(
+                f"[warning] We have {np.sum(eigvals < 0)} negative eigvals (the smallest one is {min_eigval:.4e}) (largest one is {max_eigval:.4e})"
             )
+            # raise ValueError(
+            #     f"We have {np.sum(eigvals < 0)} negative eigvals (the smallest one is {min_eigval:.4e}) (largest one is {max_eigval:.4e})"
+            # )
 
         return eigvecs
