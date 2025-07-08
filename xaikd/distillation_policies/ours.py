@@ -152,7 +152,7 @@ class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
 
 
 @register_policy("basis-center-rotationv2")
-class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
+class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
 
     def __init__(
         self,
