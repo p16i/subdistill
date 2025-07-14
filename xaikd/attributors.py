@@ -79,13 +79,13 @@ def extract_activation_context(
     model: nn.Module,
     layer: str,
     dataset: datasets.DatasetConfiguration,
-    data_loader: DataLoader,
+    dataloader: DataLoader,
     logit_modifier: LogitModifier,
     rng: np.random.Generator,
     device="cpu",
     number_of_selected_spatial_locations=20,
     strict_mode=False,
-) -> typing.Tuple[npt.NDArray, npt.NDArray]:
+) -> typing.Tuple[npt.NDArray, npt.NDArray, npt.NDArray, npt.NDArray]:
     arr_act = []
     arr_ctx = []
 
@@ -98,7 +98,7 @@ def extract_activation_context(
         )
 
         with make_attributor_for(model, dataset.input_statistics) as attributor:  # type: ignore
-            for batch in tqdm(data_loader):
+            for batch in tqdm(dataloader):
                 x, y = batch
                 x = x.to(device)
 
@@ -139,12 +139,19 @@ def extract_activation_context(
         if hook is not None:
             hook.remove()
 
+    arr_act = np.vstack(arr_act)
+    mean_act = np.mean(utils.flatten_3d_tensor(arr_act), axis=0)
+
+    arr_act -= mean_act[None, :, None]
+
     print(f"{layer}: output-dims={output_dimensions}")
 
     arr_act = np.vstack(arr_act)
     arr_ctx = np.vstack(arr_ctx)
 
-    return arr_act, arr_ctx
+    arr_logit = None
+
+    return arr_logit, arr_act, arr_ctx, mean_act
 
 
 def extract_activation_grad(
