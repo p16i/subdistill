@@ -148,6 +148,7 @@ def extract_activation_context(
 
     arr_act = np.vstack(arr_act)
     arr_ctx = np.vstack(arr_ctx)
+    print("shape", arr_act.shape, arr_ctx.shape)
 
     arr_logit = None
 
