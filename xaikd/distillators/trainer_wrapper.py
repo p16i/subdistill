@@ -262,7 +262,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 policy, distillation_policies.OrthogonalPCAConvergenceCheckPolicy
             )
 
-            student_transformer = policy.student_transformer
+            student_transformer = policy.transformer_student_feats[1]
+            assert isinstance(student_transformer, utils.modules.LinearOrtho)
             Q, _ = torch.linalg.qr(student_transformer.weight.detach().cpu())
             U = policy.basis.get_Uk(policy.k)
 
