@@ -55,15 +55,14 @@ class Layerwise:
 
         self.device = device
 
-        self.metric_func = metrics.MetricAUROCBinaryCrossEntropy()
+        self.metric_func = metrics.MetricAccuracyXent(num_classes=dataset.num_classes)
 
         with torch.no_grad():
-            self.ref_auroc, self.ref_xent = self.metric_func(
+            self.ref_acc, self.ref_xent = self.metric_func(
                 self.teacher.to(device),
                 dataloader_val,
                 device=self.device,
                 verbose=True,
-                prefix="teacher_reference",
             )
 
     def distill(
@@ -91,23 +90,22 @@ class Layerwise:
 
         with torch.no_grad():
             (
-                student_auroc_before_training,
+                student_acc_before_training,
                 student_xent_before_training,
             ) = self.metric_func(
                 student,
                 dataloader=self.dl_val,
                 device=self.device,
                 verbose=True,
-                prefix="student_before_training",
             )
 
-        logger.experiment.summary["student_val_auroc_before_training"] = (
-            student_auroc_before_training
+        logger.experiment.summary["student_val_acc_before_training"] = (
+            student_acc_before_training
         )
-        logger.experiment.summary["teacher_auroc"] = self.ref_auroc
+        logger.experiment.summary["teacher_acc"] = self.ref_acc
 
         print(
-            f"[before training] metrics: student (teacher) | auroc={student_auroc_before_training:.4f} ({self.ref_auroc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
+            f"[before training] metrics: student (teacher) | auroc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
         )
 
         # we set the seed here again because to make sure that the state of random generator for
@@ -130,7 +128,7 @@ class Layerwise:
         )
 
         callback_checkpoint = ModelCheckpoint(
-            monitor="val_auroc",
+            monitor="val_acc",
             mode="max",
         )
 
@@ -152,7 +150,7 @@ class Layerwise:
 
         assert callback_checkpoint.best_model_score is not None
 
-        best_epoch = np.argmax(training_wrapper.arr_metrics["val_auroc"])
+        best_epoch = np.argmax(training_wrapper.arr_metrics["val_acc"])
 
         best_student = utils.modules.load_model_from_checkpoint(
             model_template_object=training_wrapper.student,
@@ -215,7 +213,6 @@ class Layerwise:
             self.dl_val,
             device=device,
             verbose=True,
-            prefix="post_training_sanity_check: val_set",
         )
 
         assert checkpoint_callback.best_model_score is not None
@@ -231,17 +228,16 @@ class Layerwise:
     def log_test_metrics(
         self, best_student: nn.Module, logger: WandbLogger, device: str
     ):
-        test_auroc, test_loss = self.metric_func(
+        test_acc, test_loss = self.metric_func(
             best_student,
             dataloader=self.dl_test,
             device=device,
             verbose=True,
-            prefix="test set",
         )
-        logger.experiment.summary["student_test_auroc"] = test_auroc
+        logger.experiment.summary["student_test_acc"] = test_acc
         logger.experiment.summary["student_test_loss"] = test_loss
 
-        return test_auroc, test_loss
+        return test_acc, test_loss
 
     @torch.no_grad()
     def log_prediction(self, student: nn.Module, logger: WandbLogger, device: str):

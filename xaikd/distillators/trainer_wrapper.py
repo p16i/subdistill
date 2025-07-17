@@ -12,8 +12,7 @@ from torch.nn import functional as F
 
 from xaikd import distillation_policies, utils
 
-from torchmetrics import MeanMetric
-from torchmetrics.classification import BinaryAUROC
+from torchmetrics.classification import MulticlassAccuracy
 
 
 class Teacher(object):
@@ -70,13 +69,13 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             f"Layerwise-Training={self.layerwise_training} | Lambda(task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
         )
         self.metric = dict(
-            train_auroc=BinaryAUROC(thresholds=100),
-            val_auroc=BinaryAUROC(thresholds=100),
+            train_acc=MulticlassAccuracy(num_classes=100),
+            val_acc=MulticlassAccuracy(num_classes=100),
         )
 
         self.arr_metrics = dict(
-            train_auroc=[],
-            val_auroc=[],
+            train_acc=[],
+            val_acc=[],
         )
 
     def _get_parameters(self) -> typing.List[nn.Parameter]:
@@ -217,7 +216,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
-        self.metric[f"{prefix}_auroc"].update(student_logits.detach().cpu(), y.cpu())
+        self.metric[f"{prefix}_acc"].update(student_logits.detach().cpu(), y.cpu())
 
         return loss
 
@@ -231,14 +230,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         return self._compute_loss(val_batch, "val", batch_idx)
 
     def _compute_metric(self, prefix):
-        for suffix in ["auroc"]:
+        for suffix in ["acc"]:
             slug = f"{prefix}_{suffix}"
 
             metric = self.metric[slug]
             value = metric.compute()
-
-            if suffix == "auroc":
-                value = np.max([value, 1 - value])
 
             metric.reset()
 
@@ -249,11 +245,47 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")
 
-        if len(self.arr_metrics["val_auroc"]) > 0:
-            best_epoch = int(np.argmax(self.arr_metrics["val_auroc"]))
-            best_val_auroc = float(self.arr_metrics["val_auroc"][best_epoch])
+        if len(self.arr_metrics["val_acc"]) > 0:
+            best_epoch = int(np.argmax(self.arr_metrics["val_acc"]))
+            best_val_acc = float(self.arr_metrics["val_acc"][best_epoch])
             self.log("best_epoch", best_epoch, prog_bar=True)
-            self.log("best_val_auroc", best_val_auroc, prog_bar=True)
+            self.log("best_val_acc", best_val_acc, prog_bar=True)
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")
+
+        layer_policies = self.layer_policy_collection.policies
+
+        for lix, policy in enumerate(layer_policies):
+
+            assert isinstance(
+                policy, distillation_policies.OrthogonalPCAConvergenceCheckPolicy
+            )
+
+            student_transformer = policy.student_transformer
+            Q, _ = torch.linalg.qr(student_transformer.weight.detach().cpu())
+            U = policy.basis.get_Uk(policy.k)
+
+            dist = dist_grassmainain(Q, U)
+            layer_name = self.layer_policy_collection.student_layers[lix]
+
+            self.log(
+                f"grass_dist_{layer_name}",
+                dist,
+            )
+
+
+def dist_grassmainain(U1, U2):
+    # https://kristianeschenburg.netlify.app/post/comparing-subspaces/
+
+    assert U1.shape == U2.shape
+
+    D = U1.T @ U2
+    sigvals = torch.linalg.svdvals(D)
+    # ref: https://github.com/pytorch/pytorch/issues/8069#issuecomment-2041223872
+    # https://stackoverflow.com/a/71785249
+    sigvals = torch.clamp(sigvals, min=-1, max=1)
+
+    thetas = torch.arccos(sigvals)
+
+    return float(torch.norm(thetas))

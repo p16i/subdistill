@@ -8,6 +8,7 @@ from .interface import LayerPolicy, LastLayerPolicy
 from .register import get_policy, get_last_layer_policy, policy_exists
 from .previous_works import *
 from .ours import *
+from .ours_pca_linear import *
 
 
 @dataclass
