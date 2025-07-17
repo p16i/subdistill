@@ -285,7 +285,7 @@ def dist_grassmainain(U1, U2):
     sigvals = torch.linalg.svdvals(D)
     # ref: https://github.com/pytorch/pytorch/issues/8069#issuecomment-2041223872
     # https://stackoverflow.com/a/71785249
-    sigvals = torch.clamp(sigvals, min=-1, max=1)
+    sigvals = torch.clamp(sigvals, min=0, max=1)
 
     thetas = torch.arccos(sigvals)
 
