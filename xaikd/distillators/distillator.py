@@ -105,7 +105,7 @@ class Layerwise:
         logger.experiment.summary["teacher_acc"] = self.ref_acc
 
         print(
-            f"[before training] metrics: student (teacher) | auroc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
+            f"[before training] metrics: student (teacher) | acc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
         )
 
         # we set the seed here again because to make sure that the state of random generator for
@@ -169,7 +169,7 @@ class Layerwise:
 
         logger.experiment.summary["best_epoch"] = best_epoch
 
-        logger.experiment.summary["student_best_val_auroc"] = (
+        logger.experiment.summary["student_best_val_acc"] = (
             callback_checkpoint.best_model_score
         )
         self.log_test_metrics(best_student=best_student, logger=logger, device=device)
@@ -190,7 +190,7 @@ class Layerwise:
             )
 
         print(
-            f"Result: best_epoch={best_epoch} best_val_auroc={callback_checkpoint.best_model_score:.4f}"
+            f"Result: best_epoch={best_epoch} best_val_acc={callback_checkpoint.best_model_score:.4f}"
         )
 
         return best_student
@@ -219,7 +219,7 @@ class Layerwise:
         expected = float(checkpoint_callback.best_model_score)
 
         np.testing.assert_allclose(
-            [actual, np.max(trainer.arr_metrics["val_auroc"])],
+            [actual, np.max(trainer.arr_metrics["val_acc"])],
             expected,
             err_msg="stats computed from modified student should match the last one returned from distillator",
         )
