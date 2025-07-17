@@ -174,7 +174,7 @@ class Layerwise:
             callback_checkpoint.best_model_score
         )
         self.log_test_metrics(best_student=best_student, logger=logger, device=device)
-        self.log_prediction(student=best_student, logger=logger, device=device)
+        # self.log_prediction(student=best_student, logger=logger, device=device)
 
         if upload_best_checkpoint:
             wandb_run = logger.experiment
