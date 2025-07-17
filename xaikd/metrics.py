@@ -10,7 +10,8 @@ import torch
 from torch.utils.data import DataLoader
 from torch import nn
 from torch.nn import functional as F
-from torchmetrics import Accuracy, MeanMetric
+from torchmetrics import MeanMetric
+from torchmetrics.classification import MulticlassAccuracy
 from torchmetrics.classification import BinaryAUROC
 
 from tqdm import tqdm
@@ -209,7 +210,7 @@ class MetricAccuracyXent(MetricFunction):
 
         assert not model.training
 
-        metric_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
+        metric_acc = MulticlassAccuracy(num_classes=self.num_classes)
         metric_xent = MeanMetric()
         for x, y in tqdm(
             dataloader, desc="Computing ACC", disable=not verbose, miniters=10
