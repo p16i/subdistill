@@ -264,7 +264,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             student_transformer = policy.transformer_student_feats[1]
             assert isinstance(student_transformer, utils.modules.LinearOrtho)
-            Q, _ = torch.linalg.qr(student_transformer.weight.detach().cpu())
+            Q, _ = torch.linalg.qr(student_transformer.rotation.weight.detach().cpu())
             U = policy.basis.get_Uk(policy.k)
 
             dist = dist_grassmainain(Q, U)
