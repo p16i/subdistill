@@ -147,6 +147,7 @@ class Layerwise:
         trainer.fit(training_wrapper, self.dl_train, self.dl_val)
 
         best_model_path = callback_checkpoint.best_model_path
+        print(f"best_model_path: {best_model_path}")
 
         assert callback_checkpoint.best_model_score is not None
 
