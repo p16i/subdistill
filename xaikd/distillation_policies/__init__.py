@@ -83,7 +83,7 @@ def resolve_lambdas_and_layer_policy(
             lambda_kd = 1
             if "wo-kd" in layer_policy:
                 print(
-                    f"[layerwise_training={layerwise_training}]: we force lambda_kd=0"
+                    f"[with prefix `wokd` ]: we force lambda_kd=0"
                 )
                 lambda_kd = 0
 
