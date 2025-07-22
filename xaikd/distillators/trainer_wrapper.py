@@ -9,6 +9,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+import wandb
 
 from xaikd import distillation_policies, utils
 
@@ -276,9 +277,15 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 f"grass_dist_{layer_name}",
                 dist,
             )
-            self.log(f"max_theta_{layer_name}", torch.max(thetas))
-            self.log(f"median_theta_{layer_name}", torch.median(thetas))
-            self.log(f"min_theta_{layer_name}", torch.min(thetas))
+            # self.log(f"max_theta_{layer_name}", torch.max(thetas))
+            # self.log(f"median_theta_{layer_name}", torch.median(thetas))
+            # self.log(f"min_theta_{layer_name}", torch.min(thetas))
+            # self.log(f"p99_theta_{layer_name}", torch.quantile(thetas, 99))
+            # self.log(f"p90_theta_{layer_name}", torch.quantile(thetas, 90))
+            histogram = wandb.Histogram(
+                np.histogram(thetas.cpu().numpy(), density=True, range=(0, np.pi / 2))
+            )
+            self.log("thetas", histogram)
 
 
 def dist_grassmainain(U1, U2):
