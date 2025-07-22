@@ -79,3 +79,29 @@ class OrthogonalPCAConvergenceCheckPolicy(LayerPolicy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+@register_policy("basis-center-pca-learned-linearortho-with-bias")
+class OrthogonalPCAConvergenceCheckPolicy(OrthogonalPCAConvergenceCheckPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+            layerwise_training=layerwise_training,
+        )
+
+        k = student_dims
+        d = teacher_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.LinearOrtho(in_features=k, out_features=d, bias=True),
+        ).to(device)
