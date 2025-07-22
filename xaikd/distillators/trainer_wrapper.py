@@ -282,10 +282,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             # self.log(f"min_theta_{layer_name}", torch.min(thetas))
             # self.log(f"p99_theta_{layer_name}", torch.quantile(thetas, 99))
             # self.log(f"p90_theta_{layer_name}", torch.quantile(thetas, 90))
-            histogram = wandb.Histogram(
-                np.histogram(thetas.cpu().numpy(), density=True, range=(0, np.pi / 2))
-            )
-            self.log("thetas", histogram)
+            # histogram = wandb.Histogram(
+            #     thetas.numpy()
+            #     np.histogram(thetas.cpu().numpy(), density=True, range=(0, np.pi / 2))
+            # )
+            self.log("thetas", wandb.Histogram(thetas.cpu().numpy().tolist()))
 
 
 def dist_grassmainain(U1, U2):
