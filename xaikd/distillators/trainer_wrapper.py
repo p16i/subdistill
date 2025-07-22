@@ -276,6 +276,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 dist,
             )
             self.log(f"max_theta_{layer_name}", torch.max(thetas))
+            self.log(f"median_theta_{layer_name}", torch.median(thetas))
+            self.log(f"min_theta_{layer_name}", torch.min(thetas))
 
 
 def dist_grassmainain(U1, U2):
