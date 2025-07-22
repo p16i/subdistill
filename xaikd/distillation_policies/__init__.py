@@ -78,7 +78,17 @@ def resolve_lambdas_and_layer_policy(
         if layerwise_training:
             print(f"[layerwise_training={layerwise_training}]: we force lambda_layer=1")
             lambda_layer = 1
+            lambda_kd = 1
         else:
+            lambda_kd = 1
+            if "wo-kd" in layer_policy:
+                print(
+                    f"[layerwise_training={layerwise_training}]: we force lambda_kd=0"
+                )
+                lambda_kd = 0
+
+            layer_policy = layer_policy.replace("wo-kd", "")
+
             lambda_layer = constants.resolve_lambda_layer(
                 teacher_model_name=teacher,
                 policy_name=layer_policy,
@@ -87,7 +97,7 @@ def resolve_lambdas_and_layer_policy(
             )
 
         lambda_collection = LambdaCollection(
-            lambda_task=0, lambda_kd=1, lambda_layer=lambda_layer
+            lambda_task=0, lambda_kd=lambda_kd, lambda_layer=lambda_layer
         )
 
     assert policy_exists(layer_policy)
