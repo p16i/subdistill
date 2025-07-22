@@ -277,11 +277,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 f"grass_dist_{layer_name}",
                 dist,
             )
-            self.log(f"max_theta_{layer_name}", torch.max(thetas))
-            self.log(f"median_theta_{layer_name}", torch.median(thetas))
-            self.log(f"min_theta_{layer_name}", torch.min(thetas))
-            self.log(f"p99_theta_{layer_name}", torch.quantile(thetas, 99))
-            self.log(f"p90_theta_{layer_name}", torch.quantile(thetas, 90))
+            # self.log(f"max_theta_{layer_name}", torch.max(thetas))
+            # self.log(f"median_theta_{layer_name}", torch.median(thetas))
+            # self.log(f"min_theta_{layer_name}", torch.min(thetas))
+            # self.log(f"p99_theta_{layer_name}", torch.quantile(thetas, 99))
+            # self.log(f"p90_theta_{layer_name}", torch.quantile(thetas, 90))
 
             self.logger.experiment.log({"theta": wandb.Histogram(thetas.cpu().numpy())})
 
