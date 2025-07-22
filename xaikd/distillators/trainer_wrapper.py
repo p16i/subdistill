@@ -286,7 +286,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             #     thetas.numpy()
             #     np.histogram(thetas.cpu().numpy(), density=True, range=(0, np.pi / 2))
             # )
-            self.log("thetas", wandb.Histogram(thetas.cpu().numpy().tolist()))
+            wandb.log(
+                {"theta_hist": wandb.Histogram(thetas.cpu().numpy())},
+                step=self.current_epoch,
+            )
 
 
 def dist_grassmainain(U1, U2):
