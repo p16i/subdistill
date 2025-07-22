@@ -268,13 +268,14 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             Q, _ = torch.linalg.qr(student_transformer.rotation.weight.detach().cpu())
             U = policy.basis.get_Uk(policy.k)
 
-            dist = dist_grassmainain(Q, U)
+            dist, thetas = dist_grassmainain(Q, U)
             layer_name = self.layer_policy_collection.student_layers[lix]
 
             self.log(
                 f"grass_dist_{layer_name}",
                 dist,
             )
+            self.log(f"min_theta_{layer_name}", torch.min(thetas))
 
 
 def dist_grassmainain(U1, U2):
@@ -290,4 +291,4 @@ def dist_grassmainain(U1, U2):
 
     thetas = torch.arccos(sigvals)
 
-    return float(torch.norm(thetas))
+    return float(torch.norm(thetas)), thetas
