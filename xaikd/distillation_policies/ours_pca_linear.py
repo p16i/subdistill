@@ -103,5 +103,7 @@ class OrthogonalPCAConvergenceCheckPolicy(OrthogonalPCAConvergenceCheckPolicy):
         d = teacher_dims
 
         self.transformer_student_feats = nn.Sequential(
+            # this is just a dummy layer to make the indexing fit.
+            nn.Identity(),
             utils.modules.LinearOrtho(in_features=k, out_features=d, bias=True),
         ).to(device)
