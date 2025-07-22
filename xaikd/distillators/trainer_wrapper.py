@@ -283,6 +283,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.log(f"p99_theta_{layer_name}", torch.quantile(thetas, 99))
             self.log(f"p90_theta_{layer_name}", torch.quantile(thetas, 90))
 
+            self.logger.experiment.log({"theta": wandb.Histogram(thetas.cpu().numpy())})
+
 
 def dist_grassmainain(U1, U2):
     # https://kristianeschenburg.netlify.app/post/comparing-subspaces/
