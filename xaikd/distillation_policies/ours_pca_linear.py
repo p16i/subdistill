@@ -107,3 +107,42 @@ class OrthogonalPCAConvergenceCheckPolicy(OrthogonalPCAConvergenceCheckPolicy):
             nn.Identity(),
             utils.modules.LinearOrtho(in_features=k, out_features=d, bias=True),
         ).to(device)
+
+
+class Bias(nn.Module):
+    def __init__(self, d: int) -> None:
+        super().__init__()
+
+        self.bias = torch.nn.Parameter(torch.zeros((1, d, 1, 1)))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x + self.bias
+
+
+@register_policy("basis-center-pca-learned-linearortho-with-bias-before")
+class OrthogonalPCAConvergenceCheckBiasBeforePolicy(
+    OrthogonalPCAConvergenceCheckPolicy
+):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+            layerwise_training=layerwise_training,
+        )
+
+        k = student_dims
+        d = teacher_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            Bias(d=k),
+            utils.modules.LinearOrtho(in_features=k, out_features=d, bias=True),
+        ).to(device)
