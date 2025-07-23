@@ -51,6 +51,7 @@ def test_canonize_student():
         "student-cifar-resnet18-16",
         "student-cifar-resnet18-32",
         "student-cifar-resnet18-64",
+        "student-cifar-resnet18-64-128-32-16",
     ],
 )
 @pytest.mark.slow()
