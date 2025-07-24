@@ -305,9 +305,10 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
+
+        self.centering = utils.modules.Centering2D(num_features=k, affine=False)
         self.transformer_student_feats = nn.Sequential(
-            # utils.modules.Centering2D(num_features=k, affine=False),
-            Bias(k=k),
+            self.centering,
             utils.modules.Rotate(k=k, bias=False),
         ).to(device)
 
@@ -334,8 +335,12 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
 
         assert loss_mse.shape == (b,)
 
+
+        correction = torch.no_grad(self.centering.running_mean)
+
         # average over all samples
-        loss_mse = loss_mse.mean()
+        loss_mse = loss_mse.mean() - correction
+
 
         return loss_mse
 
