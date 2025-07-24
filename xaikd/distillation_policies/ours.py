@@ -318,7 +318,9 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
 
         assert transformed_teacher_feats.shape == transformed_student_feats.shape
 
-        transformed_teacher_feats = transformed_teacher_feats / self.scaling_factor
+        transformed_teacher_feats = (
+            transformed_teacher_feats / (self.scaling_factor) ** 0.5
+        )
 
         loss_mse = F.mse_loss(
             transformed_student_feats,
