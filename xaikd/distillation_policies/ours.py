@@ -314,7 +314,7 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
         self.transformer_student_feats = nn.Sequential(
             BatchCentering(),
             utils.modules.Rotate(k=k, bias=False),
-            Bias(k=k),
+            # Bias(k=k),
         ).to(device)
 
     def criterion(
