@@ -278,6 +278,12 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
         return loss_mse
 
 
+class BatchCentering(nn.Module):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        mean = x.mean(dim=1, keepdim=True)
+        return x - mean
+
+
 @register_policy("basis-center-rotation-with-bias-only")
 class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
     def __init__(
@@ -306,7 +312,7 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
         )
 
         self.transformer_student_feats = nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            BatchCentering(),
             utils.modules.Rotate(k=k, bias=False),
             Bias(k=k),
         ).to(device)
