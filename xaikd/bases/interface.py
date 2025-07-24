@@ -42,8 +42,11 @@ class OrthogonalBasis(ABC):
         pass
 
     def construct_fh_rank_k_projection(self, k: int, device: str) -> typing.Callable:
-        encoder = self.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device)
-        decoder = self.construct_adapter(k=k, mode=AdapterMode.DECODER, device=device)
+
+        Uk = self.get_Uk(k=k)
+        U = torch.from_numpy(Uk).float()
+        encoder = self.construct_adapter(U=U, mode=AdapterMode.ENCODER, device=device)
+        decoder = self.construct_adapter(U=U, mode=AdapterMode.DECODER, device=device)
 
         def fh(mod, input, output):
             assert isinstance(output, torch.Tensor)
@@ -76,10 +79,8 @@ class OrthogonalBasis(ABC):
         return arr_scale_factors
 
     def construct_adapter(
-        self, k: int, mode: AdapterMode, device: str, use_mean=True
+        self, U: torch.Tensor, mode: AdapterMode, device: str, use_mean=True
     ) -> Adapter:
-        Uk = self.get_Uk(k=k)
-        U = torch.from_numpy(Uk).float()
         if use_mean:
             mean = torch.from_numpy(self.mean).float()
         else:
