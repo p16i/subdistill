@@ -312,8 +312,9 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
         )
 
         self.transformer_student_feats = nn.Sequential(
-            BatchCentering(),
+            # BatchCentering(),
             utils.modules.Rotate(k=k, bias=False),
+            utils.modules.Centering2D(num_features=k, affine=False),
             # Bias(k=k),
         ).to(device)
 
