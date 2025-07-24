@@ -306,7 +306,7 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
         )
 
         self.transformer_student_feats = nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False),
+            # utils.modules.Centering2D(num_features=k, affine=False),
             utils.modules.Rotate(k=k, bias=False),
             Bias(k=k),
         ).to(device)
@@ -318,14 +318,14 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
 
         assert transformed_teacher_feats.shape == transformed_student_feats.shape
 
+        transformed_teacher_feats = transformed_teacher_feats / self.scaling_factor
+
         loss_mse = F.mse_loss(
             transformed_student_feats,
             transformed_teacher_feats,
             reduction="none",
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
-
-        loss_mse = loss_mse / self.scaling_factor
 
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
