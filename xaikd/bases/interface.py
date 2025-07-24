@@ -75,9 +75,14 @@ class OrthogonalBasis(ABC):
 
         return arr_scale_factors
 
-    def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
+    def construct_adapter(
+        self, k: int, mode: AdapterMode, device: str, use_mean=True
+    ) -> Adapter:
         U = torch.from_numpy(self.U[:, :k]).float()
-        mean = torch.from_numpy(self.mean).float()
+        if use_mean:
+            mean = torch.from_numpy(self.mean).float()
+        else:
+            mean = torch.from_numpy(0 * self.mean).float()
 
         return Adapter(U=U, mean=mean, mode=mode, device=device)
 
