@@ -210,9 +210,9 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
 
         return loss_mse
 
-@register_policy("basis-center-rotation-with-bias")
-class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
 
+@register_policy("basis-center-rotation-with-bias")
+class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
     def __init__(
         self,
         teacher_dims: int,
@@ -267,6 +267,7 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
 
 ####
 
