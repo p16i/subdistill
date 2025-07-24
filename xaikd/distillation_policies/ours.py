@@ -302,12 +302,12 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
             )
 
         self.transformer_teacher_feats = basis.construct_adapter(
-            k=k, mode=AdapterMode.ENCODER, device=device, use_mean=False
+            k=k, mode=AdapterMode.ENCODER, device=device, use_mean=True
         )
 
         self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
             utils.modules.Rotate(k=k, bias=False),
-            Bias(k=k),
         ).to(device)
 
     def criterion(
