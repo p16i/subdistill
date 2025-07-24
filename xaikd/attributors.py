@@ -224,7 +224,6 @@ def extract_activation_grad(
 
     arr_ctx = np.vstack(arr_ctx)
 
-    # fixme: dev remove this later
     arr_logit = np.array(arr_logit)
     assert len(arr_logit.shape) == 1
 
