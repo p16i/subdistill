@@ -327,11 +327,11 @@ class Scale(nn.Module):
 
 
 class Rotate(nn.Module):
-    def __init__(self, k: int):
+    def __init__(self, k: int, bias=False):
         super().__init__()
 
         self.rotation = nn.utils.parametrizations.orthogonal(
-            nn.Linear(in_features=k, out_features=k, bias=False)
+            nn.Linear(in_features=k, out_features=k, bias=bias)
         )
 
     def forward(self, x: torch.Tensor):
