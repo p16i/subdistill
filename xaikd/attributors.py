@@ -225,7 +225,7 @@ def extract_activation_grad(
     arr_ctx = np.vstack(arr_ctx)
 
     arr_logit = np.array(arr_logit)
-    assert len(arr_logit.shape) == 1
+    assert len(arr_logit.shape) == 1, f"arr_logit.shape={arr_logit.shape}"
 
     # assert arr_act.shape[0] == arr_logit.shape[0]
     assert arr_act.shape == arr_ctx.shape
