@@ -78,7 +78,8 @@ class OrthogonalBasis(ABC):
     def construct_adapter(
         self, k: int, mode: AdapterMode, device: str, use_mean=True
     ) -> Adapter:
-        U = torch.from_numpy(self.U[:, :k]).float()
+        Uk = self.get_Uk(k=k)
+        U = torch.from_numpy(Uk).float()
         if use_mean:
             mean = torch.from_numpy(self.mean).float()
         else:
