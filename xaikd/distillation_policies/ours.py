@@ -211,6 +211,15 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
+class Bias(nn.Module):
+    def __init__(self, k: int):
+        super().__init__()
+        self.bias = nn.Parameter(torch.zeros(k))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x + self.bias[None, :, None, None]
+
+
 @register_policy("basis-center-rotation-with-bias")
 class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
     def __init__(
@@ -239,7 +248,7 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
         )
 
         self.transformer_student_feats = nn.Sequential(
-            utils.modules.Rotate(k=k, bias=True),
+            utils.modules.Rotate(k=k, bias=False), Bias(k=k)
         ).to(device)
 
     def criterion(
