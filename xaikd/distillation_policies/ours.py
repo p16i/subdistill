@@ -336,7 +336,7 @@ class OrthogonalBasisCenterRotationWithBiasPolicy(LayerPolicy):
         assert loss_mse.shape == (b,)
 
 
-        correction = torch.no_grad(self.centering.running_mean)
+        correction = torch.norm(self.centering.running_mean)
 
         # average over all samples
         loss_mse = loss_mse.mean() - correction
