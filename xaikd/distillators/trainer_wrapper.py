@@ -138,7 +138,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             )
 
             ref = policy.transformer_student_feats(student_feat)
-            Uk = torch.from_numpy(policy.basis.get_Uk(policy.k)).to(ref.device)
+            Uk = torch.from_numpy(policy.basis.get_Uk(policy.k)).float().to(ref.device)
 
             recon = F.conv2d(
                 policy.transformer_student_feats(student_feat),
