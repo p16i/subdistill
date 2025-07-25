@@ -145,7 +145,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 (Uk @ Uk.T).unsqueeze(2).unsqueeze(3),
             )
 
-            err = torch.flatten(ref - recon, start_dim=1).sum(1).mean()
+            err = torch.flatten(
+                (ref - recon) ** 2, 
+                start_dim=1
+            ).sum(1).mean()
 
             loss_layer = loss_layer + _loss_layer
 
