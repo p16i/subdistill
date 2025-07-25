@@ -82,7 +82,7 @@ class OrthogonalPCAConvergenceCheckPolicy(LayerPolicy):
 
 
 @register_policy("basis-center-pca-learned-linearortho-with-bias")
-class OrthogonalPCAConvergenceCheckPolicy(OrthogonalPCAConvergenceCheckPolicy):
+class OrthogonalPCAConvergenceCheckPolicyWithBias(OrthogonalPCAConvergenceCheckPolicy):
     def __init__(
         self,
         teacher_dims: int,
@@ -101,6 +101,8 @@ class OrthogonalPCAConvergenceCheckPolicy(OrthogonalPCAConvergenceCheckPolicy):
 
         k = student_dims
         d = teacher_dims
+
+        self.k = k
 
         self.transformer_student_feats = nn.Sequential(
             # this is just a dummy layer to make the indexing fit.

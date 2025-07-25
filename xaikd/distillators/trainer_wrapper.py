@@ -130,14 +130,28 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         for lix, policy in enumerate(layer_policies):
 
-            _loss_layer = policy(
-                teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
+            student_feat = student_arr_intermediate_feats[lix]
+            _loss_layer = policy(teacher_arr_intermediate_feats[lix], student_feat)
+
+            assert isinstance(
+                policy, distillation_policies.OrthogonalPCAConvergenceCheckPolicy
             )
+
+            ref = policy.transformer_student_feats(student_feat)
+            Uk = torch.from_numpy(policy.basis.get_Uk(policy.k)).to(ref.device)
+
+            recon = F.conv2d(
+                policy.transformer_student_feats(student_feat),
+                (Uk @ Uk.T).unsqueeze(2).unsqueeze(3),
+            )
+
+            err = torch.flatten(ref - recon, start_dim=1).sum(1).mean()
 
             loss_layer = loss_layer + _loss_layer
 
             layer_name = self.layer_policy_collection.student_layers[lix]
 
+            self.log(f"{prefix}_recon_on_pca_layer_{layer_name}", err, on_epoch=True)
             self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
 
         assert torch.isfinite(loss_layer)
