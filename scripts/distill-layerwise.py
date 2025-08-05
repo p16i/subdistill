@@ -135,10 +135,10 @@ def main(
         OrderedDict(
             [
                 (TEACHER_LAYER_PREFIX, models.get_trained_model(teacher).to(device)),
-                (
-                    "last_layer",
-                    models.layers.resolve_teacher_last_layer(dataset=dataset),
-                ),
+                # (
+                #     "last_layer",
+                #     models.layers.resolve_teacher_last_layer(dataset=dataset),
+                # ),
             ]
         )
     )
