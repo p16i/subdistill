@@ -43,7 +43,8 @@ def learn_basis(
         arr_ctx=arr_ctx,
         mean_act=mean_act,
         arr_logodd=arr_logodd,
-        logodd_threshold=logit_mod.threshold,
+        logodd_threshold=None,
+        # logit_mod.threshold,
         # remark: this is only used for `Random`
         seed=seed,
     )
