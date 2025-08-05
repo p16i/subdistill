@@ -23,7 +23,7 @@ def learn_basis(
     seed: int,
 ) -> OrthogonalBasis:
 
-    assert isinstance(logit_mod, BinaryLogOddWinning)
+    # assert isinstance(logit_mod, BinaryLogOddWinning)
 
     rng = np.random.default_rng(seed=seed)
 
