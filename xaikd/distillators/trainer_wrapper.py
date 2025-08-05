@@ -221,7 +221,12 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
-        self.metric[f"{prefix}_recon"].update(student_logits.detach().cpu(), y.cpu())
+        self.metric[f"{prefix}_recon"].update(
+            torch.flatten(
+                (student_logits - teacher_logits)**2,
+                start_dim=1
+            ).mean(dim=1),
+        )
 
         return loss
 
