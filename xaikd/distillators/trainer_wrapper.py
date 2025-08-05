@@ -225,7 +225,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             torch.flatten(
                 (student_logits - teacher_logits)**2,
                 start_dim=1
-            ).mean(dim=1),
+            ).mean(dim=1).detach().cpu(),
         )
 
         return loss
