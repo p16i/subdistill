@@ -140,7 +140,11 @@ class ResNetUntilLayer2(nn.Module):
 
 def _resnet50_imagenet_neuron(neuron_idx) -> nn.Module:
     model = _resnet50_imagenet()
-    return ResNetUntilLayer2(model, neuron_idx=neuron_idx, d=d)
+    return ResNetUntilLayer2(
+        model,
+        neuron_idx=neuron_idx,
+        d=512,  # this is the number of channels in layer 2
+    )
 
 
 @register_model("imagenet-resnet101-tv")
