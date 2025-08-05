@@ -101,6 +101,13 @@ class MultiClassLogOddWinning(LogitModifier):
 
 
 @register_logit_modifier()
+class SumAllOutputs(LogitModifier):
+    def __call__(self, logits: torch.Tensor, targets=None) -> torch.Tensor:
+
+        return torch.sum(logits)
+
+
+@register_logit_modifier()
 class BinaryLogOddWinning(LogitModifier):
     def __init__(
         self,

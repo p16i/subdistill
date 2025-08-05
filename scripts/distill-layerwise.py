@@ -165,7 +165,7 @@ def main(
         device=device,
     )
 
-    logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
+    logit_mod = logit_modifiers.SumAllOutputs()
 
     print(
         f"[distillation_policy={distillation_policy} layer_policy={layer_policy}] with {lambda_collection}"
