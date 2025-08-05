@@ -109,7 +109,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         target: torch.Tensor,
     ) -> torch.Tensor:
 
-        b, c, w, h = teacher_logits.shape
+        b, w, h = teacher_logits.shape
+        teacher_logits = teacher_logits.unsqueeze(1)
 
         loss = F.mse_loss(student_logits, teacher_logits, reduction="mean")
 
