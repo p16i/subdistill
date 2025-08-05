@@ -124,8 +124,9 @@ class ResNetUntilLayer2(nn.Module):
 
         u = torch.zeros(d, dtype=torch.float32)
         u[neuron_idx] = 1.0
-
-        self.u = nn.Parameter(u).reshape((1, -1, 1, 1))
+        u = u.reshape((1, -1, 1, 1))
+        # Reshape to match the output of layer2
+        self.u = nn.Parameter(u)
 
     def forward(self, x):
         x = self.conv1(x)
