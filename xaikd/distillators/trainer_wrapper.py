@@ -70,13 +70,13 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             f"Layerwise-Training={self.layerwise_training} | Lambda(task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
         )
         self.metric = dict(
-            train_auroc=BinaryAUROC(thresholds=100),
-            val_auroc=BinaryAUROC(thresholds=100),
+            train_recon=MeanMetric(),
+            val_recon=MeanMetric(),
         )
 
         self.arr_metrics = dict(
-            train_auroc=[],
-            val_auroc=[],
+            train_recon=[],
+            val_recon=[],
         )
 
     def _get_parameters(self) -> typing.List[nn.Parameter]:
@@ -99,16 +99,19 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def _compute_loss_task(
         self, student_logits: torch.Tensor, target: torch.Tensor
     ) -> torch.Tensor:
+        raise
         return F.binary_cross_entropy_with_logits(student_logits, target.float())
 
-    def _compute_loss_kd(
+    def _compute_loss_output(
         self,
         teacher_logits: torch.Tensor,
         student_logits: torch.Tensor,
         target: torch.Tensor,
     ) -> torch.Tensor:
 
-        loss = self.last_layer_policy(teacher_logits, student_logits, target)
+        b, c, w, h = teacher_logits.shape
+
+        loss = F.mse_loss(student_logits, teacher_logits, reduction="mean")
 
         assert torch.isfinite(loss)
 
@@ -190,7 +193,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     student_logits=student_logits, target=y
                 )
             elif loss_label == "kd":
-                loss_value = self._compute_loss_kd(
+                loss_value = self._compute_loss_output(
                     teacher_logits=teacher_logits,
                     student_logits=student_logits,
                     target=y,
@@ -217,7 +220,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
-        self.metric[f"{prefix}_auroc"].update(student_logits.detach().cpu(), y.cpu())
+        self.metric[f"{prefix}_recon"].update(student_logits.detach().cpu(), y.cpu())
 
         return loss
 
@@ -231,14 +234,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         return self._compute_loss(val_batch, "val", batch_idx)
 
     def _compute_metric(self, prefix):
-        for suffix in ["auroc"]:
+        for suffix in ["recon"]:
             slug = f"{prefix}_{suffix}"
 
             metric = self.metric[slug]
             value = metric.compute()
-
-            if suffix == "auroc":
-                value = np.max([value, 1 - value])
 
             metric.reset()
 
@@ -249,11 +249,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")
 
-        if len(self.arr_metrics["val_auroc"]) > 0:
-            best_epoch = int(np.argmax(self.arr_metrics["val_auroc"]))
-            best_val_auroc = float(self.arr_metrics["val_auroc"][best_epoch])
+        if len(self.arr_metrics["val_recon"]) > 0:
+            best_epoch = int(np.argmax(self.arr_metrics["val_recon"]))
+            best_val_recon = float(self.arr_metrics["val_recon"][best_epoch])
             self.log("best_epoch", best_epoch, prog_bar=True)
-            self.log("best_val_auroc", best_val_auroc, prog_bar=True)
+            self.log("best_val_recon", best_val_recon, prog_bar=True)
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")

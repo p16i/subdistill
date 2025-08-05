@@ -80,3 +80,16 @@ def test_resnet(student_name):
     output = model(x)
     assert torch.isfinite(output).all()
     assert output.shape == (5, 10)
+
+
+@torch.no_grad()
+@pytest.mark.parametrize(
+    "student_name",
+    [
+        "student-resnet18-2l-64",
+    ],
+)
+@pytest.mark.slow()
+def test_resnet_2l(student_name):
+    x = torch.rand(5, 3, 224, 224)
+    model = models.get_untrained_model(student_name, num_classes=10)

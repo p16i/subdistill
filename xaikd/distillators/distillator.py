@@ -55,16 +55,16 @@ class Layerwise:
 
         self.device = device
 
-        self.metric_func = metrics.MetricAUROCBinaryCrossEntropy()
+        # self.metric_func = metrics.MetricreconBinaryCrossEntropy()
 
-        with torch.no_grad():
-            self.ref_auroc, self.ref_xent = self.metric_func(
-                self.teacher.to(device),
-                dataloader_val,
-                device=self.device,
-                verbose=True,
-                prefix="teacher_reference",
-            )
+        # with torch.no_grad():
+        #     self.ref_auroc, self.ref_xent = self.metric_func(
+        #         self.teacher.to(device),
+        #         dataloader_val,
+        #         device=self.device,
+        #         verbose=True,
+        #         prefix="teacher_reference",
+        #     )
 
     def distill(
         self,
@@ -89,26 +89,26 @@ class Layerwise:
         student.eval()
         student.to(device)
 
-        with torch.no_grad():
-            (
-                student_auroc_before_training,
-                student_xent_before_training,
-            ) = self.metric_func(
-                student,
-                dataloader=self.dl_val,
-                device=self.device,
-                verbose=True,
-                prefix="student_before_training",
-            )
+        # with torch.no_grad():
+        #     (
+        #         student_recon_before_training,
+        #         student_xent_before_training,
+        #     ) = self.metric_func(
+        #         student,
+        #         dataloader=self.dl_val,
+        #         device=self.device,
+        #         verbose=True,
+        #         prefix="student_before_training",
+        #     )
 
-        logger.experiment.summary["student_val_auroc_before_training"] = (
-            student_auroc_before_training
-        )
-        logger.experiment.summary["teacher_auroc"] = self.ref_auroc
+        # logger.experiment.summary["student_val_recon_before_training"] = (
+        #     student_recon_before_training
+        # )
+        # logger.experiment.summary["teacher_auroc"] = self.ref_auroc
 
-        print(
-            f"[before training] metrics: student (teacher) | auroc={student_auroc_before_training:.4f} ({self.ref_auroc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
-        )
+        # print(
+        #     f"[before training] metrics: student (teacher) | auroc={student_auroc_before_training:.4f} ({self.ref_auroc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
+        # )
 
         # we set the seed here again because to make sure that the state of random generator for
         # training is the same for all policies.
@@ -130,8 +130,8 @@ class Layerwise:
         )
 
         callback_checkpoint = ModelCheckpoint(
-            monitor="val_auroc",
-            mode="max",
+            monitor="val_recon",
+            mode="min",
         )
 
         trainer = pl.Trainer(
@@ -152,7 +152,7 @@ class Layerwise:
 
         assert callback_checkpoint.best_model_score is not None
 
-        best_epoch = np.argmax(training_wrapper.arr_metrics["val_auroc"])
+        best_epoch = np.argmin(training_wrapper.arr_metrics["val_recon"])
 
         best_student = utils.modules.load_model_from_checkpoint(
             model_template_object=training_wrapper.student,
@@ -171,11 +171,12 @@ class Layerwise:
 
         logger.experiment.summary["best_epoch"] = best_epoch
 
-        logger.experiment.summary["student_best_val_auroc"] = (
+        logger.experiment.summary["student_best_val_recon"] = (
             callback_checkpoint.best_model_score
         )
-        self.log_test_metrics(best_student=best_student, logger=logger, device=device)
-        self.log_prediction(student=best_student, logger=logger, device=device)
+
+        # self.log_test_metrics(best_student=best_student, logger=logger, device=device)
+        # self.log_prediction(student=best_student, logger=logger, device=device)
 
         if upload_best_checkpoint:
             wandb_run = logger.experiment
@@ -192,7 +193,7 @@ class Layerwise:
             )
 
         print(
-            f"Result: best_epoch={best_epoch} best_val_auroc={callback_checkpoint.best_model_score:.4f}"
+            f"Result: best_epoch={best_epoch} best_val_recon={callback_checkpoint.best_model_score:.4f}"
         )
 
         return best_student
@@ -206,6 +207,7 @@ class Layerwise:
         device: str,
     ):
 
+        return
         assert not student.training
 
         student.to(device)

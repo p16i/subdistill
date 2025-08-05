@@ -107,6 +107,60 @@ class MetricAUROC(MetricFunction):
         return ("auroc",)
 
 
+class MetricRecon(MetricFunction):
+    def __call__(
+        self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
+    ) -> typing.Tuple[float]:
+        assert not model.training
+
+        metric = MeanMetric()
+        for batch in tqdm(
+            dataloader,
+            desc=f"[evaluating reconstruction error",
+            disable=not verbose,
+        ):
+            x = batch[0]
+
+            x = x.to(device)
+
+            output = model(x).detach().cpu()  # Ensure logits are on CPU
+
+            norm = torch.linalg.norm(output, ord=2, dim=1)
+
+            for kix, k in enumerate(arr_ks):
+                Uk = U[:, :k]
+                hook = None
+                try:
+                    module = intercepts.get_module_for_layer(model=model, layer=layer)
+                    hook = module.register_forward_hook(
+                        intercepts.construct_fh_with_projection(
+                            Uk,
+                            shape_normalizer=feature_map_shape_normalizer,
+                            device=device,
+                        )
+                    )
+                    recon_output = model(x).detach().cpu()
+
+                    np.testing.assert_equal(len(output), len(recon_output))
+
+                    err = torch.linalg.norm(
+                        output - recon_output, ord=2, dim=1
+                    )  # Compute reconstruction error
+                    arr_metric_recon.update(kix, err.cpu())
+
+                    # fixme add cosine
+                    cosine_sim = torch.nn.functional.cosine_similarity(
+                        output, recon_output, dim=1
+                    )
+                    arr_metric_cosine.update(kix, cosine_sim.cpu())
+                finally:
+                    if hook is not None:
+                        hook.remove()
+
+    def _metric_names(self) -> typing.Tuple[str]:
+        return ["recon"]
+
+
 class MetricAUROCBinaryCrossEntropy(MetricFunction):
     def __init__(self, convert_auroc=True):
         self.convert_auroc = convert_auroc

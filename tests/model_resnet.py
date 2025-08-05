@@ -63,3 +63,30 @@ def test_get_celeba_model(slug):
 @pytest.mark.slow
 def test_split_resnet_model(slug, layer):
     test_models._test_split_model(slug, layer, models.resnet.split_model_at)
+
+
+@pytest.mark.parametrize(
+    "slug",
+    [
+        "imagenet-resnet50-neuron189",
+    ],
+)
+@pytest.mark.slow
+def test_get_resnet50_neuron(slug):
+
+    torch.manual_seed(1)
+    model = models.get_trained_model(slug)
+    assert not model.training
+    assert model is not None
+    assert getattr(model, "__name") == slug
+
+    device = utils.get_device()
+
+    model = model.to(device)
+
+    data = torch.rand(5, 3, 224, 224)
+
+    data = data.to(device)
+
+    # model is forwardable
+    _ = model(data)

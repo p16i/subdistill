@@ -10,6 +10,7 @@ from collections import OrderedDict
 import torch
 
 from torch import nn
+from torch.nn import functional as F
 
 import torchvision
 from torchvision.models import resnet
@@ -109,6 +110,37 @@ def _resnet50_imagenet() -> nn.Module:
     model.num_classes = 1000  # type: ignore
 
     return model
+
+
+class ResNetUntilLayer2(nn.Module):
+    def __init__(self, model, neuron_idx: int, d: int):
+        super().__init__()
+        self.conv1 = model.conv1
+        self.bn1 = model.bn1
+        self.relu = model.relu
+        self.maxpool = model.maxpool
+        self.layer1 = model.layer1
+        self.layer2 = model.layer2
+
+        u = torch.zeros(d, dtype=torch.float32)
+        u[neuron_idx] = 1.0
+
+        self.u = nn.Parameter(u).reshape((1, -1, 1, 1))
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = F.conv2d(x, self.u)
+        return x[:, 0, :, :]
+
+
+def _resnet50_imagenet_neuron(neuron_idx) -> nn.Module:
+    model = _resnet50_imagenet()
+    return ResNetUntilLayer2(model, neuron_idx=neuron_idx, d=d)
 
 
 @register_model("imagenet-resnet101-tv")
@@ -265,6 +297,17 @@ def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
     return model
 
 
+def _student_resnet_twolayer(in_planes, **kwargs):
+
+    model = construct_student_resnet18(in_planes=in_planes, num_classes=1000)
+
+    return ResNetUntilLayer2(
+        model=model,
+        neuron_idx=0,  # We only use the first neuron
+        d=in_planes,  # d is the output dimension of the last layer
+    )
+
+
 def _register_student_resnet18():
 
     for in_planes in [4, 8, 16, 32, 64]:
@@ -276,6 +319,17 @@ def _register_student_resnet18():
         add_model_to_registry(
             f"student-resnet18-{in_planes}",
             partial(construct_student_resnet18, in_planes=in_planes),
+        )
+
+        add_model_to_registry(
+            f"student-resnet18-2l-{in_planes}",
+            partial(_student_resnet_twolayer, in_planes=in_planes),
+        )
+
+    for neuron_idx in [189, 491, 173, 332]:
+        add_model_to_registry(
+            f"imagenet-resnet50-neuron{neuron_idx}",
+            partial(_resnet50_imagenet_neuron, neuron_idx=neuron_idx),
         )
 
 

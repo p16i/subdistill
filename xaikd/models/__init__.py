@@ -59,6 +59,12 @@ def get_trained_model(name: str) -> nn.Module:
 
     model = MODEL_GENERATORS[name]()
 
+    setattr(model, "__name", name)
+
+    if "neuron" in name:
+        model.eval()
+        return model
+
     num_classes = model.num_classes
 
     # cast native torchvision model to our `DistillableModel`
@@ -68,8 +74,6 @@ def get_trained_model(name: str) -> nn.Module:
         setattr(model, "__last_layer", model.fc)
 
     model.num_classes = num_classes
-
-    setattr(model, "__name", name)
 
     model.eval()
 
