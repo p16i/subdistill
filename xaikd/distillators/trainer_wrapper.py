@@ -255,7 +255,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         self._compute_metric("val")
 
         if len(self.arr_metrics["val_recon"]) > 0:
-            best_epoch = int(np.argmax(self.arr_metrics["val_recon"]))
+            best_epoch = int(np.argmin(self.arr_metrics["val_recon"]))
             best_val_recon = float(self.arr_metrics["val_recon"][best_epoch])
             self.log("best_epoch", best_epoch, prog_bar=True)
             self.log("best_val_recon", best_val_recon, prog_bar=True)
