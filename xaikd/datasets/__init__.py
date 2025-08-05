@@ -150,7 +150,9 @@ def construct_dataloaders(
     if use_validation_set:
 
         ratio_train = np.min([constants.TRAINING_VAL_SPLIT_RATIO, training_data_ratio])
-        ratio_val = 1 - constants.TRAINING_VAL_SPLIT_RATIO
+        # fixme: debug reducing validation size
+        ratio_val = 0.01
+        # 1 - constants.TRAINING_VAL_SPLIT_RATIO
         ratio_rest = 1 - (ratio_train + ratio_val)
         assert 0 <= ratio_rest <= 1
 
