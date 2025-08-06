@@ -208,6 +208,15 @@ def main(
                 device=device,
                 seed=seed,
             )
+
+            if isinstance(basis, bases.PCALookAhead):
+                basis.set_model_layer_ds(
+                    model=teacher_model,
+                    layer=teacher_layer,
+                    ds_train=train_loader.dataset,
+                    device=device,
+                )
+
             policy = distillation_policies.get_policy(
                 policy_name,
                 device=device,

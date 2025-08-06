@@ -4,36 +4,49 @@ import numpy.typing as npt
 from tqdm.autonotebook import tqdm
 import torch
 
-from xaikd import models
 
-from torch.nn import Sequential
+from torch import nn
 from torch.nn import functional as F
-from torch.utils.data import Dataset, DataLoader
+
+from torch.nn.utils.parametrizations import orthogonal
+from torch.optim.adam import Adam
+
 
 from torch.nn.utils.parametrizations import orthogonal
 
-from xaikd import datasets
+from xaikd import datasets, utils, bases
 
 
-def fit(
-    model: torch.nn.Module,
+def construct_projection_fh(mean: npt.NDArray, ortho_layer: nn.Module, device: str):
+    ts_mean = torch.from_numpy(mean).reshape(1, -1, 1, 1).to(device)
+
+    def fh(mod, inp, outp):
+
+        U = ortho_layer.weight
+        proj_mat = (U.T @ U).unsqueeze(2).unsqueeze(3)
+
+        outp = outp - ts_mean
+        outp.requires_grad_(True)
+        outp = F.conv2d(outp, proj_mat)
+        outp = outp + ts_mean
+
+        return outp
+
+    return fh
+
+
+def fit_pcalookahead(
+    model: nn.Module,
     layer: str,
-    dataloader: DataLoader,
+    mean: npt.NDArray,
     Uinit: npt.NDArray,
-    k: int,
-    seed=1,
-    epochs=5,
-    verbose=False,
-    device="cpu",
-) -> npt.NDArray:
-    lr = 1e-3
-
-    rng = torch.Generator()
-    rng.manual_seed(seed)
-
-    d, kp = Uinit.shape
-
-    assert kp == k
+    dataloader: datasets.DataLoader,
+    device: str,
+    num_epochs=10,
+    lr=5e-3,
+    verbose=True,
+):
+    d, k = Uinit.shape
 
     linear_layer = torch.nn.Linear(k, d, bias=False)
 
@@ -41,110 +54,86 @@ def fit(
 
     ortho_layer = orthogonal(linear_layer).to(device)
 
-    first_module, second_module = models.split_model_at_layer(model, layer)
+    optimizer = Adam(ortho_layer.parameters(), lr=lr)
 
-    optimizer = torch.optim.Adam(ortho_layer.parameters(), lr=lr)
+    fh = construct_projection_fh(mean, ortho_layer, device)
 
-    pgb = tqdm(range(epochs))
+    module = utils.interceptor.get_module(model, layer)
+
+    pgb = tqdm(range(num_epochs), disable=not verbose)
+
     for epoch in tqdm(pgb):
         for x, y in dataloader:
             optimizer.zero_grad()
 
-            U = ortho_layer.weight.T
-
             x = x.to(device)
 
             with torch.no_grad():
-                expected_logits = model(x)
-                act = first_module(x)
+                target = model(x)
 
-            recon = F.conv2d(
-                F.conv2d(act, U.T.unsqueeze(2).unsqueeze(3)),
-                U.unsqueeze(2).unsqueeze(3),
-            )
+            hook = None
+            try:
+                hook = module.register_forward_hook(fh)
 
-            actual_logits = second_module(recon)
+                recon = model(x)
 
-            loss = torch.linalg.norm(actual_logits - expected_logits, ord=2, dim=1)
-            loss = loss.mean()
+                np.testing.assert_equal(recon.shape, target.shape)
+                assert len(recon.shape) == 3
 
-            loss.backward()
-            optimizer.step()
+                loss = (recon - target) ** 2
+                loss = torch.flatten(loss, start_dim=1).sum(dim=1).mean()
 
-            loss = loss.detach().cpu().numpy()
+                loss.backward()
+                optimizer.step()
+
+                loss = loss.detach().cpu().numpy()
+
+            finally:
+                hook.remove()
 
             pgb.set_description(f"PCA-LH Optimization: k={k}; loss={loss:.4f} ")
 
     return ortho_layer.weight.T.detach().cpu().numpy()
 
 
-def fit_v2(
-    first_module: torch.nn.Module,
-    second_module: torch.nn.Module,
-    dataloader: DataLoader,
-    Uinit: npt.NDArray,
-    k: int,
-    epochs=5,
-    verbose=False,
-    device="cpu",
-    lr=1e-3,
-) -> npt.NDArray:
+@bases.register.register_basis()
+class PCALookAhead(bases.orthogonal.PCA):
 
-    d, kp = Uinit.shape
+    def get_Uk(self, k: int) -> npt.NDArray[np.float32]:
 
-    assert kp == k
+        assert self.is_prepared
 
-    linear_layer = torch.nn.Linear(k, d, bias=False)
+        # this U is from PCA
+        Uinit = self.U[:, :k]
 
-    linear_layer.weight = torch.nn.Parameter(torch.from_numpy(Uinit.T).float())
+        dl = datasets.build_dataloader(
+            self.ds_train,
+            shuffle=True,
+            batch_size=256,
+            num_workers=0,
+            pin_memory=False,
+            persistent_workers=False,
+        )
 
-    ortho_layer = orthogonal(linear_layer).to(device)
+        return fit_pcalookahead(
+            model=self.model,
+            layer=self.layer,
+            mean=self.mean,
+            Uinit=Uinit,
+            dataloader=dl,
+            device=self.device,
+        )
 
-    optimizer = torch.optim.Adam(ortho_layer.parameters(), lr=lr)
+    def set_model_layer_ds(
+        self,
+        model: nn.Module,
+        layer: str,
+        ds_train: datasets.Dataset,
+        device: str,
+    ):
+        self.model = model
+        self.layer = layer
+        self.ds_train = ds_train
+        self.device = device
 
-    pgb = tqdm(range(epochs), disable=not verbose)
-    for epoch in tqdm(pgb):
-        for x, y in dataloader:
-            optimizer.zero_grad()
-
-            # shape: (k, d)
-            U = ortho_layer.weight
-            proj_mat = (U.T @ U).unsqueeze(2).unsqueeze(3)
-
-            x = x.to(device)
-
-            with torch.no_grad():
-                expected_logits = second_module(first_module(x))
-                act: torch.Tensor = first_module(x)
-
-            shape_act = act.shape
-            # todo: write unittests for this
-            if len(shape_act) == 2:
-                # make it conv like
-                act = act.unsqueeze(2).unsqueeze(3)
-
-            recon = F.conv2d(act, proj_mat)
-
-            if len(shape_act) == 2:
-                recon = recon.squeeze(3).squeeze(2)
-
-            actual_logits = second_module(recon)
-
-            np.testing.assert_equal(actual_logits.shape, expected_logits.shape)
-
-            # this is to handle the case of binary classification
-            if len(actual_logits.shape) == 1:
-                actual_logits = actual_logits.unsqueeze(1)
-                expected_logits = expected_logits.unsqueeze(1)
-
-            loss = torch.linalg.norm(actual_logits - expected_logits, ord=2, dim=1)
-            loss = loss.mean()
-
-            loss.backward()
-            optimizer.step()
-
-            loss = loss.detach().cpu().numpy()
-
-            pgb.set_description(f"PCA-LH Optimization: k={k}; loss={loss:.4f} ")
-
-    return ortho_layer.weight.T.detach().cpu().numpy()
+        self.is_prepared = True

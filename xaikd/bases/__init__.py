@@ -7,6 +7,7 @@ import numpy.typing as npt
 
 from .orthogonal import *
 from .orthogonal_weighting import *
+from .pcalookahead import PCALookAhead
 from .register import get_basis, BASES
 from .helpers import learn_basis
 from .adapter import Adapter, AdapterMode
