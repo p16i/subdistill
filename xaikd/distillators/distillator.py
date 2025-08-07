@@ -130,7 +130,7 @@ class Layerwise:
         )
 
         callback_checkpoint = ModelCheckpoint(
-            monitor="val_recon",
+            monitor="val_kl",
             mode="min",
         )
 
@@ -152,7 +152,7 @@ class Layerwise:
 
         assert callback_checkpoint.best_model_score is not None
 
-        best_epoch = np.argmin(training_wrapper.arr_metrics["val_recon"])
+        best_epoch = np.argmin(training_wrapper.arr_metrics["val_kl"])
 
         best_student = utils.modules.load_model_from_checkpoint(
             model_template_object=training_wrapper.student,
@@ -171,7 +171,7 @@ class Layerwise:
 
         logger.experiment.summary["best_epoch"] = best_epoch
 
-        logger.experiment.summary["student_best_val_recon"] = (
+        logger.experiment.summary["student_best_val_kl"] = (
             callback_checkpoint.best_model_score
         )
 
@@ -193,7 +193,7 @@ class Layerwise:
             )
 
         print(
-            f"Result: best_epoch={best_epoch} best_val_recon={callback_checkpoint.best_model_score:.4f}"
+            f"Result: best_epoch={best_epoch} best_val_kl={callback_checkpoint.best_model_score:.4f}"
         )
 
         return best_student
