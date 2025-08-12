@@ -223,6 +223,6 @@ def extract_activation_grad(
     # assert arr_act.shape[0] == arr_logit.shape[0]
     assert arr_act.shape == arr_ctx.shape
 
-    print(f"> shape(arr_act)={arr_act.shape}; shape(arr_logits)={arr_logit.shape}")
+    # print(f"> shape(arr_act)={arr_act.shape}; shape(arr_logits)={arr_logit.shape}")
 
     return arr_logit, arr_act, arr_ctx, mean_act
