@@ -93,8 +93,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         optimizer = torch.optim.AdamW(
             parameters, lr=self.lr, weight_decay=self.weight_decay
         )
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
-        return [optimizer], [scheduler]
+        return optimizer
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+        # return [optimizer], [scheduler]
 
     def _compute_loss_task(
         self, student_logits: torch.Tensor, target: torch.Tensor
@@ -194,7 +195,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     teacher_logits=teacher_logits,
                     student_logits=student_logits,
                     target=y,
-                )
+                )/
             elif loss_label == "layer":
                 loss_value = self._compute_loss_layer(
                     teacher_arr_intermediate_feats=teacher_arr_intermediate_feats,
