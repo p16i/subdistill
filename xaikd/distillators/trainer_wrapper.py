@@ -13,7 +13,7 @@ from torch.nn import functional as F
 from xaikd import distillation_policies, utils
 
 from torchmetrics import MeanMetric
-from torchmetrics.classification import BinaryAUROC, Accuracy
+from torchmetrics.classification import Binaryacc, Accuracy
 
 
 class Teacher(object):
@@ -217,7 +217,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
-        self.metric[f"{prefix}_auroc"].update(student_logits.detach().cpu(), y.cpu())
+        self.metric[f"{prefix}_acc"].update(student_logits.detach().cpu(), y.cpu())
 
         return loss
 
@@ -231,14 +231,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         return self._compute_loss(val_batch, "val", batch_idx)
 
     def _compute_metric(self, prefix):
-        for suffix in ["auroc"]:
+        for suffix in ["acc"]:
             slug = f"{prefix}_{suffix}"
 
             metric = self.metric[slug]
             value = metric.compute()
-
-            if suffix == "auroc":
-                value = np.max([value, 1 - value])
 
             metric.reset()
 
