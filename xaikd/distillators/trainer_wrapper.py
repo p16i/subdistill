@@ -13,7 +13,7 @@ from torch.nn import functional as F
 from xaikd import distillation_policies, utils
 
 from torchmetrics import MeanMetric
-from torchmetrics.classification import Binaryacc, Accuracy
+from torchmetrics.classification import Accuracy
 
 
 class Teacher(object):
