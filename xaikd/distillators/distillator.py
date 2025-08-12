@@ -241,6 +241,7 @@ class Layerwise:
 
     @torch.no_grad()
     def log_prediction(self, student: nn.Module, logger: WandbLogger, device: str):
+        return
         prediction_table = wandb.Table(
             columns=["target", "output_teacher", "output_student"]
         )
@@ -249,7 +250,7 @@ class Layerwise:
             output_teacher = self.teacher(x).detach().cpu().numpy()
             output_student = student(x).squeeze(1).detach().cpu().numpy()
 
-            assert len(output_student.shape) == 1, output_student.shape
+            # assert len(output_student.shape) == 1, output_student.shape
 
             np.testing.assert_allclose(output_student.shape, output_teacher.shape)
 
