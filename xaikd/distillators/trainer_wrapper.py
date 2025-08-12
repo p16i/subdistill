@@ -172,7 +172,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             detach_output=self.layerwise_training,
         )
 
-        assert student_logits.shape == (n, 1)
+        assert student_logits.shape == (n, 5)
 
         student_logits = student_logits.squeeze(1)
         loss = torch.tensor(0.0).to(teacher_logits.device)
