@@ -195,7 +195,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     teacher_logits=teacher_logits,
                     student_logits=student_logits,
                     target=y,
-                )/
+                )
             elif loss_label == "layer":
                 loss_value = self._compute_loss_layer(
                     teacher_arr_intermediate_feats=teacher_arr_intermediate_feats,
