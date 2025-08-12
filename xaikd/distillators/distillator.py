@@ -213,7 +213,6 @@ class Layerwise:
             self.dl_val,
             device=device,
             verbose=True,
-            prefix="post_training_sanity_check: val_set",
         )
 
         assert checkpoint_callback.best_model_score is not None
@@ -234,7 +233,6 @@ class Layerwise:
             dataloader=self.dl_test,
             device=device,
             verbose=True,
-            prefix="test set",
         )
         logger.experiment.summary["student_test_acc"] = test_acc
         logger.experiment.summary["student_test_loss"] = test_loss
