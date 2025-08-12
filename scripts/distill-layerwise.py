@@ -137,7 +137,9 @@ def main(
                 (TEACHER_LAYER_PREFIX, models.get_trained_model(teacher).to(device)),
                 (
                     "last_layer",
-                    models.layers.resolve_teacher_last_layer(dataset=dataset),
+                    models.layers.SubclassSelection(
+                        selected_classes=dataset.selected_classes
+                    ),
                 ),
             ]
         )
@@ -165,7 +167,7 @@ def main(
         device=device,
     )
 
-    logit_mod = logit_modifiers.BinaryLogOddWinning(threshold=0)
+    logit_mod = logit_modifiers.MultiClassDifferenceTop2Logits()
 
     print(
         f"[distillation_policy={distillation_policy} layer_policy={layer_policy}] with {lambda_collection}"
@@ -250,7 +252,7 @@ def main(
 
     distillator.distill(
         student=student_model,
-        last_layer_policy=distillation_policies.kd.BinaryKLPolicy(device=device),
+        last_layer_policy=distillation_policies.kd.KLPolicy(device=device),
         layer_policies=distillation_policies.interface.LayerPolicyCollection(
             teacher_layers=arr_teacher_layers,
             student_layers=arr_student_layers,

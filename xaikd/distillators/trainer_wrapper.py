@@ -13,7 +13,7 @@ from torch.nn import functional as F
 from xaikd import distillation_policies, utils
 
 from torchmetrics import MeanMetric
-from torchmetrics.classification import BinaryAUROC
+from torchmetrics.classification import BinaryAUROC, Accuracy
 
 
 class Teacher(object):
@@ -70,13 +70,13 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             f"Layerwise-Training={self.layerwise_training} | Lambda(task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
         )
         self.metric = dict(
-            train_auroc=BinaryAUROC(thresholds=100),
-            val_auroc=BinaryAUROC(thresholds=100),
+            train_acc=Accuracy(task="multiclass", num_classes=5),
+            val_acc=Accuracy(task="multiclass", num_classes=5),
         )
 
         self.arr_metrics = dict(
-            train_auroc=[],
-            val_auroc=[],
+            train_acc=[],
+            val_acc=[],
         )
 
     def _get_parameters(self) -> typing.List[nn.Parameter]:
@@ -249,11 +249,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")
 
-        if len(self.arr_metrics["val_auroc"]) > 0:
-            best_epoch = int(np.argmax(self.arr_metrics["val_auroc"]))
-            best_val_auroc = float(self.arr_metrics["val_auroc"][best_epoch])
+        if len(self.arr_metrics["val_acc"]) > 0:
+            best_epoch = int(np.argmax(self.arr_metrics["val_acc"]))
+            best_val_acc = float(self.arr_metrics["val_acc"][best_epoch])
             self.log("best_epoch", best_epoch, prog_bar=True)
-            self.log("best_val_auroc", best_val_auroc, prog_bar=True)
+            self.log("best_val_acc", best_val_acc, prog_bar=True)
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")

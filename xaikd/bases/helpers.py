@@ -23,8 +23,6 @@ def learn_basis(
     seed: int,
 ) -> OrthogonalBasis:
 
-    assert isinstance(logit_mod, BinaryLogOddWinning)
-
     rng = np.random.default_rng(seed=seed)
 
     arr_logodd, arr_act, arr_ctx, mean_act = attributors.extract_activation_grad(
@@ -42,8 +40,8 @@ def learn_basis(
         arr_act=arr_act,
         arr_ctx=arr_ctx,
         mean_act=mean_act,
-        arr_logodd=arr_logodd,
-        logodd_threshold=logit_mod.threshold,
+        arr_logodd=None,
+        logodd_threshold=0,
         # remark: this is only used for `Random`
         seed=seed,
     )
