@@ -100,7 +100,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def _compute_loss_task(
         self, student_logits: torch.Tensor, target: torch.Tensor
     ) -> torch.Tensor:
-        return F.binary_cross_entropy_with_logits(student_logits, target.float())
+        return F.cross_entropy(student_logits, target)
 
     def _compute_loss_kd(
         self,
