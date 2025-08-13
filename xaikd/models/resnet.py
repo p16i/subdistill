@@ -329,27 +329,5 @@ def _register_student_resnet18():
             partial(construct_student_resnet18, in_planes=in_planes),
         )
 
-    for arr_in_planes in [
-        (48, 32, 8, 4),
-        (48, 48, 8, 8),
-        (48, 48, 16, 16),
-        (48, 48, 32, 32),
-        (48, 48, 32, 4),
-        (48, 48, 16, 4),
-        (64, 64, 8, 8),
-        (48, 32, 32, 32),
-        (56, 40, 16, 12),
-        (64, 48, 24, 20),
-    ]:
-
-        slug = "-".join(map(str, arr_in_planes))
-        add_model_to_registry(
-            f"student-cifar-resnet18-d{slug}",
-            partial(
-                construct_student_cifar_resnet18_varying_dims,
-                arr_in_planes=arr_in_planes,
-            ),
-        )
-
 
 _register_student_resnet18()
