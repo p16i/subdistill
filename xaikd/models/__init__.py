@@ -78,14 +78,28 @@ def get_trained_model(name: str) -> nn.Module:
     return model
 
 
-def get_untrained_model(name: str, num_classes: int, **kwargs) -> nn.Module:
-    print(f"Constructing untrain-model={name} with ( {num_classes} outputs)")
+def get_untrained_model(
+    name: str, num_classes: int, verbose=False, **kwargs
+) -> nn.Module:
+    if verbose:
+        print(f"Constructing untrain-model={name} with ({num_classes} outputs)")
 
-    if "student-resnet18-d" in name:
-        arr_inplane = [int(x) for x in name.split("-d")[1].split("-")]
+    # student-resnet18-dimsx-x-x-x
+    prefix, suffix = name.split("-dims")
 
-        return resnet.construct_student_resnet18_with_arr_in_plane(
-            arr_in_plane=arr_inplane, num_classes=num_classes, **kwargs
+    if prefix == "student-resnet18":
+        return resnet.get_student_resnet18(
+            model_spec=suffix,
+            model_name=name,
+            num_classes=num_classes,
+        )
+    elif prefix == "student-cifar-resnet18":
+        return resnet.get_student_resnet18(
+            model_spec=suffix, model_name=name, num_classes=num_classes, for_cifar=True
+        )
+    elif prefix == "student-resnet18-2blocks":
+        return resnet.get_student_resnet18_2blocks(
+            model_spec=suffix, model_name=name, num_classes=num_classes
         )
 
     return MODEL_GENERATORS[name](num_classes=num_classes, **kwargs)

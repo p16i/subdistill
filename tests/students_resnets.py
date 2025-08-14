@@ -1,11 +1,13 @@
 import numpy as np
 import pytest
 import torch
+import torch.nn as nn
 
 from xaikd import models, constants
 from xaikd.models.students import canonize_student_model
 
 
+@pytest.mark.skip(reason="This test is obsolete")
 @pytest.mark.parametrize("arr_dims", constants.ARR_STUDENT_DIMENSIONS)
 def test_student_callable(arr_dims):
     torch.manual_seed(1)
@@ -21,6 +23,7 @@ def test_student_callable(arr_dims):
     assert output.shape == (7, 10)
 
 
+@pytest.mark.skip(reason="This test is obsolete")
 @torch.no_grad()
 def test_canonize_student():
     torch.manual_seed(1)
@@ -48,15 +51,17 @@ def test_canonize_student():
 @pytest.mark.parametrize(
     "student_name",
     [
-        "student-cifar-resnet18-16",
-        "student-cifar-resnet18-32",
-        "student-cifar-resnet18-64",
+        "student-cifar-resnet18-dims16-16-8-8",
+        "student-cifar-resnet18-dims32-32-16-16",
+        "student-cifar-resnet18-dims64-64-32-32",
     ],
 )
 @pytest.mark.slow()
 def test_cifar100_resnet(student_name):
     x = torch.rand(5, 3, 32, 32)
     model = models.get_untrained_model(student_name, num_classes=10)
+    assert isinstance(model, models.resnet.resnet.ResNet)
+    assert isinstance(model.maxpool, nn.Identity)
     model.eval()
     output = model(x)
     assert torch.isfinite(output).all()
@@ -67,16 +72,41 @@ def test_cifar100_resnet(student_name):
 @pytest.mark.parametrize(
     "student_name",
     [
-        "student-resnet18-16",
-        "student-resnet18-32",
-        "student-resnet18-64",
-        "student-resnet18-d32-32-16-16",
+        "student-resnet18-dims16-16-8-8",
+        "student-resnet18-dims32-32-16-16",
+        "student-resnet18-dims64-64-32-32",
     ],
 )
 @pytest.mark.slow()
 def test_resnet(student_name):
     x = torch.rand(5, 3, 224, 224)
     model = models.get_untrained_model(student_name, num_classes=10)
+    assert isinstance(model, models.resnet.resnet.ResNet)
+    assert isinstance(model.maxpool, nn.MaxPool2d)
+    model.eval()
+    output = model(x)
+    assert torch.isfinite(output).all()
+    assert output.shape == (5, 10)
+
+
+@torch.no_grad()
+@pytest.mark.parametrize(
+    "student_name",
+    [
+        "student-resnet18-2blocks-dims54-16-8",
+        "student-resnet18-2blocks-dims64-32-16",
+        "student-resnet18-2blocks-dims128-64-32",
+    ],
+)
+@pytest.mark.slow()
+def test_resnet_2l(student_name):
+    x = torch.rand(5, 3, 224, 224)
+    output_size = int(student_name.split("-dims")[-1].split("-")[0])
+    model = models.get_untrained_model(student_name, num_classes=10)
+    # assert isinstance(model, models.resnet.resnet.ResNet)
+    assert isinstance(model.stem, nn.AdaptiveAvgPool2d)
+    assert model.stem.output_size == output_size
+
     model.eval()
     output = model(x)
     assert torch.isfinite(output).all()

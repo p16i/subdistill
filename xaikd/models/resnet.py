@@ -168,7 +168,9 @@ def _wideresnet50_2_celeba() -> nn.Module:
     return model
 
 
-def construct_student_cifar_resnet18(in_planes: int, num_classes: int, **kwargs):
+""" def construct_student_resnet18(
+    in_planes: int, num_classes: int, for_cifar: bool, **kwargs
+):
     model = resnet._resnet(
         resnet.BasicBlock,
         [2, 2, 2, 2],
@@ -177,51 +179,11 @@ def construct_student_cifar_resnet18(in_planes: int, num_classes: int, **kwargs)
         num_classes=num_classes,
     )
 
-    model.inplanes = in_planes
-
-    # Similar to _resnet18_cifar(..)
-    model.conv1 = nn.Conv2d(3, in_planes, 3, 1, 1, bias=False)
-    model.bn1 = nn.BatchNorm2d(in_planes)
-    model.maxpool = nn.Identity()  # type: ignore
-
-    # The following code mimics the original code's _make_layer(..)
-    # Ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L225
-
-    # We only change in planes
-    model.inplanes = in_planes
-    model.layer1 = model._make_layer(
-        block=resnet.BasicBlock,
-        planes=in_planes,
-        blocks=2,
-    )
-
-    model.layer2 = model._make_layer(
-        block=resnet.BasicBlock, planes=in_planes, blocks=2, stride=2, dilate=False
-    )
-
-    model.inplanes = in_planes
-    model.layer3 = model._make_layer(
-        block=resnet.BasicBlock, planes=in_planes, blocks=2, stride=2, dilate=False
-    )
-
-    model.inplanes = in_planes
-    model.layer4 = model._make_layer(
-        block=resnet.BasicBlock, planes=in_planes, blocks=2, stride=2, dilate=False
-    )
-
-    model.fc = nn.Linear(model.inplanes, num_classes)
-
-    return model
-
-
-def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
-    model = resnet._resnet(
-        resnet.BasicBlock,
-        [2, 2, 2, 2],
-        weights=None,
-        progress=False,
-        num_classes=num_classes,
-    )
+    if for_cifar:
+        # Similar to _resnet18_cifar(..)
+        model.conv1 = nn.Conv2d(3, in_planes, 3, 1, 1, bias=False)
+        model.bn1 = nn.BatchNorm2d(in_planes)
+        model.maxpool = nn.Identity()  # type: ignore
 
     model.inplanes = in_planes
     # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L196
@@ -233,7 +195,6 @@ def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
 
     # The following code mimics the original code's _make_layer(..)
     # Ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L225
-    # Similar to _resnet18_cifar(..)
 
     # We only change in planes
     model.inplanes = in_planes
@@ -260,11 +221,11 @@ def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
     model.fc = nn.Linear(model.inplanes, num_classes)
 
     return model
+ """
 
 
-def construct_student_resnet18_with_arr_in_plane(
-    arr_in_plane: list[int], num_classes: int, **kwargs
-):
+def get_student_resnet18(model_spec: str, num_classes: int, for_cifar=False, **kwargs):
+    inp1, inp2, inp3, inp4 = [int(x) for x in model_spec.split("-")]
     model = resnet._resnet(
         resnet.BasicBlock,
         [2, 2, 2, 2],
@@ -272,18 +233,21 @@ def construct_student_resnet18_with_arr_in_plane(
         progress=False,
         num_classes=num_classes,
     )
-
-    inp1, inp2, inp3, inp4 = arr_in_plane
-
     model.inplanes = inp1
-    # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L196
-    model.conv1 = nn.Conv2d(3, inp1, kernel_size=7, stride=2, padding=3, bias=False)
-    # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L198
-    model.bn1 = nn.BatchNorm2d(inp1)
+
+    if for_cifar:
+        # Similar to _resnet18_cifar(..)
+        model.conv1 = nn.Conv2d(3, inp1, kernel_size=3, stride=1, padding=1, bias=False)
+        model.bn1 = nn.BatchNorm2d(inp1)
+        model.maxpool = nn.Identity()  # type: ignore
+    else:
+        # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L196
+        model.conv1 = nn.Conv2d(3, inp1, kernel_size=7, stride=2, padding=3, bias=False)
+        # ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L198
+        model.bn1 = nn.BatchNorm2d(inp1)
 
     # The following code mimics the original code's _make_layer(..)
     # Ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L225
-    # Similar to _resnet18_cifar(..)
 
     # We only change in planes
     model.inplanes = inp1
@@ -315,16 +279,35 @@ def construct_student_resnet18_with_arr_in_plane(
     return model
 
 
-def _register_student_resnet18():
-    for in_planes in [4, 8, 16, 32, 64]:
-        add_model_to_registry(
-            f"student-cifar-resnet18-{in_planes}",
-            partial(construct_student_cifar_resnet18, in_planes=in_planes),
-        )
-        add_model_to_registry(
-            f"student-resnet18-{in_planes}",
-            partial(construct_student_resnet18, in_planes=in_planes),
-        )
+def get_student_resnet18_2blocks(
+    model_spec: str, num_classes: int, **kwargs
+) -> nn.Module:
+    spatial_size, inp1, inp2 = [int(x) for x in model_spec.split("-")]
 
+    _base = get_student_resnet18(
+        model_spec="-".join(np.array([inp1, inp1, inp1, inp2]).astype(str)),
+        num_classes=num_classes,
+        for_cifar=False,
+    )
 
-_register_student_resnet18()
+    layer1 = _base.layer3
+    # take input with 3 channels
+    layer1[0].conv1 = resnet.conv3x3(3, inp1, stride=2)
+    layer1[0].downsample[0] = resnet.conv3x3(3, inp1, stride=2)  # type: ignore
+
+    layer2 = _base.layer4
+
+    model = nn.Sequential(
+        OrderedDict(
+            [
+                ("stem", nn.AdaptiveAvgPool2d(spatial_size)),
+                ("layer1", layer1),
+                ("layer2", layer2),
+                ("avgpool", nn.AdaptiveAvgPool2d(1)),
+                ("flatten", nn.Flatten()),
+                ("fc", nn.Linear(in_features=inp2, out_features=num_classes)),
+            ]
+        )
+    )
+
+    return model
