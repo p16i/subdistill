@@ -60,7 +60,7 @@ class Layerwise:
         with torch.no_grad():
             self.ref_auroc, self.ref_xent = self.metric_func(
                 self.teacher.to(device),
-                dataloader_val,
+                dataloader_test,
                 device=self.device,
                 verbose=True,
                 prefix="teacher_reference",
@@ -83,7 +83,6 @@ class Layerwise:
         seed: int,
         upload_best_checkpoint: bool,
     ) -> nn.Module:
-
         assert (np.array([lambda_task, lambda_kd, lambda_layer]) > 0).any()
 
         student.eval()
@@ -101,9 +100,9 @@ class Layerwise:
                 prefix="student_before_training",
             )
 
-        logger.experiment.summary["student_val_auroc_before_training"] = (
-            student_auroc_before_training
-        )
+        logger.experiment.summary[
+            "student_val_auroc_before_training"
+        ] = student_auroc_before_training
         logger.experiment.summary["teacher_auroc"] = self.ref_auroc
 
         print(
@@ -171,9 +170,9 @@ class Layerwise:
 
         logger.experiment.summary["best_epoch"] = best_epoch
 
-        logger.experiment.summary["student_best_val_auroc"] = (
-            callback_checkpoint.best_model_score
-        )
+        logger.experiment.summary[
+            "student_best_val_auroc"
+        ] = callback_checkpoint.best_model_score
         self.log_test_metrics(best_student=best_student, logger=logger, device=device)
         self.log_prediction(student=best_student, logger=logger, device=device)
 
@@ -205,7 +204,6 @@ class Layerwise:
         checkpoint_callback: ModelCheckpoint,
         device: str,
     ):
-
         assert not student.training
 
         student.to(device)
@@ -272,7 +270,6 @@ class Layerwise:
         model_path: str,
         aliases: typing.List[str],
     ):
-
         artifact = Artifact(artifact_name, type="model", metadata=metadata)
         artifact.add_file(model_path, name="model.ckpt")
 
