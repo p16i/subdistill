@@ -80,7 +80,18 @@ def get_trained_model(name: str) -> nn.Module:
 
 def get_untrained_model(name: str, num_classes: int, **kwargs) -> nn.Module:
     print(f"Constructing untrain-model={name} with ( {num_classes} outputs)")
+
+    if "student-resnet18-d" in name:
+        arr_inplane = [int(x) for x in name.split("-d")[1].split("-")]
+
+        return resnet.construct_student_resnet18_with_arr_in_plane(
+            arr_in_plane=arr_inplane, num_classes=num_classes, **kwargs
+        )
+
     return MODEL_GENERATORS[name](num_classes=num_classes, **kwargs)
+
+
+#
 
 
 from . import resnet, vgg, nfnet, vit, efficientformer, mobilenets, students, layers

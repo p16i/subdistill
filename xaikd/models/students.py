@@ -91,6 +91,8 @@ class StudentModel(nn.Module):
                 ConvBN(in_channels=layer_dim, out_channels=layer_dim, kernel_size=3),
                 nn.ReLU(),
                 nn.MaxPool2d(kernel_size=2, stride=2),
+            
+            
                 # this is for adapting
                 adapter,
             )
