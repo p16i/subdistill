@@ -107,7 +107,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         student_logits: torch.Tensor,
         target: torch.Tensor,
     ) -> torch.Tensor:
-
         loss = self.last_layer_policy(teacher_logits, student_logits, target)
 
         assert torch.isfinite(loss)
@@ -120,7 +119,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         student_arr_intermediate_feats: typing.List[torch.Tensor],
         prefix: str,
     ) -> torch.Tensor:
-
         device = teacher_arr_intermediate_feats[0].device
 
         loss_layer = torch.tensor(0.0).to(device)
@@ -128,7 +126,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         layer_policies = self.layer_policy_collection.policies
 
         for lix, policy in enumerate(layer_policies):
-
             _loss_layer = policy(
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
@@ -236,9 +233,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             metric = self.metric[slug]
             value = metric.compute()
-
-            if suffix == "auroc":
-                value = np.max([value, 1 - value])
 
             metric.reset()
 
