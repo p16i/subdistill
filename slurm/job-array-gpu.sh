@@ -4,6 +4,7 @@
 #SBATCH --cpus-per-task=12
 #SBATCH --gpus=1
 #SBATCH -o ./logs/array/%A_%a.out
+#SBATCH -e ./logs/array/%A_%a.err
 #SBATCH --mail-type=FAIL,END
 #SBATCH --mail-user=p.chormai@tu-berlin.de
 #SBATCH --exclude=head[073-076]
