@@ -358,14 +358,15 @@ def test_resolve_lambdas_and_layer_policy(
     teacher = "cifar100-resnet18-v1"
     default_lambda_layer_config = None
 
-    actual_collection, actual_layer_policy = (
-        distillation_policies.resolve_lambdas_and_layer_policy(
-            teacher=teacher,
-            policy_name=policy_name,
-            lambda_layer=lambda_layer,
-            default_lambda_layer_config=default_lambda_layer_config,
-            layerwise_training=layerwise_training,
-        )
+    (
+        actual_collection,
+        actual_layer_policy,
+    ) = distillation_policies.resolve_lambdas_and_layer_policy(
+        teacher=teacher,
+        policy_name=policy_name,
+        lambda_layer=lambda_layer,
+        default_lambda_layer_config=default_lambda_layer_config,
+        layerwise_training=layerwise_training,
     )
 
     expected_collection = deepcopy(expected_collection)
@@ -383,7 +384,7 @@ def test_resolve_lambdas_and_layer_policy(
     [
         (
             "celeba-resnet18-finetunedv1",
-            "student-resnet18-16",
+            "student-resnet18-dims16-16-16-16",
             "layer1:layer1,layer2:layer2,layer3:layer3,layer4:layer4",
         ),
         (
@@ -434,7 +435,6 @@ def test_aligning_teacher_and_student_features_possible(
     )
 
     for feat_teacher, feat_student in zip(arr_feat_teacher, arr_feat_student):
-
         _, teacher_dims, _, _ = feat_teacher.shape
         _, student_dims, _, _ = feat_student.shape
 

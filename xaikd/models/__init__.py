@@ -84,23 +84,27 @@ def get_untrained_model(
     if verbose:
         print(f"Constructing untrain-model={name} with ({num_classes} outputs)")
 
-    # student-resnet18-dimsx-x-x-x
-    prefix, suffix = name.split("-dims")
+    if "dims" in name:
+        # student-resnet18-dimsx-x-x-x
+        prefix, suffix = name.split("-dims")
 
-    if prefix == "student-resnet18":
-        return resnet.get_student_resnet18(
-            model_spec=suffix,
-            model_name=name,
-            num_classes=num_classes,
-        )
-    elif prefix == "student-cifar-resnet18":
-        return resnet.get_student_resnet18(
-            model_spec=suffix, model_name=name, num_classes=num_classes, for_cifar=True
-        )
-    elif prefix == "student-resnet18-2blocks":
-        return resnet.get_student_resnet18_2blocks(
-            model_spec=suffix, model_name=name, num_classes=num_classes
-        )
+        if prefix == "student-resnet18":
+            return resnet.get_student_resnet18(
+                model_spec=suffix,
+                model_name=name,
+                num_classes=num_classes,
+            )
+        elif prefix == "student-cifar-resnet18":
+            return resnet.get_student_resnet18(
+                model_spec=suffix,
+                model_name=name,
+                num_classes=num_classes,
+                for_cifar=True,
+            )
+        elif prefix == "student-resnet18-2blocks":
+            return resnet.get_student_resnet18_2blocks(
+                model_spec=suffix, model_name=name, num_classes=num_classes
+            )
 
     return MODEL_GENERATORS[name](num_classes=num_classes, **kwargs)
 
