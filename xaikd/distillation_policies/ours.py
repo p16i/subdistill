@@ -247,6 +247,7 @@ class OrthogonalBasisCenterWithTeacherRotationV2Policy(LayerPolicy):
 
         teacher_mean = (
             torch.from_numpy(basis.get_Uk(k=k).T @ basis.mean)
+            .float()
             .reshape((1, -1, 1, 1))
             .to(device)
         )
