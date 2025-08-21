@@ -218,7 +218,7 @@ def main(
                 layer=teacher_layer,
                 metric_func=metrics.MetricAUROCBinaryCrossEntropy(),
                 train_loader=None,
-                val_loader=val_loader,
+                val_loader=test_loader,
                 arr_ks=[dict_student_layer_dim[student_layer]],
                 device=device,
             )["val_auroc"].values[0]
