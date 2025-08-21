@@ -3,7 +3,7 @@ import pytest
 import torch
 import torch.nn as nn
 
-from xaikd import models, constants
+from xaikd import models, constants, utils
 from xaikd.models.students import canonize_student_model
 
 
@@ -111,3 +111,55 @@ def test_resnet_2l(student_name):
     output = model(x)
     assert torch.isfinite(output).all()
     assert output.shape == (5, 10)
+
+
+@pytest.mark.parametrize(
+    "student_name",
+    [
+        "student-resnet18-transferred2layers-dims32-16",
+        "student-resnet18-transferred2layers-dims64-32",
+    ],
+)
+@torch.no_grad()
+def test_resnet_transferred_2layers(student_name):
+    orig_model = models.get_trained_model("celeba-resnet18-finetunedv1")
+
+    # Test that the transf""" er works for a 2-layer ResNet
+    x = torch.rand(5, 3, 224, 224)
+
+    model = models.get_untrained_model(student_name, num_classes=10)
+
+    # count number params
+
+    n_params, n_trainable_params = utils.count_params_in_model(model)
+
+    layers = [model.layer3, model.layer4, model.fc]
+    expected_trainable_params = sum(
+        utils.count_params_in_model(layer)[1] for layer in layers
+    )
+
+    # fixme: check forword pass the same.
+
+    np.testing.assert_equal(
+        n_trainable_params,
+        expected_trainable_params,
+    )
+
+    _, arr_ori_output = utils.interceptor.forward_and_intercept_intermediate_layers(
+        orig_model, x, layers=["layer1", "layer2"], detach_output=False
+    )
+
+    _, arr_student_output = utils.interceptor.forward_and_intercept_intermediate_layers(
+        model, x, layers=["layer1", "layer2"], detach_output=False
+    )
+
+    for actual_output, expected_output in zip(arr_student_output, arr_ori_output):
+        np.testing.assert_allclose(actual_output, expected_output, atol=1e-6)
+
+    # assert isinstance(model, models.resnet.resnet.ResNet)
+    # assert isinstance(model.stem, nn.AdaptiveAvgPool2d)
+
+    # model.eval()
+    # output = model(x)
+    # assert torch.isfinite(output).all()
+    # assert output.shape == (5, 10) """

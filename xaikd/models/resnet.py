@@ -16,6 +16,7 @@ from torchvision.models import resnet
 
 from xaikd.datasets.celeba import NUM_CELEBA_ATTRIBUTES
 
+from xaikd import utils
 from . import interfaces
 from . import register_model, add_model_to_registry, MODEL_CHECKPOINT_MAPPING
 
@@ -263,6 +264,58 @@ def get_student_resnet18(model_spec: str, num_classes: int, for_cifar=False, **k
     )
 
     model.inplanes = inp2
+    model.layer3 = model._make_layer(
+        block=resnet.BasicBlock, planes=inp3, blocks=2, stride=2, dilate=False
+    )
+
+    model.inplanes = inp3
+    model.layer4 = model._make_layer(
+        block=resnet.BasicBlock, planes=inp4, blocks=2, stride=2, dilate=False
+    )
+
+    assert model.inplanes == inp4, f"Expected inplanes={inp4}, got {model.inplanes}"
+
+    model.fc = nn.Linear(model.inplanes, num_classes)
+
+    return model
+
+
+def get_student_resnet18_transfer_first_two_layers(
+    model_spec: str, num_classes: int, for_cifar=False, **kwargs
+):
+    if for_cifar:
+        # Similar to _resnet18_cifar(..)
+        ori_model = _resnet18_cifar100_v1()
+    else:
+        ori_model = _resnet18_celeba()
+
+    utils.freeze_model(ori_model)
+
+    inp3, inp4 = [int(x) for x in model_spec.split("-")]
+    model = resnet._resnet(
+        resnet.BasicBlock,
+        [2, 2, 2, 2],
+        weights=None,
+        progress=False,
+        num_classes=num_classes,
+    )
+
+    model.conv1 = ori_model.conv1
+    model.bn1 = ori_model.bn1
+
+    if for_cifar:
+        # Similar to _resnet18_cifar(..)
+        model.maxpool = nn.Identity()  # type: ignore
+
+    # The following code mimics the original code's _make_layer(..)
+    # Ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L225
+
+    # We only change in planes
+    model.layer1 = ori_model.layer1
+    model.layer2 = ori_model.layer2
+
+    model.inplanes = 128
+
     model.layer3 = model._make_layer(
         block=resnet.BasicBlock, planes=inp3, blocks=2, stride=2, dilate=False
     )

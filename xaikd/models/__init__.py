@@ -1,6 +1,7 @@
 import typing
 from typing import Callable, List, Optional, Type, Union
 from collections import OrderedDict
+from functools import partial
 
 import torch
 import torch.nn as nn
@@ -88,23 +89,18 @@ def get_untrained_model(
         # student-resnet18-dimsx-x-x-x
         prefix, suffix = name.split("-dims")
 
-        if prefix == "student-resnet18":
-            return resnet.get_student_resnet18(
-                model_spec=suffix,
-                model_name=name,
-                num_classes=num_classes,
-            )
-        elif prefix == "student-cifar-resnet18":
-            return resnet.get_student_resnet18(
-                model_spec=suffix,
-                model_name=name,
-                num_classes=num_classes,
-                for_cifar=True,
-            )
-        elif prefix == "student-resnet18-2blocks":
-            return resnet.get_student_resnet18_2blocks(
-                model_spec=suffix, model_name=name, num_classes=num_classes
-            )
+        constructor_func = {
+            "student-resnet18": resnet.get_student_resnet18,
+            "student-cifar-resnet18": partial(
+                resnet.get_student_resnet18, for_cifar=True
+            ),
+            "student-resnet18-2blocks": resnet.get_student_resnet18_2blocks,
+            "student-resnet18-transferred2layers": resnet.get_student_resnet18_transfer_first_two_layers,
+        }[prefix]
+
+        return constructor_func(
+            model_spec=suffix, model_name=name, num_classes=num_classes, **kwargs
+        )
 
     return MODEL_GENERATORS[name](num_classes=num_classes, **kwargs)
 
