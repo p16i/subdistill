@@ -218,12 +218,12 @@ def main(
                 layer=teacher_layer,
                 metric_func=metrics.MetricAUROCBinaryCrossEntropy(),
                 train_loader=None,
-                val_loader=test_loader,
+                val_loader=val_loader,
                 arr_ks=[dict_student_layer_dim[student_layer]],
                 device=device,
             )["val_auroc"].values[0]
 
-            print("basis evaluation at k: auroc={auroc_at_k}")
+            print(f"basis evaluation at k: auroc={auroc_at_k}")
 
             arguments[f"basis_{student_layer}@k"] = auroc_at_k
 
