@@ -281,6 +281,8 @@ class OrthogonalBasisCenterWithTeacherRotationV2Policy(LayerPolicy):
         # average over all samples
         loss_mse = loss_mse.mean()
 
+        return loss_mse
+
 
 ####
 
