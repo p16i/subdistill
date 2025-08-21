@@ -110,6 +110,7 @@ class Layerwise:
         )
 
         if self.student_val_auroc_before_training < 0.5:
+            print("correct last layer sign")
             self.fc.weight.data = -self.fc.weight.data
             self.fc.bias.data = -self.fc.bias.data
 
