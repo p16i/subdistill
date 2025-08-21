@@ -124,7 +124,6 @@ def test_resnet_2l(student_name):
 def test_resnet_transferred_2layers(student_name):
     orig_model = models.get_trained_model("celeba-resnet18-finetunedv1")
 
-    # Test that the transf""" er works for a 2-layer ResNet
     x = torch.rand(5, 3, 224, 224)
 
     model = models.get_untrained_model(student_name, num_classes=10)
@@ -137,8 +136,6 @@ def test_resnet_transferred_2layers(student_name):
     expected_trainable_params = sum(
         utils.count_params_in_model(layer)[1] for layer in layers
     )
-
-    # fixme: check forword pass the same.
 
     np.testing.assert_equal(
         n_trainable_params,
@@ -155,11 +152,3 @@ def test_resnet_transferred_2layers(student_name):
 
     for actual_output, expected_output in zip(arr_student_output, arr_ori_output):
         np.testing.assert_allclose(actual_output, expected_output, atol=1e-6)
-
-    # assert isinstance(model, models.resnet.resnet.ResNet)
-    # assert isinstance(model.stem, nn.AdaptiveAvgPool2d)
-
-    # model.eval()
-    # output = model(x)
-    # assert torch.isfinite(output).all()
-    # assert output.shape == (5, 10) """
