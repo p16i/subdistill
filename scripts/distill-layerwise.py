@@ -32,6 +32,7 @@ from xaikd import (
     logit_modifiers,
     models,
     utils,
+    metrics,
 )
 
 
@@ -83,15 +84,15 @@ def main(
     batch_size,
     layerwise_training,
 ):
-
-    lambda_collection, layer_policy = (
-        distillation_policies.resolve_lambdas_and_layer_policy(
-            teacher=teacher,
-            policy_name=distillation_policy,
-            lambda_layer=lambda_layer,
-            default_lambda_layer_config=default_lambda_layer_config,
-            layerwise_training=layerwise_training,
-        )
+    (
+        lambda_collection,
+        layer_policy,
+    ) = distillation_policies.resolve_lambdas_and_layer_policy(
+        teacher=teacher,
+        policy_name=distillation_policy,
+        lambda_layer=lambda_layer,
+        default_lambda_layer_config=default_lambda_layer_config,
+        layerwise_training=layerwise_training,
     )
 
     wanddb_experiment_group = (
@@ -120,14 +121,17 @@ def main(
     # prepare dataset
     dataset = datasets.construct(dataset)
 
-    train_loader, train_loader_with_aug, val_loader, test_loader = (
-        datasets.construct_dataloaders(
-            dataset=dataset,
-            training_data_ratio=training_size,
-            seed=seed,
-            use_validation_set=True,
-            training_batch_size=batch_size,
-        )
+    (
+        train_loader,
+        train_loader_with_aug,
+        val_loader,
+        test_loader,
+    ) = datasets.construct_dataloaders(
+        dataset=dataset,
+        training_data_ratio=training_size,
+        seed=seed,
+        use_validation_set=True,
+        training_batch_size=batch_size,
     )
 
     # prepare teacher
@@ -193,7 +197,6 @@ def main(
         )
 
         if "basis" in layer_policy:
-
             policy_name, basis_slug = layer_policy.split(":")
             basis_name = bases.resolve_basis_name_for_layer(
                 slug=basis_slug,
@@ -208,6 +211,22 @@ def main(
                 device=device,
                 seed=seed,
             )
+
+            auroc_at_k = bases.helpers.evaluate_basis_at_k(
+                teacher_model=teacher_model,
+                basis=basis,
+                layer=teacher_layer,
+                metric_func=metrics.MetricAUROCBinaryCrossEntropy(),
+                train_loader=None,
+                val_loader=val_loader,
+                arr_ks=[dict_student_layer_dim[student_layer]],
+                device=device,
+            )["val_auroc"].values[0]]
+
+            print("basis evaluation at k: auroc={auroc_at_k}")
+
+            arguments[f"basis_{student_layer}@k"] = auroc_at_k
+
             policy = distillation_policies.get_policy(
                 policy_name,
                 device=device,
