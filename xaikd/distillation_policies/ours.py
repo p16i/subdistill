@@ -282,7 +282,7 @@ class OrthogonalBasisCenterWithTeacherRotationV2Policy(LayerPolicy):
         loss_mse = loss_mse.mean()
 
 
- @register_policy("basis-center-with-teacher")
+@register_policy("basis-center-with-teacher")
 class OrthogonalBasisCenterWithTeaclherPolicy(LayerPolicy):
     def __init__(
         self,
