@@ -109,6 +109,10 @@ class Layerwise:
             f"[before training] metrics: student (teacher) | auroc={student_auroc_before_training:.4f} ({self.ref_auroc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
         )
 
+        if self.student_val_auroc_before_training < 0.5:
+            self.fc.weight.data = -self.fc.weight.data
+            self.fc.bias.data = -self.fc.bias.data
+
         # we set the seed here again because to make sure that the state of random generator for
         # training is the same for all policies.
         # Said differently, some policies also contain random initialization of nn.Module
