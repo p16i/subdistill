@@ -221,7 +221,7 @@ def main(
                 val_loader=val_loader,
                 arr_ks=[dict_student_layer_dim[student_layer]],
                 device=device,
-            )["val_auroc"].values[0]]
+            )["val_auroc"].values[0]
 
             print("basis evaluation at k: auroc={auroc_at_k}")
 
