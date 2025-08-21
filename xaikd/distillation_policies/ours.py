@@ -245,7 +245,11 @@ class OrthogonalBasisCenterWithTeacherRotationV2Policy(LayerPolicy):
             k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-        teacher_mean = torch.from_numpy(basis.get_Uk(k=k).T @ basis.mean).to(device)
+        teacher_mean = (
+            torch.from_numpy(basis.get_Uk(k=k).T @ basis.mean)
+            .reshape((1, -1, 1, 1))
+            .to(device)
+        )
 
         self.transformer_student_feats = nn.Sequential(
             ConstantShift(teacher_mean),
