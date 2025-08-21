@@ -112,8 +112,8 @@ class Layerwise:
         if student_auroc_before_training < 0.5:
             print("correct last layer sign")
             assert hasattr(student, "fc")
-            self.fc.weight.data = -self.fc.weight.data
-            self.fc.bias.data = -self.fc.bias.data
+            student.fc.weight.data = -self.fc.weight.data
+            student.fc.bias.data = -self.fc.bias.data
 
         # we set the seed here again because to make sure that the state of random generator for
         # training is the same for all policies.
