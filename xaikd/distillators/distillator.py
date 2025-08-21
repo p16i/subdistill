@@ -109,8 +109,9 @@ class Layerwise:
             f"[before training] metrics: student (teacher) | auroc={student_auroc_before_training:.4f} ({self.ref_auroc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
         )
 
-        if self.student_val_auroc_before_training < 0.5:
-            print("correct last layer sign")
+        if student_auroc_before_training < 0.5:
+            print("correct last layer sign"s)
+            assert hasattr(student, "fc")
             self.fc.weight.data = -self.fc.weight.data
             self.fc.bias.data = -self.fc.bias.data
 
