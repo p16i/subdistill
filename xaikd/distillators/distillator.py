@@ -110,7 +110,7 @@ class Layerwise:
         )
 
         if student_auroc_before_training < 0.5:
-            print("correct last layer sign"s)
+            print("correct last layer sign")
             assert hasattr(student, "fc")
             self.fc.weight.data = -self.fc.weight.data
             self.fc.bias.data = -self.fc.bias.data
