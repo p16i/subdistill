@@ -93,7 +93,6 @@ class OrthogonalBasisBatchNormSumNormalizedPolicy(LayerPolicy):
 
 @register_policy("basis-center-rotation")
 class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
-
     def __init__(
         self,
         teacher_dims: int,
@@ -153,7 +152,6 @@ class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
 
 @register_policy("basis-center-rotationv2")
 class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
-
     def __init__(
         self,
         teacher_dims: int,
@@ -211,11 +209,78 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
+class ConstantShift(nn.Module):
+    def __init__(self, constant: torch.Tensor):
+        super().__init__()
+        self.constant = constant
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x - self.constant
+
+
+@register_policy("basis-center-with-teacher-rotation")
+class OrthogonalBasisCenterWithTeacherRotationV2Policy(LayerPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+
+        if layerwise_training:
+            self.scaling_factor = 1
+        else:
+            self.scaling_factor = np.sum(
+                self.basis.get_scale_factors_for_k(student_dims)
+            )
+
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        teacher_mean = torch.from_numpy(basis.get_Uk(k=k).T @ basis.mean).to(device)
+
+        self.transformer_student_feats = nn.Sequential(
+            ConstantShift(teacher_mean),
+            utils.modules.Rotate(k=k),
+        ).to(device)
+
+    def criterion(
+        self, transformed_teacher_feats, transformed_student_feats
+    ) -> torch.Tensor:
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats,
+            transformed_teacher_feats,
+            reduction="none",
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.scaling_factor
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+
 ####
 
 
 class AblationTemplate(LayerPolicy):
-
     def __init__(
         self,
         teacher_dims: int,
@@ -398,7 +463,6 @@ class AblationNormalizedTeacherCenterLinear(AblationTemplate):
         k: int,
         device: str,
     ):
-
         (d, _) = basis.U.shape
         # here, we don't perform any projection
         return nn.Sequential(
@@ -446,7 +510,6 @@ class AblationNormalizedTeacherCenterLinear(AblationTemplate):
     "basis-ablationv2--l2normalized--teacher-center--student-center-linearortho"
 )
 class AblationNormalizedTeacherCenterLinearOrtho(AblationNormalizedTeacherCenterLinear):
-
     def _construct_student_transformation(self, k: int, device: str):
         (d, _) = self.basis.U.shape
         return nn.Sequential(
@@ -483,7 +546,6 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         k: int,
         device: str,
     ):
-
         U = torch.from_numpy(basis.U[:, :k]).float()
         # here, we don't subtract mean.
         mean = torch.zeros_like(torch.from_numpy(basis.mean))
@@ -508,7 +570,6 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         k: int,
         device: str,
     ):
-
         U = torch.from_numpy(basis.U[:, :k]).float()
         # here, we don't subtract mean.
         mean = torch.zeros_like(torch.from_numpy(basis.mean))
@@ -561,7 +622,6 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         k: int,
         device: str,
     ):
-
         scaling_factor = float(basis.get_scale_factors_for_k(k=k).sum() ** 0.5)
 
         U = torch.from_numpy(basis.U[:, :k]).float()
@@ -638,7 +698,6 @@ class AblationIdentityTeacherCenterLinear(AblationTemplate):
         ).to(device)
 
     def _construct_student_transformation(self, k: int, device: str):
-
         _, d = self.basis.U.shape
         return nn.Sequential(
             utils.modules.Centering2D(num_features=k, affine=False).to(device),
@@ -661,7 +720,6 @@ class AblationIdentityTeacherCenterLinearOrtho(AblationTemplate):
         ).to(device)
 
     def _construct_student_transformation(self, k: int, device: str):
-
         _, d = self.basis.U.shape
         return nn.Sequential(
             utils.modules.Centering2D(num_features=k, affine=False),
@@ -689,7 +747,6 @@ class AblationNormalizedTeacherCenterLinearOrtho(AblationTemplate):
         ).to(device)
 
     def _construct_student_transformation(self, k: int, device: str):
-
         _, d = self.basis.U.shape
         return nn.Sequential(
             utils.modules.Centering2D(num_features=k, affine=False),
@@ -717,7 +774,6 @@ class AblationIdentityTeacherCenterLinear(AblationTemplate):
         ).to(device)
 
     def _construct_student_transformation(self, k: int, device: str):
-
         _, d = self.basis.U.shape
         return nn.Sequential(
             utils.modules.Centering2D(num_features=k, affine=False).to(device),
