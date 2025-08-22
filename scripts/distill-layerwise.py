@@ -236,7 +236,7 @@ def main(
 
             arguments[f"scaling_factor_{student_layer}"] = policy.scaling_factor
             print(
-                f"[layer={student_layer}]: basis evaluation at k: auroc={acc_at_k:.4f}: scaling_factor={policy.scaling_factor:.4f}"
+                f"[layer={student_layer}]: basis evaluation at k: acc={acc_at_k:.4f}: scaling_factor={policy.scaling_factor:.4f}"
             )
         else:
             policy = distillation_policies.get_policy(
