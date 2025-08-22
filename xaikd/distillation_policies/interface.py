@@ -136,6 +136,7 @@ class LayerPolicyCollection(nn.ModuleList):
         self.policies = policies
 
     def global_scaling_factor(self) -> float:
+        # fixme: revisit whether this make any difference.
         arr_scaling_factor = []
 
         for policy in self.policies:
