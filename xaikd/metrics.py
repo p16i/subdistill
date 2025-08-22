@@ -78,7 +78,6 @@ class MetricAUROC(MetricFunction):
     def __call__(
         self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
     ):
-
         raise NotImplementedError("obsolete this and use AUROCBinXent")
         assert not model.training
 
@@ -120,7 +119,6 @@ class MetricAUROCBinaryCrossEntropy(MetricFunction):
         verbose=False,
         prefix=None,
     ):
-
         assert not model.training
 
         metric_auroc = BinaryAUROC(thresholds=100)
@@ -176,7 +174,6 @@ class MetricAccuracy(MetricFunction):
     def __call__(
         self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
     ):
-
         assert not model.training
 
         metric = Accuracy(task="multiclass", num_classes=self.num_classes)
@@ -206,7 +203,6 @@ class MetricAccuracyXent(MetricFunction):
     def __call__(
         self, model: nn.Module, dataloader: DataLoader, device: str, verbose=False
     ):
-
         assert not model.training
 
         metric_acc = Accuracy(task="multiclass", num_classes=self.num_classes)
@@ -230,4 +226,4 @@ class MetricAccuracyXent(MetricFunction):
         return (metric_acc, metric_xent)
 
     def _metric_names(self):
-        return ("accuracy", "xent")
+        return ("acc", "xent")
