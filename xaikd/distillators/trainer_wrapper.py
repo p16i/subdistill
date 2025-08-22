@@ -140,7 +140,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         global_scaling_factor = self.layer_policy_collection.global_scaling_factor()
 
-        return loss_layer * global_scaling_factor
+        return loss_layer / global_scaling_factor
 
     def _compute_loss(self, batch, prefix, batch_idx):
         x, y = batch
