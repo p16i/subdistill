@@ -254,7 +254,7 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
             transformed_student_feats,
             p_t,
             reduction="none",
-        ) / (w * h)
+        )
 
         loss = loss.mean()
 
