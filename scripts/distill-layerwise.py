@@ -255,7 +255,7 @@ def main(
         )
 
         W_teacher = teacher_model[TEACHER_LAYER_PREFIX].fc.weight
-        b_tacher = teacher_model[TEACHER_LAYER_PREFIX].fc.bias
+        b_teacher = teacher_model[TEACHER_LAYER_PREFIX].fc.bias
 
         k = dict_student_layer_dim["layer4"]
         Uk = torch.from_numpy(policy.basis.get_Uk(k=k)).float().to(device)
