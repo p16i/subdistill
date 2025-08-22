@@ -223,8 +223,6 @@ def main(
                 device=device,
             )["val_auroc"].values[0]
 
-            print(f"basis evaluation at k: auroc={auroc_at_k}")
-
             arguments[f"basis_{student_layer}@k"] = auroc_at_k
 
             policy = distillation_policies.get_policy(
@@ -234,8 +232,10 @@ def main(
                 layerwise_training=layerwise_training,
                 **kwargs,
             )
-            if hasattr(policy, "scaling_factor"):
-                print(f"> scaling factor: {policy.scaling_factor}")
+            arguments[f"scaling_factor_{student_layer}"] = policy.scaling_factor
+            print(
+                f"[layer={student_layer}]: basis evaluation at k: auroc={auroc_at_k}: scaling_factor={policy.scaling_factor}"
+            )
 
         else:
             policy = distillation_policies.get_policy(
