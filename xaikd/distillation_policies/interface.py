@@ -42,7 +42,6 @@ class Policy(nn.Module, ABC):
 
 
 class LastLayerPolicy(Policy, ABC):
-
     def forward(  # type: ignore
         self,
         teacher_logits: torch.Tensor,
@@ -70,7 +69,6 @@ class LastLayerPolicy(Policy, ABC):
 
 class LayerPolicy(Policy):
     def align_spatial_dimensions(self, teacher_feats, student_feats):
-
         nb, teacher_dim, teacher_height, teacher_width = teacher_feats.shape
         _, _, student_height, student_width = student_feats.shape
 
@@ -136,3 +134,13 @@ class LayerPolicyCollection(nn.ModuleList):
         self.teacher_layers = teacher_layers
         self.student_layers = student_layers
         self.policies = policies
+
+    def global_scaling_factor(self) -> float:
+        arr_scaling_factor = []
+
+        for policy in self.policies:
+            if hasattr(policy, "scaling_factor"):
+                scaling_factor = policy.scaling_factor
+                arr_scaling_factor.append(scaling_factor)
+
+        return np.max(arr_scaling_factor) if len(arr_scaling_factor) > 0 else 1.0

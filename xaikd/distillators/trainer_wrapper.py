@@ -138,7 +138,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         assert torch.isfinite(loss_layer)
 
-        return loss_layer
+        global_scaling_factor = self.layer_policy_collection.global_scaling_factor
+
+        return loss_layer * global_scaling_factor
 
     def _compute_loss(self, batch, prefix, batch_idx):
         x, y = batch
