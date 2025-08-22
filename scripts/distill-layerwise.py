@@ -244,6 +244,30 @@ def main(
 
         arr_layer_policies.append(policy)
 
+    # fixme: transfer last layer to student mode
+
+    if arr_student_layers[-1] == "layer4":
+        print("transfer last layer")
+        policy = arr_layer_policies[-1]
+
+        assert isinstance(
+            policy, distillation_policies.OrthogonalBasisCenterRotationV2Policy
+        )
+
+        W_teacher = teacher_model[TEACHER_LAYER_PREFIX].fc.weight
+        b_tacher = teacher_model[TEACHER_LAYER_PREFIX].fc.bias
+
+        k = dict_student_layer_dim["layer4"]
+        Uk = torch.from_numpy(policy.basis.get_Uk(k=k)).float().to(device)
+        mean = torch.from_numpy(policy.basis.mean).float().to(device)
+        new_weight = W_teacher @ Uk
+        new_bias = b_teacher - W_teacher @ (Uk.T @ mean)
+
+        student.fc.weight.data = new_weight.data
+        student.fc.bias.data = new_bias.data
+
+        utils.freeze_model(student.fc)
+
     distillator = distillators.Layerwise(
         teacher=teacher_model,
         dataset=dataset,
