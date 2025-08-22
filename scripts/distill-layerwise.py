@@ -109,6 +109,8 @@ def main(
         layers
     )
 
+    dataset_name = dataset
+
     output_dir = (
         Path(output_dir) / f"{dataset}-tz{training_size}" / teacher / f"seed{seed}"
     )
@@ -261,10 +263,11 @@ def main(
         Uk = torch.from_numpy(policy.basis.get_Uk(k=k)).float().to(device)
         mean = torch.from_numpy(policy.basis.mean).float().to(device)
         new_weight = W_teacher @ Uk
-        new_bias = b_teacher - W_teacher @ (Uk.T @ mean)
+        new_bias = b_teacher + W_teacher @ mean
 
-        student.fc.weight.data = new_weight.data
-        student.fc.bias.data = new_bias.data
+        task_ix = int(dataset_name.split("attr")[-1])
+        student.fc.weight.data = new_weight.data[task_ix, :]
+        student.fc.bias.data = new_bias.data[task_ix]
 
         utils.freeze_model(student.fc)
 
