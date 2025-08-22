@@ -266,8 +266,8 @@ def main(
         new_bias = b_teacher + W_teacher @ mean
 
         task_ix = int(dataset_name.split("attr")[-1])
-        student.fc.weight.data = new_weight.data[task_ix, :]
-        student.fc.bias.data = new_bias.data[task_ix]
+        student_model.fc.weight.data = new_weight.data[task_ix, :]
+        student_model.fc.bias.data = new_bias.data[task_ix]
 
         utils.freeze_model(student.fc)
 
