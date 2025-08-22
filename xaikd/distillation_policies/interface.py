@@ -139,7 +139,7 @@ class LayerPolicyCollection(nn.ModuleList):
         arr_scaling_factor = []
 
         for policy in self.policies:
-            if hasattr(policy, "scaling_factor"):
+            if hasattr(policy, "global_scaling") and policy.global_scaling:
                 scaling_factor = policy.scaling_factor
                 arr_scaling_factor.append(scaling_factor)
 

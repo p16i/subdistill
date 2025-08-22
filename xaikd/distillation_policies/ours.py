@@ -210,7 +210,7 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
 
 
 @register_policy("basis-center-rotationv2-no-scaling")
-class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
+class OrthogonalBasisCenterRotationV2NoScalingPolicy(LayerPolicy):
     def __init__(
         self,
         teacher_dims: int,
@@ -226,6 +226,7 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         self.basis = basis
 
         self.scaling_factor = np.sum(self.basis.get_scale_factors_for_k(student_dims))
+        self.global_scaling = True
 
         self.transformer_teacher_feats = basis.construct_adapter(
             k=k, mode=AdapterMode.ENCODER, device=device
