@@ -254,8 +254,8 @@ def main(
             policy, distillation_policies.OrthogonalBasisCenterRotationV2Policy
         )
 
-        W_teacher = teacher_model[TEACHER_LAYER_PREFIX].fc.weight
-        b_teacher = teacher_model[TEACHER_LAYER_PREFIX].fc.bias
+        W_teacher = getattr(teacher_model, TEACHER_LAYER_PREFIX).fc.weight
+        b_teacher = getattr(teacher_model, TEACHER_LAYER_PREFIX).fc.bias
 
         k = dict_student_layer_dim["layer4"]
         Uk = torch.from_numpy(policy.basis.get_Uk(k=k)).float().to(device)
