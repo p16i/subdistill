@@ -219,8 +219,8 @@ class SelfCenter(nn.Module):
         return x - x.mean(dim=(1), keepdim=True)
 
 
-@register_policy("basis-selfcenter-rotationv2")
-class OrthogonalBasisSelfCenterRotationV2Policy(LayerPolicy):
+@register_policy("basis-selfcenter-rotation")
+class OrthogonalBasisSelfCenterRotationPolicy(LayerPolicy):
     def __init__(
         self,
         teacher_dims: int,
