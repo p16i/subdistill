@@ -234,6 +234,9 @@ def main(
                 layerwise_training=layerwise_training,
                 **kwargs,
             )
+            if hasattr(policy, "scaling_factor"):
+                print(f"> scaling factor: {policy.scaling_factor}")
+
         else:
             policy = distillation_policies.get_policy(
                 layer_policy, device=device, **kwargs
