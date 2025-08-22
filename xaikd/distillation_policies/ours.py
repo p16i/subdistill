@@ -209,6 +209,58 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
+@register_policy("basis-center-rotation-binxent")
+class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+
+        if layerwise_training:
+            self.scaling_factor = 1
+        else:
+            self.scaling_factor = np.sum(
+                self.basis.get_scale_factors_for_k(student_dims)
+            )
+
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            utils.modules.Rotate(k=k),
+        ).to(device)
+
+    def criterion(
+        self, transformed_teacher_feats, transformed_student_feats
+    ) -> torch.Tensor:
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        p_t = (torch.sign(transformed_teacher_feats) + 1) / 2
+
+        loss = F.binary_cross_entropy_with_logits(
+            transformed_student_feats,
+            p_t,
+            reduction="none",
+        ) / (w * h)
+
+        loss = loss.mean()
+
+        return loss
+
+
 class SelfCenter(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
