@@ -266,8 +266,8 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
 
         # average over all samples
         loss_mse = loss_mse.mean()
-        
-        return loss
+
+        return loss_mse
 
 
 @register_policy("basis-center-rotation-binxent")
