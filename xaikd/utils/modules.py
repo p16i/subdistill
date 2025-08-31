@@ -10,6 +10,28 @@ import tempfile
 import wandb
 
 
+def adjust_basis_vectors_to_positive_direction(
+    U: torch.Tensor,
+    x: torch.Tensor,
+):
+    # fixme: add test
+
+    # remark: for operatation with U@U.T, this sign correction cancels out,
+    # hence having no effect.
+
+    n, d = x.shape
+
+    is_majority_pos_sign = (((x @ U) > 0).float().mean(dim=0) > 0.5).float()
+
+    assert is_majority_pos_sign.shape == (d,)
+
+    Up = U @ torch.diag(is_majority_pos_sign) + U @ torch.diag(
+        (is_majority_pos_sign - 1)
+    )
+
+    return Up
+
+
 def torch_flatten_3d_tensor(x: torch.Tensor) -> torch.Tensor:
     b, d, h, w = x.shape
     x = x.reshape((b, d, h * w))
@@ -295,7 +317,6 @@ class RotateAndScale(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
-
         b, d, h, w = x.shape
 
         x = torch_flatten_3d_tensor(x)
@@ -322,7 +343,6 @@ class Scale(nn.Module):
         self.scale = torch.nn.Parameter(torch.tensor(init_scale))
 
     def forward(self, x: torch.Tensor):
-
         return self.scale * x
 
 
@@ -335,7 +355,6 @@ class Rotate(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
-
         b, d, h, w = x.shape
 
         x = torch_flatten_3d_tensor(x)
@@ -356,7 +375,6 @@ class LinearOrtho(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
-
         b, k, h, w = x.shape
 
         assert k == self.in_features
@@ -388,7 +406,6 @@ class RotateWithBiasAndScale(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
-
         b, d, h, w = x.shape
 
         x = torch_flatten_3d_tensor(x)
@@ -396,3 +413,70 @@ class RotateWithBiasAndScale(nn.Module):
         x = torch_deflatten_2d_tensor(x, target_shape=(b, d, h, w))
 
         return self.scale * x
+
+
+class CovarianceEigenspaceProjection(nn.Module):
+    # ref: https://github.com/ptrblck/pytorch_misc/blob/master/batch_norm_manual.py#L39
+
+    def __init__(self, num_features: int, momentum=0.1):
+        super().__init__()
+
+        self.num_features = num_features
+        self.momentum = momentum
+
+        self.register_buffer("running_mean", torch.zeros(num_features))
+        self.register_buffer("running_cov", torch.zeros(num_features))
+        self.register_buffer("running_eigvecs", torch.zeros(num_features))
+
+        self.eps = 1e-5
+
+    def forward(self, input):
+        n, d, _, _ = input.shape
+
+        exponential_average_factor = self.momentum
+
+        # calculate running estimates
+        if self.training:
+            with torch.no_grad():
+                mean = input.mean([0, 2, 3])
+
+                permuted_input = input.permute(1, 0, 2, 3)
+
+                # shape: (d, n*h*w)
+                permuted_input = torch.flatten(permuted_input, start_dim=1)
+
+                cov = torch.cov(permuted_input)
+
+                self.running_mean = (
+                    exponential_average_factor * mean
+                    + (1 - exponential_average_factor) * self.running_mean
+                )
+
+                self.running_cov = (
+                    exponential_average_factor * cov
+                    + (1 - exponential_average_factor) * self.running_cov
+                )
+
+                _, eigvecs = torch.linalg.eigh(self.running_cov)
+                eigvecs = torch.flip(eigvecs, dims=(1,))
+
+                eigvecs = adjust_basis_vectors_to_positive_direction(
+                    U=eigvecs,
+                    x=permuted_input.T,
+                )
+
+                self.running_eigvecs = eigvecs
+        else:
+            mean = self.running_mean
+            cov = self.running_cov
+            eigvecs = self.running_eigvecs
+
+        input = input - mean[None, :, None, None]
+
+        input = torch.conv2d(
+            input,
+            weight=eigvecs.T[:, :, None, None],
+            bias=None,
+        )
+
+        return input

@@ -1,10 +1,12 @@
 import torch
 from torch import nn
+from torch.nn import functional as F
 
 import numpy as np
 import pytest
 
-from xaikd import models
+from xaikd import models, utils
+
 from xaikd.utils.modules import (
     Centering2d,
     has_batchnorm,
@@ -13,6 +15,7 @@ from xaikd.utils.modules import (
     merge_convKxK_and_conv1x1,
     torch_flatten_3d_tensor,
     torch_deflatten_2d_tensor,
+    CovarianceEigenspaceProjection,
 )
 
 
@@ -187,3 +190,76 @@ def test_torch_flatten():
     )
 
     np.testing.assert_allclose(actual, expected)
+
+
+@torch.no_grad()
+def test_coveigen_forwardble():
+    d = 3
+    n = 5
+
+    trng = torch.Generator().manual_seed(1)
+
+    module = CovarianceEigenspaceProjection(num_features=d)
+
+    momentum = module.momentum
+
+    expected_mean = torch.zeros(d)
+    expected_cov = torch.zeros((d, d))
+    expected_eigvecs = torch.eye(d)
+
+    for i, training in enumerate([True, False]):
+        x = torch.randn(n, d, 7, 7, generator=trng)
+
+        assert x.shape == (n, d, 7, 7)
+
+        x_flattened = torch.flatten(torch.permute(x, (1, 0, 2, 3)), start_dim=1)
+        if training:
+            module.train()
+
+            expected_mean = x_flattened.mean(dim=1).numpy()
+            expected_cov = torch.cov(x_flattened).numpy()
+
+            _, expected_eigvecs = utils.solve_eigh(expected_cov)
+
+            expected_eigvecs = utils.modules.adjust_basis_vectors_to_positive_direction(
+                torch.from_numpy(expected_eigvecs), x_flattened.T
+            ).numpy()
+        else:
+            module.eval()
+
+        actual_output = module(x)
+
+        np.testing.assert_allclose(
+            module.running_mean.numpy(), momentum * expected_mean, atol=1e-5
+        )
+        np.testing.assert_allclose(
+            module.running_cov.numpy(), momentum * expected_cov, atol=1e-5
+        )
+
+        np.testing.assert_allclose(
+            # abs() takes into account ambiguity of sign
+            np.abs((module.running_eigvecs.numpy().T @ expected_eigvecs)),
+            np.eye(d),
+            atol=1e-5,
+        )
+
+        if training:
+            expected_output = x_flattened.T - expected_mean
+        else:
+            expected_output = x_flattened.T - momentum * expected_mean
+
+        expected_output = expected_output @ expected_eigvecs
+
+        assert expected_output.shape == x_flattened.T.shape
+        expected_output_reshaped = torch.permute(
+            expected_output.T.reshape(d, n, 7, 7), (1, 0, 2, 3)
+        )
+
+        assert actual_output.shape == expected_output_reshaped.shape
+
+        np.testing.assert_allclose(actual_output, expected_output_reshaped, atol=1e-3)
+
+
+def test_adjust_direction_torch():
+    # utils.modules.adjust_basis_vectors_to_positive_direction(...)
+    assert False

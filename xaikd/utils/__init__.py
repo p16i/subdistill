@@ -165,7 +165,6 @@ def freeze_model(model: torch.nn.Module) -> torch.nn.Module:
 
 
 def compute_log_odd_winning(logits: torch.Tensor) -> torch.Tensor:
-
     ns, nc = logits.shape
 
     values, _ = torch.topk(logits, dim=1, k=nc)
