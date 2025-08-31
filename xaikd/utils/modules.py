@@ -425,8 +425,8 @@ class CovarianceEigenspaceProjection(nn.Module):
         self.momentum = momentum
 
         self.register_buffer("running_mean", torch.zeros(num_features))
-        self.register_buffer("running_cov", torch.zeros(num_features))
-        self.register_buffer("running_eigvecs", torch.zeros(num_features))
+        self.register_buffer("running_cov", torch.zeros(num_features, num_features))
+        self.register_buffer("running_eigvecs", torch.eye(num_features))
 
         self.eps = 1e-5
 
