@@ -466,10 +466,10 @@ class CovarianceEigenspaceProjection(nn.Module):
                 )
 
                 self.running_eigvecs = eigvecs
-
-        mean = self.running_mean
-        cov = self.running_cov
-        eigvecs = self.running_eigvecs
+        else:
+            mean = self.running_mean
+            cov = self.running_cov
+            eigvecs = self.running_eigvecs
 
         input = input - mean[None, :, None, None]
 
