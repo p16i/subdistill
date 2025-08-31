@@ -261,5 +261,13 @@ def test_coveigen_forwardble():
 
 
 def test_adjust_direction_torch():
-    # utils.modules.adjust_basis_vectors_to_positive_direction(...)
-    assert False
+    d = 7
+    x = torch.rand(10, d, generator=torch.Generator().manual_seed(1))
+
+    U = -torch.eye(d)
+
+    np.testing.assert_allclose(
+        utils.modules.adjust_basis_vectors_to_positive_direction(U, x).numpy(),
+        np.eye(d),
+        atol=1e-6,
+    )
