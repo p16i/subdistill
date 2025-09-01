@@ -443,9 +443,13 @@ class CovarianceEigenspaceProjection(nn.Module):
                 permuted_input = input.permute(1, 0, 2, 3)
 
                 # shape: (d, n*h*w)
-                permuted_input = torch.flatten(permuted_input, start_dim=1)
+                permuted_input = torch.flatten(permuted_input, start_dim=1).T
 
-                cov = torch.cov(permuted_input)
+                centered_input = permuted_input - mean[None, :]
+
+                n = centered_input.shape[0]
+
+                cov = (centered_input.T @ centered_input) / n
 
                 self.running_mean = (
                     exponential_average_factor * mean
@@ -462,7 +466,7 @@ class CovarianceEigenspaceProjection(nn.Module):
 
                 eigvecs = adjust_basis_vectors_to_positive_direction(
                     U=eigvecs,
-                    x=permuted_input.T,
+                    x=permuted_input,
                 )
 
                 self.running_eigvecs = eigvecs
