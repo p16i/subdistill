@@ -6,8 +6,10 @@ from torch.nn.modules import batchnorm
 import numpy as np
 from copy import deepcopy
 
+
 import tempfile
 import wandb
+from scipy.stats import ortho_group
 
 
 def adjust_basis_vectors_to_positive_direction(
@@ -426,7 +428,13 @@ class CovarianceEigenspaceProjection(nn.Module):
 
         self.register_buffer("running_mean", torch.zeros(num_features))
         self.register_buffer("running_cov", torch.zeros(num_features, num_features))
-        self.register_buffer("running_eigvecs", torch.eye(num_features))
+        # self.register_buffer("running_eigvecs", torch.eye(num_features))
+
+        rng = np.random.default_rng(seed=1)
+        self.register_buffer(
+            "running_eigvecs",
+            torch.from_numpy(ortho_group.rvs(num_features, random_state=rng)).float(),
+        )
 
         self.eps = 1e-5
 
@@ -473,7 +481,8 @@ class CovarianceEigenspaceProjection(nn.Module):
         else:
             mean = self.running_mean
             cov = self.running_cov
-            eigvecs = self.running_eigvecs
+
+        eigvecs = self.running_eigvecs
 
         input = input - mean[None, :, None, None]
 
