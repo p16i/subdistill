@@ -447,9 +447,9 @@ class CovarianceEigenspaceProjection(nn.Module):
 
                 centered_input = permuted_input - mean[None, :]
 
-                n = centered_input.shape[0]
+                nhw = centered_input.shape[0]
 
-                cov = (centered_input.T @ centered_input) / n
+                cov = (centered_input.T @ centered_input) / nhw
 
                 self.running_mean = (
                     exponential_average_factor * mean
