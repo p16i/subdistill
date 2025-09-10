@@ -129,7 +129,6 @@ def _resnet152_imagenet() -> nn.Module:
 
 @register_model("celeba-resnet18-finetunedv1")
 def _resnet18_celeba() -> nn.Module:
-
     name = "celeba-resnet18-finetunedv1"
     model = torchvision.models.resnet18(weights=None, num_classes=NUM_CELEBA_ATTRIBUTES)
     model.load_state_dict(
@@ -143,7 +142,6 @@ def _resnet18_celeba() -> nn.Module:
 
 @register_model("celeba-resnet50-finetunedv1")
 def _resnet50_celeba() -> nn.Module:
-
     name = "celeba-resnet50-finetunedv1"
     model = torchvision.models.resnet50(weights=None, num_classes=NUM_CELEBA_ATTRIBUTES)
     model.load_state_dict(
@@ -157,7 +155,6 @@ def _resnet50_celeba() -> nn.Module:
 
 @register_model("celeba-wideresnet50_2-finetunedv1")
 def _wideresnet50_2_celeba() -> nn.Module:
-
     name = "celeba-wideresnet50_2-finetunedv1"
     model = torchvision.models.wide_resnet50_2(
         weights=None, num_classes=NUM_CELEBA_ATTRIBUTES
@@ -317,9 +314,7 @@ def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
 
 
 def _register_student_resnet18():
-
-    for in_planes in [4, 8, 16, 32, 64]:
-
+    for in_planes in [4, 8, 16, 32, 48, 64]:
         add_model_to_registry(
             f"student-cifar-resnet18-{in_planes}",
             partial(construct_student_cifar_resnet18, in_planes=in_planes),
