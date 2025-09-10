@@ -70,6 +70,7 @@ def test_cifar100_resnet(student_name):
         "student-resnet18-16",
         "student-resnet18-32",
         "student-resnet18-64",
+        "student-resnet18-d56-56-40-40",
     ],
 )
 @pytest.mark.slow()
