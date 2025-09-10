@@ -55,7 +55,7 @@ class Layerwise:
 
         self.device = device
 
-        self.metric_func = metrics.MetricAccuracyXent(num_classes=5)
+        self.metric_func = metrics.MetricAccuracyXent(num_classes=dataset.num_classes)
 
         with torch.no_grad():
             self.ref_acc, self.ref_xent = self.metric_func(
