@@ -114,6 +114,7 @@ class Layerwise:
         pl.seed_everything(seed)
 
         training_wrapper = LayerwiseKDModelWrapper(
+            dataset=self.dataset,
             teacher=self.teacher,
             student=student,
             last_layer_policy=last_layer_policy,

@@ -10,7 +10,7 @@ from torch import nn
 from torch.nn import functional as F
 
 
-from xaikd import distillation_policies, utils
+from xaikd import distillation_policies, utils, datasets
 
 from torchmetrics import MeanMetric
 from torchmetrics.classification import Accuracy
@@ -35,6 +35,7 @@ class Teacher(object):
 class LayerwiseKDModelWrapper(pl.LightningModule):
     def __init__(
         self,
+        dataset: datasets.DatasetConfiguration,
         teacher: nn.Module,
         student: nn.Module,
         layerwise_policies: distillation_policies.interface.LayerPolicyCollection,
@@ -70,8 +71,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             f"Layerwise-Training={self.layerwise_training} | Lambda(task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
         )
         self.metric = dict(
-            train_acc=Accuracy(task="multiclass", num_classes=5),
-            val_acc=Accuracy(task="multiclass", num_classes=5),
+            train_acc=Accuracy(task="multiclass", num_classes=dataset.num_classes),
+            val_acc=Accuracy(task="multiclass", num_classes=dataset.num_classes),
         )
 
         self.arr_metrics = dict(
@@ -107,7 +108,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         student_logits: torch.Tensor,
         target: torch.Tensor,
     ) -> torch.Tensor:
-
         loss = self.last_layer_policy(teacher_logits, student_logits, target)
 
         assert torch.isfinite(loss)
@@ -120,7 +120,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         student_arr_intermediate_feats: typing.List[torch.Tensor],
         prefix: str,
     ) -> torch.Tensor:
-
         device = teacher_arr_intermediate_feats[0].device
 
         loss_layer = torch.tensor(0.0).to(device)
@@ -128,7 +127,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         layer_policies = self.layer_policy_collection.policies
 
         for lix, policy in enumerate(layer_policies):
-
             _loss_layer = policy(
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
