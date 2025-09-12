@@ -170,7 +170,7 @@ def test_extract_activation_grad(num_data_points, batch_size):
         nn.Linear(7, 5),
     )
 
-    logit_modifier = logit_modifiers.MultiClassDifferenceTop2Logits(threshold=0)
+    logit_modifier = logit_modifiers.MultiClassDifferenceTop2Logits()
 
     act: torch.Tensor = model_part1(X).detach()
     act.requires_grad_(True)
