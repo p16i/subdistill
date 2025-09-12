@@ -48,9 +48,7 @@ def test_canonize_student():
 @pytest.mark.parametrize(
     "student_name",
     [
-        "student-cifar-resnet18-16",
-        "student-cifar-resnet18-32",
-        "student-cifar-resnet18-64",
+        "student-cifar-resnet18-d56-56-40-40",
     ],
 )
 @pytest.mark.slow()
@@ -67,9 +65,6 @@ def test_cifar100_resnet(student_name):
 @pytest.mark.parametrize(
     "student_name",
     [
-        "student-resnet18-16",
-        "student-resnet18-32",
-        "student-resnet18-64",
         "student-resnet18-d56-56-40-40",
     ],
 )
