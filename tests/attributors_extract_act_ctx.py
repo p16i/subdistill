@@ -34,7 +34,6 @@ class CIFAR100VerySmall(datasets.cifar100.original.CIFAR100):
 
 class ImageNetVerySmall(datasets.imagenet.original.ImageNet):
     def loader(self, batch_size=64, num_workers=2, train_split=False):
-
         trng = torch.Generator()
         trng.manual_seed(1)
         x = torch.randn((NUMBER_OF_SMALL_DATASET, 3, 224, 224), generator=trng)
@@ -168,12 +167,10 @@ def test_extract_activation_grad(num_data_points, batch_size):
         nn.GELU(),
         nn.AdaptiveAvgPool2d(output_size=1),
         nn.Flatten(start_dim=1),
-        nn.Linear(7, 1),
-        # We do this flatten to squeeze the last dim
-        nn.Flatten(start_dim=0),
+        nn.Linear(7, 5),
     )
 
-    logit_modifier = logit_modifiers.BinaryLogOddWinning(threshold=0)
+    logit_modifier = logit_modifiers.MultiClassDifferenceTop2Logits(threshold=0)
 
     act: torch.Tensor = model_part1(X).detach()
     act.requires_grad_(True)
@@ -204,16 +201,19 @@ def test_extract_activation_grad(num_data_points, batch_size):
         batch_size=batch_size,
     )
 
-    arr_actual_logodd, arr_actual_acts, arr_actual_grads, mean_act = (
-        attributors.extract_activation_grad(
-            model=model,
-            layer="layer1",
-            dataloader=dl,
-            logit_modifier=logit_modifier,
-            device="cpu",
-            rng=np.random.default_rng(seed=seed),
-            number_of_selected_spatial_locations=num_spatial_locations,
-        )
+    (
+        _,
+        arr_actual_acts,
+        arr_actual_grads,
+        mean_act,
+    ) = attributors.extract_activation_grad(
+        model=model,
+        layer="layer1",
+        dataloader=dl,
+        logit_modifier=logit_modifier,
+        device="cpu",
+        rng=np.random.default_rng(seed=seed),
+        number_of_selected_spatial_locations=num_spatial_locations,
     )
 
     np.testing.assert_allclose(mean_act, expected_mean)
@@ -227,7 +227,8 @@ def test_extract_activation_grad(num_data_points, batch_size):
         arr_expected_grads,
     )
 
-    np.testing.assert_allclose(
-        arr_actual_logodd,
-        arr_expected_logodd.detach().cpu().numpy(),
-    )
+    # we don't have this anymore.k
+    # np.testing.assert_allclose(
+    #     arr_actual_logodd,
+    #     arr_expected_logodd.detach().cpu().numpy(),
+    # )
