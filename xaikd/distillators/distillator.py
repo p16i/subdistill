@@ -55,15 +55,14 @@ class Layerwise:
 
         self.device = device
 
-        self.metric_func = metrics.MetricAUROCBinaryCrossEntropy()
+        self.metric_func = metrics.MetricAccuracyXent(num_classes=dataset.num_classes)
 
         with torch.no_grad():
-            self.ref_auroc, self.ref_xent = self.metric_func(
+            self.ref_acc, self.ref_xent = self.metric_func(
                 self.teacher.to(device),
-                dataloader_val,
+                dataloader_test,
                 device=self.device,
                 verbose=True,
-                prefix="teacher_reference",
             )
 
     def distill(
@@ -83,7 +82,6 @@ class Layerwise:
         seed: int,
         upload_best_checkpoint: bool,
     ) -> nn.Module:
-
         assert (np.array([lambda_task, lambda_kd, lambda_layer]) > 0).any()
 
         student.eval()
@@ -91,23 +89,22 @@ class Layerwise:
 
         with torch.no_grad():
             (
-                student_auroc_before_training,
+                student_acc_before_training,
                 student_xent_before_training,
             ) = self.metric_func(
                 student,
                 dataloader=self.dl_val,
                 device=self.device,
                 verbose=True,
-                prefix="student_before_training",
             )
 
-        logger.experiment.summary["student_val_auroc_before_training"] = (
-            student_auroc_before_training
-        )
-        logger.experiment.summary["teacher_auroc"] = self.ref_auroc
+        logger.experiment.summary[
+            "student_val_acc_before_training"
+        ] = student_acc_before_training
+        logger.experiment.summary["teacher_acc"] = self.ref_acc
 
         print(
-            f"[before training] metrics: student (teacher) | auroc={student_auroc_before_training:.4f} ({self.ref_auroc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
+            f"[before training] metrics: student (teacher) | acc={student_acc_before_training:.4f} ({self.ref_acc:.4f}), xent={student_xent_before_training:.4f} ({self.ref_xent:.4f})"
         )
 
         # we set the seed here again because to make sure that the state of random generator for
@@ -117,6 +114,7 @@ class Layerwise:
         pl.seed_everything(seed)
 
         training_wrapper = LayerwiseKDModelWrapper(
+            dataset=self.dataset,
             teacher=self.teacher,
             student=student,
             last_layer_policy=last_layer_policy,
@@ -130,7 +128,7 @@ class Layerwise:
         )
 
         callback_checkpoint = ModelCheckpoint(
-            monitor="val_auroc",
+            monitor="val_acc",
             mode="max",
         )
 
@@ -152,7 +150,7 @@ class Layerwise:
 
         assert callback_checkpoint.best_model_score is not None
 
-        best_epoch = np.argmax(training_wrapper.arr_metrics["val_auroc"])
+        best_epoch = np.argmax(training_wrapper.arr_metrics["val_acc"])
 
         best_student = utils.modules.load_model_from_checkpoint(
             model_template_object=training_wrapper.student,
@@ -171,9 +169,9 @@ class Layerwise:
 
         logger.experiment.summary["best_epoch"] = best_epoch
 
-        logger.experiment.summary["student_best_val_auroc"] = (
-            callback_checkpoint.best_model_score
-        )
+        logger.experiment.summary[
+            "student_best_val_acc"
+        ] = callback_checkpoint.best_model_score
         self.log_test_metrics(best_student=best_student, logger=logger, device=device)
         self.log_prediction(student=best_student, logger=logger, device=device)
 
@@ -192,7 +190,7 @@ class Layerwise:
             )
 
         print(
-            f"Result: best_epoch={best_epoch} best_val_auroc={callback_checkpoint.best_model_score:.4f}"
+            f"Result: best_epoch={best_epoch} best_val_acc={callback_checkpoint.best_model_score:.4f}"
         )
 
         return best_student
@@ -205,7 +203,6 @@ class Layerwise:
         checkpoint_callback: ModelCheckpoint,
         device: str,
     ):
-
         assert not student.training
 
         student.to(device)
@@ -215,14 +212,13 @@ class Layerwise:
             self.dl_val,
             device=device,
             verbose=True,
-            prefix="post_training_sanity_check: val_set",
         )
 
         assert checkpoint_callback.best_model_score is not None
         expected = float(checkpoint_callback.best_model_score)
 
         np.testing.assert_allclose(
-            [actual, np.max(trainer.arr_metrics["val_auroc"])],
+            [actual, np.max(trainer.arr_metrics["val_acc"])],
             expected,
             err_msg="stats computed from modified student should match the last one returned from distillator",
         )
@@ -231,20 +227,20 @@ class Layerwise:
     def log_test_metrics(
         self, best_student: nn.Module, logger: WandbLogger, device: str
     ):
-        test_auroc, test_loss = self.metric_func(
+        test_acc, test_loss = self.metric_func(
             best_student,
             dataloader=self.dl_test,
             device=device,
             verbose=True,
-            prefix="test set",
         )
-        logger.experiment.summary["student_test_auroc"] = test_auroc
+        logger.experiment.summary["student_test_acc"] = test_acc
         logger.experiment.summary["student_test_loss"] = test_loss
 
-        return test_auroc, test_loss
+        return test_acc, test_loss
 
     @torch.no_grad()
     def log_prediction(self, student: nn.Module, logger: WandbLogger, device: str):
+        return
         prediction_table = wandb.Table(
             columns=["target", "output_teacher", "output_student"]
         )
@@ -253,7 +249,7 @@ class Layerwise:
             output_teacher = self.teacher(x).detach().cpu().numpy()
             output_student = student(x).squeeze(1).detach().cpu().numpy()
 
-            assert len(output_student.shape) == 1, output_student.shape
+            # assert len(output_student.shape) == 1, output_student.shape
 
             np.testing.assert_allclose(output_student.shape, output_teacher.shape)
 
@@ -272,7 +268,6 @@ class Layerwise:
         model_path: str,
         aliases: typing.List[str],
     ):
-
         artifact = Artifact(artifact_name, type="model", metadata=metadata)
         artifact.add_file(model_path, name="model.ckpt")
 

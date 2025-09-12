@@ -216,12 +216,13 @@ def extract_activation_grad(
     arr_act -= mean_act[None, :, None]
 
     arr_ctx = np.vstack(arr_ctx)
-    arr_logit = np.array(arr_logit)
-    assert len(arr_logit.shape) == 1
 
-    assert arr_act.shape[0] == arr_logit.shape[0]
+    arr_logit = None
+    # arr_logit = np.array(arr_logit)
+    # assert len(arr_logit.shape) == 1
+    # assert arr_act.shape[0] == arr_logit.shape[0]
     assert arr_act.shape == arr_ctx.shape
 
-    print(f"> shape(arr_act)={arr_act.shape}; shape(arr_logits)={arr_logit.shape}")
+    # print(f"> shape(arr_act)={arr_act.shape}; shape(arr_logits)={arr_logit.shape}")
 
     return arr_logit, arr_act, arr_ctx, mean_act

@@ -80,6 +80,22 @@ def get_trained_model(name: str) -> nn.Module:
 
 def get_untrained_model(name: str, num_classes: int, **kwargs) -> nn.Module:
     print(f"Constructing untrain-model={name} with ( {num_classes} outputs)")
+
+    if "student-cifar-resnet18" in name:
+        slug = name.split("-d")[1]
+        arr_in_planes = slug.split("-")
+        arr_in_planes = tuple(map(int, arr_in_planes))
+        return resnet.construct_student_cifar_resnet18_varying_dims(
+            arr_in_planes=arr_in_planes, num_classes=num_classes, **kwargs  # type: ignore
+        )
+    elif "student-resnet18-d" in name:
+        slug = name.split("-d")[1]
+        arr_in_planes = slug.split("-")
+        arr_in_planes = tuple(map(int, arr_in_planes))
+        return resnet.construct_student_cifar_resnet18_varying_dims(
+            arr_in_planes=arr_in_planes, num_classes=num_classes, **kwargs  # type: ignore
+        )
+
     return MODEL_GENERATORS[name](num_classes=num_classes, **kwargs)
 
 

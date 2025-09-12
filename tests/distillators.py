@@ -12,7 +12,9 @@ import tempfile
 
 import numpy as np
 
-from pathlib import Path
+
+from numpy import typing as npt
+
 
 from copy import deepcopy
 
@@ -30,10 +32,9 @@ from xaikd import datasets, metrics
 from xaikd.distillation_policies.interface import LayerPolicyCollection
 
 
-def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.Tensor]:
+def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[npt.NDArray]:
     stats = []
     for bn in utils.query_module_children_with_type(model, nn.BatchNorm2d):
-
         assert not bn.running_mean is None
         stats.append(bn.running_mean.clone().cpu().numpy())
 
@@ -62,21 +63,20 @@ def get_batchnorm_statistics_from_model(model: nn.Module) -> typing.List[torch.T
 def test_distillation_runnable_and_correct(
     teacher_model_name, layers, layerwise_training
 ):
-
-    last_layer_policy = distillation_policies.get_last_layer_policy("last-layer:binkd")
+    last_layer_policy = distillation_policies.get_last_layer_policy("last-layer:kd")
 
     epochs = 1
     teacher_layers, student_layers = distillation_policies.parse_layer_string(layers)
 
-    dataset = datasets.construct("cifar100-people-vs-others")
+    dataset = datasets.construct("cifar100-people")
 
     teacher_model = nn.Sequential(
         OrderedDict(
             [
                 ("base", models.get_trained_model(teacher_model_name)),
                 (
-                    "logodd",
-                    models.layers.LayerLogOddSelectedClasses(
+                    "output",
+                    models.layers.SubclassSelection(
                         selected_classes=dataset.selected_classes
                     ),
                 ),
@@ -173,16 +173,16 @@ def test_distillation_runnable_and_correct(
 
     # post-training assertions
     with torch.no_grad():
-        metric = metrics.MetricAUROCBinaryCrossEntropy()
+        metric = metrics.MetricAccuracyXent(num_classes=len(dataset.selected_classes))
         # sanity check `student``
-        actual_auroc, _ = metric(
+        actual_acc, _ = metric(
             student,
             dataloader=val_loader,
             device=device,
         )
 
-        expected_auroc = logger.experiment.summary["student_best_val_auroc"]
-        np.testing.assert_allclose(actual_auroc, expected_auroc)
+        expected_acc = logger.experiment.summary["student_best_val_acc"]
+        np.testing.assert_allclose(actual_acc, expected_acc)
 
         # sanity check `teacher`
         expected_teacher_metric = metric(
@@ -191,7 +191,7 @@ def test_distillation_runnable_and_correct(
             device=device,
         )
         np.testing.assert_allclose(
-            (distillator.ref_auroc, distillator.ref_xent), expected_teacher_metric
+            (distillator.ref_acc, distillator.ref_xent), expected_teacher_metric
         )
 
         # ucheck teacher parameters not get updated!
@@ -281,6 +281,7 @@ def test_get_parameters(layers):
     model_training_wrapper = distillators.LayerwiseKDModelWrapper(
         teacher=teacher_model,
         student=student,
+        dataset=dataset,
         last_layer_policy=last_layer_policy,
         layerwise_policies=layer_policy_collection,
         lambda_kd=1,

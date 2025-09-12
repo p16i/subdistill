@@ -10,10 +10,10 @@ from torch import nn
 from torch.nn import functional as F
 
 
-from xaikd import distillation_policies, utils
+from xaikd import distillation_policies, utils, datasets
 
 from torchmetrics import MeanMetric
-from torchmetrics.classification import BinaryAUROC
+from torchmetrics.classification import Accuracy
 
 
 class Teacher(object):
@@ -35,6 +35,7 @@ class Teacher(object):
 class LayerwiseKDModelWrapper(pl.LightningModule):
     def __init__(
         self,
+        dataset: datasets.DatasetConfiguration,
         teacher: nn.Module,
         student: nn.Module,
         layerwise_policies: distillation_policies.interface.LayerPolicyCollection,
@@ -70,13 +71,13 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             f"Layerwise-Training={self.layerwise_training} | Lambda(task={self.lambda_task}, layer={self.lambda_layer}, logit={self.lambda_kd} ) | Weight-Decay: {self.weight_decay}"
         )
         self.metric = dict(
-            train_auroc=BinaryAUROC(thresholds=100),
-            val_auroc=BinaryAUROC(thresholds=100),
+            train_acc=Accuracy(task="multiclass", num_classes=dataset.num_classes),
+            val_acc=Accuracy(task="multiclass", num_classes=dataset.num_classes),
         )
 
         self.arr_metrics = dict(
-            train_auroc=[],
-            val_auroc=[],
+            train_acc=[],
+            val_acc=[],
         )
 
     def _get_parameters(self) -> typing.List[nn.Parameter]:
@@ -99,7 +100,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def _compute_loss_task(
         self, student_logits: torch.Tensor, target: torch.Tensor
     ) -> torch.Tensor:
-        return F.binary_cross_entropy_with_logits(student_logits, target.float())
+        return F.cross_entropy(student_logits, target)
 
     def _compute_loss_kd(
         self,
@@ -107,7 +108,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         student_logits: torch.Tensor,
         target: torch.Tensor,
     ) -> torch.Tensor:
-
         loss = self.last_layer_policy(teacher_logits, student_logits, target)
 
         assert torch.isfinite(loss)
@@ -120,7 +120,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         student_arr_intermediate_feats: typing.List[torch.Tensor],
         prefix: str,
     ) -> torch.Tensor:
-
         device = teacher_arr_intermediate_feats[0].device
 
         loss_layer = torch.tensor(0.0).to(device)
@@ -128,7 +127,6 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         layer_policies = self.layer_policy_collection.policies
 
         for lix, policy in enumerate(layer_policies):
-
             _loss_layer = policy(
                 teacher_arr_intermediate_feats[lix], student_arr_intermediate_feats[lix]
             )
@@ -172,9 +170,9 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             detach_output=self.layerwise_training,
         )
 
-        assert student_logits.shape == (n, 1)
+        # assert student_logits.shape == (n, 5)
+        # student_logits = student_logits.squeeze(1)
 
-        student_logits = student_logits.squeeze(1)
         loss = torch.tensor(0.0).to(teacher_logits.device)
 
         for loss_label, loss_coeff in [
@@ -217,7 +215,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         self.log(f"{prefix}_loss_all", loss, on_epoch=True)
 
-        self.metric[f"{prefix}_auroc"].update(student_logits.detach().cpu(), y.cpu())
+        self.metric[f"{prefix}_acc"].update(student_logits.detach().cpu(), y.cpu())
 
         return loss
 
@@ -231,14 +229,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         return self._compute_loss(val_batch, "val", batch_idx)
 
     def _compute_metric(self, prefix):
-        for suffix in ["auroc"]:
+        for suffix in ["acc"]:
             slug = f"{prefix}_{suffix}"
 
             metric = self.metric[slug]
             value = metric.compute()
-
-            if suffix == "auroc":
-                value = np.max([value, 1 - value])
 
             metric.reset()
 
@@ -249,11 +244,11 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def on_validation_epoch_end(self) -> None:
         self._compute_metric("val")
 
-        if len(self.arr_metrics["val_auroc"]) > 0:
-            best_epoch = int(np.argmax(self.arr_metrics["val_auroc"]))
-            best_val_auroc = float(self.arr_metrics["val_auroc"][best_epoch])
+        if len(self.arr_metrics["val_acc"]) > 0:
+            best_epoch = int(np.argmax(self.arr_metrics["val_acc"]))
+            best_val_acc = float(self.arr_metrics["val_acc"][best_epoch])
             self.log("best_epoch", best_epoch, prog_bar=True)
-            self.log("best_val_auroc", best_val_auroc, prog_bar=True)
+            self.log("best_val_acc", best_val_acc, prog_bar=True)
 
     def on_train_epoch_end(self) -> None:
         self._compute_metric("train")
