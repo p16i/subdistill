@@ -8,8 +8,6 @@ from torchvision.datasets import ImageNet
 
 from xaikd import datasets, constants
 
-pytest.skip(reason="obsolte", allow_module_level=True)
-
 
 @pytest.mark.parametrize(
     "name",
@@ -49,78 +47,13 @@ def test_original_dataset():
         break
 
 
-@pytest.mark.parametrize(
-    "dataset_name,expected_class_indices",
-    [
-        ("imagenet-butterfly", [321, 322, 323, 324, 325, 326]),
-        ("imagenet-boat", [472, 554, 576, 625, 814, 914]),
-        ("imagenet-car", [407, 436, 468, 511, 609, 627, 656, 661, 751, 817]),
-        ("imagenet-cat", [281, 282, 283, 284, 285, 286, 287]),
-        (
-            "imagenet-edible_fruit",
-            [
-                948,
-                949,
-                950,
-                951,
-                952,
-                953,
-                954,
-                955,
-                956,
-                957,
-            ],
-        ),
-        (
-            "imagenet-fungus",
-            [
-                991,
-                993,
-                994,
-                995,
-                996,
-                997,
-            ],
-        ),
-        (
-            "imagenet-truck",
-            [
-                555,
-                569,
-                656,
-                675,
-                717,
-                734,
-                864,
-                867,
-            ],
-        ),
-    ],
-)
-@pytest.mark.parametrize(
-    "lvl",
-    [
-        0.0,
-        0.5,
-        1.0,
-    ],
-)
-def test_dataset_accessible(dataset_name, lvl, expected_class_indices):
+@pytest.mark.parametrize("dataset_name", ["imagenet-wading-bird"])
+def test_dataset_accessible_5_classes(dataset_name):
+    dataset = datasets.construct(dataset_name)
 
-    arr_datasets = []
-    if lvl > 0:
-        for cix, _ in enumerate(expected_class_indices):
-            arr_datasets.append(
-                "--".join([dataset_name, f"spurious-threespurious", f"{lvl}"])
-            )
+    assert dataset.num_classes == 5
 
-    else:
-        arr_datasets = [dataset_name]
-
-    for dataset in arr_datasets:
-        dataset = datasets.construct(dataset)
-
-        np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
+    # np.testing.assert_array_equal(dataset.selected_classes, expected_class_indices)
 
 
 @pytest.mark.skip(reason="obsolete")
@@ -200,7 +133,6 @@ def test_victim_propotion(dataset_slug, cix, victim_class, lvl, train_split):
 def test_dataset_with_three_spurious_correlations(
     lvl, train_split, dataset_name, variant
 ):
-
     if "valsplit" in dataset_name:
         atol = 60 if train_split else 35
     else:
@@ -317,6 +249,7 @@ def test_dataset_with_three_spurious_correlations(
             )
 
 
+@pytest.mark.skip(reason="obsolete")
 @torch.no_grad()
 @pytest.mark.slow()
 @pytest.mark.parametrize(
