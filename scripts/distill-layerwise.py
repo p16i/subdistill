@@ -130,7 +130,7 @@ def main(
         dataset=dataset,
         training_data_ratio=training_size,
         seed=seed,
-        use_validation_set=True,
+        use_validation_set=False,
         training_batch_size=batch_size,
     )
 
