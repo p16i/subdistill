@@ -6,6 +6,9 @@ from torchvision import datasets as tvd
 
 from torchvision.models import ResNet18_Weights
 
+from torchvision.transforms.functional import InterpolationMode
+
+import torch
 
 from ..register import register_dataset
 from .. import DATADIR, DatasetConfiguration
@@ -16,17 +19,30 @@ DEFAULT_TRANSFORMATION = ResNet18_Weights.IMAGENET1K_V1.transforms()
 class ImageNetBase(DatasetConfiguration):
     @property
     def input_transformation(self):
-        # ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L38
-        return DEFAULT_TRANSFORMATION
+        # ref: see notebooks/2025-09-v0.8.x/dev/imagenet-transform.ipynb
+        return transforms.Compose(
+            [
+                transforms.Resize(
+                    size=256, interpolation=InterpolationMode.BILINEAR, antialias=True
+                ),
+                transforms.CenterCrop(224),
+                transforms.PILToTensor(),
+                transforms.ConvertImageDtype(torch.float),
+                self._normalizer,
+            ]
+        )
 
     @property
     def input_training_transformation(self):
         # ref: https://github.com/pytorch/examples/blob/main/imagenet/main.py#L238
         return transforms.Compose(
             [
-                transforms.RandomResizedCrop(224),
+                transforms.RandomResizedCrop(
+                    224, interpolation=InterpolationMode.BILINEAR, antialias=True
+                ),
                 transforms.RandomHorizontalFlip(),
-                transforms.ToTensor(),
+                transforms.PILToTensor(),
+                transforms.ConvertImageDtype(torch.float),
                 self._normalizer,
             ]
         )
@@ -58,10 +74,9 @@ class ImageNetBase(DatasetConfiguration):
 
 @register_dataset("imagenet")
 class ImageNet(ImageNetBase):
-
     def __init__(self):
         np.testing.assert_allclose(
-            self.input_transformation.mean, self._normalizer.mean
+            ResNet18_Weights.IMAGENET1K_V1.transforms().mean, self._normalizer.mean
         )
 
     def transform_target(self, target: int) -> int:
