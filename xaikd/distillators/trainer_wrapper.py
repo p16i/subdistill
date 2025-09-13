@@ -98,7 +98,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
         # Pytorch's Recipe Baseline from  https://pytorch.org/blog/how-to-train-state-of-the-art-models-using-torchvision-latest-primitives/
 
-        optimizer = torch.optim.sgd.SGD(
+        optimizer = torch.optim.SGD( # type: ignore
             parameters,
             lr=0.1,
             momentum=0.9,
