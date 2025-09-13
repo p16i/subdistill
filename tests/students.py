@@ -2,6 +2,9 @@ import numpy as np
 import pytest
 import torch
 
+
+from torchvision.models import resnet18
+
 from xaikd import models, constants
 from xaikd.models.students import canonize_student_model
 
@@ -76,3 +79,15 @@ def test_resnet(student_name):
     output = model(x)
     assert torch.isfinite(output).all()
     assert output.shape == (5, 10)
+
+
+def test_resnet18_varying_dims_equal_resnet18_tv():
+    model = models.get_untrained_model(
+        "student-resnet18-d64-128-256-512", num_classes=1000
+    )
+
+    signature = f"{model}"
+
+    ref = resnet18(weights=None, num_classes=1000)
+    ref_signature = f"{ref}"
+    assert signature == ref_signature
