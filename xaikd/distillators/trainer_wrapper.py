@@ -91,10 +91,21 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def configure_optimizers(self):
         parameters = self._get_parameters()
 
-        optimizer = torch.optim.AdamW(
-            parameters, lr=self.lr, weight_decay=self.weight_decay
+        # optimizer = torch.optim.AdamW(
+        #     parameters, lr=self.lr, weight_decay=self.weight_decay
+        # )
+        # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+
+        # Pytorch's Recipe Baseline from  https://pytorch.org/blog/how-to-train-state-of-the-art-models-using-torchvision-latest-primitives/
+
+        optimizer = torch.optim.sgd.SGD(
+            parameters,
+            lr=0.1,
+            momentum=0.9,
+            weight_decay=1e-4,
         )
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
+
         return [optimizer], [scheduler]
 
     def _compute_loss_task(
