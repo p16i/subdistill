@@ -2,6 +2,8 @@ import typing
 import numpy as np
 
 from torchvision import transforms
+from torchvision.transforms import v2
+from torch.utils.data import default_collate
 from torchvision import datasets as tvd
 
 from torchvision.models import ResNet18_Weights
@@ -14,6 +16,9 @@ DEFAULT_TRANSFORMATION = ResNet18_Weights.IMAGENET1K_V1.transforms()
 
 
 class ImageNetBase(DatasetConfiguration):
+    def __init__(self):
+        self.mixup = v2.MixUp(num_classes=self.num_classes)
+
     @property
     def input_transformation(self):
         # ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L38
@@ -55,10 +60,12 @@ class ImageNetBase(DatasetConfiguration):
     def dataclass(self):
         return tvd.ImageNet
 
+    def construct_collate_fn_for_training(self) -> typing.Callable:
+        return self.mixup(default_collate)
+
 
 @register_dataset("imagenet")
 class ImageNet(ImageNetBase):
-
     def __init__(self):
         np.testing.assert_allclose(
             self.input_transformation.mean, self._normalizer.mean

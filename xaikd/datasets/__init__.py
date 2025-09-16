@@ -12,7 +12,7 @@ import numpy as np
 
 
 import torch
-from torch.utils.data import DataLoader, Subset, Dataset, random_split
+from torch.utils.data import DataLoader, Subset, Dataset, random_split, default_collate
 
 from torchvision import datasets as tvd
 from torchvision import transforms
@@ -38,8 +38,8 @@ def build_dataloader(
     drop_last=False,
     pin_memory=True,
     persistent_workers=True,
+    collate_fn=None,
 ) -> DataLoader:
-
     return DataLoader(
         dataset,
         num_workers=num_workers,
@@ -48,6 +48,7 @@ def build_dataloader(
         drop_last=drop_last,
         pin_memory=pin_memory,
         persistent_workers=persistent_workers,
+        collate_fn=collate_fn,
     )
 
 
@@ -126,6 +127,9 @@ class DatasetConfiguration(ABC):
     def __str__(self) -> str:
         return self.name
 
+    def construct_collate_fn_for_training(self) -> typing.Callable:
+        return default_collate
+
 
 from .register import construct
 from . import cifar100, imagenet, celeba
@@ -143,12 +147,10 @@ def construct_dataloaders(
     DataLoader[Subset[tvd.VisionDataset]],
     DataLoader[tvd.VisionDataset],
 ]:
-
     rng = torch.Generator()
     rng.manual_seed(seed)
     ds_train_raw = dataset.create_subset(train_split=True)
     if use_validation_set:
-
         ratio_train = np.min([constants.TRAINING_VAL_SPLIT_RATIO, training_data_ratio])
         ratio_val = 1 - constants.TRAINING_VAL_SPLIT_RATIO
         ratio_rest = 1 - (ratio_train + ratio_val)
@@ -210,6 +212,7 @@ def construct_dataloaders(
         shuffle=True,
         batch_size=training_batch_size,
         drop_last=True,
+        collate_fn=dataset.construct_collate_fn_for_training(),
     )
 
     return dl_train, dl_train_with_aug, dl_val, dl_test
