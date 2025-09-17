@@ -21,6 +21,7 @@ import torchvision.transforms as transforms
 from torch.optim.lr_scheduler import StepLR
 from torch.utils.data import Subset
 from xaikd import utils
+from tqdm import tqdm
 
 model_names = sorted(
     name
@@ -442,7 +443,7 @@ def train(train_loader, model, criterion, optimizer, epoch, device, args):
     model.train()
 
     end = time.time()
-    for i, (images, target) in enumerate(train_loader):
+    for i, (images, target) in tqdm(enumerate(train_loader)):
         # measure data loading time
         data_time.update(time.time() - end)
 
