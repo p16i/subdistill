@@ -107,29 +107,26 @@ def main():
     ds_val = ImageNet(
         root="/datasets/imagenet",
         split="val",
-        transform=dataset.input_training_transformation,
+        transform=dataset.input_transformation,
     )
     dl_train = DataLoader(
         ds_train,
         batch_size=args.batch_size,
         shuffle=True,
-        num_workers=16,
-        pin_memory=True,
+        num_workers=10,
+        pin_memory=False,
         drop_last=True,
-        prefetch_factor=4,
+        # prefetch_factor=4,
     )
-    for _ in tqdm(dl_train):
-        pass
 
-    return
     dl_test = DataLoader(
         ds_val,
         batch_size=args.batch_size,
         shuffle=False,
-        num_workers=16,
-        pin_memory=True,
+        num_workers=10,
+        pin_memory=False,
         drop_last=True,
-        prefetch_factor=4,
+        # prefetch_factor=4,
     )
 
     wandb_logger = WandbLogger(
