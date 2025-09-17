@@ -101,34 +101,13 @@ def main():
     model = ImageNetClassifier(model=model)
 
     dataset = datasets.construct("imagenet")
-    ds_train = ImageNet(
-        root="/datasets/imagenet",
-        split="train",
-        transform=dataset.input_training_transformation,
-    )
-    ds_val = ImageNet(
-        root="/datasets/imagenet",
-        split="val",
-        transform=dataset.input_transformation,
-    )
-    dl_train = DataLoader(
-        ds_train,
-        batch_size=args.batch_size,
-        shuffle=True,
-        num_workers=10,
-        pin_memory=False,
-        drop_last=True,
-        # prefetch_factor=4,
-    )
 
-    dl_test = DataLoader(
-        ds_val,
-        batch_size=args.batch_size,
-        shuffle=False,
-        num_workers=10,
-        pin_memory=False,
-        drop_last=True,
-        # prefetch_factor=4,
+    _, dl_train, _, dl_test = datasets.construct_dataloaders(
+        dataset=dataset,
+        training_data_ratio=1.0,
+        seed=1,
+        training_batch_size=args.batch_size,
+        use_validation_set=False,
     )
 
     wandb_logger = WandbLogger(
