@@ -115,7 +115,7 @@ def main():
         num_workers=16,
         pin_memory=True,
         drop_last=True,
-        # prefetch_factor=2,
+        prefetch_factor=4,
     )
     dl_test = DataLoader(
         ds_val,
@@ -124,7 +124,7 @@ def main():
         num_workers=16,
         pin_memory=True,
         drop_last=True,
-        # prefetch_factor=2,
+        prefetch_factor=4,
     )
 
     wandb_logger = WandbLogger(
