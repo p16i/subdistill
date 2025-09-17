@@ -9,6 +9,7 @@ import argparse
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision.transforms as transforms
+from torchvision.datasets import ImageNet
 import torchvision.models as models
 
 from xaikd import models, datasets, utils
@@ -97,12 +98,33 @@ def main():
     model = ImageNetClassifier(model=model)
 
     dataset = datasets.construct("imagenet")
-    _, dl_train, _, dl_test = datasets.construct_dataloaders(
-        dataset=dataset,
-        training_data_ratio=1.0,
-        seed=1,
-        training_batch_size=args.batch_size,
-        use_validation_set=False,
+    ds_train = ImageNet(
+        root="/datasets/imagenet",
+        split="train",
+        transforms=dataset.input_training_transformation,
+    )
+    ds_val = ImageNet(
+        root="/datasets/imagenet",
+        split="val",
+        transforms=dataset.input_training_transformation,
+    )
+    dl_train = DataLoader(
+        ds_train,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=16,
+        pin_memory=True,
+        drop_last=True,
+        # prefetch_factor=2,
+    )
+    dl_test = DataLoader(
+        ds_val,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=16,
+        pin_memory=True,
+        drop_last=True,
+        # prefetch_factor=2,
     )
 
     wandb_logger = WandbLogger(
