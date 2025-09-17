@@ -14,6 +14,7 @@ import torchvision.models as models
 
 from xaikd import models, datasets, utils
 
+from tqdm import tqdm
 from pytorch_lightning.loggers.wandb import WandbLogger
 
 WANDB_ENTITY = os.getenv("WANDB_ENTITY", "xaikd")
@@ -117,6 +118,10 @@ def main():
         drop_last=True,
         prefetch_factor=4,
     )
+    for _ in tqdm(dl_train):
+        pass
+
+    return
     dl_test = DataLoader(
         ds_val,
         batch_size=args.batch_size,
