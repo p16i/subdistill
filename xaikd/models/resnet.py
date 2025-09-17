@@ -359,6 +359,13 @@ def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
 
     model.fc = nn.Linear(model.inplanes, num_classes)
 
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+        elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
+
     return model
 
 
