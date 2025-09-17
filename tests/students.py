@@ -5,7 +5,7 @@ import torch
 
 from torchvision.models import resnet18
 
-from xaikd import models, constants
+from xaikd import models, constants, utils
 from xaikd.models.students import canonize_student_model
 
 
@@ -91,3 +91,5 @@ def test_resnet18_varying_dims_equal_resnet18_tv():
     ref = resnet18(weights=None, num_classes=1000)
     ref_signature = f"{ref}"
     assert signature == ref_signature
+
+    assert utils.count_params_in_model(model) == utils.count_params_in_model(ref)
