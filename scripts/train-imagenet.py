@@ -8,6 +8,7 @@ import argparse
 
 import torch.nn as nn
 import torch.nn.functional as F
+from torchvision.models import resnet18
 import torchvision.transforms as transforms
 from torchvision.datasets import ImageNet
 import torchvision.models as models
@@ -93,7 +94,8 @@ def main():
     # )
 
     args = parser.parse_args()
-    model = models.get_untrained_model(args.model_name, num_classes=1000)
+    # model = models.get_untrained_model(args.model_name, num_classes=1000)
+    model = resnet18(weights=None, num_classes=1000)
 
     # Initialize model
     model = ImageNetClassifier(model=model)
