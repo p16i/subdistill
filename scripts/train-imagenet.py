@@ -101,12 +101,12 @@ def main():
     ds_train = ImageNet(
         root="/datasets/imagenet",
         split="train",
-        transforms=dataset.input_training_transformation,
+        transform=dataset.input_training_transformation,
     )
     ds_val = ImageNet(
         root="/datasets/imagenet",
         split="val",
-        transforms=dataset.input_training_transformation,
+        transform=dataset.input_training_transformation,
     )
     dl_train = DataLoader(
         ds_train,
@@ -120,7 +120,7 @@ def main():
     dl_test = DataLoader(
         ds_val,
         batch_size=args.batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=16,
         pin_memory=True,
         drop_last=True,
