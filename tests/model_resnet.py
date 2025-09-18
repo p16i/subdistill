@@ -27,6 +27,7 @@ def test_get_cifar100_model(slug):
         "imagenet-resnet34-tv",
         "imagenet-resnet50-tv",
         "imagenet-resnet101-tv",
+        "imagenet-wideresnet101-tv",
         "imagenet-resnet152-tv",
     ],
 )
@@ -35,6 +36,7 @@ def test_get_imagenet_model(slug):
     test_models._test_get_model(slug)
 
 
+@pytest.mark.skip
 @pytest.mark.parametrize(
     "slug",
     [

@@ -14,6 +14,7 @@ from torch import nn
 import torchvision
 from torchvision.models import resnet
 
+
 from xaikd.datasets.celeba import NUM_CELEBA_ATTRIBUTES
 
 from . import interfaces
@@ -122,6 +123,16 @@ def _resnet101_imagenet() -> nn.Module:
 @register_model("imagenet-resnet152-tv")
 def _resnet152_imagenet() -> nn.Module:
     model = torchvision.models.resnet152(weights=resnet.ResNet152_Weights.IMAGENET1K_V1)
+    model.num_classes = 1000  # type: ignore
+
+    return model
+
+
+@register_model("imagenet-wideresnet101-tv")
+def _wideresnet101_imagenet() -> nn.Module:
+    model = torchvision.models.wide_resnet101_2(
+        weights=resnet.Wide_ResNet101_2_Weights.IMAGENET1K_V1
+    )
     model.num_classes = 1000  # type: ignore
 
     return model
