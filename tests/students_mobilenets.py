@@ -9,8 +9,8 @@ from xaikd import models, utils
     "student_name",
     [
         "student-mobilenetv4-xs",
-        "student-mobilenetv4-small",
-        "student-mobilenetv4-small-alternative-init",
+        "student-mobilenetv4-s",
+        "student-mobilenetv4-s-alternative-init",
     ],
 )
 @pytest.mark.parametrize(

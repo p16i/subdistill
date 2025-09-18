@@ -48,11 +48,11 @@ def _generate_model_function():
     )
 
     add_model_to_registry(
-        "student-mobilenetv4-small",
+        "student-mobilenetv4-s",
         __mobilenetv4_small,
     )
     add_model_to_registry(
-        "student-mobilenetv4-small-alternative-init",
+        "student-mobilenetv4-s-alternative-init",
         __mobilenetv4_small_timm_alternative_initialization,
     )
 
