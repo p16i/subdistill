@@ -11,7 +11,7 @@ from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
 from xaikd import attributors, metrics, interceptor
-from xaikd.logit_modifiers import BinaryLogOddWinning
+from xaikd.logit_modifiers import LogitModifier
 
 from .register import get_basis
 from .orthogonal import OrthogonalBasis
@@ -20,7 +20,7 @@ from .orthogonal import OrthogonalBasis
 def learn_basis(
     teacher_model: nn.Module,
     train_loader: DataLoader,
-    logit_mod: BinaryLogOddWinning,
+    logit_mod: LogitModifier,
     layer: str,
     basis_name: str,
     device: str,
@@ -66,6 +66,7 @@ def evaluate_basis_at_k(
     for k in arr_ks:
         row = {
             "layer": layer,
+            "d": basis.U.shape[0],
             "k": k,
         }
         for data_label, loader in [
