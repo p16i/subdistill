@@ -36,7 +36,17 @@ def __mobilenetv4_small(**kwargs):
     return model
 
 
+def __mobilenetv4_xsmall(**kwargs):
+    model = timm.create_model("mobilenetv4_conv_small_050", **kwargs)
+    return model
+
+
 def _generate_model_function():
+    add_model_to_registry(
+        "student-mobilenetv4-xs",
+        __mobilenetv4_xsmall,
+    )
+
     add_model_to_registry(
         "student-mobilenetv4-small",
         __mobilenetv4_small,
