@@ -279,7 +279,7 @@ def construct_student_cifar_resnet18_varying_dims(
             if isinstance(block, resnet.BasicBlock):
                 block.relu = nn.ELU()  # type: ignore
 
-    for m in self.modules():
+    for m in model.modules():
         if isinstance(m, nn.Conv2d):
             nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="elu")
         elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
