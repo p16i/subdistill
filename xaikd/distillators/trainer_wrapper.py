@@ -150,6 +150,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         if prefix == "val":
             assert not self.student.training
 
+        curr_epoch = self.current_epoch
+
+        detach_student_output = (curr_epoch < 50) and self.layerwise_training
+
         with torch.no_grad():
             (
                 teacher_logits,
@@ -167,7 +171,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             self.student,
             x,
             layers=self.layer_policy_collection.student_layers,
-            detach_output=self.layerwise_training,
+            detach_output=detach_student_output,
         )
 
         # assert student_logits.shape == (n, 5)
@@ -199,6 +203,10 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     student_arr_intermediate_feats=student_arr_intermediate_feats,
                     prefix=prefix,
                 )
+
+                if self.layerwise_training and (curr_epoch >= 50):
+                    loss_value = 0
+                    
             else:
                 raise ValueError("Unknown loss label")
 
