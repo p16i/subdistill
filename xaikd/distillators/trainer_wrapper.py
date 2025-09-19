@@ -205,7 +205,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                 )
 
                 if self.layerwise_training and (curr_epoch >= 50):
-                    loss_value = 0
+                    loss_value = 0 * loss_value
                     
             else:
                 raise ValueError("Unknown loss label")
