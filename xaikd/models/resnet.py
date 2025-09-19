@@ -244,6 +244,7 @@ def construct_student_cifar_resnet18_varying_dims(
     model.conv1 = nn.Conv2d(3, d1, 3, 1, 1, bias=False)
     model.bn1 = nn.BatchNorm2d(d1)
     model.maxpool = nn.Identity()  # type: ignore
+    model.relu = nn.ELU()
 
     # The following code mimics the original code's _make_layer(..)
     # Ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L225
@@ -273,12 +274,10 @@ def construct_student_cifar_resnet18_varying_dims(
 
     model.fc = nn.Linear(model.inplanes, num_classes)
 
-    for m in model.modules():
-        if isinstance(m, nn.Conv2d):
-            nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-        elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-            nn.init.constant_(m.weight, 1)
-            nn.init.constant_(m.bias, 0)
+    for layer in ["layer1", "layer2", "layer3", "layer4"]:
+        for block in getattr(model, layer):
+            if isinstance(block, resnet.BasicBlock):
+                block.relu = nn.ELU()
 
     return model
 
@@ -328,13 +327,6 @@ def construct_student_resnet18_varying_dims(
     )
 
     model.fc = nn.Linear(model.inplanes, num_classes)
-
-    for m in model.modules():
-        if isinstance(m, nn.Conv2d):
-            nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-        elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-            nn.init.constant_(m.weight, 1)
-            nn.init.constant_(m.bias, 0)
 
     return model
 
