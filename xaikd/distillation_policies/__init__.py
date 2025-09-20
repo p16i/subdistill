@@ -89,7 +89,7 @@ def resolve_lambdas_and_layer_policy(
             )
 
         lambda_collection = LambdaCollection(
-            lambda_task=0, lambda_kd=1, lambda_layer=lambda_layer
+            lambda_task=1, lambda_kd=1, lambda_layer=lambda_layer
         )
 
     assert policy_exists(layer_policy)
