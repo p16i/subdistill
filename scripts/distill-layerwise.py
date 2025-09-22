@@ -61,6 +61,7 @@ WANDB_PROJECT = os.getenv("WANDB_PROJECT", "test")
 @click.option("--lr", type=float, default=0.0005, required=True)
 @click.option("--weight-decay", type=float, default=0, required=True)
 @click.option("--layerwise-training", type=bool, default=False)
+@click.option("--training-recipe", type=str, default="pat")
 @click.option("--upload-best-checkpoint", type=bool, default=False, is_flag=True)
 @click.option("--wandb-experiment-group", type=str, default=None)
 @click.option("--seed", type=int, default=1)
@@ -83,6 +84,7 @@ def main(
     wandb_experiment_group,
     batch_size,
     layerwise_training,
+    training_recipe,
 ):
     (
         lambda_collection,
@@ -290,6 +292,7 @@ def main(
         logger=logger,
         seed=seed,
         upload_best_checkpoint=upload_best_checkpoint,
+        training_recipe=training_recipe,
     )
 
     wandb.finish()

@@ -46,6 +46,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         lambda_task: float,
         lambda_kd: float,
         layerwise_training: bool,
+        training_recipe: str,
     ):
         super().__init__()
 
@@ -80,6 +81,8 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             val_acc=[],
         )
 
+        self.training_recipe = training_recipe
+
     def _get_parameters(self) -> typing.List[nn.Parameter]:
         # get parameters from student and transformation in criteria
         parameters = list(self.student.parameters())
@@ -91,10 +94,27 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
     def configure_optimizers(self):
         parameters = self._get_parameters()
 
-        optimizer = torch.optim.AdamW(
-            parameters, lr=self.lr, weight_decay=self.weight_decay
-        )
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=25, gamma=0.5)
+        if self.training_recipe == "torchvision":
+            optimizer = torch.optim.SGD(  # type: ignore
+                parameters,
+                lr=0.1,
+                momentum=0.9,
+                weight_decay=1e-4,
+            )
+            scheduler = torch.optim.lr_scheduler.StepLR(
+                optimizer, step_size=30, gamma=0.1
+            )
+
+        elif self.training_recipe == "pat":
+            optimizer = torch.optim.AdamW(
+                parameters, lr=self.lr, weight_decay=self.weight_decay
+            )
+            scheduler = torch.optim.lr_scheduler.StepLR(
+                optimizer, step_size=25, gamma=0.5
+            )
+        else:
+            raise ValueError(f"Unknown training recipe: {self.training_recipe}")
+
         return [optimizer], [scheduler]
 
     def _compute_loss_task(

@@ -80,6 +80,7 @@ class Layerwise:
         lambda_layer: float,
         layerwise_training: bool,
         seed: int,
+        training_recipe: str,
         upload_best_checkpoint: bool,
     ) -> nn.Module:
         assert (np.array([lambda_task, lambda_kd, lambda_layer]) > 0).any()
@@ -125,6 +126,7 @@ class Layerwise:
             lambda_kd=lambda_kd,
             lambda_layer=lambda_layer,
             layerwise_training=layerwise_training,
+            training_recipe=training_recipe,
         )
 
         callback_checkpoint = ModelCheckpoint(
