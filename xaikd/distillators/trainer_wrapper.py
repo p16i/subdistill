@@ -95,6 +95,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
         parameters = self._get_parameters()
 
         if self.training_recipe == "torchvision":
+            print("using `torchvision` recipe")
             optimizer = torch.optim.SGD(  # type: ignore
                 parameters,
                 lr=0.1,
@@ -106,6 +107,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             )
 
         elif self.training_recipe == "pat":
+            print("using `pat` recipe")
             optimizer = torch.optim.AdamW(
                 parameters,
                 lr=0.0005,
