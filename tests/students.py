@@ -67,9 +67,7 @@ def test_cifar100_resnet(student_name):
 @torch.no_grad()
 @pytest.mark.parametrize(
     "student_name",
-    [
-        "student-resnet18-d56-56-40-40",
-    ],
+    ["student-resnet18-d56-56-40-40", "student-resnet18-original"],
 )
 @pytest.mark.slow()
 def test_resnet(student_name):

@@ -362,7 +362,18 @@ def construct_student_resnet18(in_planes: int, num_classes: int, **kwargs):
     return model
 
 
+def _construct_student_resnet18_original(num_classes: int):
+    model = resnet.resnet18(weights=None, num_classes=num_classes)
+
+    return model
+
+
 def _register_student_resnet18():
+    add_model_to_registry(
+        "student-resnet18-original",
+        partial(_construct_student_resnet18_original),
+    )
+
     for in_planes in [4, 8, 16, 32, 48, 64]:
         add_model_to_registry(
             f"student-cifar-resnet18-{in_planes}",
