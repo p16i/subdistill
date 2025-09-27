@@ -110,7 +110,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             print("using `pat` recipe")
             optimizer = torch.optim.AdamW(
                 parameters,
-                lr=0.0005,
+                lr=self.lr,
                 weight_decay=0,
             )
             scheduler = torch.optim.lr_scheduler.StepLR(
