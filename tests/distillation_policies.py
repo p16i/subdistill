@@ -358,14 +358,15 @@ def test_resolve_lambdas_and_layer_policy(
     teacher = "cifar100-resnet18-v1"
     default_lambda_layer_config = None
 
-    actual_collection, actual_layer_policy = (
-        distillation_policies.resolve_lambdas_and_layer_policy(
-            teacher=teacher,
-            policy_name=policy_name,
-            lambda_layer=lambda_layer,
-            default_lambda_layer_config=default_lambda_layer_config,
-            layerwise_training=layerwise_training,
-        )
+    (
+        actual_collection,
+        actual_layer_policy,
+    ) = distillation_policies.resolve_lambdas_and_layer_policy(
+        teacher=teacher,
+        policy_name=policy_name,
+        lambda_layer=lambda_layer,
+        default_lambda_layer_config=default_lambda_layer_config,
+        layerwise_training=layerwise_training,
     )
 
     expected_collection = deepcopy(expected_collection)
@@ -382,27 +383,27 @@ def test_resolve_lambdas_and_layer_policy(
     "teacher,student,layer_str",
     [
         (
-            "celeba-resnet18-finetunedv1",
-            "student-resnet18-16",
+            "imagenet-resnet101-tv",
+            "student-resnet18-d16-16-8-8",
             "layer1:layer1,layer2:layer2,layer3:layer3,layer4:layer4",
         ),
         (
-            "celeba-resnet18-finetunedv1",
+            "imagenet-resnet101-tv",
+            "student-resnet18-d16-16-8-8",
+            "layer1,layer2,layer3,layer4",
+        ),
+        (
+            "imagenet-wideresnet101-tv",
+            "student-resnet18-d16-16-8-8",
+            "layer1,layer2,layer3,layer4",
+        ),
+        (
+            "imagenet-resnet101-tv",
             "student-mobilenetv4-small",
             "layer1:blocks.2.2,layer2:blocks.2.5,layer3:blocks.3.2,layer4:blocks.3.5",
         ),
         (
-            "celeba-resnet50-finetunedv1",
-            "student-mobilenetv4-small",
-            "layer1:blocks.2.2,layer2:blocks.2.5,layer3:blocks.3.2,layer4:blocks.3.5",
-        ),
-        (
-            "celeba-wideresnet50_2-finetunedv1",
-            "student-mobilenetv4-small",
-            "layer1:blocks.2.2,layer2:blocks.2.5,layer3:blocks.3.2,layer4:blocks.3.5",
-        ),
-        (
-            "celeba-vitb16-finetunedv1",
+            "imagenet-vitb-tv",
             "student-efficientformerv2_s0",
             "encoder.layers.2:stages.0,encoder.layers.5:stages.1,encoder.layers.8:stages.2,encoder.layers.11:stages.3",
         ),
@@ -434,7 +435,6 @@ def test_aligning_teacher_and_student_features_possible(
     )
 
     for feat_teacher, feat_student in zip(arr_feat_teacher, arr_feat_student):
-
         _, teacher_dims, _, _ = feat_teacher.shape
         _, student_dims, _, _ = feat_student.shape
 
