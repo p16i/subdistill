@@ -227,18 +227,18 @@ def construct_student_cifar_resnet18_varying_dims(
 
     d1, d2, d3, d4 = arr_in_planes
 
-    model.inplanes = d1
+    # model.inplanes = 64
 
     # Similar to _resnet18_cifar(..)
-    model.conv1 = nn.Conv2d(3, d1, 3, 1, 1, bias=False)
-    model.bn1 = nn.BatchNorm2d(d1)
+    model.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
+    model.bn1 = nn.BatchNorm2d(64)
     model.maxpool = nn.Identity()  # type: ignore
 
     # The following code mimics the original code's _make_layer(..)
     # Ref: https://github.com/pytorch/vision/blob/main/torchvision/models/resnet.py#L225
 
     # We only change in planes
-    model.inplanes = d1
+    model.inplanes = 64
     model.layer1 = model._make_layer(
         block=resnet.BasicBlock,
         planes=d1,
