@@ -169,7 +169,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     .sum(dim=1)
                 )
 
-                dead_channels = (student_feat == 0).mean()
+                dead_channels = (student_feat == 0).float().mean()
 
                 self.log(
                     f"{prefix}_proportion_deadchannels_{layer_name}",
