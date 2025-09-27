@@ -262,19 +262,19 @@ def construct_student_cifar_resnet18_varying_dims(
 
     model.fc = nn.Linear(model.inplanes, num_classes)
 
-    # for m in model.modules():
-    #     if isinstance(m, nn.Conv2d):
-    #         nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-    #     elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
-    #         nn.init.constant_(m.weight, 1)
-    #         nn.init.constant_(m.bias, 0)
+    for m in model.modules():
+        if isinstance(m, nn.Conv2d):
+            nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+        elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
+            nn.init.constant_(m.weight, 1)
+            nn.init.constant_(m.bias, 0)
 
-    model.relu = nn.ELU()
+    # model.relu = nn.ELU()
 
-    for layer in [model.layer1, model.layer2, model.layer3, model.layer4]:
-        for block in layer:
-            assert isinstance(block, resnet.BasicBlock)
-            block.relu = nn.ELU()
+    # for layer in [model.layer1, model.layer2, model.layer3, model.layer4]:
+    #     for block in layer:
+    #         assert isinstance(block, resnet.BasicBlock)
+    #         block.relu = nn.ELU()
 
     # Zero-initialize the last BN in each residual branch,
     # so that the residual branch starts with zeros, and each residual block behaves like an identity.
