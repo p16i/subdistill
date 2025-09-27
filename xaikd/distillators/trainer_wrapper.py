@@ -160,6 +160,22 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             layer_name = self.layer_policy_collection.student_layers[lix]
 
             self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
+            if prefix == "train":
+                student_feat = student_arr_intermediate_feats[lix]
+
+                student_feat = (
+                    torch.permute(student_feat, (1, 0, 2, 3))
+                    .flatten(start_dim=1)
+                    .sum(dim=1)
+                )
+
+                dead_channels = (student_feat == 0).mean()
+
+                self.log(
+                    f"{prefix}_proportion_deadchannels_{layer_name}",
+                    dead_channels,
+                    on_epoch=True,
+                )
 
         assert torch.isfinite(loss_layer)
 
