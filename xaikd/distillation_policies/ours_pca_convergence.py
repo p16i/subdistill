@@ -45,6 +45,8 @@ class OrthogonalPCAConvergenceWithLinearPolicy(LayerPolicy, PolicyWithLogging):
         self.d = d
         self.k = k
 
+        self.scaling_factor = 1.0
+
         self.transformer_teacher_feats = SubtractMean(self.basis.mean, device)
 
         self.transformer_student_feats = nn.Linear(
