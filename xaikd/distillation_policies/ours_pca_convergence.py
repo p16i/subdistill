@@ -10,7 +10,8 @@ from xaikd.bases import OrthogonalBasis
 
 from .register import register_policy
 from .interface import LayerPolicy, PolicyWithLogging
-k
+
+
 from xaikd import utils
 
 
@@ -20,7 +21,7 @@ class SubtractMean(nn.Module):
 
         self.mean = torch.from_numpy(mean).reshape((1, -1, 1, 1)).to(device)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return x - self.mean
 
 
