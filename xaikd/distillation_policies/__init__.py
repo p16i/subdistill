@@ -9,6 +9,8 @@ from .register import get_policy, get_last_layer_policy, policy_exists
 from .previous_works import *
 from .ours import *
 
+from .ours_pca_convergence import *
+
 
 @dataclass
 class LambdaCollection:

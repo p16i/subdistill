@@ -7,6 +7,20 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
+from pytorch_lightning import LightningModule
+
+
+class PolicyWithLogging(ABC):
+    @abstractmethod
+    def log(
+        self,
+        module: LightningModule,
+        teacher_feat: torch.Tensor,
+        student_feat: torch.Tensor,
+        prefix: str,
+    ):
+        pass
+
 
 class Policy(nn.Module, ABC):
     transformer_teacher_feats: nn.Module
@@ -42,7 +56,6 @@ class Policy(nn.Module, ABC):
 
 
 class LastLayerPolicy(Policy, ABC):
-
     def forward(  # type: ignore
         self,
         teacher_logits: torch.Tensor,
@@ -70,7 +83,6 @@ class LastLayerPolicy(Policy, ABC):
 
 class LayerPolicy(Policy):
     def align_spatial_dimensions(self, teacher_feats, student_feats):
-
         nb, teacher_dim, teacher_height, teacher_width = teacher_feats.shape
         _, _, student_height, student_width = student_feats.shape
 

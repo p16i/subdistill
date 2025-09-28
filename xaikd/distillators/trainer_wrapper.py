@@ -137,6 +137,14 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
 
+            if isinstance(policy, distillation_policies.interface.PolicyWithLogging):
+                policy.log(
+                    self,
+                    teacher_arr_intermediate_feats[lix],
+                    student_arr_intermediate_feats[lix],
+                    prefix=f"{prefix}_@{layer_name}",
+                )
+
         assert torch.isfinite(loss_layer)
 
         return loss_layer
