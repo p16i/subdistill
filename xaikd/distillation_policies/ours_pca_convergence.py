@@ -154,6 +154,8 @@ class OrthogonalPCAConvergenceWithLinearPolicy(
         student_dims: int,
         device: str,
     ) -> None:
+        super().__init__(teacher_dims, student_dims, device)
+
         k = student_dims
         d = teacher_dims
 
