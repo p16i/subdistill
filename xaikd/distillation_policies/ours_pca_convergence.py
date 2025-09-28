@@ -49,8 +49,8 @@ class OrthogonalPCAConvergenceWithLinearPolicy(LayerPolicy, PolicyWithLogging):
 
         self.transformer_teacher_feats = SubtractMean(self.basis.mean, device)
 
-        self.transformer_student_feats = nn.Linear(
-            in_features=k, out_features=d, bias=True
+        self.transformer_student_feats = nn.Conv2d(
+            in_channels=k, out_channels=d, bias=True, kernel_size=1, stride=1, padding=0
         )
 
         self.Uk = torch.from_numpy(self.basis.get_Uk(k)).float().to(device)
