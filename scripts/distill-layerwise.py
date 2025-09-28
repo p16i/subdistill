@@ -243,6 +243,19 @@ def main(
                 layer_policy, device=device, **kwargs
             )
 
+        if isinstance(policy, distillation_policies.interface.PolicyWithFitSteps):
+            policy.fit(
+                teacher=teacher_model,
+                teacher_layer=teacher_layer,
+                teacher_dims=teacher_layer_dims,
+                student_dims=student_layer_dims,
+                train_loader=train_loader,
+                student=student_model,
+                student_layer=student_layer,
+                seed=seed,
+                device=device,
+            )
+
         arr_layer_policies.append(policy)
 
     distillator = distillators.Layerwise(

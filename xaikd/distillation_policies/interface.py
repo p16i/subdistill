@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 
 import torch
 from torch import nn
+from torch.utils.data import DataLoader
 from torch.nn import functional as F
 
 from pytorch_lightning import LightningModule
@@ -20,6 +21,66 @@ class PolicyWithLogging(ABC):
         prefix: str,
     ):
         pass
+
+
+class PolicyWithFitSteps(ABC):
+    @abstractmethod
+    def fit_for_teacher(
+        self,
+        teacher: nn.Module,
+        teacher_layer: str,
+        teacher_dims: int,
+        student_dims: int,
+        train_loader: DataLoader,
+        seed: int,
+        device: str,
+    ) -> None:
+        pass
+
+    @abstractmethod
+    def fit_for_student(
+        self,
+        student: nn.Module,
+        student_layer: str,
+        teacher_dims: int,
+        student_dims: int,
+        train_loader: DataLoader,
+        seed: int,
+        device: str,
+    ) -> None:
+        pass
+
+    def fit(
+        self,
+        teacher: nn.Module,
+        teacher_layer: str,
+        teacher_dims: int,
+        student: nn.Module,
+        student_layer: str,
+        student_dims: int,
+        train_loader: DataLoader,
+        seed: int,
+        device: str,
+    ):
+        self.fit_for_teacher(
+            teacher=teacher,
+            teacher_layer=teacher_layer,
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            train_loader=train_loader,
+            seed=seed,
+            device=device,
+        )
+
+        self.fit_for_student(
+            student=student,
+            student_layer=student_layer,
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            train_loader=train_loader,
+            seed=seed,
+            device=device,
+        )
 
 
 class Policy(nn.Module, ABC):
