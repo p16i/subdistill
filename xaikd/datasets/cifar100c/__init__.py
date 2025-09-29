@@ -110,6 +110,9 @@ class CIFAR100CorruptionBase(DatasetConfiguration):
                 data_dir=str(DATADIR / "cifar100c"),
             )
 
+            x = x.permute(0, 2, 3, 1).numpy()  # to HWC and numpy
+            x = (x * 255).astype(np.uint8)  # to [0, 255] uint8
+
             index = rng.permutation(x.shape[0])
 
             test_index = index[:n_test_examples]

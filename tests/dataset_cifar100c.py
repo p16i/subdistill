@@ -36,3 +36,6 @@ def test_cifar100_and_corruption():
     ds_test_c2 = dataset_c.create_subset(train_split=False)
     np.testing.assert_array_equal(ds_test_c.data, ds_test_c2.data)
     np.testing.assert_array_equal(ds_test_c.targets, ds_test_c2.targets)
+
+    for x, y in datasets.build_dataloader(ds_test_c, batch_size=16, shuffle=False):
+        np.testing.assert_equal(x.shape[0], 16)
