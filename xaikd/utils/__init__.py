@@ -14,7 +14,13 @@ import torchvision
 from pathlib import Path
 
 
-from . import spurious_feature_generator, pixelflipping, ndarray_sampling, modules
+from . import (
+    spurious_feature_generator,
+    pixelflipping,
+    ndarray_sampling,
+    modules,
+    robustbench,
+)
 
 
 from xaikd import interceptor
@@ -165,7 +171,6 @@ def freeze_model(model: torch.nn.Module) -> torch.nn.Module:
 
 
 def compute_log_odd_winning(logits: torch.Tensor) -> torch.Tensor:
-
     ns, nc = logits.shape
 
     values, _ = torch.topk(logits, dim=1, k=nc)

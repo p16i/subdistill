@@ -39,7 +39,6 @@ def build_dataloader(
     pin_memory=True,
     persistent_workers=True,
 ) -> DataLoader:
-
     return DataLoader(
         dataset,
         num_workers=num_workers,
@@ -128,7 +127,7 @@ class DatasetConfiguration(ABC):
 
 
 from .register import construct
-from . import cifar100, imagenet, celeba
+from . import cifar100, imagenet, celeba, cifar100c
 
 
 def construct_dataloaders(
@@ -143,12 +142,10 @@ def construct_dataloaders(
     DataLoader[Subset[tvd.VisionDataset]],
     DataLoader[tvd.VisionDataset],
 ]:
-
     rng = torch.Generator()
     rng.manual_seed(seed)
     ds_train_raw = dataset.create_subset(train_split=True)
     if use_validation_set:
-
         ratio_train = np.min([constants.TRAINING_VAL_SPLIT_RATIO, training_data_ratio])
         ratio_val = 1 - constants.TRAINING_VAL_SPLIT_RATIO
         ratio_rest = 1 - (ratio_train + ratio_val)
