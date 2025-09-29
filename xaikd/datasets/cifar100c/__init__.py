@@ -4,16 +4,39 @@ import numpy as np
 from numpy import typing as npt
 from torchvision import transforms
 from torchvision import datasets as tvd
+from functools import partial
 
 from .. import (
     TORCHVISION_DATASET_DOWNLOAD,
     DATADIR,
     DatasetConfiguration,
 )
-from ..register import register_dataset
+from ..register import add_dataset_to_registry, register_dataset
+from ..cifar100 import get_fineclass_names_indices_of_superclass
 
 
-from xaikd import utils
+from xaikd import utils, constants
+
+
+# fixme: used it in subclass
+def _cifar100_select_only_classes_within_selected_classes(
+    selected_classes: list[int], ds: tvd.CIFAR100
+) -> tvd.CIFAR100:
+    labels = ds.targets
+
+    selected_data_indices = np.argwhere(np.isin(labels, selected_classes)).reshape(-1)
+
+    # here, we select samples belong to those targets.
+    ds.data = ds.data[selected_data_indices, :]
+
+    targets = np.array(ds.targets)[selected_data_indices].tolist()
+    assert np.isin(targets, selected_classes).all()
+
+    # remark: the targets here are still in the old system.
+    # They will be converted to the new zero-indexing with target_transforms.
+    ds.targets = targets
+
+    return ds
 
 
 class TorchVisionCIFAR100CWithSeverity(tvd.CIFAR100):
@@ -23,7 +46,7 @@ class TorchVisionCIFAR100CWithSeverity(tvd.CIFAR100):
         x: npt.NDArray,
         y: list[int],
         arr_sample_severity: list[int],
-        **kwargs
+        **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.arr_sample_severity = arr_sample_severity
@@ -87,7 +110,7 @@ class CIFAR100CorruptionBase(DatasetConfiguration):
             (ds_test, _) = self._create_val_test_split()
             return ds_test
 
-    def _create_val_test_split(self):
+    def _create_val_test_split(self) -> tuple[tvd.CIFAR100, tvd.CIFAR100]:
         num_severity = 5
         n_examples = 12500
         test_val_ratio = 0.8
@@ -154,7 +177,7 @@ class CIFAR100CorruptionBase(DatasetConfiguration):
 
             arr_ds.append(ds)
 
-        return arr_ds
+        return tuple(arr_ds)
 
 
 @register_dataset("cifar100c")
@@ -170,3 +193,87 @@ class CIFAR100C(CIFAR100CorruptionBase):
     @property
     def target_transform(self) -> typing.Union[None, typing.Callable]:
         return None
+
+
+class CIFAR100CSuperclass(CIFAR100C):
+    def __init__(
+        self,
+        superclass: str,
+        verbose=False,
+    ):
+        super().__init__()
+
+        self._superclass = superclass
+
+        (
+            arr_fineclass_names,
+            arr_fineclass_idx,
+        ) = get_fineclass_names_indices_of_superclass(superclass)
+
+        if verbose:
+            print(
+                f"We are building `cifar100-{superclass}` containing {len(arr_fineclass_names)} fine classes"
+            )
+            for idx, name in zip(arr_fineclass_idx, arr_fineclass_names):
+                print(f"> {name} ({idx})")
+
+        # remark: the targets are defined in the CIFAR100 dataset.
+        self._selected_classes = arr_fineclass_idx
+
+        # change name to mapping_old_and_new_target_indices
+        # converting from old target (original dataset) to new target {0, 1,...})
+        self._target_mapping = dict(
+            zip(self.selected_classes, range(len(self.selected_classes)))
+        )
+
+    @property
+    def selected_classes(self):
+        return self._selected_classes
+
+    @property
+    def num_classes(self) -> int:
+        return len(self._selected_classes)
+
+    @property
+    def target_transform(self):
+        def _transform(t):
+            return self._target_mapping[t]
+
+        return _transform
+
+    def create_subset(self, train_split=False) -> tvd.CIFAR100:
+        if train_split:
+            ds = super().create_subset(train_split)
+            return _cifar100_select_only_classes_within_selected_classes(
+                selected_classes=self.selected_classes,
+                ds=ds,
+            )
+        else:
+            return super().create_subset(train_split)
+
+    def _create_val_test_split(self) -> tuple[tvd.CIFAR100, tvd.CIFAR100]:
+        ds_test, ds_val = super()._create_val_test_split()
+
+        ds_test = _cifar100_select_only_classes_within_selected_classes(
+            selected_classes=self.selected_classes,
+            ds=ds_test,
+        )
+
+        ds_val = _cifar100_select_only_classes_within_selected_classes(
+            selected_classes=self.selected_classes,
+            ds=ds_val,
+        )
+
+        return ds_test, ds_val
+
+
+def construct_variant_datasets():
+    for super_class in constants.CIFAR100_SUPER_CLASSES:
+        slug = f"cifar100c-{super_class}"
+
+        add_dataset_to_registry(
+            slug, partial(CIFAR100CSuperclass, superclass=super_class)
+        )
+
+
+construct_variant_datasets()

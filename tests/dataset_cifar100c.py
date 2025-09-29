@@ -22,6 +22,7 @@ def test_cifar100_and_corruption():
     ds_test_c, ds_val_c = dataset_c._create_val_test_split()
 
     assert isinstance(ds_test_c, datasets.cifar100c.TorchVisionCIFAR100CWithSeverity)
+    assert isinstance(ds_val_c, datasets.cifar100c.TorchVisionCIFAR100CWithSeverity)
 
     assert len(ds_test_c.data) == len(ds_test_c.arr_sample_severity)
     assert len(ds_test_c.data) == 10000 * 5
@@ -39,3 +40,22 @@ def test_cifar100_and_corruption():
 
     for x, y in datasets.build_dataloader(ds_test_c, batch_size=16, shuffle=False):
         np.testing.assert_equal(x.shape[0], 16)
+
+
+@pytest.mark.parametrize("dataset_name", ["cifar100c-people", "cifar100c-flowers"])
+def test_superclass(dataset_name):
+    dataset = datasets.construct(dataset_name)
+
+    assert isinstance(dataset, datasets.cifar100c.CIFAR100CSuperclass)
+
+    ds_train = dataset.create_subset(train_split=True)
+    ds_test = dataset.create_subset(train_split=False)
+
+    selected_classes = dataset.selected_classes
+    assert len(selected_classes) == 5
+
+    for ds in [ds_train, ds_test]:
+        for ix in [0, 72, 8, 9]:
+            x, y = ds[ix]
+
+            assert y in np.arange(5)

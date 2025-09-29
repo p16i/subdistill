@@ -29,6 +29,7 @@ CLEVER_HAN_SYMBOL = "+"
 COLOR = "red"
 
 
+
 def add_cleverhan_symbol(img, rng: np.random.Generator):
     copied_img = img.copy()
 
@@ -58,9 +59,10 @@ class Cifar100SuperClassesDataset(CIFAR100Base):
 
         self._superclass = superclass
 
-        arr_fineclass_names, arr_fineclass_idx = (
-            get_fineclass_names_indices_of_superclass(superclass)
-        )
+        (
+            arr_fineclass_names,
+            arr_fineclass_idx,
+        ) = get_fineclass_names_indices_of_superclass(superclass)
 
         if verbose:
             print(
@@ -129,7 +131,6 @@ class Cifar100SuperClassesWithSpuriousFeatureDataset(Cifar100SuperClassesDataset
         self.contamination_level = contamination_level
 
     def create_subset(self, train_split=False):
-
         ds = super().create_subset(train_split=train_split)
 
         rng = np.random.default_rng(seed=self.seed)
@@ -293,7 +294,6 @@ def construct_variant_datasets():
             )
 
     for lvl in [0.0, 0.5, 1.0]:
-
         add_dataset_to_registry(
             "--".join(["cifar100-valsplit-people", "spurious-plussign", str(lvl)]),
             partial(
