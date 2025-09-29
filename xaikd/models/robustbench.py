@@ -19,6 +19,6 @@ def _Modas2021PRIMEResNet18():
     model.register_buffer("sigma", torch.tensor(1.0))
 
     setattr(model, "num_classes", 100)
-    setattr(model, "_last_layer", model.linear)
+    setattr(model, "__last_layer", model.linear)
 
     return model
