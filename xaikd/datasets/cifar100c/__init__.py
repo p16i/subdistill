@@ -107,7 +107,7 @@ class CIFAR100CorruptionBase(DatasetConfiguration):
             x, y = utils.robustbench.load_cifar100c(
                 n_examples=n_examples,
                 severity=severity,
-                data_dir=str(DATADIR / "CIFAR-100-C"),
+                data_dir=str(DATADIR / "cifar100c"),
             )
 
             index = rng.permutation(x.shape[0])
