@@ -400,7 +400,7 @@ def test_resolve_lambdas_and_layer_policy(
         (
             "imagenet-resnet101-tv",
             "student-mobilenetv4-small",
-            "layer1:blocks.2.2,layer2:blocks.2.5,layer3:blocks.3.2,layer4:blocks.3.5",
+            "layer1:blocks.1.1,layer2:blocks.2.3,layer3:blocks.3.1,layer4:blocks.3.5",
         ),
         (
             "imagenet-vitb-tv",
