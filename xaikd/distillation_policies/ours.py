@@ -207,3 +207,74 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+@register_policy("basis-center-procrustes")
+class OrthogonalBasisCenterProcrustesPolicy(LayerPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+
+        if layerwise_training:
+            self.scaling_factor = 1.0
+        else:
+            self.scaling_factor = np.sum(
+                self.basis.get_scale_factors_for_k(student_dims)
+            )
+
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            # utils.modules.Rotate(k=k),
+        ).to(device)
+
+    def criterion(
+        self, transformed_teacher_feats, transformed_student_feats
+    ) -> torch.Tensor:
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        transformed_teacher_feats = (
+            torch.permute(transformed_teacher_feats, (1, 0, 2, 3))
+            .flatten(start_dim=1)
+            .T
+        )
+
+        transformed_student_feats = (
+            torch.permute(transformed_student_feats, (1, 0, 2, 3))
+            .flatten(start_dim=1)
+            .T
+        )
+
+        S = torch.einsum(
+            "bi,bj->ij", transformed_student_feats, transformed_teacher_feats
+        )
+
+        L, _, Rh = torch.linalg.svd(S, full_matrices=False)
+
+        V = L @ Rh
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats,
+            transformed_teacher_feats @ V,
+            reduction="none",
+        )
+        assert loss_mse.shape == (b * w * h, k)
+
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
