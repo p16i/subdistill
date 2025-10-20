@@ -114,6 +114,7 @@ def main(
     )
 
     os.makedirs(output_dir, exist_ok=True)
+    click.echo(f"Upload best checkpoint: {upload_best_checkpoint}")
     click.echo(f"Output: {output_dir}")
 
     device = utils.get_device()
