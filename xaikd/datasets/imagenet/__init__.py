@@ -8,8 +8,8 @@ IMAGENET_SUPERCLASS_MAPPING = {
     "obsolte-edible_fruit": [948, 949, 950, 951, 952, 953, 954, 955, 956, 957],
     "obsolte-fungus": [991, 993, 994, 995, 996, 997],
     "obsolte-truck": [ 555, 569, 656, 675, 717, 734, 864, 867],
-
-    # we have 8 superclasses containing 10 classes
+    # ref: https://colab.research.google.com/drive/1P__k4DDT6_zaDSu_VAdRQ6AFc1OggrxD#scrollTo=lvbxPT2C2jEZ
+    # we have 8 superclasses containing 5 classes
     # [81] wading bird, wader
     "wading-bird": [129, 130, 134, 135, 138],
     # [115] retriever
