@@ -98,7 +98,7 @@ class IntegratedGradientsExplainer(Explainer):
         super().__init__(model, num_classes, device)
 
         self._base = IntegratedGradients(model)
-        self.num_steps = 100
+        self.num_steps = 50
 
     def attribute(
         self,
