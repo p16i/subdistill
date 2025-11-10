@@ -154,7 +154,7 @@ class ShapleyValueSamplingExplainer(Explainer):
 
         self._base = ShapleyValueSampling(model)
         self.n_samples = 25
-        self.patch_size = 16
+        self.patch_size = 8
 
     def attribute(
         self,
@@ -168,7 +168,7 @@ class ShapleyValueSamplingExplainer(Explainer):
             logit = self.model(x).detach().cpu().numpy()
 
         feature_mask = generate_superpixel_mask(
-            input_size=(x.shape[2], x.shape[3]), patch_size=16
+            input_size=(x.shape[2], x.shape[3]), patch_size=self.patch_size
         )
         feature_mask = torch.from_numpy(feature_mask).to(self.device)
 
