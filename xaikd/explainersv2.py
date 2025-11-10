@@ -176,7 +176,7 @@ class ShapleyValueSamplingExplainer(Explainer):
             x, target=y, feature_mask=feature_mask, n_samples=self.n_samples
         )
 
-        return logit, attribution_map.detach().cpu().numpy().sum(axis=0)
+        return logit, attribution_map.detach().cpu().numpy().sum(axis=1)
 
 
 def get_explainer(
