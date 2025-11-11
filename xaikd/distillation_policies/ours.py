@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd.bases import OrthogonalBasis
+from xaikd.bases import OrthogonalBasis, Identity
 from xaikd.bases.adapter import Adapter, AdapterMode
 from xaikd import utils
 
@@ -228,6 +228,8 @@ class OrthogonalBasisCenterOrthoPolicy(LayerPolicy):
         d = teacher_dims
         k = student_dims
 
+        assert isinstance(basis, (Identity,))
+
         self.basis = basis
 
         if layerwise_training:
@@ -236,8 +238,9 @@ class OrthogonalBasisCenterOrthoPolicy(LayerPolicy):
             # here, we use all the dimensions
             self.scaling_factor = np.sum(self.basis.get_scale_factors_for_k(d))
 
+        # here, we use k=d because we don't want to do any projection
         self.transformer_teacher_feats = basis.construct_adapter(
-            k=k, mode=AdapterMode.ENCODER, device=device
+            k=d, mode=AdapterMode.ENCODER, device=device
         )
 
         self.transformer_student_feats = nn.Sequential(
