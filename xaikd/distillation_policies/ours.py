@@ -7,7 +7,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd.bases import OrthogonalBasis
+from xaikd.bases import OrthogonalBasis, Identity
 from xaikd.bases.adapter import Adapter, AdapterMode
 from xaikd import utils
 
@@ -180,6 +180,72 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         self.transformer_student_feats = nn.Sequential(
             utils.modules.Centering2D(num_features=k, affine=False).to(device),
             utils.modules.Rotate(k=k),
+        ).to(device)
+
+    def criterion(
+        self, transformed_teacher_feats, transformed_student_feats
+    ) -> torch.Tensor:
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats,
+            transformed_teacher_feats,
+            reduction="none",
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.scaling_factor
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
+@register_policy("basis-center-ortho")
+class OrthogonalBasisCenterOrthoPolicy(LayerPolicy):
+    """
+    This should be use with basis-identity
+    """
+
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__()
+
+        d = teacher_dims
+        k = student_dims
+
+        assert isinstance(basis, (Identity,))
+
+        self.basis = basis
+
+        if layerwise_training:
+            self.scaling_factor = 1.0
+        else:
+            # here, we use all the dimensions
+            self.scaling_factor = np.sum(self.basis.get_scale_factors_for_k(d))
+
+        # here, we use k=d because we don't want to do any projection
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=d, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False),
+            utils.modules.LinearOrtho(in_features=k, out_features=d, bias=False),
         ).to(device)
 
     def criterion(
