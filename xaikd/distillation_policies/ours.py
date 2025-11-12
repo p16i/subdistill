@@ -93,9 +93,7 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
-register_policy("basis-center-rotationv2-always-normalizing")
-
-
+@register_policy("basis-center-rotationv2-always-normalizing")
 class OrthogonalBasisCenterRotationV2AlwaysNormalizingPolicy(LayerPolicy):
     def __init__(
         self,
