@@ -113,6 +113,8 @@ def test_baseline_policy_callable(teacher_dims, student_dims, policy):
     "parameterization",
     [
         "basis-center-rotationv2",
+        "basis-rotation",
+        "basis-center-rotationv2-no-normalization",
     ],
 )
 @pytest.mark.parametrize(
@@ -162,10 +164,15 @@ def test_our_policies_callable(
             (
                 distillation_policies.ours.OrthogonalBasisCenterRotationV2Policy,
                 distillation_policies.ours.OrthogonalBasisCenterOrthoPolicy,
+                distillation_policies.ours.OrthogonalBasisRotationPolicy,
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2NoNormalizationPolicy,
             ),
         )
 
-        if layerwise_training:
+        if layerwise_training or isinstance(
+            policy,
+            distillation_policies.ours.OrthogonalBasisCenterRotationV2NoNormalizationPolicy,
+        ):
             np.testing.assert_allclose(policy.scaling_factor, 1)
         else:
             np.testing.assert_allclose(
@@ -181,7 +188,11 @@ def test_our_policies_callable(
 
         if isinstance(
             policy,
-            distillation_policies.ours.OrthogonalBasisCenterRotationV2Policy,
+            (
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2Policy,
+                distillation_policies.ours.OrthogonalBasisRotationPolicy,
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2NoNormalizationPolicy,
+            ),
         ):
             expected_num_learnable_params = student_dims * student_dims
         elif isinstance(
