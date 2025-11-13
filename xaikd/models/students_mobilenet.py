@@ -1,6 +1,7 @@
 from torch import nn
 import timm
 
+from functools import partial
 import math
 from . import add_model_to_registry
 
@@ -46,6 +47,14 @@ def __mobilenetv4_xxsmall(**kwargs):
     return model
 
 
+def get_mobilenetv4_small_with_factor(factor, **kwargs):
+    model = timm.models.mobilenetv3._gen_mobilenet_v4(
+        "mobilenetv4_conv_small", factor, pretrained=False, **kwargs
+    )
+
+    return model
+
+
 def _generate_model_function():
     add_model_to_registry(
         "student-mobilenetv4-small",
@@ -60,6 +69,13 @@ def _generate_model_function():
         "student-mobilenetv4-small-035",
         __mobilenetv4_xxsmall,
     )
+
+    for factor in [0.125, 0.25]:
+        add_model_to_registry(
+            f"student-mobilenetv4-small-{factor}",
+            partial(get_mobilenetv4_small_with_factor, factor=factor),
+        )
+
     add_model_to_registry(
         "student-mobilenetv4-small-alternative-init",
         __mobilenetv4_small_timm_alternative_initialization,
