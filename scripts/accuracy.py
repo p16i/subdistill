@@ -51,7 +51,7 @@ def main(
 
     (ref_acc,) = metric(model=model, dataloader=dl_val, device=device, verbose=True)
     total_params, _ = utils.count_params_in_model(model)
-    print(f"{arch}({total_params/1e6:.1f}) on {dataset_name}: ref_acc={ref_acc:.4f}")
+    print(f"{arch}({total_params/1e6:.1f}M) on {dataset_name}: ref_acc={ref_acc:.4f}")
 
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
