@@ -133,7 +133,7 @@ def _resnet101_imagenet() -> nn.Module:
 
 
 @register_model("imagenet-wideresnet50-tv")
-def _wideresnet101_imagenet() -> nn.Module:
+def _wideresnet50_imagenet() -> nn.Module:
     model = torchvision.models.wide_resnet50_2(
         weights=torchvision.models.Wide_ResNet50_2_Weights.IMAGENET1K_V1
     )
