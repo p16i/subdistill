@@ -31,7 +31,6 @@ def main(
     arguments = locals()
     start_time = datetime.now()
 
-    rng = np.random.default_rng(seed=seed)
     device = utils.get_device()
 
     dataset = datasets.construct(dataset_name)
@@ -55,7 +54,6 @@ def main(
 
     time_took = datetime.now() - start_time
     click.echo(f"Time Took: {time_took.seconds / 60:2.2f} minutes")
-    click.echo(f"check results at {output_dir}")
 
 
 if __name__ == "__main__":
