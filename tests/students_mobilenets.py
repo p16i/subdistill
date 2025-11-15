@@ -10,6 +10,9 @@ from xaikd import models, utils
     [
         "student-mobilenetv4-small",
         "student-mobilenetv4-small-alternative-init",
+        "student-mobilenetv4-small-0.125",
+        "student-mobilenetv4-small-0.25",
+        "student-mobilenetv4-small-0.5",
     ],
 )
 @pytest.mark.parametrize(
