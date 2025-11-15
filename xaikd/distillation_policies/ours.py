@@ -128,9 +128,28 @@ class OrthogonalBasisBiasRotationV2Policy(OrthogonalBasisCenterRotationV2Policy)
         k = student_dims
 
         self.transformer_student_feats = nn.Sequential(
-            nn.BatchNorm2d(k),
             utils.modules.Bias(k=k),
             utils.modules.Rotate(k=k),
+        ).to(device)
+
+
+@register_policy("basis-rotation-bias")
+class OrthogonalBasisRotationBiasV2Policy(OrthogonalBasisCenterRotationV2Policy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        k = student_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Rotate(k=k),
+            utils.modules.Bias(k=k),
         ).to(device)
 
 
