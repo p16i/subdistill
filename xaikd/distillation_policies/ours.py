@@ -273,6 +273,31 @@ class OrthogonalBasisCenterOrthoPolicy(LayerPolicy):
         return loss_mse
 
 
+@register_policy("basis-center-linear")
+class OrthogonalBasisCenterLinearPolicy(OrthogonalBasisCenterOrthoPolicy):
+    """
+    This should be use with basis-identity
+    """
+
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        d = teacher_dims
+        k = student_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False),
+            nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1, bias=False),
+        ).to(device)
+
+
 @register_policy("basis-center-rotationv2-no-normalization")
 class OrthogonalBasisCenterRotationV2NoNormalizationPolicy(LayerPolicy):
     def __init__(
