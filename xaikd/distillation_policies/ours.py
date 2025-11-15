@@ -93,6 +93,66 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
+@register_policy("basis-bn-rotationv2")
+class OrthogonalBasisBNRotationV2Policy(OrthogonalBasisCenterRotationV2Policy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        k = student_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            nn.BatchNorm2d(k),
+            utils.modules.Rotate(k=k),
+        ).to(device)
+
+
+@register_policy("basis-bias-rotationv2")
+class OrthogonalBasisBiasRotationV2Policy(OrthogonalBasisCenterRotationV2Policy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        k = student_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Bias(k=k),
+            utils.modules.Rotate(k=k),
+        ).to(device)
+
+
+@register_policy("basis-rotation-bias")
+class OrthogonalBasisRotationBiasV2Policy(OrthogonalBasisCenterRotationV2Policy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        k = student_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Rotate(k=k),
+            utils.modules.Bias(k=k),
+        ).to(device)
+
+
 @register_policy("basis-center-rotationv2-always-normalizing")
 class OrthogonalBasisCenterRotationV2AlwaysNormalizingPolicy(LayerPolicy):
     def __init__(
@@ -211,6 +271,31 @@ class OrthogonalBasisCenterOrthoPolicy(LayerPolicy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+@register_policy("basis-center-linear")
+class OrthogonalBasisCenterLinearPolicy(OrthogonalBasisCenterOrthoPolicy):
+    """
+    This should be use with basis-identity
+    """
+
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        d = teacher_dims
+        k = student_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False),
+            nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1, bias=False),
+        ).to(device)
 
 
 @register_policy("basis-center-rotationv2-no-normalization")

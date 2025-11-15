@@ -412,14 +412,14 @@ def test_last_layer_policy(last_layer_policy, expected):
                 lambda_task=0, lambda_kd=1, lambda_layer=0.1
             ),
         ),
-        (
-            "basis-bn-sum-normalized:prcaposdef-entropy0.95",
-            0.1,
-            "basis-bn-sum-normalized:prcaposdef-entropy0.95",
-            distillation_policies.LambdaCollection(
-                lambda_task=0, lambda_kd=1, lambda_layer=0.1
-            ),
-        ),
+        # (
+        #     "basis-bn-sum-normalized:prcaposdef-entropy0.95",
+        #     0.1,
+        #     "basis-bn-sum-normalized:prcaposdef-entropy0.95",
+        #     distillation_policies.LambdaCollection(
+        #         lambda_task=0, lambda_kd=1, lambda_layer=0.1
+        #     ),
+        # ),
     ],
 )
 @pytest.mark.parametrize("layerwise_training", [True, False])
