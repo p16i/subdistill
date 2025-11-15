@@ -37,16 +37,6 @@ def __mobilenetv4_small(**kwargs):
     return model
 
 
-def __mobilenetv4_xsmall(**kwargs):
-    model = timm.create_model("mobilenetv4_conv_small_050", **kwargs)
-    return model
-
-
-def __mobilenetv4_xxsmall(**kwargs):
-    model = timm.create_model("mobilenetv4_conv_small_035", **kwargs)
-    return model
-
-
 def get_mobilenetv4_small_with_factor(factor, **kwargs):
     model = timm.models.mobilenetv3._gen_mobilenet_v4(
         "mobilenetv4_conv_small", factor, pretrained=False, **kwargs
@@ -61,16 +51,7 @@ def _generate_model_function():
         __mobilenetv4_small,
     )
 
-    add_model_to_registry(
-        "student-mobilenetv4-small-050",
-        __mobilenetv4_xsmall,
-    )
-    add_model_to_registry(
-        "student-mobilenetv4-small-035",
-        __mobilenetv4_xxsmall,
-    )
-
-    for factor in [0.125, 0.25]:
+    for factor in [0.125, 0.25, 0.5]:
         add_model_to_registry(
             f"student-mobilenetv4-small-{factor}",
             partial(get_mobilenetv4_small_with_factor, factor=factor),
