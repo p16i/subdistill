@@ -149,10 +149,12 @@ class OrthogonalPCAConvergenceWithLinearPolicy(
             err_norm = torch.linalg.norm(ref - recon, dim=1)
             ref_norm = torch.linalg.norm(ref, dim=1)
 
-            relative_err = (err_norm / (ref_norm + 1e-8)).mean()
+            relative_err = ((err_norm / (ref_norm + 1e-8))).mean()
 
             module.log(f"{prefix}_recon_on_basis_{key}", err, on_epoch=True)
-            module.log(f"{prefix}_relative_recon_on_basis_{key}", err, on_epoch=True)
+            module.log(
+                f"{prefix}_relative_recon_on_basis_{key}", relative_err, on_epoch=True
+            )
 
 
 @register_policy("convergence-linear-ortho")
