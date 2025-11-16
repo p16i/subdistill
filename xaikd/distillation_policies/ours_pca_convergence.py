@@ -47,7 +47,12 @@ class OrthogonalPCAConvergenceWithLinearPolicy(
         self.k = k
 
         self.transformer_student_feats = nn.Conv2d(
-            in_channels=k, out_channels=d, bias=True, kernel_size=1, stride=1, padding=0
+            in_channels=k,
+            out_channels=d,
+            bias=False,
+            kernel_size=1,
+            stride=1,
+            padding=0,
         )
 
     def fit_for_teacher(
@@ -145,7 +150,7 @@ class OrthogonalPCAConvergenceWithLinearPolicy(
 
 
 @register_policy("convergence-linear-ortho")
-class OrthogonalPCAConvergenceWithLinearPolicy(
+class OrthogonalPCAConvergenceWithLinearOrthoPolicy(
     OrthogonalPCAConvergenceWithLinearPolicy
 ):
     def __init__(
@@ -165,5 +170,29 @@ class OrthogonalPCAConvergenceWithLinearPolicy(
         self.transformer_student_feats = utils.modules.LinearOrtho(
             in_features=k,
             out_features=d,
-            bias=True,
+            bias=False,
+        ).to(device)
+
+
+@register_policy("convergence-center-linear-ortho")
+class OrthogonalPCAConvergenceWithCenterLinearOrthoPolicy(
+    OrthogonalPCAConvergenceWithLinearPolicy
+):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device)
+
+        k = student_dims
+        d = teacher_dims
+
+        self.d = d
+        self.k = k
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False),
+            utils.modules.LinearOrtho(in_features=k, out_features=d, bias=False),
         ).to(device)
