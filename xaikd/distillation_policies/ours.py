@@ -209,8 +209,28 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
+@register_policy("basis-rotation-bias")
+class OrthogonalBasisRotationBaisPolicy(OrthogonalBasisCenterRotationV2Policy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Rotate(k=student_dims),
+            utils.modules.Bias(
+                student_dims,
+            ),
+        )
+
+
 @register_policy("basis-center-rotationv2-scale-dim-wise")
-class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
+class OrthogonalBasisCenterRotationV2ScaleDimWisePolicy(LayerPolicy):
     def __init__(
         self,
         teacher_dims: int,
