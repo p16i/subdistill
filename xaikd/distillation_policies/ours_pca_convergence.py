@@ -157,6 +157,67 @@ class OrthogonalPCAConvergenceWithLinearPolicy(
             )
 
 
+@register_policy("convergence-nocenter-linear")
+class OrthogonalPCAConvergenceNoCenterWithLinearOrthoPolicy(
+    OrthogonalPCAConvergenceWithLinearPolicy
+):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device)
+
+        k = student_dims
+        d = teacher_dims
+
+        self.d = d
+        self.k = k
+
+        self.transformer_teacher_feats = nn.Identity()
+
+        self.transformer_student_feats = nn.Sequential(
+            nn.Conv2d(
+                in_channels=k,
+                out_channels=d,
+                bias=False,
+                kernel_size=1,
+                stride=1,
+                padding=0,
+            ),
+        ).to(device)
+
+
+@register_policy("convergence-nocenter-linear-ortho")
+class OrthogonalPCAConvergenceNoCenterWithLinearPolicy(
+    OrthogonalPCAConvergenceWithLinearPolicy
+):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device)
+
+        k = student_dims
+        d = teacher_dims
+
+        self.d = d
+        self.k = k
+
+        self.transformer_teacher_feats = nn.Identity()
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.LinearOrtho(
+                in_features=k,
+                out_features=d,
+                bias=False,
+            )
+        ).to(device)
+
+
 @register_policy("convergence-center-linear")
 class OrthogonalPCAConvergenceWithCenterLinearPolicy(
     OrthogonalPCAConvergenceWithLinearPolicy
