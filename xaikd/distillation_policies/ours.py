@@ -228,11 +228,15 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         if layerwise_training:
             self.scaling_factor = 1.0
         else:
-            self.scaling_factor = torch.sqrt(
-                torch.from_numpy(self.basis.get_scale_factors_for_k(student_dims))
-                .float()
-                .reshape(1, -1, 1, 1)
-            ).to(device)
+            self.scaling_factor = np.sum(
+                self.basis.get_scale_factors_for_k(student_dims)
+            )
+
+        self.element_wise_scaling_factor = torch.sqrt(
+            torch.from_numpy(self.basis.get_scale_factors_for_k(student_dims))
+            .float()
+            .reshape(1, -1, 1, 1)
+        ).to(device)
 
         self.transformer_teacher_feats = basis.construct_adapter(
             k=k, mode=AdapterMode.ENCODER, device=device
@@ -255,7 +259,7 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
             transformed_teacher_feats,
             reduction="none",
         ) / (w * h)
-        loss_mse = loss_mse / (self.scaling_factor * k)
+        loss_mse = loss_mse / (self.element_wise_scaling_factor * k)
 
         loss_mse = loss_mse.flatten(start_dim=1)
 
