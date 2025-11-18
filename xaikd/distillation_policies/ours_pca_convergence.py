@@ -149,7 +149,12 @@ class OrthogonalPCAConvergenceWithLinearPolicy(
             err_norm = torch.linalg.norm(err, dim=1) ** 2
             recon_norm = torch.linalg.norm(recon, dim=1) ** 2
             ref_norm = torch.linalg.norm(ref, dim=1) ** 2
-            assert torch.allclose(err_norm + recon_norm, ref_norm, atol=1e-5)
+
+            np.testing.assert_allclose(
+                (err_norm + recon_norm).detach().cpu().numpy(),
+                ref_norm.detach().cpu().numpy(),
+                atol=1e-5,
+            )
 
             relative_recon = ((recon_norm / (ref_norm + 1e-8))).mean()
 
