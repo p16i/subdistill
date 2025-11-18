@@ -189,7 +189,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
             ("kd", self.lambda_kd),
             ("layer", self.lambda_layer),
         ]:
-            if loss_coeff == 0:
+            if loss_label == "task" and loss_coeff == 0.0:
                 continue
 
             if loss_label == "task":
