@@ -154,7 +154,7 @@ class OrthogonalPCAConvergenceWithLinearPolicy(
             np.testing.assert_allclose(
                 (err_norm + recon_norm).detach().cpu().numpy(),
                 ref_norm.detach().cpu().numpy(),
-                atol=1e-3,
+                rtol=1e-3,
             )
 
             relative_recon = ((recon_norm / (ref_norm + 1e-8))).mean()
