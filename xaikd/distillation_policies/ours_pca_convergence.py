@@ -127,6 +127,7 @@ class OrthogonalPCAConvergenceWithLinearPolicy(
 
         return loss_mse
 
+    @torch.no_grad()
     def log(
         self,
         module: LightningModule,
