@@ -144,16 +144,17 @@ class OrthogonalPCAConvergenceWithLinearPolicy(
                 (Uk @ Uk.T).unsqueeze(2).unsqueeze(3),
             )
 
-            err = torch.flatten((ref - recon) ** 2, start_dim=1).mean()
+            err = ref - recon
 
-            err_norm = torch.linalg.norm(ref - recon, dim=1)
-            ref_norm = torch.linalg.norm(ref, dim=1)
+            err_norm = torch.linalg.norm(err, dim=1) ** 2
+            recon_norm = torch.linalg.norm(recon, dim=1) ** 2
+            ref_norm = torch.linalg.norm(ref, dim=1) ** 2
+            assert torch.allclose(err_norm + recon_norm, ref_norm, atol=1e-5)
 
-            relative_err = ((err_norm / (ref_norm + 1e-8))).mean()
+            relative_recon = ((recon_norm / (ref_norm + 1e-8))).mean()
 
-            module.log(f"{prefix}_recon_on_basis_{key}", err, on_epoch=True)
             module.log(
-                f"{prefix}_relative_recon_on_basis_{key}", relative_err, on_epoch=True
+                f"{prefix}_recon_ration_on_basis_{key}", relative_recon, on_epoch=True
             )
 
 
