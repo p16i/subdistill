@@ -209,6 +209,63 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
+@register_policy("basis-center-rotationv2-scale-teacher")
+class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+
+        if layerwise_training:
+            self.scaling_factor = 1.0
+        else:
+            self.scaling_factor = np.sum(
+                self.basis.get_scale_factors_for_k(student_dims)
+            )
+
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            utils.modules.Rotate(k=k),
+        ).to(device)
+
+    def criterion(
+        self, transformed_teacher_feats, transformed_student_feats
+    ) -> torch.Tensor:
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats,
+            transformed_teacher_feats / (self.scaling_factor**0.5),
+            reduction="none",
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
+
+
 @register_policy("basis-rotation-bias")
 class OrthogonalBasisRotationBaisPolicy(OrthogonalBasisCenterRotationV2Policy):
     def __init__(
@@ -321,9 +378,7 @@ class OrthogonalBasisCenterRotationV2ScaleDimWisePolicy(LayerPolicy):
         coeff = steps / np.sum(steps)
 
         self.element_wise_scaling_factor = torch.sqrt(
-            torch.from_numpy(
-                self.basis.get_scale_factors_for_k(student_dims) * steps
-            )
+            torch.from_numpy(self.basis.get_scale_factors_for_k(student_dims) * steps)
             .float()
             .reshape(1, -1, 1, 1)
         ).to(device)
