@@ -278,6 +278,8 @@ class OrthogonalBasisRotationBaisPolicy(OrthogonalBasisCenterRotationV2Policy):
     ) -> None:
         super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
 
+        self.scaling_factor = np.sum(self.basis.get_scale_factors_for_k(student_dims))
+
         self.transformer_student_feats = nn.Sequential(
             utils.modules.Rotate(k=student_dims),
             utils.modules.Bias(
