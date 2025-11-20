@@ -288,6 +288,21 @@ class OrthogonalBasisRotationBaisPolicy(OrthogonalBasisCenterRotationV2Policy):
         )
 
 
+@register_policy("basis-center-bias-always-with-scale")
+class OrthogonalBasisRotationBaisPolicy(OrthogonalBasisCenterRotationV2Policy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        self.scaling_factor = np.sum(self.basis.get_scale_factors_for_k(student_dims))
+
+
 @register_policy("basis-center-rotationv2-scale-dim-wise")
 class OrthogonalBasisCenterRotationV2ScaleDimWisePolicy(LayerPolicy):
     def __init__(
