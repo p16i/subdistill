@@ -288,7 +288,7 @@ class OrthogonalBasisRotationBiasPolicy(OrthogonalBasisCenterRotationV2Policy):
         )
 
 
-@register_policy("basis-center-bias-always-with-scale")
+@register_policy("basis-center-rotation-always-with-scale")
 class OrthogonalBasisRotationBiasAlwaysWithScalePolicy(
     OrthogonalBasisCenterRotationV2Policy
 ):
