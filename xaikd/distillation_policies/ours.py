@@ -323,7 +323,7 @@ class OrthogonalBasisCenterSoftOrthoPolicy(OrthogonalBasisCenterOrthoPolicy):
 
         module.log(f"{prefix}_softortho_sigvals_max", sigvals.max().item())
         module.log(f"{prefix}_softortho_sigvals_min", sigvals.min().item())
-
+        # this is a stable way to implement ||W^T @ W - I_K ||2^2 
         loss = torch.sum((sigvals - 1.0) ** 2)
 
         return 1000 * loss
