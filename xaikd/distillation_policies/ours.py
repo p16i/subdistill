@@ -300,7 +300,7 @@ class OrthogonalBasisCenterSoftOrthoPolicy(OrthogonalBasisCenterOrthoPolicy):
         ).to(device)
 
     def additional_loss(self, module: LightningModule, prefix="") -> torch.Tensor:
-        linear_layer: nn.Linear = self.transformer_student_feats[1].squeeze()
+        linear_layer: nn.Linear = self.transformer_student_feats[1].weight.squeeze()
         W = linear_layer.weight  # shape (out_features, in_features)
 
         _, _ = W.shape
