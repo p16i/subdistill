@@ -14,6 +14,8 @@ from xaikd import utils
 from .register import register_policy
 from .interface import LayerPolicy
 
+from pytorch_lightning import LightningModule
+
 
 @register_policy("nothing")
 class NothingPolicy(LayerPolicy):
@@ -271,6 +273,44 @@ class OrthogonalBasisCenterOrthoPolicy(LayerPolicy):
         loss_mse = loss_mse.mean()
 
         return loss_mse
+
+
+@register_policy("basis-center-softortho")
+class OrthogonalBasisCenterSoftOrthoPolicy(OrthogonalBasisCenterOrthoPolicy):
+    """
+    This should be use with basis-identity
+    """
+
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        d = teacher_dims
+        k = student_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False),
+            nn.Linear(in_features=k, out_features=d, bias=False),
+        ).to(device)
+
+    def additional_loss(self, module: LightningModule, prefix="") -> torch.Tensor:
+        linear_layer: nn.Linear = self.transformer_student_feats[1]
+        W = linear_layer.weight  # shape (out_features, in_features)
+
+        sigvals = torch.linalg.svdvals(W)  # shape (min(out_features, in_features),)
+
+        module.log(f"{prefix}_softortho_sigvals_max", sigvals.max().item())
+        module.log(f"{prefix}_softortho_sigvals_min", sigvals.min().item())
+
+        loss = torch.mean((sigvals - 1.0) ** 2)
+
+        return 1000 * loss
 
 
 @register_policy("basis-center-linear")
