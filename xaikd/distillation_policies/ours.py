@@ -296,7 +296,7 @@ class OrthogonalBasisCenterSoftOrthoPolicy(OrthogonalBasisCenterOrthoPolicy):
 
         self.transformer_student_feats = nn.Sequential(
             utils.modules.Centering2D(num_features=k, affine=False),
-            nn.Conv2d(in_channels=k, out_channels=d, bias=False),
+            nn.Conv2d(in_channels=k, out_channels=d, bias=False, kernel_size=1),
         ).to(device)
 
     def additional_loss(self, module: LightningModule, prefix="") -> torch.Tensor:
