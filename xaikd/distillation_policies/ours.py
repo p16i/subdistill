@@ -324,7 +324,7 @@ class OrthogonalBasisCenterSoftOrthoPolicy(OrthogonalBasisCenterOrthoPolicy):
         module.log(f"{prefix}_softortho_sigvals_max", sigvals.max().item())
         module.log(f"{prefix}_softortho_sigvals_min", sigvals.min().item())
 
-        loss = torch.mean((sigvals - 1.0) ** 2)
+        loss = torch.sum((sigvals - 1.0) ** 2)
 
         return 1000 * loss
 
