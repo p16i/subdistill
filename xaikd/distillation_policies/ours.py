@@ -298,8 +298,16 @@ class OrthogonalBasisCenterSoftOrthoPolicy(OrthogonalBasisCenterOrthoPolicy):
 
         W = lin.weight.squeeze()  # shape (out_features, in_features)
 
-        Q, _ = torch.linalg.qr(W)
-        W.data = Q.unsqueeze(-1).unsqueeze(-1)
+        U, _, _ = torch.linalg.svd(W, full_matrices=False)
+
+        lin.weight.data = U.unsqueeze(-1).unsqueeze(-1)
+
+        with torch.no_grad():
+            print("Initialized soft-ortho layer with SVD.")
+            svdvals = torch.linalg.svdvals(lin.weight.data.squeeze())
+            print(
+                f"sigvals: min={torch.min(svdvals).item()}, max={torch.max(svdvals).item()}"
+            )
 
         self.transformer_student_feats = nn.Sequential(
             utils.modules.Centering2D(num_features=k, affine=False), lin
