@@ -95,6 +95,30 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
+@register_policy("basis-center-rotationv2-always-normalize")
+class OrthogonalBasisCenterRotationV2AlwaysNormalizePolicy(
+    OrthogonalBasisCenterRotationV2Policy
+):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        k = student_dims
+
+        self.scaling_factor = 1.0
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=True).to(device),
+            utils.modules.Rotate(k=k),
+        ).to(device)
+
+
 @register_policy("basis-center-rotationv3")
 class OrthogonalBasisCenterRotationV3Policy(OrthogonalBasisCenterRotationV2Policy):
     def __init__(
