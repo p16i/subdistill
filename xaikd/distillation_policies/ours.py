@@ -95,7 +95,7 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
-@register_policy("basis-ortho-center-rotationv3")
+@register_policy("basis-center-rotationv3")
 class OrthogonalBasisCenterRotationV3Policy(OrthogonalBasisCenterRotationV2Policy):
     def __init__(
         self,
