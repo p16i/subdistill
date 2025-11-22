@@ -111,7 +111,7 @@ class OrthogonalBasisCenterRotationV2AlwaysNormalizePolicy(
 
         k = student_dims
 
-        self.scaling_factor = 1.0
+        self.scaling_factor = np.sum(self.basis.get_scale_factors_for_k(student_dims))
 
         self.transformer_student_feats = nn.Sequential(
             utils.modules.Centering2D(num_features=k, affine=True).to(device),
