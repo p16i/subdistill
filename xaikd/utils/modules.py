@@ -295,7 +295,6 @@ class RotateAndScale(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
-
         b, d, h, w = x.shape
 
         x = torch_flatten_3d_tensor(x)
@@ -303,6 +302,23 @@ class RotateAndScale(nn.Module):
         x = torch_deflatten_2d_tensor(x, target_shape=(b, d, h, w))
 
         return self.scale * x
+
+
+class SubtractingMean(nn.Module):
+    def __init__(self, d: int, momentum=0.9):
+        super().__init__()
+
+        self.momentum = momentum
+        self.register_buffer("running_mean", torch.zeros(1, d, 1, 1).float())
+
+    def forward(self, x: torch.Tensor):
+        if self.training:
+            new_mean = x.mean(dim=(0, 2, 3), keepdim=True)
+            self.running_mean = (
+                self.momentum * self.running_mean + (1 - self.momentum) * new_mean
+            )
+
+        return x - self.running_mean
 
 
 class Bias(nn.Module):
@@ -322,7 +338,6 @@ class Scale(nn.Module):
         self.scale = torch.nn.Parameter(torch.tensor(init_scale))
 
     def forward(self, x: torch.Tensor):
-
         return self.scale * x
 
 
@@ -335,7 +350,6 @@ class Rotate(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
-
         b, d, h, w = x.shape
 
         x = torch_flatten_3d_tensor(x)
@@ -356,7 +370,6 @@ class LinearOrtho(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
-
         b, k, h, w = x.shape
 
         assert k == self.in_features
@@ -388,7 +401,6 @@ class RotateWithBiasAndScale(nn.Module):
         )
 
     def forward(self, x: torch.Tensor):
-
         b, d, h, w = x.shape
 
         x = torch_flatten_3d_tensor(x)

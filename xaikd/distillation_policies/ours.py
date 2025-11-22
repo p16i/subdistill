@@ -95,6 +95,26 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
+@register_policy("basis-ortho-center-rotationv3")
+class OrthogonalBasisCenterRotationV3Policy(OrthogonalBasisCenterRotationV2Policy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        k = student_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.SubtractingMean(d=k).to(device),
+            utils.modules.Rotate(k=k),
+        ).to(device)
+
+
 @register_policy("basis-bn-rotationv2")
 class OrthogonalBasisBNRotationV2Policy(OrthogonalBasisCenterRotationV2Policy):
     def __init__(
@@ -323,7 +343,7 @@ class OrthogonalBasisCenterSoftOrthoPolicy(OrthogonalBasisCenterOrthoPolicy):
 
         module.log(f"{prefix}_softortho_sigvals_max", sigvals.max().item())
         module.log(f"{prefix}_softortho_sigvals_min", sigvals.min().item())
-        # this is a stable way to implement ||W^T @ W - I_K ||2^2 
+        # this is a stable way to implement ||W^T @ W - I_K ||2^2
         loss = torch.sum((sigvals - 1.0) ** 2)
 
         return 1000 * loss
