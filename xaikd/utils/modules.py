@@ -313,7 +313,7 @@ class SubtractingMean(nn.Module):
 
     def forward(self, x: torch.Tensor):
         if self.training:
-            new_mean = x.mean(dim=(0, 2, 3), keepdim=True)
+            new_mean = x.mean(dim=(0, 2, 3), keepdim=True).detach()
             self.running_mean = (
                 self.momentum * self.running_mean + (1 - self.momentum) * new_mean
             )
