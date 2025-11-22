@@ -6,6 +6,7 @@ import pytest
 
 from xaikd import models
 from xaikd.utils.modules import (
+    SubtractingMean,
     Centering2d,
     has_batchnorm,
     convert_bn_to_conv,
@@ -187,3 +188,36 @@ def test_torch_flatten():
     )
 
     np.testing.assert_allclose(actual, expected)
+
+
+def test_subtract_mean():
+    momentum = 0.1
+    torch.manual_seed(1)
+    x = torch.randn(100, 20, 7, 7)
+    y = torch.randn(100, 20, 7, 7)
+
+    subtract_mean = SubtractingMean(momentum=momentum)
+    module = nn.Sequential(subtract_mean, nn.Conv2d(20, 20, kernel_size=3, padding=1))
+    module.train()
+
+    out = module(x)
+
+    mean_x = x.mean(dim=(0, 2, 3)).reshape(1, -1, 1, 1).numpy()
+    mean_y = y.mean(dim=(0, 2, 3)).reshape(1, -1, 1, 1).numpy()
+
+    np.testing.assert_allclose(
+        subtract_mean.running_avg,
+        mean_x,
+        atol=1e-6,
+    )
+
+    (out**2).sum().backward()
+
+    out2 = module(y)
+    np.testing.assert_allclose(
+        subtract_mean.running_avg,
+        (1 - momentum) * mean_x + momentum * mean_y,
+        atol=1e-6,
+    )
+
+    (out2**2).sum().backward()

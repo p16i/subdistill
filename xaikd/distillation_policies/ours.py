@@ -110,7 +110,7 @@ class OrthogonalBasisCenterRotationV3Policy(OrthogonalBasisCenterRotationV2Polic
         k = student_dims
 
         self.transformer_student_feats = nn.Sequential(
-            utils.modules.SubtractingMean(d=k).to(device),
+            utils.modules.SubtractingMean().to(device),
             utils.modules.Rotate(k=k),
         ).to(device)
 

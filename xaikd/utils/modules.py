@@ -305,20 +305,38 @@ class RotateAndScale(nn.Module):
 
 
 class SubtractingMean(nn.Module):
-    def __init__(self, d: int, momentum=0.9):
+    """
+    Ref: from ChatGPT
+    Module that subtracts an exponential running average of the input.
+
+    Args:
+        momentum (float): Update factor for the running average (default 0.1).
+        dims (tuple or list): Dimensions to compute the mean over.
+                              Default (0, 2, 3) computes mean over batch, 2 spatial dimensions.
+    """
+
+    def __init__(self, momentum=0.1, dims=(0, 2, 3)):
         super().__init__()
-
         self.momentum = momentum
-        self.register_buffer("running_mean", torch.zeros(1, d, 1, 1).float())
+        self.dims = dims
+        self.register_buffer("running_avg", None)
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x):
+        # Compute current batch mean
+        batch_mean = x.mean(dim=self.dims, keepdim=True)
+
+        # Initialize running average
+        if self.running_avg is None:
+            self.running_avg = batch_mean.detach()
+
         if self.training:
-            new_mean = x.mean(dim=(0, 2, 3), keepdim=True).detach()
-            self.running_mean = (
-                self.momentum * self.running_mean + (1 - self.momentum) * new_mean
-            )
+            # Update running average
+            self.running_avg = (
+                1 - self.momentum
+            ) * self.running_avg + self.momentum * batch_mean.detach()
 
-        return x - self.running_mean
+        # Subtract running average
+        return x - self.running_avg
 
 
 class Bias(nn.Module):
