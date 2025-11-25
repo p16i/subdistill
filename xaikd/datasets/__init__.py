@@ -151,7 +151,9 @@ def construct_dataloaders(
             use_validation_set
         ), "Dataset provides validation set, so use_validation_set must be True"
 
-        ds_train, ds_val = dataset.create_train_val_split(rng=rng)
+        ds_train, ds_val = dataset.create_train_val_split(
+            rng=rng, training_size=training_data_ratio
+        )
     else:
         ds_train_raw = dataset.create_subset(train_split=True)
 
