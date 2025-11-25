@@ -11,7 +11,10 @@ def test():
 
     assert isinstance(
         dataset,
-        datasets.imagenet.subclasses_spurious_features.ImageNetSuperclassWithCopyrightFeatures,
+        (
+            datasets.imagenet.subclasses_spurious_features.ImageNetSuperclassWithCopyrightFeatures,
+            datasets.interface.WithValidationSetMixin,
+        ),
     )
 
     trng = torch.Generator()
