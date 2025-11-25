@@ -137,6 +137,12 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
 
             self.log(f"{prefix}_loss_layer_{layer_name}", _loss_layer, on_epoch=True)
 
+            if hasattr(policy, "additional_loss"):
+                _additional_loss = policy.additional_loss(
+                    self, prefix=f"{prefix}_layer_{layer_name}"
+                )
+                loss_layer = loss_layer + _additional_loss
+
         assert torch.isfinite(loss_layer)
 
         return loss_layer
@@ -199,6 +205,7 @@ class LayerwiseKDModelWrapper(pl.LightningModule):
                     student_arr_intermediate_feats=student_arr_intermediate_feats,
                     prefix=prefix,
                 )
+
             else:
                 raise ValueError("Unknown loss label")
 

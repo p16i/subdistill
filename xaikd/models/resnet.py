@@ -17,7 +17,7 @@ from torchvision.models import resnet
 from xaikd.datasets.celeba import NUM_CELEBA_ATTRIBUTES
 
 from . import interfaces
-from . import register_model, add_model_to_registry, MODEL_CHECKPOINT_MAPPING
+from . import register_model, add_model_to_registry, MODEL_CHECKPOINT_MAPPING, _wrn
 
 
 def split_model_at(
@@ -87,6 +87,19 @@ def _resnet18_cifar100_v2() -> nn.Module:
     return model
 
 
+@register_model("cifar100-wideresnet40-ptood")
+def _wide_resnet50_cifar() -> nn.Module:
+    # ref: https://pytorch-ood.readthedocs.io/en/v0.2.0/models.html
+    model = _wrn.WideResNet(
+        num_classes=100,
+        pretrained="cifar100-pt",
+    )
+
+    model.num_classes = 100
+
+    return model
+
+
 @register_model("imagenet-resnet18-tv")
 def _resnet18_imagenet() -> nn.Module:
     model = torchvision.models.resnet18(weights=resnet.ResNet18_Weights.IMAGENET1K_V1)
@@ -114,6 +127,16 @@ def _resnet50_imagenet() -> nn.Module:
 @register_model("imagenet-resnet101-tv")
 def _resnet101_imagenet() -> nn.Module:
     model = torchvision.models.resnet101(weights=resnet.ResNet101_Weights.IMAGENET1K_V1)
+    model.num_classes = 1000  # type: ignore
+
+    return model
+
+
+@register_model("imagenet-wideresnet50-tv")
+def _wideresnet50_imagenet() -> nn.Module:
+    model = torchvision.models.wide_resnet50_2(
+        weights=torchvision.models.Wide_ResNet50_2_Weights.IMAGENET1K_V1
+    )
     model.num_classes = 1000  # type: ignore
 
     return model

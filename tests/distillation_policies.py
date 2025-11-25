@@ -112,8 +112,9 @@ def test_baseline_policy_callable(teacher_dims, student_dims, policy):
 @pytest.mark.parametrize(
     "parameterization",
     [
-        "basis-center-rotation",
-        "basis-bn-sum-normalized",
+        "basis-center-rotationv2",
+        "basis-rotation",
+        "basis-center-rotationv2-no-normalization",
     ],
 )
 @pytest.mark.parametrize(
@@ -161,12 +162,17 @@ def test_our_policies_callable(
         assert isinstance(
             policy,
             (
-                distillation_policies.ours.OrthogonalBasisBatchNormSumNormalizedPolicy,
-                distillation_policies.ours.OrthogonalBasisCenterRotationPolicy,
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2Policy,
+                distillation_policies.ours.OrthogonalBasisCenterOrthoPolicy,
+                distillation_policies.ours.OrthogonalBasisRotationPolicy,
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2NoNormalizationPolicy,
             ),
         )
 
-        if layerwise_training:
+        if layerwise_training or isinstance(
+            policy,
+            distillation_policies.ours.OrthogonalBasisCenterRotationV2NoNormalizationPolicy,
+        ):
             np.testing.assert_allclose(policy.scaling_factor, 1)
         else:
             np.testing.assert_allclose(
@@ -180,19 +186,88 @@ def test_our_policies_callable(
             torch.randn(5, student_dims, 5, 5),
         )
 
-        # from batchnorm
         if isinstance(
             policy,
-            distillation_policies.ours.OrthogonalBasisBatchNormSumNormalizedPolicy,
+            (
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2Policy,
+                distillation_policies.ours.OrthogonalBasisRotationPolicy,
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2NoNormalizationPolicy,
+            ),
         ):
-            expected_num_learnable_params = 2 * student_dims
+            expected_num_learnable_params = student_dims * student_dims
         elif isinstance(
             policy,
-            distillation_policies.ours.OrthogonalBasisCenterRotationPolicy,
+            distillation_policies.ours.OrthogonalBasisCenterOrthoPolicy,
         ):
-            expected_num_learnable_params = student_dims * student_dims + 1
+            expected_num_learnable_params = 0
         else:
             raise
+
+        _, actual_num_learnable_params = putils.count_params_in_list_params(
+            policy.parameters()
+        )
+
+        np.testing.assert_allclose(
+            actual_num_learnable_params, expected_num_learnable_params
+        )
+
+        assert True
+
+
+def test_basis_identity_callable():
+    teacher_dims = 10
+    student_dims = 5
+    basis_name = "identity"
+    parameterization = "basis-center-ortho"
+    layerwise_training = False
+
+    rng = np.random.default_rng(seed=1)
+    batch_size = 8
+    device = "cpu"
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        act = rng.random((batch_size, teacher_dims, 5)) + 2
+        mean_act = putils.flatten_3d_tensor(act).mean(axis=0)
+        act -= mean_act[None, :, None]
+        logodd = 2 * rng.random((batch_size,)) - 1
+        basis = bases.get_basis(basis_name)
+
+        basis.fit(
+            arr_act=act,
+            arr_ctx=act,
+            mean_act=mean_act,
+            arr_logodd=logodd,
+            logodd_threshold=0,
+            seed=1,
+            strict_mode=True,
+        )
+
+        kwargs = dict(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+
+        policy = distillation_policies.get_policy(
+            parameterization, layerwise_training=layerwise_training, **kwargs  # type: ignore
+        )
+
+        if layerwise_training:
+            np.testing.assert_allclose(policy.scaling_factor, 1)  # type: ignore
+        else:
+            np.testing.assert_allclose(
+                policy.scaling_factor,  # type: ignore
+                basis.get_scale_factors_for_k(k=teacher_dims).sum(),
+            )
+
+        # check that this is callable
+        policy(
+            torch.randn(5, teacher_dims, 5, 5),
+            torch.randn(5, student_dims, 5, 5),
+        )
+
+        expected_num_learnable_params = teacher_dims * student_dims
 
         _, actual_num_learnable_params = putils.count_params_in_list_params(
             policy.parameters()
@@ -337,14 +412,14 @@ def test_last_layer_policy(last_layer_policy, expected):
                 lambda_task=0, lambda_kd=1, lambda_layer=0.1
             ),
         ),
-        (
-            "basis-bn-sum-normalized:prcaposdef-entropy0.95",
-            0.1,
-            "basis-bn-sum-normalized:prcaposdef-entropy0.95",
-            distillation_policies.LambdaCollection(
-                lambda_task=0, lambda_kd=1, lambda_layer=0.1
-            ),
-        ),
+        # (
+        #     "basis-bn-sum-normalized:prcaposdef-entropy0.95",
+        #     0.1,
+        #     "basis-bn-sum-normalized:prcaposdef-entropy0.95",
+        #     distillation_policies.LambdaCollection(
+        #         lambda_task=0, lambda_kd=1, lambda_layer=0.1
+        #     ),
+        # ),
     ],
 )
 @pytest.mark.parametrize("layerwise_training", [True, False])
