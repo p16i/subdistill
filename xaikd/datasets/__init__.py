@@ -39,7 +39,6 @@ def build_dataloader(
     pin_memory=True,
     persistent_workers=True,
 ) -> DataLoader:
-
     return DataLoader(
         dataset,
         num_workers=num_workers,
@@ -128,6 +127,7 @@ class DatasetConfiguration(ABC):
 
 
 from .register import construct
+from .interface import WithValidationSetMixin
 from . import cifar100, imagenet, celeba
 
 
@@ -143,35 +143,48 @@ def construct_dataloaders(
     DataLoader[Subset[tvd.VisionDataset]],
     DataLoader[tvd.VisionDataset],
 ]:
-
     rng = torch.Generator()
     rng.manual_seed(seed)
-    ds_train_raw = dataset.create_subset(train_split=True)
-    if use_validation_set:
+    if isinstance(dataset, WithValidationSetMixin):
+        print("we use dataset with built-in validation set")
+        assert (
+            use_validation_set
+        ), "Dataset provides validation set, so use_validation_set must be True"
 
-        ratio_train = np.min([constants.TRAINING_VAL_SPLIT_RATIO, training_data_ratio])
-        ratio_val = 1 - constants.TRAINING_VAL_SPLIT_RATIO
-        ratio_rest = 1 - (ratio_train + ratio_val)
-        assert 0 <= ratio_rest <= 1
+        assert (
+            training_data_ratio == 0.8
+        ), "When using a dataset with built-in validation set, training_data_ratio must be 0.8"
 
-        print(
-            f"[use_validation={use_validation_set}]: ratio_train={ratio_train:.4f}, ratio_val={ratio_val:.4f}"
-        )
-
-        ds_train, ds_val, _ = random_split(
-            ds_train_raw,
-            [ratio_train, ratio_val, ratio_rest],
-            rng,
-        )
+        ds_train, ds_val = dataset.create_train_val_split(rng=rng)
     else:
-        # we do this to make the type compatable
-        ds_train, _ = random_split(
-            ds_train_raw,
-            [training_data_ratio, 1 - training_data_ratio],
-            rng,
-        )
+        ds_train_raw = dataset.create_subset(train_split=True)
 
-        ds_val = dataset.create_subset(train_split=False)
+        if use_validation_set:
+            ratio_train = np.min(
+                [constants.TRAINING_VAL_SPLIT_RATIO, training_data_ratio]
+            )
+            ratio_val = 1 - constants.TRAINING_VAL_SPLIT_RATIO
+            ratio_rest = 1 - (ratio_train + ratio_val)
+            assert 0 <= ratio_rest <= 1
+
+            print(
+                f"[use_validation={use_validation_set}]: ratio_train={ratio_train:.4f}, ratio_val={ratio_val:.4f}"
+            )
+
+            ds_train, ds_val, _ = random_split(
+                ds_train_raw,
+                [ratio_train, ratio_val, ratio_rest],
+                rng,
+            )
+        else:
+            # we do this to make the type compatable
+            ds_train, _ = random_split(
+                ds_train_raw,
+                [training_data_ratio, 1 - training_data_ratio],
+                rng,
+            )
+
+            ds_val = dataset.create_subset(train_split=False)
 
     # remark: we have to do it this way because the current version of
     #  `contaminate_dataset` function only work with `Subset.

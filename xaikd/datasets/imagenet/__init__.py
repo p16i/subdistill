@@ -30,4 +30,4 @@ IMAGENET_SUPERCLASS_MAPPING = {
 # fmt: on
 
 
-from . import original, subclasses, some_vs_others
+from . import original, subclasses, some_vs_others, subclasses_spurious_features
