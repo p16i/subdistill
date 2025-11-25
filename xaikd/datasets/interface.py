@@ -9,6 +9,7 @@ class WithValidationSetMixin:
     @abstractmethod
     def create_train_val_split(
         self,
+        training_size: float,
         rng: torch.Generator,
     ) -> typing.Tuple[Subset[tvd.VisionDataset], Subset[tvd.VisionDataset]]:
         pass

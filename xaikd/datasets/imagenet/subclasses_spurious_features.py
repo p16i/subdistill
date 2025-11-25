@@ -21,9 +21,7 @@ from . import IMAGENET_SUPERCLASS_MAPPING
 from .subclasses import ImageNetSuperClass
 
 
-class TorchVisionDatasetImageNetWithCopyrightFeatures(
-    tvd.ImageNet, WithValidationSetMixin
-):
+class TorchVisionDatasetImageNetWithCopyrightFeatures(tvd.ImageNet):
     arr_data_spurious: typing.List[int]  # if 0 then not spurious
     slug = "spurious-copyright"
 
@@ -57,7 +55,9 @@ class TorchVisionDatasetImageNetWithCopyrightFeatures(
         return sample, target
 
 
-class ImageNetSuperclassWithCopyrightFeatures(ImageNetSuperClass):
+class ImageNetSuperclassWithCopyrightFeatures(
+    ImageNetSuperClass, WithValidationSetMixin
+):
     def __init__(
         self,
         superclass: str,
@@ -111,15 +111,23 @@ class ImageNetSuperclassWithCopyrightFeatures(ImageNetSuperClass):
 
     def create_train_val_split(
         self,
+        training_size: float,
         rng: torch.Generator,
     ) -> typing.Tuple[Subset[tvd.VisionDataset], Subset[tvd.VisionDataset]]:
         ds_train_raw = self.create_subset(train_split=True)
 
-        ratio_train = constants.TRAINING_VAL_SPLIT_RATIO
+        ratio_train = np.min([constants.TRAINING_VAL_SPLIT_RATIO, training_size])
+        ratio_val = 1 - constants.TRAINING_VAL_SPLIT_RATIO
+        ratio_rest = 1 - (ratio_train + ratio_val)
+        assert 0 <= ratio_rest <= 1
 
-        ds_train, ds_val = random_split(
+        print(
+            f"[{self.__class__.__name__} ratio_train={ratio_train:.4f}, ratio_val={ratio_val:.4f}"
+        )
+
+        ds_train, ds_val, _ = random_split(
             ds_train_raw,
-            [ratio_train, 1 - ratio_train],
+            [ratio_train, ratio_val, ratio_rest],
             rng,
         )
         # make sure that we don't have any spurious data in val set

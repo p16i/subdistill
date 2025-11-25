@@ -151,10 +151,6 @@ def construct_dataloaders(
             use_validation_set
         ), "Dataset provides validation set, so use_validation_set must be True"
 
-        assert (
-            training_data_ratio == 0.8
-        ), "When using a dataset with built-in validation set, training_data_ratio must be 0.8"
-
         ds_train, ds_val = dataset.create_train_val_split(rng=rng)
     else:
         ds_train_raw = dataset.create_subset(train_split=True)
