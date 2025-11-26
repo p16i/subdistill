@@ -45,7 +45,7 @@ class TorchVisionDatasetImageNetWithCopyrightFeatures(tvd.ImageNet):
         assert spurious_type in [0, 1]
 
         if spurious_type == 1:
-            sample = spurious_feature_generator.imagenet_copyright(sample, seed=index)
+            sample = spurious_feature_generator.imagenet_center_watermark(sample)
 
         sample = self.transform(sample)
 
