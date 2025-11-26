@@ -23,7 +23,7 @@ from .subclasses import ImageNetSuperClass
 
 class TorchVisionDatasetImageNetWithCopyrightFeatures(tvd.ImageNet):
     arr_data_spurious: typing.List[int]  # if 0 then not spurious
-    slug = "spurious-copyrightv2"
+    slug = "spurious-copyrightv3"
 
     def __getitem__(self, index: int):
         """
@@ -104,6 +104,9 @@ class ImageNetSuperclassWithCopyrightFeatures(
 
             # with watermark
             arr_data_spurious[selected_indices] = 1
+        else:
+            # we use worst-case here.
+            arr_data_spurious[:] = 1
 
         ds.arr_data_spurious = arr_data_spurious.tolist()
 

@@ -7,7 +7,7 @@ from xaikd import datasets
 
 @pytest.mark.slow
 def test():
-    dataset = datasets.construct("imagenet-wading-bird--spurious-copyright--1.0")
+    dataset = datasets.construct("imagenet-wading-bird--spurious-copyrightv3--1.0")
 
     assert isinstance(
         dataset,
@@ -21,6 +21,7 @@ def test():
     trng.manual_seed(42)
 
     ds_train, ds_val = dataset.create_train_val_split(rng=trng, training_size=0.8)
+    ds_test = dataset.create_subset(train_split=False)
 
     assert id(ds_train.dataset) != id(ds_val.dataset)
 
@@ -28,5 +29,9 @@ def test():
     np.testing.assert_allclose(actual_prop_spurious, 1 / dataset.num_classes, atol=0.05)
 
     np.testing.assert_allclose(
-        np.sum(np.array(ds_val.dataset.arr_data_spurious) == 1), 0
+        np.sum(np.array(ds_val.dataset.arr_data_spurious) == 1), len(ds_val.dataset)
+    )  # type: ignore
+
+    np.testing.assert_allclose(
+        np.sum(np.array(ds_test.arr_data_spurious) == 1), len(ds_test)
     )  # type: ignore

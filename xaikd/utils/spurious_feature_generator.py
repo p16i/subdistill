@@ -120,12 +120,12 @@ def imagenet_center_watermark(img: TypeImage) -> TypeImage:
     # this makes sure that we do NOT override the input images
     img = img.copy()
     img_w, img_h = img.size
-    cw = img_w // 2
-    ch = int(img_h * (5 / 6))
+    cw = int(img_w // 2)
+    ch = int(img_h * (4 / 5))
     img_w, img_h = img.size
 
     scale_size = 256
-    marksize = 150
+    marksize = 120
 
     mw, mh = watermark.size
 
