@@ -120,7 +120,8 @@ def imagenet_center_watermark(img: TypeImage) -> TypeImage:
     # this makes sure that we do NOT override the input images
     img = img.copy()
     img_w, img_h = img.size
-    cw, ch = img_w // 2, img_h // 2
+    cw = img_w // 2
+    ch = int(img_h * (5 / 6))
     img_w, img_h = img.size
 
     scale_size = 256
@@ -148,7 +149,6 @@ def imagenet_center_watermark(img: TypeImage) -> TypeImage:
 
 
 def jpeg_artifact(img: TypeImage) -> TypeImage:
-
     # this makes sure that we do NOT override the input images
     img = img.copy()
 
