@@ -193,7 +193,12 @@ class ShapleyValueSamplingExplainer(Explainer):
     def __init__(self, model: nn.Module, num_classes: int, device: str) -> None:
         super().__init__(model, num_classes, device)
 
-        self._base = ShapleyValueSampling(model)
+        self._base = ShapleyValueSampling(
+            nn.Sequential(
+                model,
+                LogitGapWrtTarget(num_classes=num_classes),
+            )
+        )
         self.n_samples = 25
         self.patch_size = 8
 
