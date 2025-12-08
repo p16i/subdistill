@@ -29,14 +29,18 @@ NORMALIZER = T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 
 
 class LogitGapWrtTarget(nn.Module):
-    def __init__(self, target: torch.Tensor, num_classes: int):
+    def __init__(self, num_classes: int):
         super().__init__()
-        self.target = target
         self.num_classes = num_classes
 
-    def forward(self, x):
-        diff = logit_gap_wrt_target(x, self.target, self.num_classes)
-        return diff.sum(dim=1)
+    def forward(self, logits):
+        output = torch.zeros_like(logits)
+        for cix in range(self.num_classes):
+            others = set(range(self.num_classes)) - {cix}
+
+            output[:, cix] = logits[:, cix] - logits[:, list(others)].max(dim=1).values
+
+        return output
 
 
 def logit_gap_wrt_target(logits, target, num_classes):
@@ -129,6 +133,12 @@ class IntegratedGradientsExplainer(Explainer):
     def __init__(self, model: nn.Module, num_classes: int, device: str) -> None:
         super().__init__(model, num_classes, device)
 
+        self._base = IntegratedGradients(
+            nn.Sequential(
+                model,
+                LogitGapWrtTarget(num_classes=num_classes),
+            )
+        )
         self.num_steps = 50
 
     def attribute(
@@ -139,12 +149,7 @@ class IntegratedGradientsExplainer(Explainer):
         x = x.to(self.device)
         y = y.to(self.device)
 
-        mod_model = nn.Sequential(self.model, LogitGapWrtTarget(y, self.num_classes))
-
-        # remark: we don'tt provide any label because the model already incorporates the target
-        attribution_map = IntegratedGradients(mod_model).attribute(
-            x, n_steps=self.num_steps
-        )
+        attribution_map = self._base.attribute(x, target=y, n_steps=self.num_steps)
 
         with torch.no_grad():
             logit = self.model(x).detach().cpu().numpy()
