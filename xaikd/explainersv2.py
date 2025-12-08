@@ -3,27 +3,60 @@ from typing import Tuple
 import numpy.typing as npt
 
 
+from functools import partial
+
 import torch
 from torch import nn
 
 from torch.nn import functional as F
 
 
-from zennit.attribution import Gradient
+from zennit.attribution import Gradient  # type: ignore
 
 import numpy as np
 from numpy import typing as npt
 
-from captum.attr import IntegratedGradients, ShapleyValueSampling
-from zennit.torchvision import ResNetCanonizer
-from zennit.composites import EpsilonGammaBox
-from zennit.attribution import Gradient
+from captum.attr import IntegratedGradients, ShapleyValueSampling  # type: ignore
+from zennit.torchvision import ResNetCanonizer  # type: ignore
+from zennit.composites import EpsilonGammaBox  # type: ignore
+from zennit.attribution import Gradient  # type: ignore
 
-from torchvision import transforms as T
+from torchvision import transforms as T  # type: ignore
 
 EXPLAINERS = dict()
 
 NORMALIZER = T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+
+
+class LogitGapWrtTarget(nn.Module):
+    def __init__(self, target: torch.Tensor, num_classes: int):
+        super().__init__()
+        self.target = target
+        self.num_classes = num_classes
+
+    def forward(self, x):
+        diff = logit_gap_wrt_target(x, self.target, self.num_classes)
+        return diff.sum(dim=1)
+
+
+def logit_gap_wrt_target(logits, target, num_classes):
+    device = logits.device
+    target_logit = logits * F.one_hot(target, num_classes=num_classes).float().to(
+        device
+    )
+
+    with torch.no_grad():
+        mod_logit = logits - 1e6 * target_logit
+        _, indices = torch.topk(
+            mod_logit, dim=1, k=2  # this make sure that target class is not selected
+        )
+
+    other_logits = logits * F.one_hot(
+        indices[:, 0], num_classes=num_classes
+    ).float().to(device)
+    out = target_logit - other_logits
+
+    return out
 
 
 def register_explainer(name):
@@ -76,12 +109,11 @@ class LRPResNetExplainer(Explainer):
         # create the attributor, specifying model and composite
         with Gradient(model=self.model, composite=self.composite) as attributor:
             # compute the model output and attribution
-            target = F.one_hot(y, num_classes=self.num_classes).float()
-
-            target = target.to(self.device)
             x = x.to(self.device)
 
-            logit, attribution = attributor(x, target)  # type: ignore
+            logit, attribution = attributor(
+                x, lambda logits: logit_gap_wrt_target(logits, y, self.num_classes)
+            )  # type: ignore
 
         assert logit.shape == (nb, self.num_classes)
         logit = logit.detach().cpu().numpy()
@@ -97,7 +129,6 @@ class IntegratedGradientsExplainer(Explainer):
     def __init__(self, model: nn.Module, num_classes: int, device: str) -> None:
         super().__init__(model, num_classes, device)
 
-        self._base = IntegratedGradients(model)
         self.num_steps = 50
 
     def attribute(
@@ -108,10 +139,15 @@ class IntegratedGradientsExplainer(Explainer):
         x = x.to(self.device)
         y = y.to(self.device)
 
+        mod_model = nn.Sequential(self.model, LogitGapWrtTarget(y, self.num_classes))
+
+        # remark: we don'tt provide any label because the model already incorporates the target
+        attribution_map = IntegratedGradients(mod_model).attribute(
+            x, n_steps=self.num_steps
+        )
+
         with torch.no_grad():
             logit = self.model(x).detach().cpu().numpy()
-
-        attribution_map = self._base.attribute(x, target=y, n_steps=self.num_steps)
 
         return logit, attribution_map.detach().cpu().numpy().sum(axis=1)
 
@@ -170,7 +206,7 @@ class ShapleyValueSamplingExplainer(Explainer):
         feature_mask = generate_superpixel_mask(
             input_size=(x.shape[2], x.shape[3]), patch_size=self.patch_size
         )
-        feature_mask = torch.from_numpy(feature_mask).to(self.device)
+        feature_mask = torch.from_numpy(feature_mask).to(self.device)  # type: ignore
 
         attribution_map = self._base.attribute(
             x, target=y, feature_mask=feature_mask, n_samples=self.n_samples
