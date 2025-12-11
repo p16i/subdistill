@@ -90,7 +90,7 @@ class LRPResNetExplainer(Explainer):
     def __init__(self, model: nn.Module, num_classes: int, device: str):
         super().__init__(model, num_classes, device)
 
-        self.gamma = 10
+        self.gamma = 1
 
         self.low, self.high = NORMALIZER(
             torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]])
