@@ -23,6 +23,8 @@ from zennit.attribution import Gradient  # type: ignore
 
 from torchvision import transforms as T  # type: ignore
 
+PATCH_SIZE = 8
+
 EXPLAINERS = dict()
 
 NORMALIZER = T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -200,7 +202,7 @@ class ShapleyValueSamplingExplainer(Explainer):
             )
         )
         self.n_samples = 25
-        self.patch_size = 8
+        self.patch_size = PATCH_SIZE
 
     def attribute(
         self,
