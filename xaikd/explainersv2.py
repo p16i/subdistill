@@ -58,7 +58,6 @@ def logit_gap_wrt_target(logits, target, num_classes):
     other_logits = logits * F.one_hot(
         indices[:, 0], num_classes=num_classes
     ).float().to(device)
-    print("outher", other_logits)
     out = target_logit - other_logits
 
     return out
