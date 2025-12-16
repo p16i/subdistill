@@ -70,3 +70,19 @@ def test_logit_gap_layer():
             ]
         ),
     )
+
+
+def test_logit_gap_degenerate():
+    logits = torch.FloatTensor(
+        [[-1.6193185, -2.5063117, -0.24580102, -4.5831337, -6.5929985]]
+    )
+    y = torch.LongTensor([0])
+
+    output = logit_gap_wrt_target(logits, y, num_classes=5).numpy()
+
+    expected = np.array(
+        [
+            [-1.6193185, 0, 0.24580102, 0, 0],
+        ]
+    )
+    np.testing.assert_allclose(output, expected)
