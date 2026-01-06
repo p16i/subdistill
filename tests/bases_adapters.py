@@ -28,7 +28,6 @@ def test_adapter():
 @pytest.mark.parametrize("basis_name", ["pca", "prcaposdef", "prcaposdef-entropy0.95"])
 @pytest.mark.parametrize("d", [5, 10, 20])
 def test_adapter_identity(basis_name, d):
-
     rng = np.random.default_rng(seed=1)
     arr_act = rng.random(size=(32, d, 10))
     mean = utils.flatten_3d_tensor(arr_act).mean(axis=0)
@@ -58,6 +57,41 @@ def test_adapter_identity(basis_name, d):
     np.testing.assert_allclose(encoder.mean.numpy(), mean[None, :, None, None])
 
 
+def test_adapter_zero_dim():
+    d = 10
+    k = 0
+
+    basis_name = "pca"
+    rng = np.random.default_rng(seed=1)
+    arr_act = rng.random(size=(32, d, 10))
+    mean = utils.flatten_3d_tensor(arr_act).mean(axis=0)
+    arr_act -= mean[None, :, None]
+    arr_ctx = rng.random(size=(32, d, 10))
+    arr_logodd = rng.random(size=(32,))
+
+    basis = bases.get_basis(f"{basis_name}")
+
+    basis.fit(
+        arr_act=arr_act,
+        arr_ctx=arr_ctx,
+        mean_act=mean,
+        arr_logodd=arr_logodd,
+        logodd_threshold=0,
+        device="cpu",
+        strict_mode=True,
+    )
+
+    encoder = basis.construct_adapter(k, mode=bases.AdapterMode.ENCODER, device="cpu")
+    decoder = basis.construct_adapter(k, mode=bases.AdapterMode.DECODER, device="cpu")
+
+    x = torch.randn(20, d, 1, 1) * 0
+
+    # we use the mean for the prediction
+    expected = x * 0 + mean[None, :, None, None]
+
+    np.testing.assert_allclose(decoder(encoder(x)), expected, atol=1e-5)
+
+
 @pytest.mark.parametrize(
     "basis_name",
     [
@@ -68,7 +102,6 @@ def test_adapter_identity(basis_name, d):
     ],
 )
 def test_no_trainable_parameters_in_adapter(basis_name):
-
     basis = bases.get_basis(basis_name)
 
     rng = np.random.default_rng(seed=1)
