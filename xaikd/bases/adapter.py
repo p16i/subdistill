@@ -19,7 +19,6 @@ class Adapter(torch.nn.Module):
         super().__init__()
 
         d, k = U.shape
-        print(f"U.shape=({d, k}), {U.dtype}")
 
         assert mean.shape[0] == d
 
@@ -31,7 +30,6 @@ class Adapter(torch.nn.Module):
             # so we use zero matrix instead
             self.mat_encoder = torch.zeros((d, d, 1, 1), device=device).float()
             self.mat_decoder = torch.zeros((d, d, 1, 1), device=device).float()
-            print(f"{self.mat_encoder.dtype}, {self.mat_decoder.dtype}")
 
         self.mean = mean.reshape((1, -1, 1, 1)).to(device)
 
