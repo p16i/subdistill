@@ -9,15 +9,19 @@ from xaikd import models, utils
     "student_name",
     [
         "student-mobilenetv4-small",
+        "student-mobilenetv4-small-alternative-init",
+        "student-mobilenetv4-small-0.125",
+        "student-mobilenetv4-small-0.25",
+        "student-mobilenetv4-small-0.5",
     ],
 )
 @pytest.mark.parametrize(
     "layer",
     [
-        "blocks.2.2",
-        "blocks.2.5",
-        "blocks.3.2",
-        "blocks.3.5",
+        "blocks.0",
+        "blocks.1",
+        "blocks.2",
+        "blocks.3",
     ],
 )
 def test_student_v4_callable(student_name, layer):

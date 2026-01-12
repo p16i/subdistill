@@ -71,6 +71,9 @@ def resolve_lambdas_and_layer_policy(
     elif policy_name == "kd-only":
         lambda_collection = LambdaCollection(lambda_task=0, lambda_kd=1, lambda_layer=0)
         layer_policy = "nothing"
+    elif policy_name == "student-kd":
+        lambda_collection = LambdaCollection(lambda_task=1, lambda_kd=1, lambda_layer=0)
+        layer_policy = "nothing"
     else:
         layer_policy = policy_name
 

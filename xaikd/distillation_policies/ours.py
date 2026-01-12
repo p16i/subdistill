@@ -7,12 +7,14 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from xaikd.bases import OrthogonalBasis
+from xaikd.bases import OrthogonalBasis, Identity
 from xaikd.bases.adapter import Adapter, AdapterMode
 from xaikd import utils
 
 from .register import register_policy
 from .interface import LayerPolicy
+
+from pytorch_lightning import LightningModule
 
 
 @register_policy("nothing")
@@ -34,122 +36,6 @@ class NothingPolicy(LayerPolicy):
         return torch.tensor(0.0).to(transformed_teacher_feats.device)
 
 
-@register_policy("basis-bn-sum-normalized")
-class OrthogonalBasisBatchNormSumNormalizedPolicy(LayerPolicy):
-    def __init__(
-        self,
-        teacher_dims: int,
-        student_dims: int,
-        device: str,
-        basis: OrthogonalBasis,
-        layerwise_training: bool,
-    ) -> None:
-        super().__init__()
-
-        k = student_dims
-
-        self.basis = basis
-        self.transformer_teacher_feats = basis.construct_adapter(
-            k=k, mode=AdapterMode.ENCODER, device=device
-        )
-
-        if layerwise_training:
-            self.scaling_factor = 1
-        else:
-            self.scaling_factor = np.sum(
-                self.basis.get_scale_factors_for_k(student_dims)
-            )
-
-        print(
-            f"basis-bn (teacher_dim={teacher_dims}); scaling factor={self.scaling_factor} "
-        )
-
-        self.transformer_student_feats = nn.BatchNorm2d(
-            num_features=k, track_running_stats=True, affine=True
-        ).to(device)
-
-    def criterion(self, transformed_teacher_feats, transformed_student_feats):
-        b, k, w, h = transformed_teacher_feats.shape
-
-        assert transformed_teacher_feats.shape == transformed_student_feats.shape
-
-        loss_mse = F.mse_loss(
-            transformed_student_feats, transformed_teacher_feats, reduction="none"
-        ) / (w * h)
-        loss_mse = loss_mse.flatten(start_dim=1)
-
-        loss_mse = loss_mse / self.scaling_factor
-
-        # sum over all spatial dimensions
-        loss_mse = loss_mse.sum(dim=1)
-
-        assert loss_mse.shape == (b,)
-
-        # average over all samples
-        loss_mse = loss_mse.mean()
-
-        return loss_mse
-
-
-@register_policy("basis-center-rotation")
-class OrthogonalBasisCenterRotationPolicy(LayerPolicy):
-    def __init__(
-        self,
-        teacher_dims: int,
-        student_dims: int,
-        device: str,
-        basis: OrthogonalBasis,
-        layerwise_training: bool,
-    ) -> None:
-        super().__init__()
-
-        k = student_dims
-
-        self.basis = basis
-
-        if layerwise_training:
-            self.scaling_factor = 1
-        else:
-            self.scaling_factor = np.sum(
-                self.basis.get_scale_factors_for_k(student_dims)
-            )
-
-        self.transformer_teacher_feats = basis.construct_adapter(
-            k=k, mode=AdapterMode.ENCODER, device=device
-        )
-
-        self.transformer_student_feats = nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-            utils.modules.RotateAndScale(k=k),
-        ).to(device)
-
-    def criterion(
-        self, transformed_teacher_feats, transformed_student_feats
-    ) -> torch.Tensor:
-        b, k, w, h = transformed_teacher_feats.shape
-
-        assert transformed_teacher_feats.shape == transformed_student_feats.shape
-
-        loss_mse = F.mse_loss(
-            transformed_student_feats,
-            transformed_teacher_feats,
-            reduction="none",
-        ) / (w * h)
-        loss_mse = loss_mse.flatten(start_dim=1)
-
-        loss_mse = loss_mse / self.scaling_factor
-
-        # sum over all spatial dimensions
-        loss_mse = loss_mse.sum(dim=1)
-
-        assert loss_mse.shape == (b,)
-
-        # average over all samples
-        loss_mse = loss_mse.mean()
-
-        return loss_mse
-
-
 @register_policy("basis-center-rotationv2")
 class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
     def __init__(
@@ -167,7 +53,7 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         self.basis = basis
 
         if layerwise_training:
-            self.scaling_factor = 1
+            self.scaling_factor = 1.0
         else:
             self.scaling_factor = np.sum(
                 self.basis.get_scale_factors_for_k(student_dims)
@@ -209,8 +95,8 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         return loss_mse
 
 
-@register_policy("basis-center-only")
-class OrthogonalBasisCenterOnlyPolicy(LayerPolicy):
+@register_policy("basis-bn-rotationv2")
+class OrthogonalBasisBNRotationV2Policy(OrthogonalBasisCenterRotationV2Policy):
     def __init__(
         self,
         teacher_dims: int,
@@ -219,117 +105,18 @@ class OrthogonalBasisCenterOnlyPolicy(LayerPolicy):
         basis: OrthogonalBasis,
         layerwise_training: bool,
     ) -> None:
-        super().__init__()
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
 
         k = student_dims
 
-        self.basis = basis
-
-        if layerwise_training:
-            self.scaling_factor = 1
-        else:
-            self.scaling_factor = np.sum(
-                self.basis.get_scale_factors_for_k(student_dims)
-            )
-
-        self.transformer_teacher_feats = basis.construct_adapter(
-            k=k, mode=AdapterMode.ENCODER, device=device
-        )
-
         self.transformer_student_feats = nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-        ).to(device)
-
-    def criterion(
-        self, transformed_teacher_feats, transformed_student_feats
-    ) -> torch.Tensor:
-        b, k, w, h = transformed_teacher_feats.shape
-
-        assert transformed_teacher_feats.shape == transformed_student_feats.shape
-
-        loss_mse = F.mse_loss(
-            transformed_student_feats,
-            transformed_teacher_feats,
-            reduction="none",
-        ) / (w * h)
-        loss_mse = loss_mse.flatten(start_dim=1)
-
-        loss_mse = loss_mse / self.scaling_factor
-
-        # sum over all spatial dimensions
-        loss_mse = loss_mse.sum(dim=1)
-
-        assert loss_mse.shape == (b,)
-
-        # average over all samples
-        loss_mse = loss_mse.mean()
-
-        return loss_mse
-
-
-@register_policy("basis-center-rotationv2mt0.01")
-class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
-    def __init__(
-        self,
-        teacher_dims: int,
-        student_dims: int,
-        device: str,
-        basis: OrthogonalBasis,
-        layerwise_training: bool,
-    ) -> None:
-        super().__init__()
-
-        k = student_dims
-
-        self.basis = basis
-
-        if layerwise_training:
-            self.scaling_factor = 1
-        else:
-            self.scaling_factor = np.sum(
-                self.basis.get_scale_factors_for_k(student_dims)
-            )
-
-        self.transformer_teacher_feats = basis.construct_adapter(
-            k=k, mode=AdapterMode.ENCODER, device=device
-        )
-
-        self.transformer_student_feats = nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False, momentum=0.01).to(
-                device
-            ),
+            nn.BatchNorm2d(k),
             utils.modules.Rotate(k=k),
         ).to(device)
 
-    def criterion(
-        self, transformed_teacher_feats, transformed_student_feats
-    ) -> torch.Tensor:
-        b, k, w, h = transformed_teacher_feats.shape
 
-        assert transformed_teacher_feats.shape == transformed_student_feats.shape
-
-        loss_mse = F.mse_loss(
-            transformed_student_feats,
-            transformed_teacher_feats,
-            reduction="none",
-        ) / (w * h)
-        loss_mse = loss_mse.flatten(start_dim=1)
-
-        loss_mse = loss_mse / self.scaling_factor
-
-        # sum over all spatial dimensions
-        loss_mse = loss_mse.sum(dim=1)
-
-        assert loss_mse.shape == (b,)
-
-        # average over all samples
-        loss_mse = loss_mse.mean()
-
-        return loss_mse
-
-
-@register_policy("basis-center-rotation-binxent")
-class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
+@register_policy("basis-bias-rotationv2")
+class OrthogonalBasisBiasRotationV2Policy(OrthogonalBasisCenterRotationV2Policy):
     def __init__(
         self,
         teacher_dims: int,
@@ -338,60 +125,18 @@ class OrthogonalBasisCenterRotationV2Policy(LayerPolicy):
         basis: OrthogonalBasis,
         layerwise_training: bool,
     ) -> None:
-        super().__init__()
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
 
         k = student_dims
 
-        self.basis = basis
-
-        if layerwise_training:
-            self.scaling_factor = 1
-        else:
-            self.scaling_factor = np.sum(
-                self.basis.get_scale_factors_for_k(student_dims)
-            )
-
-        self.transformer_teacher_feats = basis.construct_adapter(
-            k=k, mode=AdapterMode.ENCODER, device=device
-        )
-
         self.transformer_student_feats = nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            utils.modules.Bias(k=k),
             utils.modules.Rotate(k=k),
         ).to(device)
 
-    def criterion(
-        self, transformed_teacher_feats, transformed_student_feats
-    ) -> torch.Tensor:
-        b, k, w, h = transformed_teacher_feats.shape
 
-        assert transformed_teacher_feats.shape == transformed_student_feats.shape
-
-        p_t = (torch.sign(transformed_teacher_feats) + 1) / 2
-
-        loss = F.binary_cross_entropy_with_logits(
-            transformed_student_feats,
-            p_t,
-            reduction="none",
-        )
-
-        loss = loss.mean()
-
-        return loss
-
-
-class SelfCenter(nn.Module):
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Center the input tensor by subtracting the mean.
-        """
-        assert len(x.shape) == 4, f"Expected 4D tensor, got {len(x.shape)}D tensor."
-        # fixme: crosscheck implementation with https://arxiv.org/pdf/1607.06450 eq.3
-        return x - x.mean(dim=(1), keepdim=True)
-
-
-@register_policy("basis-selfcenter-rotation")
-class OrthogonalBasisSelfCenterRotationPolicy(LayerPolicy):
+@register_policy("basis-rotation-bias")
+class OrthogonalBasisRotationBiasV2Policy(OrthogonalBasisCenterRotationV2Policy):
     def __init__(
         self,
         teacher_dims: int,
@@ -400,87 +145,43 @@ class OrthogonalBasisSelfCenterRotationPolicy(LayerPolicy):
         basis: OrthogonalBasis,
         layerwise_training: bool,
     ) -> None:
-        super().__init__()
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
 
         k = student_dims
-
-        self.basis = basis
-
-        if layerwise_training:
-            self.scaling_factor = 1
-        else:
-            self.scaling_factor = np.sum(
-                self.basis.get_scale_factors_for_k(student_dims)
-            )
-
-        self.transformer_teacher_feats = basis.construct_adapter(
-            k=k, mode=AdapterMode.ENCODER, device=device
-        )
-
-        self.transformer_student_feats = nn.Sequential(
-            SelfCenter(),
-            utils.modules.Rotate(k=k),
-        ).to(device)
-
-    def criterion(
-        self, transformed_teacher_feats, transformed_student_feats
-    ) -> torch.Tensor:
-        b, k, w, h = transformed_teacher_feats.shape
-
-        assert transformed_teacher_feats.shape == transformed_student_feats.shape
-
-        loss_mse = F.mse_loss(
-            transformed_student_feats,
-            transformed_teacher_feats,
-            reduction="none",
-        ) / (w * h)
-        loss_mse = loss_mse.flatten(start_dim=1)
-
-        loss_mse = loss_mse / self.scaling_factor
-
-        # sum over all spatial dimensions
-        loss_mse = loss_mse.sum(dim=1)
-
-        assert loss_mse.shape == (b,)
-
-        # average over all samples
-        loss_mse = loss_mse.mean()
-
-        return loss_mse
-
-
-@register_policy("basis-center-rotationv3")
-class OrthogonalBasisCenterRotationV3Policy(LayerPolicy):
-    def __init__(
-        self,
-        teacher_dims: int,
-        student_dims: int,
-        device: str,
-        basis: OrthogonalBasis,
-        layerwise_training: bool,
-    ) -> None:
-        super().__init__()
-
-        k = student_dims
-
-        self.basis = basis
-
-        if layerwise_training:
-            self.scaling_factor = 1
-        else:
-            self.scaling_factor = np.sum(
-                self.basis.get_scale_factors_for_k(student_dims)
-            )
-
-        self.transformer_teacher_feats = basis.construct_adapter(
-            k=k, mode=AdapterMode.ENCODER, device=device
-        )
 
         self.transformer_student_feats = nn.Sequential(
             utils.modules.Rotate(k=k),
             utils.modules.Bias(k=k),
         ).to(device)
 
+
+@register_policy("basis-center-rotationv2-always-normalizing")
+class OrthogonalBasisCenterRotationV2AlwaysNormalizingPolicy(LayerPolicy):
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__()
+
+        k = student_dims
+
+        self.basis = basis
+
+        self.scaling_factor = np.sum(self.basis.get_scale_factors_for_k(student_dims))
+
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            utils.modules.Rotate(k=k),
+        ).to(device)
+
     def criterion(
         self, transformed_teacher_feats, transformed_student_feats
     ) -> torch.Tensor:
@@ -508,10 +209,208 @@ class OrthogonalBasisCenterRotationV3Policy(LayerPolicy):
         return loss_mse
 
 
-####
+@register_policy("basis-center-ortho")
+class OrthogonalBasisCenterOrthoPolicy(LayerPolicy):
+    """
+    This should be use with basis-identity
+    """
+
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__()
+
+        d = teacher_dims
+        k = student_dims
+
+        assert isinstance(basis, (Identity,))
+
+        self.basis = basis
+
+        if layerwise_training:
+            self.scaling_factor = 1.0
+        else:
+            # here, we use all the dimensions
+            self.scaling_factor = np.sum(self.basis.get_scale_factors_for_k(d))
+
+        # here, we use k=d because we don't want to do any projection
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=d, mode=AdapterMode.ENCODER, device=device
+        )
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False),
+            utils.modules.LinearOrtho(in_features=k, out_features=d, bias=False),
+        ).to(device)
+
+    def criterion(
+        self, transformed_teacher_feats, transformed_student_feats
+    ) -> torch.Tensor:
+        b, k, w, h = transformed_teacher_feats.shape
+
+        assert transformed_teacher_feats.shape == transformed_student_feats.shape
+
+        loss_mse = F.mse_loss(
+            transformed_student_feats,
+            transformed_teacher_feats,
+            reduction="none",
+        ) / (w * h)
+        loss_mse = loss_mse.flatten(start_dim=1)
+
+        loss_mse = loss_mse / self.scaling_factor
+
+        # sum over all spatial dimensions
+        loss_mse = loss_mse.sum(dim=1)
+
+        assert loss_mse.shape == (b,)
+
+        # average over all samples
+        loss_mse = loss_mse.mean()
+
+        return loss_mse
 
 
-class AblationTemplate(LayerPolicy):
+@register_policy("basis-center-softortho")
+class OrthogonalBasisCenterSoftOrthoPolicy(OrthogonalBasisCenterOrthoPolicy):
+    """
+    This should be use with basis-identity
+    """
+
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        d = teacher_dims
+        k = student_dims
+
+        lin = nn.Conv2d(in_channels=k, out_channels=d, bias=False, kernel_size=1)
+
+        W = lin.weight.squeeze()  # shape (out_features, in_features)
+
+        U, _, _ = torch.linalg.svd(W, full_matrices=False)
+
+        lin.weight.data = U.unsqueeze(-1).unsqueeze(-1)
+
+        with torch.no_grad():
+            print("Initialized soft-ortho layer with SVD.")
+            svdvals = torch.linalg.svdvals(lin.weight.data.squeeze())
+            print(
+                f"sigvals: min={torch.min(svdvals).item()}, max={torch.max(svdvals).item()}"
+            )
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False), lin
+        ).to(device)
+
+    def additional_loss(self, module: LightningModule, prefix="") -> torch.Tensor:
+        linear_layer: nn.Linear = self.transformer_student_feats[1]
+        W = linear_layer.weight.squeeze()  # shape (out_features, in_features)
+
+        _, _ = W.shape
+
+        sigvals = torch.linalg.svdvals(W)  # shape (min(out_features, in_features),)
+
+        module.log(f"{prefix}_softortho_sigvals_max", sigvals.max().item())
+        module.log(f"{prefix}_softortho_sigvals_min", sigvals.min().item())
+        # this is a stable way to implement ||W^T @ W - I_K ||2^2
+        loss = torch.sum((sigvals - 1.0) ** 2)
+
+        return 1000 * loss
+
+
+@register_policy("basis-center-frobenius-softortho")
+class OrthogonalBasisCenterFrobeniusSoftOrthoPolicy(OrthogonalBasisCenterOrthoPolicy):
+    """
+    This should be use with basis-identity
+    """
+
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        d = teacher_dims
+        k = student_dims
+
+        lin = nn.Conv2d(in_channels=k, out_channels=d, bias=False, kernel_size=1)
+
+        W = lin.weight.squeeze()  # shape (out_features, in_features)
+
+        U, _, _ = torch.linalg.svd(W, full_matrices=False)
+
+        lin.weight.data = U.unsqueeze(-1).unsqueeze(-1)
+
+        with torch.no_grad():
+            print("Initialized soft-ortho layer with SVD.")
+            svdvals = torch.linalg.svdvals(lin.weight.data.squeeze())
+            print(
+                f"sigvals: min={torch.min(svdvals).item()}, max={torch.max(svdvals).item()}"
+            )
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False), lin
+        ).to(device)
+
+    def additional_loss(self, module: LightningModule, prefix="") -> torch.Tensor:
+        linear_layer: nn.Linear = self.transformer_student_feats[1]
+        W = linear_layer.weight.squeeze()  # shape (out_features, in_features)
+
+        d, K = W.shape
+
+        assert d >= K
+
+        eye = torch.eye(W.shape[1], device=W.device)
+
+        loss = torch.linalg.norm(W.T @ W - eye, ord="fro") ** 2
+
+        module.log(f"{prefix}_softortho_frobenius", loss.item())
+
+        return 1000 * loss
+
+
+@register_policy("basis-center-linear")
+class OrthogonalBasisCenterLinearPolicy(OrthogonalBasisCenterOrthoPolicy):
+    """
+    This should be use with basis-identity
+    """
+
+    def __init__(
+        self,
+        teacher_dims: int,
+        student_dims: int,
+        device: str,
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
+        super().__init__(teacher_dims, student_dims, device, basis, layerwise_training)
+
+        d = teacher_dims
+        k = student_dims
+
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False),
+            nn.Conv2d(in_channels=k, out_channels=d, kernel_size=1, bias=False),
+        ).to(device)
+
+
+@register_policy("basis-center-rotationv2-no-normalization")
+class OrthogonalBasisCenterRotationV2NoNormalizationPolicy(LayerPolicy):
     def __init__(
         self,
         teacher_dims: int,
@@ -526,13 +425,16 @@ class AblationTemplate(LayerPolicy):
 
         self.basis = basis
 
-        self.transformer_teacher_feats = self._construct_teacher_transformation(
-            basis=basis, k=k, device=device
+        self.scaling_factor = 1.0
+
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
         )
 
-        self.transformer_student_feats = self._construct_student_transformation(
-            k=k, device=device
-        )
+        self.transformer_student_feats = nn.Sequential(
+            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+            utils.modules.Rotate(k=k),
+        ).to(device)
 
     def criterion(
         self, transformed_teacher_feats, transformed_student_feats
@@ -548,6 +450,8 @@ class AblationTemplate(LayerPolicy):
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
+        loss_mse = loss_mse / self.scaling_factor
+
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
 
@@ -558,103 +462,36 @@ class AblationTemplate(LayerPolicy):
 
         return loss_mse
 
-    def _construct_teacher_transformation(
+
+@register_policy("basis-rotation")
+class OrthogonalBasisRotationPolicy(LayerPolicy):
+    def __init__(
         self,
-        basis: OrthogonalBasis,
-        k: int,
+        teacher_dims: int,
+        student_dims: int,
         device: str,
-    ):
-        raise NotImplementedError()
-
-    def _construct_student_transformation(self, k: int, device: str):
-        raise NotImplementedError()
-
-
-class Normalization(nn.Module):
-    def __init__(self, normalization_constant: float):
+        basis: OrthogonalBasis,
+        layerwise_training: bool,
+    ) -> None:
         super().__init__()
 
-        self.constant = normalization_constant
+        k = student_dims
 
-    def forward(self, x):
-        return x / self.constant
+        self.basis = basis
 
+        if layerwise_training:
+            self.scaling_factor = 1.0
+        else:
+            self.scaling_factor = np.sum(
+                self.basis.get_scale_factors_for_k(student_dims)
+            )
 
-@register_policy(
-    "basis-ablationv2--l2--teacher-center-normalized--student-center-rotation"
-)
-class AblationNormalizedTeacherCenterRotation(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        scaling_factor = float(basis.get_scale_factors_for_k(k=k).sum() ** 0.5)
-        return nn.Sequential(
-            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
-            Normalization(scaling_factor),
-        ).to(device)
+        self.transformer_teacher_feats = basis.construct_adapter(
+            k=k, mode=AdapterMode.ENCODER, device=device
+        )
 
-    def _construct_student_transformation(self, k: int, device: str):
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
+        self.transformer_student_feats = nn.Sequential(
             utils.modules.Rotate(k=k),
-        ).to(device)
-
-
-@register_policy("basis-ablationv2--l2--teacher-center--student-center-rotation")
-class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        return nn.Sequential(
-            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-            utils.modules.Rotate(k=k),
-        ).to(device)
-
-
-@register_policy("basis-ablationv2--l2--teacher-center--student-center")
-class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        return nn.Sequential(
-            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-        ).to(device)
-
-
-@register_policy("basis-ablationv2--l2normalized--teacher-center--student-center")
-class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        return nn.Sequential(
-            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
         ).to(device)
 
     def criterion(
@@ -671,7 +508,7 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         ) / (w * h)
         loss_mse = loss_mse.flatten(start_dim=1)
 
-        loss_mse = loss_mse / np.sum(self.basis.get_scale_factors_for_k(k))
+        loss_mse = loss_mse / self.scaling_factor
 
         # sum over all spatial dimensions
         loss_mse = loss_mse.sum(dim=1)
@@ -682,334 +519,3 @@ class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
         loss_mse = loss_mse.mean()
 
         return loss_mse
-
-
-@register_policy(
-    "basis-ablationv2--l2normalized--teacher-center--student-center-linear"
-)
-class AblationNormalizedTeacherCenterLinear(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        (d, _) = basis.U.shape
-        # here, we don't perform any projection
-        return nn.Sequential(
-            basis.construct_adapter(k=d, mode=AdapterMode.ENCODER, device=device),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        (d, _) = self.basis.U.shape
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-            nn.Conv2d(in_channels=k, out_channels=d, bias=False, kernel_size=1),
-        ).to(device)
-
-    def criterion(
-        self, transformed_teacher_feats, transformed_student_feats
-    ) -> torch.Tensor:
-        b, k, w, h = transformed_teacher_feats.shape
-        (d, _) = self.basis.U.shape
-
-        loss_scale_factor = np.sum(self.basis.get_scale_factors_for_k(d))
-
-        assert transformed_teacher_feats.shape == transformed_student_feats.shape
-
-        loss_mse = F.mse_loss(
-            transformed_student_feats,
-            transformed_teacher_feats,
-            reduction="none",
-        ) / (w * h)
-        loss_mse = loss_mse.flatten(start_dim=1)
-
-        loss_mse = loss_mse / loss_scale_factor
-
-        # sum over all spatial dimensions
-        loss_mse = loss_mse.sum(dim=1)
-
-        assert loss_mse.shape == (b,)
-
-        # average over all samples
-        loss_mse = loss_mse.mean()
-
-        return loss_mse
-
-
-@register_policy(
-    "basis-ablationv2--l2normalized--teacher-center--student-center-linearortho"
-)
-class AblationNormalizedTeacherCenterLinearOrtho(AblationNormalizedTeacherCenterLinear):
-    def _construct_student_transformation(self, k: int, device: str):
-        (d, _) = self.basis.U.shape
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-            utils.modules.LinearOrtho(in_features=k, out_features=d),
-        ).to(device)
-
-
-@register_policy("basis-ablationv2--l2--teacher-center-normalized--student-center")
-class AblationNormalizedTeacherCenter(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        scaling_factor = float(basis.get_scale_factors_for_k(k=k).sum() ** 0.5)
-        return nn.Sequential(
-            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
-            Normalization(scaling_factor),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-        ).to(device)
-
-
-@register_policy("basis-ablationv2--l2--teacher-projection--student-rotation")
-class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        U = torch.from_numpy(basis.U[:, :k]).float()
-        # here, we don't subtract mean.
-        mean = torch.zeros_like(torch.from_numpy(basis.mean))
-
-        return nn.Sequential(
-            Adapter(U=U, mean=mean, mode=AdapterMode.ENCODER, device=device)
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        return nn.Sequential(
-            utils.modules.Rotate(k=k),
-        ).to(device)
-
-
-@register_policy(
-    "basis-ablationv2--l2normalized--teacher-projection--student-rotation-scale"
-)
-class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        U = torch.from_numpy(basis.U[:, :k]).float()
-        # here, we don't subtract mean.
-        mean = torch.zeros_like(torch.from_numpy(basis.mean))
-
-        return nn.Sequential(
-            Adapter(U=U, mean=mean, mode=AdapterMode.ENCODER, device=device)
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        return nn.Sequential(
-            utils.modules.RotateAndScale(k=k),
-        ).to(device)
-
-    def criterion(
-        self, transformed_teacher_feats, transformed_student_feats
-    ) -> torch.Tensor:
-        b, k, w, h = transformed_teacher_feats.shape
-
-        assert transformed_teacher_feats.shape == transformed_student_feats.shape
-
-        normalization_coeff = np.sum(self.basis.get_scale_factors_for_k(k))
-
-        loss_mse = F.mse_loss(
-            transformed_student_feats,
-            transformed_teacher_feats,
-            reduction="none",
-        ) / (w * h)
-        loss_mse = loss_mse / normalization_coeff
-
-        loss_mse = loss_mse.flatten(start_dim=1)
-
-        # sum over all spatial dimensions
-        loss_mse = loss_mse.sum(dim=1)
-
-        assert loss_mse.shape == (b,)
-
-        # average over all samples
-        loss_mse = loss_mse.mean()
-
-        return loss_mse
-
-
-@register_policy(
-    "basis-ablationv2--l2--teacher-projection-normalized--student-identity"
-)
-class AblationNoNormalizedTeacherCenterRotation(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        scaling_factor = float(basis.get_scale_factors_for_k(k=k).sum() ** 0.5)
-
-        U = torch.from_numpy(basis.U[:, :k]).float()
-        # here, we don't subtract mean.
-        mean = torch.zeros_like(torch.from_numpy(basis.mean))
-
-        return nn.Sequential(
-            Adapter(U=U, mean=mean, mode=AdapterMode.ENCODER, device=device),
-            Normalization(scaling_factor),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        return nn.Identity()
-
-
-@register_policy("basis-ablationv2--lcos--teacher-center--student-center-rotation")
-class AblationLossCosNoNormalizedTeacherCenterRotation(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        return nn.Sequential(
-            basis.construct_adapter(k=k, mode=AdapterMode.ENCODER, device=device),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-            utils.modules.Rotate(k=k),
-        ).to(device)
-
-    def criterion(
-        self, transformed_teacher_feats, transformed_student_feats
-    ) -> torch.Tensor:
-        b, k, w, h = transformed_teacher_feats.shape
-
-        assert transformed_teacher_feats.shape == transformed_student_feats.shape
-
-        transformed_teacher_feats = F.normalize(transformed_teacher_feats, dim=1)
-        transformed_student_feats = F.normalize(transformed_student_feats, dim=1)
-
-        cosine = (transformed_teacher_feats * transformed_student_feats).sum(dim=1)
-        cosine = cosine / (w * h)
-
-        loss = -cosine
-
-        loss = loss.flatten(start_dim=1)
-
-        # sum over all spatial dimensions
-        loss = loss.sum(dim=1)
-
-        assert loss.shape == (b,)
-
-        # average over all samples
-        loss = loss.mean()
-
-        return loss
-
-
-@register_policy("basis-ablationv2--l2--teacher-center--student-center-linear")
-class AblationIdentityTeacherCenterLinear(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        _, d = basis.U.shape
-        return nn.Sequential(
-            # we perform only centering and no projection
-            basis.construct_adapter(k=d, mode=AdapterMode.ENCODER, device=device),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        _, d = self.basis.U.shape
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-            nn.Conv2d(in_channels=k, out_channels=d, bias=False, kernel_size=1),
-        ).to(device)
-
-
-@register_policy("basis-ablationv2--l2--teacher-center--student-center-linearortho")
-class AblationIdentityTeacherCenterLinearOrtho(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        _, d = basis.U.shape
-        return nn.Sequential(
-            # we perform only centering and no projection
-            basis.construct_adapter(k=d, mode=AdapterMode.ENCODER, device=device),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        _, d = self.basis.U.shape
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False),
-            utils.modules.LinearOrtho(in_features=k, out_features=d),
-        ).to(device)
-
-
-@register_policy(
-    "basis-ablationv2--l2--teacher-center-normalized--student-center-linearortho"
-)
-class AblationNormalizedTeacherCenterLinearOrtho(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        _, d = basis.U.shape
-        scaling_factor = float(basis.get_scale_factors_for_k(k=k).sum() ** 0.5)
-
-        return nn.Sequential(
-            # we perform only centering and no projection
-            basis.construct_adapter(k=d, mode=AdapterMode.ENCODER, device=device),
-            Normalization(scaling_factor),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        _, d = self.basis.U.shape
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False),
-            utils.modules.LinearOrtho(in_features=k, out_features=d),
-        ).to(device)
-
-
-@register_policy(
-    "basis-ablationv2--l2--teacher-center-normalized--student-center-linear"
-)
-class AblationIdentityTeacherCenterLinear(AblationTemplate):
-    def _construct_teacher_transformation(
-        self,
-        basis: OrthogonalBasis,
-        k: int,
-        device: str,
-    ):
-        _, d = basis.U.shape
-
-        scaling_factor = float(basis.get_scale_factors_for_k(k=k).sum() ** 0.5)
-        return nn.Sequential(
-            # we perform only centering and no projection
-            basis.construct_adapter(k=d, mode=AdapterMode.ENCODER, device=device),
-            Normalization(scaling_factor),
-        ).to(device)
-
-    def _construct_student_transformation(self, k: int, device: str):
-        _, d = self.basis.U.shape
-        return nn.Sequential(
-            utils.modules.Centering2D(num_features=k, affine=False).to(device),
-            nn.Conv2d(in_channels=k, out_channels=d, bias=False, kernel_size=1),
-        ).to(device)
-
-
-#####

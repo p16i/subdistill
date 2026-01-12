@@ -13,7 +13,7 @@ from xaikd import explainers, models, datasets, attributors, utils, logit_modifi
 def _check_heatmap_finite(explainer_name: str, model_name: str):
     device = utils.get_device()
 
-    dataset = datasets.construct("imagenet-butterfly")
+    dataset = datasets.construct("imagenet-random")
 
     input_transform = transforms.Normalize(*dataset.input_statistics)
 

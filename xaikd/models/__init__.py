@@ -85,14 +85,17 @@ def get_untrained_model(name: str, num_classes: int, **kwargs) -> nn.Module:
         slug = name.split("-d")[1]
         arr_in_planes = slug.split("-")
         arr_in_planes = tuple(map(int, arr_in_planes))
-        return resnet.construct_student_cifar_resnet18_varying_dims(
-            arr_in_planes=arr_in_planes, num_classes=num_classes, **kwargs  # type: ignore
+        return resnet.construct_student_resnet18_varying_dims(
+            for_cifar=True,
+            arr_in_planes=arr_in_planes,
+            num_classes=num_classes,
+            **kwargs,  # type: ignore
         )
     elif "student-resnet18-d" in name:
         slug = name.split("-d")[1]
         arr_in_planes = slug.split("-")
         arr_in_planes = tuple(map(int, arr_in_planes))
-        return resnet.construct_student_cifar_resnet18_varying_dims(
+        return resnet.construct_student_resnet18_varying_dims(
             arr_in_planes=arr_in_planes, num_classes=num_classes, **kwargs  # type: ignore
         )
 

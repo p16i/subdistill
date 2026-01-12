@@ -10,9 +10,7 @@ import models as test_models
 
 @pytest.mark.parametrize(
     "slug",
-    [
-        "cifar100-resnet18-v1",
-    ],
+    ["cifar100-resnet18-v1", "cifar100-wideresnet40-ptood"],
 )
 @pytest.mark.slow
 def test_get_cifar100_model(slug):
@@ -27,6 +25,8 @@ def test_get_cifar100_model(slug):
         "imagenet-resnet34-tv",
         "imagenet-resnet50-tv",
         "imagenet-resnet101-tv",
+        "imagenet-wideresnet50-tv",
+        "imagenet-wideresnet101-tv",
         "imagenet-resnet152-tv",
     ],
 )
@@ -35,6 +35,7 @@ def test_get_imagenet_model(slug):
     test_models._test_get_model(slug)
 
 
+@pytest.mark.skip(reason="obsolete")
 @pytest.mark.parametrize(
     "slug",
     [

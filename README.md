@@ -1,43 +1,51 @@
-# XAI $\times$ Knowledge Distillation
+# Distilling Lightweight Domain Experts from Large ML Models by Identifying Relevant Subspaces
 
+Authors: Pattarawat Chormai, Ali Hashemi, Klaus-Robert Müller, Grégoire Montavon
+
+[![arXiv](https://img.shields.io/badge/arXiv-2601.05913-b31b1b.svg)](https://arxiv.org/abs/2601.05913)
+
+--- 
+The repo contains code for the manuscript above. 
+
+The distillation experiments in the paper were run with tag `v0.8.16`, while the XAI Analysis was performed with the code  and Pythong dependencies from branch `add-captum`.
+
+
+
+
+# Requirements 
+1. `wandb` service setup
+2. Python environment with dependencies in `pyproject.toml`.
+  In our case, we construct the enviorment using Apptainer (via `./containers/py311.def`)
+
+
+
+# Usage 
 
 ```
-nix-shell -p poetry python311
+python ./scripts/distill-layerwise.py  \
+  --output-dir /tmp \
+  --seed 1 \
+  --epochs 100   \
+  --training-size 0.8 \
+  --lambda-layer 100  \
+  --batch-size 32 \
+  --dataset imagenet-wading-bird \
+  --teacher imagenet-resnet101-tv  \
+  --student student-mobilenetv4-small \
+  --layers layer1:blocks.1.1,layer2:blocks.2.3,layer3:blocks.3.1,layer4:blocks.3.5 \
+  --distillation-policy <POLICY>
+```
+*Remark:* in our case, we run the script in the  Apptainer environment (via `./runpy`).
+
+Possible options for `<POLICY>` 
+```
+- basis-center-rotationv2:prcaposdef # this is the name of our SubDistill policy in the code
+- attention-transfer
+- vid
+- vkd
 ```
 
-We use `peotry` for deps management.
-
-Installing all deps `peotry install`.
-
-Activative env `peotry shell` or run commands via `peotry run ....`
-
-## Available Models
-- `cifar10-resnet-p1`
-- `cifar100-resnet-p1`
 
 
-# Resources
-- notebook to train teacher models for cifar100
-  - https://colab.research.google.com/drive/13NNSnXyRuN4vti22kKE2-vpQpTFGO0ta#scrollTo=Xsk-KCxTf07F&uniqifier=1
-    *Remark* currently, it contains key for wandb, and it should not be shared.
-
-
-## Things to Do/Check when adding a new model
-- make the architecture `Ditsllable`
-  - check prediction
-  - update `constants` for layer dimension
-- implement generator
-- implement attributors
-   - check attributor
-
-
-
-## Apptainer
-
-Unittests
-```
-apptainer run --bind /home/space/datasets/cifar100:/datasets  --nv containers/main.sif poetry run pytest tests/*
-```
-
-todo:
-- Figure out how to run the script with apptainers!
+---
+Please do not hesitate to contact me or create an issue if there is any questions.

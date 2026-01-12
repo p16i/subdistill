@@ -1,12 +1,12 @@
 from torch import nn
 import timm
 
+from functools import partial
 import math
 from . import add_model_to_registry
 
 
-def __mobilenetv4_small_timm_better_initialization(**kwargs):
-
+def __mobilenetv4_small_timm_alternative_initialization(**kwargs):
     model = timm.create_model("mobilenetv4_conv_small", **kwargs)
 
     # remark: it seems that the initiliazation from timm doesn't seem to work well with small data.
@@ -32,10 +32,34 @@ def __mobilenetv4_small_timm_better_initialization(**kwargs):
     return model
 
 
+def __mobilenetv4_small(**kwargs):
+    model = timm.create_model("mobilenetv4_conv_small", **kwargs)
+    return model
+
+
+def get_mobilenetv4_small_with_factor(factor, **kwargs):
+    model = timm.models.mobilenetv3._gen_mobilenet_v4(
+        "mobilenetv4_conv_small", factor, pretrained=False, **kwargs
+    )
+
+    return model
+
+
 def _generate_model_function():
     add_model_to_registry(
         "student-mobilenetv4-small",
-        __mobilenetv4_small_timm_better_initialization,
+        __mobilenetv4_small,
+    )
+
+    for factor in [0.125, 0.25, 0.5]:
+        add_model_to_registry(
+            f"student-mobilenetv4-small-{factor}",
+            partial(get_mobilenetv4_small_with_factor, factor=factor),
+        )
+
+    add_model_to_registry(
+        "student-mobilenetv4-small-alternative-init",
+        __mobilenetv4_small_timm_alternative_initialization,
     )
 
 

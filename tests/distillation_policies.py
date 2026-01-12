@@ -112,8 +112,9 @@ def test_baseline_policy_callable(teacher_dims, student_dims, policy):
 @pytest.mark.parametrize(
     "parameterization",
     [
-        "basis-center-rotation",
-        "basis-bn-sum-normalized",
+        "basis-center-rotationv2",
+        "basis-rotation",
+        "basis-center-rotationv2-no-normalization",
     ],
 )
 @pytest.mark.parametrize(
@@ -161,12 +162,17 @@ def test_our_policies_callable(
         assert isinstance(
             policy,
             (
-                distillation_policies.ours.OrthogonalBasisBatchNormSumNormalizedPolicy,
-                distillation_policies.ours.OrthogonalBasisCenterRotationPolicy,
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2Policy,
+                distillation_policies.ours.OrthogonalBasisCenterOrthoPolicy,
+                distillation_policies.ours.OrthogonalBasisRotationPolicy,
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2NoNormalizationPolicy,
             ),
         )
 
-        if layerwise_training:
+        if layerwise_training or isinstance(
+            policy,
+            distillation_policies.ours.OrthogonalBasisCenterRotationV2NoNormalizationPolicy,
+        ):
             np.testing.assert_allclose(policy.scaling_factor, 1)
         else:
             np.testing.assert_allclose(
@@ -180,19 +186,88 @@ def test_our_policies_callable(
             torch.randn(5, student_dims, 5, 5),
         )
 
-        # from batchnorm
         if isinstance(
             policy,
-            distillation_policies.ours.OrthogonalBasisBatchNormSumNormalizedPolicy,
+            (
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2Policy,
+                distillation_policies.ours.OrthogonalBasisRotationPolicy,
+                distillation_policies.ours.OrthogonalBasisCenterRotationV2NoNormalizationPolicy,
+            ),
         ):
-            expected_num_learnable_params = 2 * student_dims
+            expected_num_learnable_params = student_dims * student_dims
         elif isinstance(
             policy,
-            distillation_policies.ours.OrthogonalBasisCenterRotationPolicy,
+            distillation_policies.ours.OrthogonalBasisCenterOrthoPolicy,
         ):
-            expected_num_learnable_params = student_dims * student_dims + 1
+            expected_num_learnable_params = 0
         else:
             raise
+
+        _, actual_num_learnable_params = putils.count_params_in_list_params(
+            policy.parameters()
+        )
+
+        np.testing.assert_allclose(
+            actual_num_learnable_params, expected_num_learnable_params
+        )
+
+        assert True
+
+
+def test_basis_identity_callable():
+    teacher_dims = 10
+    student_dims = 5
+    basis_name = "identity"
+    parameterization = "basis-center-ortho"
+    layerwise_training = False
+
+    rng = np.random.default_rng(seed=1)
+    batch_size = 8
+    device = "cpu"
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        act = rng.random((batch_size, teacher_dims, 5)) + 2
+        mean_act = putils.flatten_3d_tensor(act).mean(axis=0)
+        act -= mean_act[None, :, None]
+        logodd = 2 * rng.random((batch_size,)) - 1
+        basis = bases.get_basis(basis_name)
+
+        basis.fit(
+            arr_act=act,
+            arr_ctx=act,
+            mean_act=mean_act,
+            arr_logodd=logodd,
+            logodd_threshold=0,
+            seed=1,
+            strict_mode=True,
+        )
+
+        kwargs = dict(
+            teacher_dims=teacher_dims,
+            student_dims=student_dims,
+            device=device,
+            basis=basis,
+        )
+
+        policy = distillation_policies.get_policy(
+            parameterization, layerwise_training=layerwise_training, **kwargs  # type: ignore
+        )
+
+        if layerwise_training:
+            np.testing.assert_allclose(policy.scaling_factor, 1)  # type: ignore
+        else:
+            np.testing.assert_allclose(
+                policy.scaling_factor,  # type: ignore
+                basis.get_scale_factors_for_k(k=teacher_dims).sum(),
+            )
+
+        # check that this is callable
+        policy(
+            torch.randn(5, teacher_dims, 5, 5),
+            torch.randn(5, student_dims, 5, 5),
+        )
+
+        expected_num_learnable_params = teacher_dims * student_dims
 
         _, actual_num_learnable_params = putils.count_params_in_list_params(
             policy.parameters()
@@ -337,14 +412,14 @@ def test_last_layer_policy(last_layer_policy, expected):
                 lambda_task=0, lambda_kd=1, lambda_layer=0.1
             ),
         ),
-        (
-            "basis-bn-sum-normalized:prcaposdef-entropy0.95",
-            0.1,
-            "basis-bn-sum-normalized:prcaposdef-entropy0.95",
-            distillation_policies.LambdaCollection(
-                lambda_task=0, lambda_kd=1, lambda_layer=0.1
-            ),
-        ),
+        # (
+        #     "basis-bn-sum-normalized:prcaposdef-entropy0.95",
+        #     0.1,
+        #     "basis-bn-sum-normalized:prcaposdef-entropy0.95",
+        #     distillation_policies.LambdaCollection(
+        #         lambda_task=0, lambda_kd=1, lambda_layer=0.1
+        #     ),
+        # ),
     ],
 )
 @pytest.mark.parametrize("layerwise_training", [True, False])
@@ -358,14 +433,15 @@ def test_resolve_lambdas_and_layer_policy(
     teacher = "cifar100-resnet18-v1"
     default_lambda_layer_config = None
 
-    actual_collection, actual_layer_policy = (
-        distillation_policies.resolve_lambdas_and_layer_policy(
-            teacher=teacher,
-            policy_name=policy_name,
-            lambda_layer=lambda_layer,
-            default_lambda_layer_config=default_lambda_layer_config,
-            layerwise_training=layerwise_training,
-        )
+    (
+        actual_collection,
+        actual_layer_policy,
+    ) = distillation_policies.resolve_lambdas_and_layer_policy(
+        teacher=teacher,
+        policy_name=policy_name,
+        lambda_layer=lambda_layer,
+        default_lambda_layer_config=default_lambda_layer_config,
+        layerwise_training=layerwise_training,
     )
 
     expected_collection = deepcopy(expected_collection)
@@ -382,27 +458,27 @@ def test_resolve_lambdas_and_layer_policy(
     "teacher,student,layer_str",
     [
         (
-            "celeba-resnet18-finetunedv1",
-            "student-resnet18-16",
+            "imagenet-resnet101-tv",
+            "student-resnet18-d16-16-8-8",
             "layer1:layer1,layer2:layer2,layer3:layer3,layer4:layer4",
         ),
         (
-            "celeba-resnet18-finetunedv1",
-            "student-mobilenetv4-small",
-            "layer1:blocks.2.2,layer2:blocks.2.5,layer3:blocks.3.2,layer4:blocks.3.5",
+            "imagenet-resnet101-tv",
+            "student-resnet18-d16-16-8-8",
+            "layer1,layer2,layer3,layer4",
         ),
         (
-            "celeba-resnet50-finetunedv1",
-            "student-mobilenetv4-small",
-            "layer1:blocks.2.2,layer2:blocks.2.5,layer3:blocks.3.2,layer4:blocks.3.5",
+            "imagenet-wideresnet101-tv",
+            "student-resnet18-d16-16-8-8",
+            "layer1,layer2,layer3,layer4",
         ),
         (
-            "celeba-wideresnet50_2-finetunedv1",
+            "imagenet-resnet101-tv",
             "student-mobilenetv4-small",
-            "layer1:blocks.2.2,layer2:blocks.2.5,layer3:blocks.3.2,layer4:blocks.3.5",
+            "layer1:blocks.1.1,layer2:blocks.2.3,layer3:blocks.3.1,layer4:blocks.3.5",
         ),
         (
-            "celeba-vitb16-finetunedv1",
+            "imagenet-vitb-tv",
             "student-efficientformerv2_s0",
             "encoder.layers.2:stages.0,encoder.layers.5:stages.1,encoder.layers.8:stages.2,encoder.layers.11:stages.3",
         ),
@@ -434,7 +510,6 @@ def test_aligning_teacher_and_student_features_possible(
     )
 
     for feat_teacher, feat_student in zip(arr_feat_teacher, arr_feat_student):
-
         _, teacher_dims, _, _ = feat_teacher.shape
         _, student_dims, _, _ = feat_student.shape
 

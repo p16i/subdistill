@@ -3,11 +3,12 @@ import pytest
 
 from xaikd import datasets
 
+pytest.skip(reason="obsolte", allow_module_level=True)
+
 
 @pytest.mark.slow
 @pytest.mark.parametrize("is_train", [True, False])
 def test_celeba_callable_and_create_subsets(is_train):
-
     dataset = datasets.construct("celeba")
     assert True
 
