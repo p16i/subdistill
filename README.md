@@ -7,7 +7,7 @@ Authors: Pattarawat Chormai, Ali Hashemi, Klaus-Robert Müller, Grégoire Montav
 --- 
 The repo contains code for the manuscript above. 
 
-Distillation experiments in the paper were run with tag `v0.8.16`, while the XAI Analysis was performed the code from branch `add-captum`.
+Distillation experiments in the paper were run with tag `v0.8.16`, while the XAI Analysis was performed with the code  and Pythong dependencies from branch `add-captum`.
 
 
 
