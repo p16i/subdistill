@@ -5,7 +5,7 @@ Authors: Pattarawat Chormai, Ali Hashemi, Klaus-Robert Müller, Grégoire Montav
 [![arXiv](https://img.shields.io/badge/arXiv-2601.05913-b31b1b.svg)](https://arxiv.org/abs/2601.05913)
 
 --- 
-The repo contains code for the manuscript above. 
+The repo contains code for the manuscript above. Experiments in the paper were run with `v0.8.16`.
 
 
 
