@@ -12,7 +12,7 @@ echo "======== Dataset Preparation ======="
 export DATASET_PATHS="/home/space/datasets"
 
 if [[ "$WITH_DATA" = "" ]]; then
-   WITH_DATA="mnist,cifar100,celeba,imagenet"
+   WITH_DATA="MNIST,cifar100,celeba,imagenet"
 fi
 
 if [[ -n "${WITH_DATA// /}" ]]; then
