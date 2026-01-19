@@ -9,6 +9,9 @@ import torch
 from torch.utils.data import Dataset, random_split, Subset
 
 from torchvision import datasets as tvd
+from torchvision.transforms import functional as TF
+
+from PIL import Image
 
 
 from xaikd import constants
@@ -21,9 +24,8 @@ from . import IMAGENET_SUPERCLASS_MAPPING
 from .subclasses import ImageNetSuperClass
 
 
-class TorchVisionDatasetImageNetWithCopyrightFeatures(tvd.ImageNet):
-    arr_data_spurious: typing.List[int]  # if 0 then not spurious
-    slug = "spurious-copyrightv3"
+class TorchVisionDatasetImageNetWithMNISTSpuriousFeatures(tvd.ImageNet):
+    arr_index_with_spurious: typing.List[int]  # if 0 then not spurious
 
     def __getitem__(self, index: int):
         """
@@ -35,27 +37,27 @@ class TorchVisionDatasetImageNetWithCopyrightFeatures(tvd.ImageNet):
         """
 
         path, target = self.samples[index]
+        if self.target_transform is not None:
+            target = self.target_transform(target)
 
         sample = self.loader(path)
 
         assert self.transform is not None
 
-        spurious_type = self.arr_data_spurious[index]
-
-        assert spurious_type in [0, 1]
-
-        if spurious_type == 1:
-            sample = spurious_feature_generator.imagenet_center_watermark(sample)
-
         sample = self.transform(sample)
-
-        if self.target_transform is not None:
-            target = self.target_transform(target)
+        if index in self.arr_index_with_spurious:
+            sample = TF.to_pil_image(sample)
+            sample = spurious_feature_generator.mnist_corner(
+                sample,
+                label=target,
+                seed=index,
+            )
+            sample = TF.to_tensor(sample)
 
         return sample, target
 
 
-class ImageNetSuperclassWithCopyrightFeatures(
+class ImageNetSuperclassWithMNISTSpuriousFeatures(
     ImageNetSuperClass, WithValidationSetMixin
 ):
     def __init__(
@@ -71,44 +73,30 @@ class ImageNetSuperclassWithCopyrightFeatures(
 
     @property
     def dataclass(self):
-        return TorchVisionDatasetImageNetWithCopyrightFeatures
+        return TorchVisionDatasetImageNetWithMNISTSpuriousFeatures
 
     def _construct_dataset(
         self, train_split: bool
-    ) -> TorchVisionDatasetImageNetWithCopyrightFeatures:
-        return super().create_subset(train_split)  # type: ignore
+    ) -> TorchVisionDatasetImageNetWithMNISTSpuriousFeatures:
+        return super().create_subset(train_split)
 
     def create_subset(self, train_split: bool, with_spurious: bool = True):
         ds = self._construct_dataset(train_split=train_split)
 
-        assert isinstance(ds, TorchVisionDatasetImageNetWithCopyrightFeatures)
+        assert isinstance(ds, TorchVisionDatasetImageNetWithMNISTSpuriousFeatures)
 
         rng = np.random.default_rng(seed=1)
 
         n = len(ds.targets)
 
-        arr_data_spurious = np.zeros(n, dtype=int)
-
         if train_split and with_spurious:
-            # we assume that the first class get contaminated
-            cls_ix_with_spurious_feature = self._selected_classes[0]
-            indices = (
-                np.argwhere(np.array(ds.targets) == cls_ix_with_spurious_feature)
-                .reshape(-1)
-                .tolist()
-            )
-
-            total = int(np.floor(len(indices) * self.contamination_level))
-
-            selected_indices = rng.permutation(indices)[:total]
-
-            # with watermark
-            arr_data_spurious[selected_indices] = 1
+            total_spurios = int(n * self.contamination_level)
+            print(f"We have {total_spurios} spurious samples out of {n} total samples.")
+            arr_index_with_spurious = rng.permutation(n)[:total_spurios].tolist()
         else:
-            # we use worst-case here.
-            arr_data_spurious[:] = 1
+            arr_index_with_spurious = []
 
-        ds.arr_data_spurious = arr_data_spurious.tolist()
+        ds.arr_index_with_spurious = arr_index_with_spurious
 
         return ds
 
@@ -146,14 +134,14 @@ def ano():
             sslug = "--".join(
                 [
                     f"imagenet-{superclass}",
-                    TorchVisionDatasetImageNetWithCopyrightFeatures.slug,
+                    "mnistspurious",
                     f"{contamination_level}",
                 ]
             )
             add_dataset_to_registry(
                 sslug,
                 partial(
-                    ImageNetSuperclassWithCopyrightFeatures,
+                    ImageNetSuperclassWithMNISTSpuriousFeatures,
                     contamination_level=contamination_level,
                     superclass=superclass,
                 ),

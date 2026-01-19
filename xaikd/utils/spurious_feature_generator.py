@@ -11,7 +11,11 @@ from PIL.Image import Image as TypeImage
 
 from torchvision.transforms import functional as F
 
-from xaikd import constants
+from xaikd import constants, datasets
+from torchvision.datasets import MNIST
+
+
+DS_MNIST = MNIST(f"{datasets.DATADIR}", download=False)
 
 
 # def imagenet_copyright(img: TypeImage, seed: int) -> TypeImage:
@@ -167,3 +171,33 @@ def scaling_artifact(img: TypeImage, scaling_factor=4) -> TypeImage:
     recon_img = F.resize(F.resize(img, size=[nh, nw]), size=[h, w])
 
     return recon_img
+
+
+def mnist_corner(img: TypeImage, label: int, seed: int) -> TypeImage:
+    rng = np.random.default_rng(seed=seed)
+    img = img.copy()
+    img_w, img_h = img.size
+    cw, ch = img_w // 2, img_h // 2
+    img_w, img_h = img.size
+
+    marksize = 28 * 2
+
+    arr_ix_with_same_label = np.argwhere(DS_MNIST.targets == label)
+
+    ix = rng.choice(arr_ix_with_same_label.reshape(-1))
+    img_mnist, _ = DS_MNIST[ix]
+
+    watermark = img_mnist.convert("RGBA")
+
+    watermark = watermark.resize((marksize, marksize))
+
+    img.paste(
+        watermark,
+        (
+            cw - (224 // 2),
+            ch - (224 // 2),
+        ),
+        mask=watermark,
+    )
+
+    return img
