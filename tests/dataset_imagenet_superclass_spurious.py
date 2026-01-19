@@ -7,12 +7,12 @@ from xaikd import datasets
 
 @pytest.mark.slow
 def test():
-    dataset = datasets.construct("imagenet-wading-bird--spurious-copyrightv3--1.0")
+    dataset = datasets.construct("imagenet-wading-bird--mnistspurious--1.0")
 
     assert isinstance(
         dataset,
         (
-            datasets.imagenet.subclasses_spurious_features.ImageNetSuperclassWithCopyrightFeatures,
+            datasets.imagenet.subclasses_spurious_features.ImageNetSuperclassWithMNISTSpuriousFeatures,
             datasets.interface.WithValidationSetMixin,
         ),
     )
@@ -20,18 +20,23 @@ def test():
     trng = torch.Generator()
     trng.manual_seed(42)
 
-    ds_train, ds_val = dataset.create_train_val_split(rng=trng, training_size=0.8)
+    training_size = 0.8
+    ds_train, ds_val = dataset.create_train_val_split(
+        rng=trng, training_size=training_size
+    )
     ds_test = dataset.create_subset(train_split=False)
 
     assert id(ds_train.dataset) != id(ds_val.dataset)
 
-    actual_prop_spurious = np.mean(ds_train.dataset.arr_data_spurious)  # type: ignore
-    np.testing.assert_allclose(actual_prop_spurious, 1 / dataset.num_classes, atol=0.05)
+    np.testing.assert_allclose(
+        len(ds_train.dataset.arr_index_with_spurious)  # type: ignore
+        * training_size,  # the index is for the original training size, and we factor the training size split
+        len(ds_train),
+        atol=5,
+    )
 
     np.testing.assert_allclose(
-        np.sum(np.array(ds_val.dataset.arr_data_spurious) == 1), len(ds_val.dataset)
-    )  # type: ignore
+        len(ds_val.dataset.arr_index_with_spurious), 0  # type: ignore
+    )
 
-    np.testing.assert_allclose(
-        np.sum(np.array(ds_test.arr_data_spurious) == 1), len(ds_test)
-    )  # type: ignore
+    np.testing.assert_allclose(len(ds_test.arr_index_with_spurious), 0)
