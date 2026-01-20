@@ -10,6 +10,7 @@ from torch.utils.data import Dataset, random_split, Subset
 
 from torchvision import datasets as tvd
 from torchvision.transforms import functional as TF
+from torchvision import transforms as T
 
 from PIL import Image
 
@@ -25,7 +26,19 @@ from .subclasses import ImageNetSuperClass
 
 
 class TorchVisionDatasetImageNetWithMNISTSpuriousFeatures(tvd.ImageNet):
+    normalizer = T.Normalize(
+        # ref: https://github.com/pytorch/vision/blob/main/torchvision/transforms/_presets.py#L44
+        mean=[0.485, 0.456, 0.406],
+        std=[0.229, 0.224, 0.225],
+    )
+
+    mean = np.array([0.485, 0.456, 0.406])
+
+    std = np.array([0.229, 0.224, 0.225])
     arr_index_with_spurious: typing.List[int]  # if 0 then not spurious
+
+    spurious_digit: bool
+    num_classes: int
 
     def __getitem__(self, index: int):
         """
@@ -42,17 +55,28 @@ class TorchVisionDatasetImageNetWithMNISTSpuriousFeatures(tvd.ImageNet):
 
         sample = self.loader(path)
 
+        if self.spurious_digit:
+            pseudo_label = target
+        else:
+            rng = np.random.default_rng(seed=index)
+            pseudo_label = rng.permutation(self.num_classes)[0]
+
         assert self.transform is not None
 
         sample = self.transform(sample)
         if index in self.arr_index_with_spurious:
+            # remark: we assume that we also use normalization
+            sample = sample * self.std[:, None, None] + self.mean[:, None, None]
             sample = TF.to_pil_image(sample)
+
             sample = spurious_feature_generator.mnist_corner(
                 sample,
-                label=target,
+                label=pseudo_label,
                 seed=index,
             )
+
             sample = TF.to_tensor(sample)
+            sample = self.normalizer(sample)
 
         return sample, target
 
@@ -80,7 +104,7 @@ class ImageNetSuperclassWithMNISTSpuriousFeatures(
     ) -> TorchVisionDatasetImageNetWithMNISTSpuriousFeatures:
         return super().create_subset(train_split)
 
-    def create_subset(self, train_split: bool, with_spurious: bool = True):
+    def create_subset(self, train_split: bool, with_spurious: bool = False):
         ds = self._construct_dataset(train_split=train_split)
 
         assert isinstance(ds, TorchVisionDatasetImageNetWithMNISTSpuriousFeatures)
@@ -89,14 +113,11 @@ class ImageNetSuperclassWithMNISTSpuriousFeatures(
 
         n = len(ds.targets)
 
-        if train_split and with_spurious:
-            total_spurios = int(n * self.contamination_level)
-            print(f"We have {total_spurios} spurious samples out of {n} total samples.")
-            arr_index_with_spurious = rng.permutation(n)[:total_spurios].tolist()
-        else:
-            arr_index_with_spurious = []
-
+        total_sample_with_digit = int(n * self.contamination_level)
+        arr_index_with_spurious = rng.permutation(n)[:total_sample_with_digit].tolist()
         ds.arr_index_with_spurious = arr_index_with_spurious
+        ds.spurious_digit = train_split and with_spurious
+        ds.num_classes = self.num_classes
 
         return ds
 
@@ -121,6 +142,9 @@ class ImageNetSuperclassWithMNISTSpuriousFeatures(
             [ratio_train, ratio_val, ratio_rest],
             rng,
         )
+        # remark: here, we still use the indices from Subset we get from random_split
+        ds_train.dataset = self.create_subset(train_split=True, with_spurious=True)
+
         # make sure that we don't have any spurious data in val set
         ds_val.dataset = self.create_subset(train_split=True, with_spurious=False)
 
