@@ -130,7 +130,7 @@ class ImageNetSuperclassWithMNISTSpuriousFeatures(
 def ano():
     # construct copyright
     for superclass in IMAGENET_SUPERCLASS_MAPPING.keys():
-        for contamination_level in [0.1, 0.25, 0.5, 0.75, 1.0]:
+        for contamination_level in [0.0, 0.125, 0.25, 0.5, 0.75, 1.0]:
             sslug = "--".join(
                 [
                     f"imagenet-{superclass}",
