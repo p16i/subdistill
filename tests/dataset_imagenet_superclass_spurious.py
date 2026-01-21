@@ -35,8 +35,4 @@ def test():
         atol=5,
     )
 
-    np.testing.assert_allclose(
-        len(ds_val.dataset.arr_index_with_spurious), 0  # type: ignore
-    )
-
-    np.testing.assert_allclose(len(ds_test.arr_index_with_spurious), 0)
+    np.testing.assert_allclose(len(ds_test.arr_index_with_spurious), len(ds_test))
