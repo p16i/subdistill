@@ -15,7 +15,7 @@ from xaikd import constants, datasets
 from torchvision.datasets import MNIST
 
 
-DS_MNIST = MNIST(f"{datasets.DATADIR}", download=False)
+DS_MNIST = MNIST(f"{datasets.DATADIR}", download=datasets.TORCHVISION_DATASET_DOWNLOAD)
 
 
 # def imagenet_copyright(img: TypeImage, seed: int) -> TypeImage:
