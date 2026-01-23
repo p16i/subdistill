@@ -54,7 +54,6 @@ class OrthogonalBasis(ABC):
     def estimate_scale_factors(
         self, arr_act: npt.NDArray, U: npt.NDArray
     ) -> npt.NDArray:
-
         d, _ = U.shape
 
         # remark: if centering (i.e., `mean(activation)=0`), then
@@ -76,7 +75,10 @@ class OrthogonalBasis(ABC):
         return arr_scale_factors
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
-        U = torch.from_numpy(self.U[:, :k]).float()
+        if k == 0:
+            U = torch.from_numpy(self.U[:, :1]).float() * 0
+        else:
+            U = torch.from_numpy(self.U[:, :k]).float()
         mean = torch.from_numpy(self.mean).float()
 
         return Adapter(U=U, mean=mean, mode=mode, device=device)
@@ -91,7 +93,6 @@ class OrthogonalBasis(ABC):
         strict_mode=False,
         **kwargs,
     ):
-
         _, d, _ = arr_act.shape
 
         # we assume that E[a] = 0. Only check when expicitly asked.
