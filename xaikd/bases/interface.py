@@ -76,6 +76,7 @@ class OrthogonalBasis(ABC):
 
     def construct_adapter(self, k: int, mode: AdapterMode, device: str) -> Adapter:
         if k == 0:
+            # this makes sure that it computes zero-dim projection
             U = torch.from_numpy(self.U[:, :1]).float() * 0
         else:
             U = torch.from_numpy(self.U[:, :k]).float()
