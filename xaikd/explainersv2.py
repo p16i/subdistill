@@ -89,10 +89,10 @@ class Explainer(ABC):
 
 @register_explainer("lrpresnet")
 class LRPResNetExplainer(Explainer):
-    def __init__(self, model: nn.Module, num_classes: int, device: str):
+    def __init__(self, model: nn.Module, num_classes: int, device: str, gamma=1.0):
         super().__init__(model, num_classes, device)
 
-        self.gamma = 1
+        self.gamma = gamma
 
         self.low, self.high = NORMALIZER(
             torch.tensor([[[[[0.0]]] * 3], [[[[1.0]]] * 3]])
@@ -234,3 +234,13 @@ def get_explainer(
     device: str,
 ) -> Explainer:
     return EXPLAINERS[name](model=model, num_classes=num_classes, device=device)
+
+
+def ano():
+    for gamma in [0.01, 0.1, 0.5, 1.0]:
+        slug = f"lrpresnet{gamma}"
+
+        EXPLAINERS[slug] = partial(LRPResNetExplainer, gamma=gamma)
+
+
+ano()
