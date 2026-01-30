@@ -126,7 +126,7 @@ class ImageNetSuperclassWithMNISTSpuriousFeatures(
         training_size: float,
         rng: torch.Generator,
     ) -> typing.Tuple[Subset[tvd.VisionDataset], Subset[tvd.VisionDataset]]:
-        ds_train_raw = self.create_subset(train_split=True)
+        ds_train_raw = self.create_subset(train_split=True, with_spurious=True)
 
         ratio_train = np.min([constants.TRAINING_VAL_SPLIT_RATIO, training_size])
         ratio_val = 1 - constants.TRAINING_VAL_SPLIT_RATIO
@@ -142,11 +142,6 @@ class ImageNetSuperclassWithMNISTSpuriousFeatures(
             [ratio_train, ratio_val, ratio_rest],
             rng,
         )
-        # remark: here, we still use the indices from Subset we get from random_split
-        ds_train.dataset = self.create_subset(train_split=True, with_spurious=True)
-
-        # make sure that we don't have any spurious data in val set
-        ds_val.dataset = self.create_subset(train_split=True, with_spurious=False)
 
         return ds_train, ds_val
 
