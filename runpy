@@ -36,5 +36,5 @@ echo "======== END Dataset Preparation ======="
 
 
 DATASET_ROOT=/datasets APPTAINER_BINDPATH=$DATASET_PATHS apptainer run  \
-    --nv ./containers/py311v0.0.2.sif \
+    --nv ./containers/py311v0.0.3.sif \
     "$@"
