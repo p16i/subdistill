@@ -45,12 +45,11 @@ class LogitGapWrtTarget(nn.Module):
 
 def logit_gap_wrt_target(logits, target, num_classes):
     device = logits.device
-    target_logit = logits * F.one_hot(target, num_classes=num_classes).float().to(
-        device
-    )
+    target_onehot = F.one_hot(target, num_classes=num_classes).float().to(device)
+    target_logit = logits * target_onehot
 
     with torch.no_grad():
-        mod_logit = logits - 1e6 * target_logit
+        mod_logit = logits - 1e6 * target_onehot
         _, indices = torch.topk(
             mod_logit, dim=1, k=2  # this make sure that target class is not selected
         )
